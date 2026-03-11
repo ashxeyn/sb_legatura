@@ -495,7 +495,6 @@ class BidRankingService
                 'c.picab_expiration_date',
                 'c.verification_status',
                 'c.company_email',
-                'c.company_phone',
                 'c.company_website',
                 'u.username',
                 'po.profile_pic as profile_pic',

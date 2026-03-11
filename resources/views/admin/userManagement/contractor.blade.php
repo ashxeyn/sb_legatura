@@ -128,8 +128,8 @@
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Company Phone</label>
-              <input type="tel" name="company_phone" placeholder="09xxxxxxxxx"
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
+              <input type="email" name="company_email" placeholder="company@example.com"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
@@ -424,8 +424,8 @@
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Company Phone</label>
-                <input type="tel" id="edit_company_phone" name="company_phone" placeholder="09xxxxxxxxx"
+                <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
+                <input type="email" id="edit_company_email" name="company_email" placeholder="company@example.com"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
               </div>
               <div>

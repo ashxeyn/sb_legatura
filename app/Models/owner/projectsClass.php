@@ -244,11 +244,8 @@ class projectsClass
         $query = DB::table('contractors as c')
             ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
             ->join('users as u', 'po.user_id', '=', 'u.user_id')
-            ->join('contractor_users as cu', function ($join) {
-            $join->on('c.contractor_id', '=', 'cu.contractor_id');
-        })
             ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
-            ->where('cu.is_active', 1)
+            ->where('c.is_active', 1)
             ->where('c.verification_status', 'approved')
             ->select(
             'c.contractor_id',

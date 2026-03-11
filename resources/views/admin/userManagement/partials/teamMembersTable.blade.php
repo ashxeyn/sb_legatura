@@ -15,8 +15,7 @@
   ?>
   <tr class="hover:bg-gray-50 transition-all duration-200 group {{ $statusClass }}"
       data-status="{{ $dataStatus }}"
-      data-email="{{ $member->email ?? '' }}"
-      data-contact="{{ $member->phone_number ?? '' }}">
+      data-email="{{ $member->email ?? '' }}">
     <td class="px-6 py-4">
       <div class="flex items-center gap-3 {{ !$member->is_active ? 'opacity-60' : '' }}">
         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-{{ $color }}-400 to-{{ $color }}-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
@@ -48,17 +47,17 @@
     <td class="px-6 py-4">
       <div class="flex items-center justify-center gap-2">
         @if($member->is_active)
-          <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member" data-member-id="{{ $member->contractor_user_id }}">
+          <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member" data-member-id="{{ $member->staff_id }}">
             <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
           </button>
           <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account"
-                  data-member-id="{{ $member->contractor_user_id }}"
+                  data-member-id="{{ $member->staff_id }}"
                   data-member-name="{{ $fname . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . $lname }}">
             <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
           </button>
         @else
           <button class="team-reactivate-btn p-2 rounded-lg hover:bg-green-50 transition-all group/btn" title="Reactivate Account"
-                  data-member-id="{{ $member->contractor_user_id }}"
+                  data-member-id="{{ $member->staff_id }}"
                   data-member-name="{{ $fname . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . $lname }}">
             <i class="fi fi-rr-check-circle text-green-600 group-hover/btn:scale-110 transition-transform"></i>
           </button>

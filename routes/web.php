@@ -82,6 +82,26 @@ Route::prefix('admin/settings/security')
 
         Route::post('/delete', [\App\Http\Controllers\Admin\accountController::class, 'delete'])
             ->name('admin.settings.security.delete');
+
+        // ── ADMIN MEMBERS ─────────────────────────────────────────────────────────
+        Route::get('/members', [\App\Http\Controllers\Admin\accountController::class, 'members'])
+            ->name('admin.settings.security.members');
+
+        Route::post('/members/create', [\App\Http\Controllers\Admin\accountController::class, 'createMember'])
+            ->name('admin.settings.security.members.create');
+
+        Route::get('/members/{id}/data', [\App\Http\Controllers\Admin\accountController::class, 'memberData'])
+            ->name('admin.settings.security.members.data');
+
+        Route::post('/members/{id}/update', [\App\Http\Controllers\Admin\accountController::class, 'updateMember'])
+            ->name('admin.settings.security.members.update');
+
+        Route::post('/members/{id}/delete', [\App\Http\Controllers\Admin\accountController::class, 'deleteMember'])
+            ->name('admin.settings.security.members.delete');
+
+        // ── GLOBAL TEAM ACTIVITY ─────────────────────────────────────────────────
+        Route::get('/team-activity', [\App\Http\Controllers\Admin\accountController::class, 'teamActivity'])
+            ->name('admin.settings.security.teamActivity');
     });
 
 Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);

@@ -253,25 +253,7 @@ class accountClass
                 }
             }
 
-            // Backwards-compatible fallback: insert into legacy contractor_users if present
-            if (!Schema::hasTable('contractor_users')) {
-                Log::warning('createContractorUser skipped: contractor_users table does not exist');
-                return null;
-            }
-
-            $contractorUserId = DB::table('contractor_users')->insertGetId([
-                'contractor_id' => $data['contractor_id'],
-                'user_id' => $data['user_id'],
-                'authorized_rep_lname' => $data['last_name'],
-                'authorized_rep_mname' => $data['middle_name'] ?? null,
-                'authorized_rep_fname' => $data['first_name'],
-                'phone_number' => $data['phone_number'] ?? '',
-                'role' => 'owner',
-                'is_active' => 0,
-                'created_at' => now()
-            ]);
-
-            return $contractorUserId;
+            return null;
         } catch (\Throwable $e) {
             Log::warning('createContractorUser failed: ' . $e->getMessage());
             return null;

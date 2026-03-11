@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storePaymentRequest;
 use App\Models\admin\milestonePayment;
 use Illuminate\Http\Request;
+use App\Services\AdminActivityLog;
 
 class paymentController extends Controller
 {
@@ -29,6 +30,7 @@ class paymentController extends Controller
     public function store(storePaymentRequest $request)
     {
         $p = milestonePayment::create($request->validated());
+        AdminActivityLog::log('milestone_payment_created', ['payment_id' => $p->payment_id ?? $p->id]);
         return response()->json($p,201);
     }
 
@@ -37,6 +39,7 @@ class paymentController extends Controller
         $p = milestonePayment::find($id);
         if (!$p) return response()->json(['error'=>'Not found'],404);
         $p->update($request->only(['payment_status','amount','transaction_date']));
+        AdminActivityLog::log('milestone_payment_updated', ['payment_id' => $id]);
         return response()->json($p);
     }
 
@@ -45,6 +48,7 @@ class paymentController extends Controller
         $p = milestonePayment::find($id);
         if (!$p) return response()->json(['error'=>'Not found'],404);
         $p->delete();
+        AdminActivityLog::log('milestone_payment_deleted', ['payment_id' => $id]);
         return response()->json(['deleted'=>true]);
     }
 }

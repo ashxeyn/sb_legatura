@@ -16,6 +16,7 @@ use App\Http\Requests\admin\editSubRequest;
 use App\Http\Requests\admin\addSubRequest;
 use App\Models\admin\subscriptionClass;
 use App\Models\admin\showcaseClass;
+use App\Services\AdminActivityLog;
 
 class projectManagementController extends Controller
 {
@@ -62,6 +63,7 @@ class projectManagementController extends Controller
     {
         $notes = $request->input('notes', null);
         disputeClass::resolveDispute($id, $notes);
+        AdminActivityLog::log('dispute_resolved', ['dispute_id' => $id]);
         return back()->with('success', 'Dispute resolved.');
     }
 
@@ -195,6 +197,7 @@ class projectManagementController extends Controller
             Log::error('Failed to send approve emails: ' . $e->getMessage());
         }
 
+        AdminActivityLog::log('dispute_approved_for_review', ['dispute_id' => $id]);
         return response()->json(['success' => true]);
     }
 
@@ -223,6 +226,7 @@ class projectManagementController extends Controller
             Log::error('Failed to send reject email: ' . $e->getMessage());
         }
 
+        AdminActivityLog::log('dispute_rejected', ['dispute_id' => $id, 'reason' => $reason]);
         return response()->json(['success' => true]);
     }
 
@@ -257,6 +261,7 @@ class projectManagementController extends Controller
             Log::error('Failed to send finalize emails: ' . $e->getMessage());
         }
 
+        AdminActivityLog::log('dispute_finalized', ['dispute_id' => $id]);
         return response()->json(['success' => true]);
     }
 
@@ -297,6 +302,7 @@ class projectManagementController extends Controller
             ];
 
             subscriptionClass::addPlan($data);
+            AdminActivityLog::log('subscription_plan_created', ['name' => $data['name']]);
 
             return response()->json([
                 'status' => 'success',
@@ -326,6 +332,7 @@ class projectManagementController extends Controller
             ];
 
             subscriptionClass::updatePlan($id, $data);
+            AdminActivityLog::log('subscription_plan_updated', ['plan_id' => $id, 'name' => $data['name']]);
 
             return response()->json([
                 'status' => 'success',
@@ -351,6 +358,7 @@ class projectManagementController extends Controller
             ]);
 
             subscriptionClass::deletePlan($id, $request->reason);
+            AdminActivityLog::log('subscription_plan_deleted', ['plan_id' => $id, 'reason' => $request->reason]);
 
             return response()->json([
                 'status' => 'success',
@@ -588,6 +596,7 @@ class projectManagementController extends Controller
         try {
             $projectModel = new \App\Models\admin\projectClass();
             $result = $projectModel->acceptBid($bidId);
+            AdminActivityLog::log('bid_accepted', ['bid_id' => $bidId]);
 
             return response()->json($result);
 
@@ -635,6 +644,7 @@ class projectManagementController extends Controller
             $reason = $request->input('reason');
             $projectModel = new \App\Models\admin\projectClass();
             $result = $projectModel->rejectBid($bidId, $reason);
+            AdminActivityLog::log('bid_rejected_by_admin', ['bid_id' => $bidId, 'reason' => $reason]);
 
             return response()->json($result);
 
@@ -1106,6 +1116,7 @@ class projectManagementController extends Controller
             }
 
             subscriptionClass::deactivate($id, $reason);
+            AdminActivityLog::log('subscription_deactivated', ['subscription_id' => $id, 'reason' => $reason]);
 
             return response()->json([
                 'success' => true,
@@ -1128,6 +1139,7 @@ class projectManagementController extends Controller
     {
         try {
             subscriptionClass::reactivate($id);
+            AdminActivityLog::log('subscription_reactivated', ['subscription_id' => $id]);
 
             return response()->json([
                 'success' => true,
@@ -1199,6 +1211,7 @@ class projectManagementController extends Controller
         $approved = $model->approveShowcase($id);
 
         if ($approved) {
+            AdminActivityLog::log('showcase_approved', ['showcase_id' => $id]);
             return response()->json(['success' => true, 'message' => 'Showcase approved successfully.']);
         }
 
@@ -1218,6 +1231,7 @@ class projectManagementController extends Controller
         $rejected = $model->rejectShowcase($id, $request->rejection_reason);
 
         if ($rejected) {
+            AdminActivityLog::log('showcase_rejected', ['showcase_id' => $id, 'reason' => $request->rejection_reason]);
             return response()->json(['success' => true, 'message' => 'Showcase rejected successfully.']);
         }
 
@@ -1237,6 +1251,7 @@ class projectManagementController extends Controller
         $deleted = $model->deleteShowcase($id, $request->deletion_reason);
 
         if ($deleted) {
+            AdminActivityLog::log('showcase_deleted', ['showcase_id' => $id, 'reason' => $request->deletion_reason]);
             return response()->json(['success' => true, 'message' => 'Showcase deleted successfully.']);
         }
 
@@ -1252,6 +1267,7 @@ class projectManagementController extends Controller
         $restored = $model->restoreShowcase($id);
 
         if ($restored) {
+            AdminActivityLog::log('showcase_restored', ['showcase_id' => $id]);
             return response()->json(['success' => true, 'message' => 'Showcase restored successfully.']);
         }
 
@@ -1279,6 +1295,7 @@ class projectManagementController extends Controller
         ], $adminUserId);
 
         if ($result['success']) {
+            AdminActivityLog::log('timeline_extended', ['project_id' => $id, 'new_end_date' => $request->new_end_date, 'reason' => $request->reason]);
             return response()->json($result);
         }
 
@@ -1334,6 +1351,7 @@ class projectManagementController extends Controller
         $result = $model->adminApproveExtension($extensionId, $adminUserId, $request->notes);
 
         if ($result['success']) {
+            AdminActivityLog::log('extension_approved', ['extension_id' => $extensionId]);
             return response()->json($result);
         }
 
@@ -1355,6 +1373,7 @@ class projectManagementController extends Controller
         $result = $model->adminRejectExtension($extensionId, $adminUserId, $request->reason);
 
         if ($result['success']) {
+            AdminActivityLog::log('extension_rejected', ['extension_id' => $extensionId, 'reason' => $request->reason]);
             return response()->json($result);
         }
 
@@ -1376,6 +1395,7 @@ class projectManagementController extends Controller
         $result = $model->adminRequestRevision($extensionId, $adminUserId, $request->feedback);
 
         if ($result['success']) {
+            AdminActivityLog::log('extension_revision_requested', ['extension_id' => $extensionId]);
             return response()->json($result);
         }
 

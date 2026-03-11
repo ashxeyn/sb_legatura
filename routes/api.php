@@ -298,16 +298,22 @@ Route::get('/debug/contractor-status', function (Request $request) {
         return response()->json(['error' => 'user_id required']);
     }
 
-    $contractor = DB::table('contractors')->where('user_id', $userId)->first();
-    $contractorUsers = DB::table('contractor_users')->where('user_id', $userId)->get();
-    $allMembers = $contractor ? DB::table('contractor_users')
+    $contractor = DB::table('contractors')
+        ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+        ->where('property_owners.user_id', $userId)
+        ->select('contractors.*')
+        ->first();
+    $contractorStaff = DB::table('contractor_staff')
+        ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+        ->where('property_owners.user_id', $userId)
+        ->get();
+    $allMembers = $contractor ? DB::table('contractor_staff')
         ->where('contractor_id', $contractor->contractor_id)
-        ->where('is_deleted', 0)
         ->get() : [];
 
     return response()->json([
         'contractor' => $contractor,
-        'contractor_users_for_this_user' => $contractorUsers,
+        'contractor_staff_for_this_user' => $contractorStaff,
         'all_members' => $allMembers
     ]);
 });
@@ -326,23 +332,27 @@ Route::get('/debug/member-statuses', function (\Illuminate\Http\Request $request
         return response()->json(['error' => 'user_id required']);
     }
 
-    $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+    $contractor = DB::table('contractors')
+        ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+        ->where('property_owners.user_id', $userId)
+        ->select('contractors.*')
+        ->first();
     if (!$contractor) {
         return response()->json(['error' => 'Contractor not found for user_id: ' . $userId]);
     }
 
-    $members = DB::table('contractor_users')
-        ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
-        ->where('contractor_users.contractor_id', $contractor->contractor_id)
+    $members = DB::table('contractor_staff')
+        ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+        ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+        ->where('contractor_staff.contractor_id', $contractor->contractor_id)
         ->select(
-            'contractor_users.contractor_user_id',
-            'contractor_users.user_id',
-            'contractor_users.authorized_rep_fname as first_name',
-            'contractor_users.authorized_rep_lname as last_name',
-            'contractor_users.role',
-            'contractor_users.is_active',
-            'contractor_users.is_deleted',
-            'contractor_users.deletion_reason',
+            'contractor_staff.staff_id',
+            'property_owners.owner_id',
+            'users.first_name',
+            'users.last_name',
+            'contractor_staff.company_role as role',
+            'contractor_staff.is_active',
+            'contractor_staff.deletion_reason',
             'users.email',
             'users.username'
         )
@@ -352,9 +362,8 @@ Route::get('/debug/member-statuses', function (\Illuminate\Http\Request $request
         'contractor_id' => $contractor->contractor_id,
         'contractor_name' => $contractor->company_name ?? 'N/A',
         'total_members' => count($members),
-        'active_count' => $members->where('is_active', 1)->where('is_deleted', 0)->count(),
-        'inactive_count' => $members->where('is_active', 0)->where('is_deleted', 0)->count(),
-        'deleted_count' => $members->where('is_deleted', 1)->count(),
+        'active_count' => $members->where('is_active', 1)->count(),
+        'inactive_count' => $members->where('is_active', 0)->count(),
         'members' => $members
     ]);
 });
@@ -375,10 +384,13 @@ Route::get('/debug/check-user-login', function (\Illuminate\Http\Request $reques
         return response()->json(['error' => 'User not found: ' . $username]);
     }
 
-    $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
+    $contractorStaff = DB::table('contractor_staff')
+        ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+        ->where('property_owners.user_id', $user->user_id)
+        ->first();
     $contractor = null;
-    if ($contractorUser) {
-        $contractor = DB::table('contractors')->where('contractor_id', $contractorUser->contractor_id)->first();
+    if ($contractorStaff) {
+        $contractor = DB::table('contractors')->where('contractor_id', $contractorStaff->contractor_id)->first();
     }
 
     $propertyOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
@@ -390,11 +402,11 @@ Route::get('/debug/check-user-login', function (\Illuminate\Http\Request $reques
             'email' => $user->email,
             'user_type' => $user->user_type,
         ],
-        'contractor_user' => $contractorUser ? [
-            'contractor_user_id' => $contractorUser->contractor_user_id,
-            'contractor_id' => $contractorUser->contractor_id,
-            'role' => $contractorUser->role,
-            'is_active' => $contractorUser->is_active,
+        'contractor_staff' => $contractorStaff ? [
+            'staff_id' => $contractorStaff->staff_id,
+            'contractor_id' => $contractorStaff->contractor_id,
+            'company_role' => $contractorStaff->company_role,
+            'is_active' => $contractorStaff->is_active,
         ] : null,
         'parent_contractor' => $contractor ? [
             'contractor_id' => $contractor->contractor_id,

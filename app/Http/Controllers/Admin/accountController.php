@@ -105,8 +105,27 @@ class accountController extends Controller
                     created_at  TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (id),
                     KEY idx_admin_created (admin_id, created_at)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ');
+        } else {
+            // Fix column type: admin_users.admin_id is VARCHAR(20) (e.g. 'ADMIN-1')
+            // but the migration may have created admin_activity_logs.admin_id as BIGINT.
+            // This mismatch silently drops inserts and breaks joins.
+            try {
+                $col = DB::selectOne("SHOW COLUMNS FROM admin_activity_logs WHERE Field = 'admin_id'");
+                if ($col && stripos($col->Type, 'bigint') !== false) {
+                    DB::statement('ALTER TABLE admin_activity_logs MODIFY admin_id VARCHAR(20) NOT NULL');
+                }
+            } catch (\Throwable $e) {
+                // Ignore — insufficient privileges or already correct
+            }
+
+            // Ensure collation matches admin_users to prevent join errors
+            try {
+                DB::statement('ALTER TABLE admin_activity_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+            } catch (\Throwable $e) {
+                // Already correct or insufficient privileges — ignore
+            }
         }
     }
 
@@ -124,7 +143,7 @@ class accountController extends Controller
             $logs = DB::table('admin_activity_logs')
                 ->where('admin_id', $admin->admin_id)
                 ->orderBy('created_at', 'desc')
-                ->limit(20)
+                ->limit(500)
                 ->get();
 
             return response()->json([
@@ -274,6 +293,226 @@ class accountController extends Controller
         } catch (\Throwable $e) {
             // THIS WILL LOG THE REAL ERROR TO storage/logs/laravel.log
             \Illuminate\Support\Facades\Log::error('LogActivity Error: ' . $e->getMessage());
+        }
+    }
+
+    // ── GET /admin/settings/security/members ──────────────────────────────────
+    // Returns all admin accounts except the currently logged-in one.
+    public function members(Request $request)
+    {
+        try {
+            $this->ensureSchema();
+            $admin = $this->resolveAdmin($request);
+            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+
+            $members = DB::table('admin_users')
+                ->where('admin_id', '!=', $admin->admin_id)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(fn($m) => [
+                    'admin_id'    => $m->admin_id,
+                    'first_name'  => $m->first_name  ?? '',
+                    'last_name'   => $m->last_name   ?? '',
+                    'email'       => $m->email        ?? '',
+                    'username'    => $m->username     ?? '',
+                    'profile_pic' => $m->profile_pic  ?? null,
+                    'is_active'   => $m->is_active    ?? 1,
+                    'created_at'  => $m->created_at   ?? null,
+                ]);
+
+            return response()->json(['success' => true, 'data' => ['members' => $members]]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ── GET /admin/settings/security/members/{id}/data ─────────────────────────
+    // Returns a specific admin's profile + their activity logs.
+    public function memberData(Request $request, $id)
+    {
+        try {
+            $this->ensureSchema();
+            $admin = $this->resolveAdmin($request);
+            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+
+            $member = DB::table('admin_users')->where('admin_id', $id)->first();
+            if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
+
+            $logs = DB::table('admin_activity_logs')
+                ->where('admin_id', $id)
+                ->orderBy('created_at', 'desc')
+                ->limit(50)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'admin' => [
+                        'admin_id'    => $member->admin_id,
+                        'first_name'  => $member->first_name  ?? '',
+                        'middle_name' => $member->middle_name ?? '',
+                        'last_name'   => $member->last_name   ?? '',
+                        'email'       => $member->email        ?? '',
+                        'username'    => $member->username     ?? '',
+                        'profile_pic' => $member->profile_pic  ?? null,
+                        'is_active'   => $member->is_active    ?? 1,
+                        'created_at'  => $member->created_at   ?? null,
+                    ],
+                    'logs' => $logs,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ── POST /admin/settings/security/members/create ────────────────────────────
+    public function createMember(Request $request)
+    {
+        try {
+            $this->ensureSchema();
+            $admin = $this->resolveAdmin($request);
+            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+
+            $request->validate([
+                'first_name' => 'required|string|max:100',
+                'last_name'  => 'required|string|max:100',
+                'email'      => 'required|email|unique:admin_users,email',
+                'username'   => 'required|string|max:50|unique:admin_users,username',
+                'password'   => 'required|string|min:8',
+            ]);
+
+            // Generate a unique admin_id (e.g. ADM-XXXXXX)
+            do {
+                $newId = 'ADM-' . strtoupper(substr(md5(uniqid()), 0, 6));
+            } while (DB::table('admin_users')->where('admin_id', $newId)->exists());
+
+            DB::table('admin_users')->insert([
+                'admin_id'      => $newId,
+                'first_name'    => $request->input('first_name'),
+                'last_name'     => $request->input('last_name'),
+                'email'         => $request->input('email'),
+                'username'      => $request->input('username'),
+                'password_hash' => bcrypt($request->input('password')),
+                'is_active'     => 1,
+                'created_at'    => now(),
+            ]);
+
+            $this->logActivity($admin->admin_id, 'member_created', [
+                'new_admin_id' => $newId,
+                'email'        => $request->input('email'),
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Admin account created successfully.']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ── POST /admin/settings/security/members/{id}/update ──────────────────────
+    public function updateMember(Request $request, $id)
+    {
+        try {
+            $this->ensureSchema();
+            $admin = $this->resolveAdmin($request);
+            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+
+            $member = DB::table('admin_users')->where('admin_id', $id)->first();
+            if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
+
+            $request->validate([
+                'first_name' => 'required|string|max:100',
+                'last_name'  => 'required|string|max:100',
+                'email'      => 'required|email|unique:admin_users,email,' . $id . ',admin_id',
+                'username'   => 'required|string|max:50|unique:admin_users,username,' . $id . ',admin_id',
+            ]);
+
+            $payload = [
+                'first_name' => $request->input('first_name'),
+                'last_name'  => $request->input('last_name'),
+                'email'      => $request->input('email'),
+                'username'   => $request->input('username'),
+            ];
+
+            // Optionally reset password
+            if ($request->filled('password')) {
+                if (strlen($request->input('password')) < 8) {
+                    return response()->json(['success' => false, 'message' => 'Password must be at least 8 characters.'], 422);
+                }
+                $payload['password_hash'] = bcrypt($request->input('password'));
+            }
+
+            DB::table('admin_users')->where('admin_id', $id)->update($payload);
+
+            $this->logActivity($admin->admin_id, 'member_updated', [
+                'target_admin_id' => $id,
+                'email'           => $payload['email'],
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Admin account updated successfully.']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ── POST /admin/settings/security/members/{id}/delete ──────────────────────
+    public function deleteMember(Request $request, $id)
+    {
+        try {
+            $admin = $this->resolveAdmin($request);
+            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+
+            if ($id === $admin->admin_id) {
+                return response()->json(['success' => false, 'message' => 'You cannot delete your own account from this panel.'], 422);
+            }
+
+            $member = DB::table('admin_users')->where('admin_id', $id)->first();
+            if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
+
+            DB::table('admin_users')->where('admin_id', $id)->update(['is_active' => 0]);
+
+            $this->logActivity($admin->admin_id, 'member_deleted', [
+                'deleted_admin_id' => $id,
+                'email'            => $member->email ?? '',
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Admin account deactivated.']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ── GET /admin/settings/security/team-activity ──────────────────────────────
+    // Returns combined activity logs of ALL admin accounts, joined with admin names.
+    public function teamActivity(Request $request)
+    {
+        try {
+            $this->ensureSchema();
+            $admin = $this->resolveAdmin($request);
+            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+
+            $logs = DB::table('admin_activity_logs as aal')
+                ->leftJoin('admin_users as au', DB::raw('au.admin_id COLLATE utf8mb4_unicode_ci'), '=', DB::raw('aal.admin_id COLLATE utf8mb4_unicode_ci'))
+                ->select(
+                    'aal.id',
+                    'aal.admin_id',
+                    DB::raw("CONCAT(COALESCE(au.first_name,''), ' ', COALESCE(au.last_name,'')) as admin_name"),
+                    'aal.action',
+                    'aal.details',
+                    'aal.ip_address',
+                    'aal.created_at'
+                )
+                ->orderBy('aal.created_at', 'desc')
+                ->limit(500)
+                ->get();
+
+            return response()->json(['success' => true, 'data' => ['logs' => $logs]]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

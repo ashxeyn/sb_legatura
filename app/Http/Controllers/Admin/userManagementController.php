@@ -22,6 +22,7 @@ use App\Http\Requests\admin\deactivateContractorTeamMemberRequest;
 use App\Http\Requests\admin\reactivateContractorTeamMemberRequest;
 use App\Services\PsgcApiService;
 use Illuminate\Support\Facades\Mail;
+use App\Services\AdminActivityLog;
 
 class userManagementController extends authController
 {
@@ -88,7 +89,6 @@ class userManagementController extends authController
                 'last_name' => $validated['last_name'],
                 'middle_name' => $validated['middle_name'],
                 'first_name' => $validated['first_name'],
-                'phone_number' => $validated['phone_number'],
                 'valid_id_id' => $validated['valid_id_id'],
                 'valid_id_photo' => $validIdFrontPath,
                 'valid_id_back_photo' => $validIdBackPath,
@@ -122,6 +122,7 @@ class userManagementController extends authController
                 \Illuminate\Support\Facades\Log::error('Failed to send account creation email: ' . $e->getMessage());
             }
 
+            AdminActivityLog::log('property_owner_created', ['email' => $validated['email'] ?? null]);
             return response()->json(['success' => true, 'message' => 'Property Owner added successfully']);
 
         } catch (\Exception $e) {
@@ -159,7 +160,6 @@ class userManagementController extends authController
                 // Company Info
                 'company_logo' => $profilePicPath,
                 'company_name' => $validated['company_name'],
-                'company_phone' => $validated['company_phone'],
                 'company_start_date' => $validated['company_start_date'],
                 'years_of_experience' => $yearsOfExperience,
                 'type_id' => $validated['contractor_type_id'],
@@ -214,6 +214,7 @@ class userManagementController extends authController
                 \Illuminate\Support\Facades\Log::error('Failed to send contractor account creation email: ' . $e->getMessage());
             }
 
+            AdminActivityLog::log('contractor_created', ['company_name' => $validated['company_name'] ?? null, 'email' => $validated['company_email'] ?? null]);
             return response()->json(['success' => true, 'message' => 'Contractor added successfully']);
 
         } catch (\Exception $e) {
@@ -265,7 +266,6 @@ class userManagementController extends authController
                 'contractor_type_other' => $typeOther,
                 'services_offered' => $validated['services_offered'] ?? null,
                 'business_address' => $address,
-                'company_phone' => $validated['company_phone'],
                 'company_website' => $validated['company_website'] ?? null,
                 'company_social_media' => $validated['company_social_media'] ?? null,
                 'picab_number' => $validated['picab_number'],
@@ -277,10 +277,9 @@ class userManagementController extends authController
                 'tin_business_reg_number' => $validated['tin_business_reg_number'],
 
                 // Contractor Users (Representative) Fields
-                'authorized_rep_fname' => $validated['first_name'],
-                'authorized_rep_lname' => $validated['last_name'],
-                'authorized_rep_mname' => $validated['middle_name'] ?? null,
-                'phone_number' => $validated['company_phone'],
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'middle_name' => $validated['middle_name'] ?? null,
             ];
 
             // Add optional fields if present
@@ -299,6 +298,7 @@ class userManagementController extends authController
             $contractorModel = new contractorClass();
             $contractorModel->editContractor($id, $data);
 
+            AdminActivityLog::log('contractor_updated', ['contractor_id' => $id, 'company_name' => $validated['company_name'] ?? null]);
             return response()->json(['success' => true, 'message' => 'Contractor updated successfully']);
 
         } catch (\Exception $e) {
@@ -439,6 +439,7 @@ class userManagementController extends authController
             $propertyOwnerModel = new propertyOwnerClass();
             $propertyOwnerModel->editPropertyOwner($validated['user_id'], $validated);
 
+            AdminActivityLog::log('property_owner_updated', ['user_id' => $validated['user_id'] ?? $id, 'email' => $validated['email'] ?? null]);
             return response()->json(['success' => true, 'message' => 'Property Owner updated successfully']);
 
         } catch (\Exception $e) {
@@ -456,6 +457,7 @@ class userManagementController extends authController
             $model = new propertyOwnerClass();
             $model->deleteOwner($id, $request->input('deletion_reason'));
 
+            AdminActivityLog::log('property_owner_deleted', ['user_id' => $id, 'reason' => $request->input('deletion_reason')]);
             return response()->json(['success' => true, 'message' => 'Property Owner deleted successfully']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
@@ -472,6 +474,7 @@ class userManagementController extends authController
             $model = new contractorClass();
             $model->deleteContractor($id, $request->input('deletion_reason'));
 
+            AdminActivityLog::log('contractor_deleted', ['contractor_id' => $id, 'reason' => $request->input('deletion_reason')]);
             return response()->json(['success' => true, 'message' => 'Contractor deleted successfully']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
@@ -613,7 +616,6 @@ class userManagementController extends authController
                 'first_name' => $validated['first_name'],
                 'middle_name' => $validated['middle_name'] ?? null,
                 'last_name' => $validated['last_name'],
-                'phone_number' => $validated['phone_number'],
                 'role' => $validated['role'],
                 'role_other' => $validated['role_other'] ?? null,
                 'contractor_id' => $validated['contractor_id']
@@ -642,6 +644,7 @@ class userManagementController extends authController
                 \Illuminate\Support\Facades\Log::error('Failed to send team member creation email: ' . $e->getMessage());
             }
 
+            AdminActivityLog::log('team_member_created', ['email' => $result['email'], 'contractor_id' => $data['contractor_id']]);
             return response()->json([
                 'success' => true,
                 'message' => 'Team member added successfully',
@@ -674,11 +677,12 @@ class userManagementController extends authController
             );
 
             // Get updated representative details for notification
-            $newRep = DB::table('contractor_users')
-                ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
-                ->where('contractor_user_id', $validated['new_representative_id'])
+            $newRep = DB::table('contractor_staff')
+                ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+                ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                ->where('staff_id', $validated['new_representative_id'])
                 ->select(
-                    'contractor_users.*',
+                    'contractor_staff.*',
                     'users.email',
                     'users.username'
                 )
@@ -699,6 +703,7 @@ class userManagementController extends authController
                 \Illuminate\Support\Facades\Log::error('Failed to send representative change email: ' . $e->getMessage());
             }
 
+            AdminActivityLog::log('representative_changed', ['contractor_id' => $validated['contractor_id'], 'new_rep_id' => $validated['new_representative_id']]);
             return response()->json([
                 'success' => true,
                 'message' => 'Company representative changed successfully',
@@ -719,14 +724,18 @@ class userManagementController extends authController
     public function fetchContractorTeamMember($id)
     {
         try {
-            $member = DB::table('contractor_users')
-                ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
-                ->where('contractor_users.contractor_user_id', $id)
+            $member = DB::table('contractor_staff')
+                ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+                ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                ->where('contractor_staff.staff_id', $id)
                 ->select(
-                    'contractor_users.*',
+                    'contractor_staff.*',
                     'users.username',
                     'users.email',
-                    'users.profile_pic'
+                    'users.first_name',
+                    'users.middle_name',
+                    'users.last_name',
+                    'property_owners.profile_pic'
                 )
                 ->first();
 
@@ -739,13 +748,12 @@ class userManagementController extends authController
 
             // Map database column names to expected frontend field names
             $memberData = [
-                'contractor_user_id' => $member->contractor_user_id,
-                'first_name' => $member->authorized_rep_fname,
-                'middle_name' => $member->authorized_rep_mname,
-                'last_name' => $member->authorized_rep_lname,
-                'phone_number' => $member->phone_number,
-                'role' => $member->role,
-                'if_others' => $member->if_others,
+                'contractor_user_id' => $member->staff_id,
+                'first_name' => $member->first_name,
+                'middle_name' => $member->middle_name,
+                'last_name' => $member->last_name,
+                'role' => $member->company_role,
+                'if_others' => $member->role_if_others,
                 'username' => $member->username,
                 'email' => $member->email,
                 'profile_pic' => $member->profile_pic
@@ -772,19 +780,31 @@ class userManagementController extends authController
         try {
             $validated = $request->validated();
 
-            // Get the contractor_user record to get user_id
-            $contractorUser = DB::table('contractor_users')
-                ->where('contractor_user_id', $validated['contractor_user_id'])
+            // Get the contractor_staff record to get owner_id
+            $contractorStaff = DB::table('contractor_staff')
+                ->where('staff_id', $validated['contractor_user_id'])
                 ->first();
 
-            if (!$contractorUser) {
+            if (!$contractorStaff) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Team member not found'
                 ], 404);
             }
 
-            $userId = $contractorUser->user_id;
+            // Get property_owner to find user_id
+            $propertyOwner = DB::table('property_owners')
+                ->where('owner_id', $contractorStaff->owner_id)
+                ->first();
+
+            if (!$propertyOwner) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Property owner record not found'
+                ], 404);
+            }
+
+            $userId = $propertyOwner->user_id;
 
             // Handle profile picture upload if present
             $profilePicPath = null;
@@ -798,7 +818,9 @@ class userManagementController extends authController
             // Prepare user table update data
             $userData = [
                 'username' => $validated['username'],
-                'email' => $validated['email']
+                'email' => $validated['email'],
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
             ];
 
             // Only update password if provided
@@ -806,9 +828,9 @@ class userManagementController extends authController
                 $userData['password_hash'] = password_hash($validated['password'], PASSWORD_DEFAULT);
             }
 
-            // Only update profile pic if new one uploaded
-            if ($profilePicPath) {
-                $userData['profile_pic'] = $profilePicPath;
+            // Add optional middle name if provided
+            if (isset($validated['middle_name'])) {
+                $userData['middle_name'] = $validated['middle_name'];
             }
 
             // Update users table
@@ -816,32 +838,32 @@ class userManagementController extends authController
                 ->where('user_id', $userId)
                 ->update($userData);
 
-            // Prepare contractor_users table update data
-            $contractorUserData = [
-                'authorized_rep_fname' => $validated['first_name'],
-                'authorized_rep_lname' => $validated['last_name'],
-                'phone_number' => $validated['phone_number'],
-                'role' => $validated['role']
+            // Update profile pic on property_owners if new one uploaded
+            if ($profilePicPath) {
+                DB::table('property_owners')
+                    ->where('owner_id', $contractorStaff->owner_id)
+                    ->update(['profile_pic' => $profilePicPath]);
+            }
+
+            // Prepare contractor_staff table update data
+            $staffData = [
+                'company_role' => $validated['role']
             ];
 
-            // Add optional middle name if provided
-            if (isset($validated['middle_name'])) {
-                $contractorUserData['authorized_rep_mname'] = $validated['middle_name'];
-            }
-
-            // Handle role "others" - store custom role in if_others column
+            // Handle role "others" - store custom role in role_if_others column
             if ($validated['role'] === 'others' && isset($validated['role_other'])) {
-                $contractorUserData['if_others'] = $validated['role_other'];
+                $staffData['role_if_others'] = $validated['role_other'];
             } else {
-                // Clear if_others if role is not "others"
-                $contractorUserData['if_others'] = null;
+                // Clear role_if_others if role is not "others"
+                $staffData['role_if_others'] = null;
             }
 
-            // Update contractor_users table
-            DB::table('contractor_users')
-                ->where('contractor_user_id', $validated['contractor_user_id'])
-                ->update($contractorUserData);
+            // Update contractor_staff table
+            DB::table('contractor_staff')
+                ->where('staff_id', $validated['contractor_user_id'])
+                ->update($staffData);
 
+            AdminActivityLog::log('team_member_updated', ['contractor_user_id' => $validated['contractor_user_id']]);
             return response()->json([
                 'success' => true,
                 'message' => 'Team member updated successfully'
@@ -863,15 +885,15 @@ class userManagementController extends authController
         try {
             $validated = $request->validated();
 
-            // Update contractor_users table to set is_active = 0, is_deleted = 1, and save reason
-            DB::table('contractor_users')
-                ->where('contractor_user_id', $validated['contractor_user_id'])
+            // Update contractor_staff table to set is_active = 0 and save reason
+            DB::table('contractor_staff')
+                ->where('staff_id', $validated['contractor_user_id'])
                 ->update([
                     'is_active' => 0,
-                    'is_deleted' => 1,
                     'deletion_reason' => $validated['deletion_reason']
                 ]);
 
+            AdminActivityLog::log('team_member_deactivated', ['contractor_user_id' => $validated['contractor_user_id'], 'reason' => $validated['deletion_reason']]);
             return response()->json([
                 'success' => true,
                 'message' => 'Team member deactivated successfully'
@@ -893,15 +915,15 @@ class userManagementController extends authController
         try {
             $validated = $request->validated();
 
-            // Update contractor_users table to reactivate the member
-            DB::table('contractor_users')
-                ->where('contractor_user_id', $validated['contractor_user_id'])
+            // Update contractor_staff table to reactivate the member
+            DB::table('contractor_staff')
+                ->where('staff_id', $validated['contractor_user_id'])
                 ->update([
                     'is_active' => 1,
-                    'is_deleted' => 0,
                     'deletion_reason' => null
                 ]);
 
+            AdminActivityLog::log('team_member_reactivated', ['contractor_user_id' => $validated['contractor_user_id']]);
             return response()->json([
                 'success' => true,
                 'message' => 'Team member reactivated successfully'
@@ -926,11 +948,8 @@ class userManagementController extends authController
 
         // Fetch pending contractors
         $contractorQuery = DB::table('contractors')
-            ->join('users', 'contractors.user_id', '=', 'users.user_id')
-            ->leftJoin('contractor_users', function ($join) {
-                $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
-                    ->where('contractor_users.role', '=', 'owner');
-            })
+            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+            ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->where('contractors.verification_status', 'pending');
 
         if ($dateFrom) {
@@ -944,8 +963,8 @@ class userManagementController extends authController
                 $q->where('users.username', 'like', "%{$search}%")
                     ->orWhere('users.email', 'like', "%{$search}%")
                     ->orWhere('contractors.company_name', 'like', "%{$search}%")
-                    ->orWhere('contractor_users.authorized_rep_fname', 'like', "%{$search}%")
-                    ->orWhere('contractor_users.authorized_rep_lname', 'like', "%{$search}%");
+                    ->orWhere('users.first_name', 'like', "%{$search}%")
+                    ->orWhere('users.last_name', 'like', "%{$search}%");
             });
         }
 
@@ -956,8 +975,8 @@ class userManagementController extends authController
             'contractors.verification_status',
             'contractors.created_at as request_date',
             'contractors.company_name',
-            'contractor_users.authorized_rep_fname',
-            'contractor_users.authorized_rep_lname'
+            'users.first_name as authorized_rep_fname',
+            'users.last_name as authorized_rep_lname'
         )
             ->paginate(10, ['*'], 'contractors_page');
 
@@ -976,8 +995,8 @@ class userManagementController extends authController
             $ownerQuery->where(function ($q) use ($search) {
                 $q->where('users.username', 'like', "%{$search}%")
                     ->orWhere('users.email', 'like', "%{$search}%")
-                    ->orWhere('property_owners.first_name', 'like', "%{$search}%")
-                    ->orWhere('property_owners.last_name', 'like', "%{$search}%");
+                    ->orWhere('users.first_name', 'like', "%{$search}%")
+                    ->orWhere('users.last_name', 'like', "%{$search}%");
             });
         }
 
@@ -987,8 +1006,8 @@ class userManagementController extends authController
             'users.email',
             'property_owners.verification_status',
             'property_owners.created_at as request_date',
-            'property_owners.first_name',
-            'property_owners.last_name'
+            'users.first_name',
+            'users.last_name'
         )
             ->paginate(10, ['*'], 'owners_page');
 
@@ -1112,6 +1131,7 @@ class userManagementController extends authController
             \Log::warning('approveVerification: failed to send notification/email', ['user_id' => $id, 'error' => $e->getMessage()]);
         }
 
+        AdminActivityLog::log('verification_approved', ['user_id' => $id, 'role' => $targetRole]);
         return response()->json($result);
     }
 
@@ -1183,6 +1203,7 @@ class userManagementController extends authController
             \Log::warning('rejectVerification: failed to send notification/email', ['user_id' => $id, 'error' => $e->getMessage()]);
         }
 
+        AdminActivityLog::log('verification_rejected', ['user_id' => $id, 'role' => $targetRole, 'reason' => $validated['reason'] ?? null]);
         return response()->json($result);
     }
 
@@ -1243,6 +1264,7 @@ class userManagementController extends authController
             }
 
             if ($result) {
+                AdminActivityLog::log('user_reactivated', ['user_type' => $userType, 'user_id' => $userId]);
                 return response()->json([
                     'success' => true,
                     'message' => $message
@@ -1419,13 +1441,13 @@ class userManagementController extends authController
                 // Send email notification
                 try {
                     $emailData = [
-                        'name' => $owner->first_name,
+                        'name' => $user->first_name,
                         'reason' => $reason,
                         'duration' => $duration,
                         'until' => $suspensionUntil
                     ];
 
-                    Mail::raw("Dear {$owner->first_name},\n\nYour account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
+                    Mail::raw("Dear {$user->first_name},\n\nYour account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
                         $message->to($user->email)
                             ->subject('Account Suspension Notification');
                     });
@@ -1435,6 +1457,7 @@ class userManagementController extends authController
                 }
             }
 
+            AdminActivityLog::log('property_owner_suspended', ['owner_id' => $id, 'reason' => $reason, 'duration' => $duration]);
             return response()->json(['success' => true, 'message' => 'Property owner suspended successfully']);
         }
 
@@ -1460,8 +1483,9 @@ class userManagementController extends authController
         $contractor = $contractorModel->suspendContractor($id, $reason, $duration, $suspensionUntil);
 
         if ($contractor) {
-            // Get user email
-            $user = User::where('user_id', $contractor->user_id)->first();
+            // Get user email via property_owners chain (contractors has owner_id, not user_id)
+            $ownerPo = \Illuminate\Support\Facades\DB::table('property_owners')->where('owner_id', $contractor->owner_id)->first();
+            $user = $ownerPo ? User::where('user_id', $ownerPo->user_id)->first() : null;
 
             if ($user) {
                 // Send email notification
@@ -1483,6 +1507,7 @@ class userManagementController extends authController
                 }
             }
 
+            AdminActivityLog::log('contractor_suspended', ['contractor_id' => $id, 'reason' => $reason, 'duration' => $duration]);
             return response()->json(['success' => true, 'message' => 'Contractor suspended successfully']);
         }
 
@@ -1508,24 +1533,17 @@ class userManagementController extends authController
      */
     public function getContractorApi($id)
     {
-        $contractor = \App\Models\admin\contractorClass::with('user')
-            ->where('contractor_id', $id)
-            ->first();
+        $contractorModel = new \App\Models\admin\contractorClass();
+        $contractor = $contractorModel->getContractorById($id);
 
         if (!$contractor) {
             return response()->json(['error' => 'Contractor not found'], 404);
         }
 
-        // Flatten the response to include user details at the top level if needed,
-        // or just return the nested structure. The JS expects nested or I can map it.
-        // The JS expects: email, username (from user)
-
-        $response = $contractor->toArray();
-        if ($contractor->user) {
-            $response['email'] = $contractor->user->email;
-            $response['username'] = $contractor->user->username;
-            $response['contact_number'] = $contractor->user->phone_number; // Assuming phone is in user
-        }
+        $response = (array) $contractor;
+        $response['email'] = $contractor->email ?? null;
+        $response['username'] = $contractor->username ?? null;
+        $response['contact_number'] = $contractor->email ?? null;
 
         return response()->json($response);
     }

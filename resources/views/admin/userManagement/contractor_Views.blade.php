@@ -158,8 +158,8 @@
                     <span class="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">{{ $contractor->contractor_type_name ?? 'N/A' }}</span>
                   </div>
                   <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Contact Number</label>
-                    <p class="text-base font-medium text-gray-800">{{ $contractor->company_phone ?? 'N/A' }}</p>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Company Email</label>
+                    <p class="text-base font-medium text-gray-800">{{ $contractor->company_email ?? 'N/A' }}</p>
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Registration Date</label>
@@ -245,10 +245,6 @@
                     <div>
                       <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Email Address</label>
                       <p class="text-base font-medium text-gray-800">{{ $contractor->representative->rep_email ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Contact Number</label>
-                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->phone_number ?? 'N/A' }}</p>
                     </div>
                     <div>
                       <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Username</label>
@@ -436,8 +432,7 @@
                   ?>
                   <tr class="hover:bg-gray-50 transition-all duration-200 group {{ $statusClass }}"
                       data-status="{{ $dataStatus }}"
-                      data-email="{{ $member->email ?? '' }}"
-                      data-contact="{{ $member->phone_number ?? '' }}">
+                      data-email="{{ $member->email ?? '' }}">
                     <td class="px-6 py-4">
                       <div class="flex items-center gap-3 {{ !$member->is_active ? 'opacity-60' : '' }}">
                         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-{{ $color }}-400 to-{{ $color }}-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
@@ -469,17 +464,17 @@
                     <td class="px-6 py-4">
                       <div class="flex items-center justify-center gap-2">
                         @if($member->is_active)
-                          <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member" data-member-id="{{ $member->contractor_user_id }}">
+                          <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member" data-member-id="{{ $member->staff_id }}">
                             <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
                           </button>
                           <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account"
-                                  data-member-id="{{ $member->contractor_user_id }}"
+                                  data-member-id="{{ $member->staff_id }}"
                                   data-member-name="{{ $fname . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . $lname }}">
                             <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
                           </button>
                         @else
                           <button class="team-reactivate-btn p-2 rounded-lg hover:bg-green-50 transition-all group/btn" title="Reactivate Account"
-                                  data-member-id="{{ $member->contractor_user_id }}"
+                                  data-member-id="{{ $member->staff_id }}"
                                   data-member-name="{{ $fname . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . $lname }}">
                             <i class="fi fi-rr-check-circle text-green-600 group-hover/btn:scale-110 transition-transform"></i>
                           </button>
@@ -685,8 +680,8 @@
               <input type="text" id="edit_company_name" name="company_name" placeholder="Enter company name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Company Phone</label>
-              <input type="tel" id="edit_company_phone" name="company_phone" placeholder="09xxxxxxxxx" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
+              <input type="email" id="edit_company_email" name="company_email" placeholder="company@example.com" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" value="{{(isset($contractor))?$contractor->company_email:''}}">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Date of Incorporation</label>
@@ -1254,7 +1249,7 @@
                    ($contractor->representative->authorized_rep_mname ?? '') . ' ' .
                    ($contractor->representative->authorized_rep_lname ?? '') }}
               </p>
-              <p class="text-sm text-gray-600">{{ ucfirst($contractor->representative->role ?? 'Representative') }} • {{ $contractor->representative->phone_number ?? 'N/A' }}</p>
+              <p class="text-sm text-gray-600">{{ ucfirst($contractor->representative->role ?? 'Representative') }}</p>
             </div>
           </div>
           @else
@@ -1281,7 +1276,7 @@
           <div class="space-y-2 max-h-96 overflow-y-auto" id="teamMembersList">
             @php
               $teamMembers = collect($contractor->team_members ?? [])->filter(function($member) {
-                return $member->role !== 'representative' && $member->is_deleted == 0 && $member->is_active == 1;
+                return $member->role !== 'representative' && $member->is_active == 1;
               });
             @endphp
 
@@ -1290,22 +1285,21 @@
                 @php
                   $initials = strtoupper(substr($member->authorized_rep_fname ?? '', 0, 1) . substr($member->authorized_rep_lname ?? '', 0, 1));
                   $fullName = trim(($member->authorized_rep_fname ?? '') . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . ($member->authorized_rep_lname ?? ''));
-                  $role = $member->role === 'others' ? ($member->if_others ?? 'Staff') : ucfirst($member->role ?? 'Staff');
+                  $role = $member->role === 'others' ? ($member->role_if_others ?? 'Staff') : ucfirst($member->role ?? 'Staff');
                   $colors = ['from-purple-500 to-purple-600', 'from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-red-500 to-red-600', 'from-yellow-500 to-yellow-600'];
                   $colorIndex = ord($initials[0]) % count($colors);
                 @endphp
                 <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
-                     data-member-id="{{ $member->contractor_user_id }}"
+                     data-member-id="{{ $member->staff_id }}"
                      data-member-name="{{ $fullName }}"
-                     data-member-position="{{ $role }}"
-                     data-member-phone="{{ $member->phone_number ?? 'N/A' }}">
+                     data-member-position="{{ $role }}">
                   <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-br {{ $colors[$colorIndex] }} flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
                       {{ $initials }}
                     </div>
                     <div>
                       <p class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{{ $fullName }}</p>
-                      <p class="text-sm text-gray-600">{{ $role }} • {{ $member->phone_number ?? 'N/A' }}</p>
+                      <p class="text-sm text-gray-600">{{ $role }} • {{ $member->email ?? 'N/A' }}</p>
                     </div>
                   </div>
                   <i class="fi fi-rr-check-circle text-2xl text-gray-300 group-hover:text-blue-500 transition-colors"></i>

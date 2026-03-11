@@ -43,7 +43,7 @@ class progressFeedController extends Controller
             'proj.project_title',
             'u.user_id  as contractor_user_id',
             'u.username as contractor_username',
-            'u.profile_pic as contractor_pic',
+            'po.profile_pic as contractor_pic',
             DB::raw("COALESCE(c.company_name, u.username) as contractor_name"),
         ];
 
@@ -56,7 +56,8 @@ class progressFeedController extends Controller
             ->join('milestones as m',        'mi.milestone_id', '=', 'm.milestone_id')
             ->join('projects as proj',       'm.project_id', '=', 'proj.project_id')
             ->join('contractors as c', 'proj.selected_contractor_id', '=', 'c.contractor_id')
-            ->join('users as u',       'c.user_id', '=', 'u.user_id')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+            ->join('users as u',       'po.user_id', '=', 'u.user_id')
             ->select($selectCols)
             ->orderBy('p.submitted_at', 'desc');
 

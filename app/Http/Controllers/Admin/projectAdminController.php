@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use App\Services\AdminActivityLog;
 
 class projectAdminController extends Controller
 {
@@ -15,7 +16,8 @@ class projectAdminController extends Controller
         $q = DB::table('projects')
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->select('projects.*', 'property_owners.first_name', 'property_owners.last_name')
+            ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+            ->select('projects.*', 'users.first_name', 'users.last_name')
             ->orderBy('projects.project_id', 'desc')
             ->paginate(20);
 
@@ -69,7 +71,7 @@ class projectAdminController extends Controller
             // Email notification
             try {
                 $ownerEmail = DB::table('users')->where('user_id', $ownerUserId)->value('email');
-                $ownerName = DB::table('property_owners')->where('user_id', $ownerUserId)->value('first_name');
+                $ownerName = DB::table('users')->where('user_id', $ownerUserId)->value('first_name');
                 if ($ownerEmail) {
                     $emailMessage = "Dear {$ownerName},\n\n";
                     $emailMessage .= "Your project \"{$projTitle}\" has been approved and is now open for bidding.\n\n";
@@ -94,6 +96,7 @@ class projectAdminController extends Controller
             'meta' => json_encode(['project_id'=>$projectId]),
             'created_at'=>now()
         ]);
+        AdminActivityLog::log('project_approved', ['project_id' => $projectId]);
         return back()->with('success','Project approved.');
     }
 
@@ -126,7 +129,7 @@ class projectAdminController extends Controller
             // Email notification
             try {
                 $ownerEmail = DB::table('users')->where('user_id', $ownerUserId)->value('email');
-                $ownerName = DB::table('property_owners')->where('user_id', $ownerUserId)->value('first_name');
+                $ownerName = DB::table('users')->where('user_id', $ownerUserId)->value('first_name');
                 if ($ownerEmail) {
                     $emailMessage = "Dear {$ownerName},\n\n";
                     $emailMessage .= "We regret to inform you that your project \"{$projTitle}\" has been rejected.\n\n";
@@ -151,6 +154,7 @@ class projectAdminController extends Controller
             'meta' => json_encode(['project_id'=>$projectId,'reason'=>$reason]),
             'created_at'=>now()
         ]);
+        AdminActivityLog::log('project_rejected', ['project_id' => $projectId, 'reason' => $reason]);
         return back()->with('success','Project rejected.');
     }
 
@@ -173,6 +177,7 @@ class projectAdminController extends Controller
             'meta' => json_encode(['project_id'=>$projectId,'contractor_id'=>$contractorId]),
             'created_at'=>now()
         ]);
+        AdminActivityLog::log('contractor_assigned', ['project_id' => $projectId, 'contractor_id' => $contractorId]);
         return back()->with('success','Contractor assigned.');
     }
 
@@ -188,8 +193,8 @@ class projectAdminController extends Controller
             ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
             ->select(
                 'projects.*',
-                'property_owners.first_name',
-                'property_owners.last_name',
+                'users.first_name',
+                'users.last_name',
                 DB::raw('COALESCE(users.email, "") as owner_email'),
                 'contractors.company_name'
             );
@@ -274,8 +279,8 @@ class projectAdminController extends Controller
             ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
             ->select(
                 'projects.*',
-                'property_owners.first_name',
-                'property_owners.last_name',
+                'users.first_name',
+                'users.last_name',
                 DB::raw('COALESCE(users.email, "") as owner_email'),
                 'contractors.company_name'
             );

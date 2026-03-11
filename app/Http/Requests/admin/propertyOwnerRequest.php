@@ -51,7 +51,6 @@ class propertyOwnerRequest extends FormRequest
             'middle_name' => 'nullable|string|max:100',
             'last_name' => 'required|string|max:100',
             'date_of_birth' => 'required|date|before:-15 years',
-            'phone_number' => ['required', 'string', 'regex:/^09\d{9}$/'],
             'occupation_id' => 'required',
             'occupation_other' => 'required_if:occupation_id,others|nullable|string|max:200',
 
@@ -106,7 +105,6 @@ class propertyOwnerRequest extends FormRequest
     {
         return [
             'date_of_birth.before' => 'The user is not eligible',
-            'phone_number.regex' => 'Cellphone number should be in Philippine format, 11 digits',
             'email.regex' => 'Email should end in a proper email ending',
         ];
     }

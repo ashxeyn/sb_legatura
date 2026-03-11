@@ -10,6 +10,7 @@ use App\Http\Requests\admin\rejectPostRequest;
 use App\Models\admin\postingManagementClass;
 use App\Models\admin\reviewsClass;
 use Illuminate\Support\Facades\Http;
+use App\Services\AdminActivityLog;
 
 class globalManagementController extends Controller
 {
@@ -153,6 +154,7 @@ class globalManagementController extends Controller
                 'updated_at' => now(),
             ]);
 
+            AdminActivityLog::log('ai_analysis_run', ['project_id' => $id]);
             return response()->json(['success' => true, 'message' => 'Analysis Complete', 'data' => $data]);
 
         } catch (\Exception $e) {
@@ -225,6 +227,7 @@ class globalManagementController extends Controller
         $deleted = $model->deleteReview($id, $request->deletion_reason);
 
         if ($deleted) {
+            AdminActivityLog::log('review_deleted', ['review_id' => $id, 'reason' => $request->deletion_reason]);
             return response()->json(['success' => true, 'message' => 'Review successfully deleted.']);
         }
 
@@ -320,6 +323,7 @@ class globalManagementController extends Controller
         $updated = DB::table('bids')->where('bid_id', $id)->update($data);
 
         if ($updated !== false) {
+            AdminActivityLog::log('bid_updated', ['bid_id' => $id, 'status' => $status]);
             return response()->json(['success' => true, 'message' => 'Bid updated successfully.']);
         }
 
@@ -339,6 +343,7 @@ class globalManagementController extends Controller
         $deleted = DB::table('bids')->where('bid_id', $id)->delete();
 
         if ($deleted) {
+            AdminActivityLog::log('bid_deleted', ['bid_id' => $id]);
             return response()->json(['success' => true, 'message' => 'Bid deleted.']);
         }
 
@@ -353,7 +358,7 @@ class globalManagementController extends Controller
      *   transaction_date, payment_status, reason, updated_at
      *
      * owner_id  → property_owners.owner_id
-     * contractor_user_id → users.user_id → contractors.user_id (company_name)
+     * contractor_user_id → users.user_id → property_owners → contractors (company_name)
      * item_id   → milestone_items.item_id (milestone_item_title)
      */
     private function getAllPaymentProofs($search = null, $status = null, $page = 1)
@@ -363,9 +368,11 @@ class globalManagementController extends Controller
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
             // owner info
             ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
-            // ── FIX: go through contractor_users first ──
-            ->leftJoin('contractor_users as cu', 'mp.contractor_user_id', '=', 'cu.contractor_user_id')
-            ->leftJoin('contractors as c', 'cu.contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('users as owner_u', 'po.user_id', '=', 'owner_u.user_id')
+            // contractor info via users → property_owners → contractors
+            ->leftJoin('users as cu', 'mp.contractor_user_id', '=', 'cu.user_id')
+            ->leftJoin('property_owners as cpo', 'cu.user_id', '=', 'cpo.user_id')
+            ->leftJoin('contractors as c', 'cpo.owner_id', '=', 'c.owner_id')
             // milestone item title
             ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->select(
@@ -379,7 +386,7 @@ class globalManagementController extends Controller
                 'mp.reason',
                 'mp.updated_at',
                 'p.project_title',
-                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                DB::raw("CONCAT(owner_u.first_name, ' ', owner_u.last_name) as owner_name"),
                 'c.company_name',
                 'c.company_email',
                 'mi.milestone_item_title'
@@ -389,8 +396,8 @@ class globalManagementController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('p.project_title', 'like', "%{$search}%")
                     ->orWhere('c.company_name', 'like', "%{$search}%")
-                    ->orWhere('po.first_name', 'like', "%{$search}%")
-                    ->orWhere('po.last_name', 'like', "%{$search}%");
+                    ->orWhere('owner_u.first_name', 'like', "%{$search}%")
+                    ->orWhere('owner_u.last_name', 'like', "%{$search}%");
             });
         }
 
@@ -440,13 +447,14 @@ class globalManagementController extends Controller
         $query = DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users as owner_u', 'property_owners.user_id', '=', 'owner_u.user_id')
             ->leftJoin('bids', 'projects.project_id', '=', 'bids.project_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
                 'projects.project_status',
                 'project_relationships.created_at as posted_at',
-                DB::raw("CONCAT(property_owners.first_name, ' ', property_owners.last_name) as owner_name"),
+                DB::raw("CONCAT(owner_u.first_name, ' ', owner_u.last_name) as owner_name"),
                 DB::raw('COUNT(DISTINCT bids.bid_id) as bid_count')
             )
             ->groupBy(
@@ -454,8 +462,8 @@ class globalManagementController extends Controller
                 'projects.project_title',
                 'projects.project_status',
                 'project_relationships.created_at',
-                'property_owners.first_name',
-                'property_owners.last_name'
+                'owner_u.first_name',
+                'owner_u.last_name'
             );
 
         if ($search) {
@@ -497,6 +505,7 @@ class globalManagementController extends Controller
             ->update(['bid_status' => 'approved']);
 
         if ($updated) {
+            AdminActivityLog::log('bid_approved', ['bid_id' => $id]);
             return response()->json(['success' => true, 'message' => 'Bid approved']);
         }
 
@@ -518,6 +527,7 @@ class globalManagementController extends Controller
             ]);
 
         if ($updated) {
+            AdminActivityLog::log('bid_rejected', ['bid_id' => $id, 'reason' => $reason]);
             return response()->json(['success' => true, 'message' => 'Bid rejected']);
         }
 
@@ -533,15 +543,17 @@ class globalManagementController extends Controller
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
             ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
-            // ── FIX: correct contractor join ──
-            ->leftJoin('contractor_users as cu', 'mp.contractor_user_id', '=', 'cu.contractor_user_id')
-            ->leftJoin('contractors as c', 'cu.contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('users as owner_u', 'po.user_id', '=', 'owner_u.user_id')
+            // contractor info via users → property_owners → contractors
+            ->leftJoin('users as cu', 'mp.contractor_user_id', '=', 'cu.user_id')
+            ->leftJoin('property_owners as cpo', 'cu.user_id', '=', 'cpo.user_id')
+            ->leftJoin('contractors as c', 'cpo.owner_id', '=', 'c.owner_id')
             ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->select(
                 'mp.*',
                 'p.project_title',
                 'p.project_description',
-                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                DB::raw("CONCAT(owner_u.first_name, ' ', owner_u.last_name) as owner_name"),
                 'c.company_name',
                 'c.company_email',
                 'mi.milestone_item_title'
@@ -604,9 +616,12 @@ class globalManagementController extends Controller
             ->where('payment_id', $id)
             ->update($data);
 
-        return ($updated !== false)
-            ? response()->json(['success' => true, 'message' => 'Payment updated successfully.'])
-            : response()->json(['success' => false, 'message' => 'Failed to update payment.'], 400);
+        if ($updated !== false) {
+            AdminActivityLog::log('payment_updated', ['payment_id' => $id, 'status' => $status]);
+            return response()->json(['success' => true, 'message' => 'Payment updated successfully.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to update payment.'], 400);
     }
 
     /**
@@ -645,6 +660,8 @@ class globalManagementController extends Controller
 
             DB::commit();
 
+            AdminActivityLog::log('payment_verified', ['payment_id' => $id, 'amount' => $payment->amount ?? null]);
+
             // Build response message based on allocation status
             $message = 'Payment approved.';
             if ($allocation['status'] === 'overpaid') {
@@ -681,9 +698,12 @@ class globalManagementController extends Controller
             ->where('payment_id', $id)
             ->update(['payment_status' => 'rejected', 'reason' => $reason, 'updated_at' => now()]);
 
-        return $updated
-            ? response()->json(['success' => true, 'message' => 'Payment rejected.'])
-            : response()->json(['success' => false, 'message' => 'Failed to reject payment.'], 400);
+        if ($updated) {
+            AdminActivityLog::log('payment_rejected', ['payment_id' => $id, 'reason' => $reason]);
+            return response()->json(['success' => true, 'message' => 'Payment rejected.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to reject payment.'], 400);
     }
 
     /**
@@ -695,9 +715,12 @@ class globalManagementController extends Controller
             ->where('payment_id', $id)
             ->update(['payment_status' => 'deleted', 'updated_at' => now()]);
 
-        return $deleted
-            ? response()->json(['success' => true, 'message' => 'Payment deleted.'])
-            : response()->json(['success' => false, 'message' => 'Failed to delete payment.'], 400);
+        if ($deleted) {
+            AdminActivityLog::log('payment_deleted', ['payment_id' => $id]);
+            return response()->json(['success' => true, 'message' => 'Payment deleted.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to delete payment.'], 400);
     }
     /**
      * AJAX: paginated payments list (JSON).
@@ -753,6 +776,7 @@ class globalManagementController extends Controller
         $approved = $model->approvePost($id);
 
         if ($approved) {
+            AdminActivityLog::log('posting_approved', ['project_id' => $id]);
             return response()->json(['success' => true, 'message' => 'Posting approved']);
         }
 
@@ -770,6 +794,7 @@ class globalManagementController extends Controller
         $rejected = $model->rejectPost($id, $reason);
 
         if ($rejected) {
+            AdminActivityLog::log('posting_rejected', ['project_id' => $id, 'reason' => $reason]);
             return response()->json(['success' => true, 'message' => 'Posting rejected']);
         }
 

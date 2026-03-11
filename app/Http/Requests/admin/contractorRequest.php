@@ -56,7 +56,6 @@ class contractorRequest extends FormRequest
         $rules = [
             // Company Information
             'company_name' => 'required|string|max:255',
-            'company_phone' => ['required', 'string', 'regex:/^09\d{9}$/'],
             'company_start_date' => 'required|date|before:today',
             'contractor_type_id' => 'required|exists:contractor_types,type_id',
             'contractor_type_other_text' => 'required_if:contractor_type_id,9|nullable|string|max:255',
@@ -121,7 +120,6 @@ class contractorRequest extends FormRequest
     public function messages()
     {
         return [
-            'company_phone.regex' => 'Company phone number should be in Philippine format (e.g., 09123456789).',
             'picab_expiration_date.after' => 'PCAB expiration date must be a future date.',
             'business_permit_expiration.after' => 'Business permit expiration date must be a future date.',
             'contractor_type_other_text.required_if' => 'Please specify the contractor type.',

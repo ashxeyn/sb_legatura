@@ -11,6 +11,7 @@ class disputeClass
         $query = DB::table('disputes')
             ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
             ->join('projects', 'disputes.project_id', '=', 'projects.project_id')
+            ->leftJoin('property_owners as reporter_po', 'reporter.user_id', '=', 'reporter_po.user_id')
             ->select(
                 'disputes.dispute_id',
                 'disputes.raised_by_user_id as complainant_id',
@@ -18,9 +19,9 @@ class disputeClass
                 'disputes.dispute_type',
                 DB::raw('disputes.dispute_status as status'),
                 'disputes.created_at',
-                'reporter.username as reporter_first_name',
-                DB::raw('NULL as reporter_last_name'),
-                'reporter.profile_pic as reporter_profile_pic',
+                'reporter.first_name as reporter_first_name',
+                'reporter.last_name as reporter_last_name',
+                'reporter_po.profile_pic as reporter_profile_pic',
                 'projects.project_title'
             )
             ->orderBy('disputes.created_at', 'desc');
@@ -89,8 +90,9 @@ class disputeClass
     {
         return DB::table('disputes')
             ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+            ->leftJoin('property_owners as reporter_po', 'reporter.user_id', '=', 'reporter_po.user_id')
             ->leftJoin('projects', 'disputes.project_id', '=', 'projects.project_id')
-            ->select('disputes.*', 'reporter.username as reporter_username', 'reporter.profile_pic as reporter_profile_pic', 'projects.project_title')
+            ->select('disputes.*', 'reporter.username as reporter_username', 'reporter_po.profile_pic as reporter_profile_pic', 'projects.project_title')
             ->where('disputes.dispute_id', $id)
             ->first();
     }
@@ -185,11 +187,12 @@ class disputeClass
         // fetch dispute with reporter and against user and project
         $dispute = DB::table('disputes')
             ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+            ->leftJoin('property_owners as reporter_po', 'reporter.user_id', '=', 'reporter_po.user_id')
             ->leftJoin('users as accused', 'disputes.against_user_id', '=', 'accused.user_id')
             ->leftJoin('projects', 'disputes.project_id', '=', 'projects.project_id')
             ->select('disputes.*',
                 'reporter.username as reporter_username',
-                'reporter.profile_pic as reporter_profile_pic',
+                'reporter_po.profile_pic as reporter_profile_pic',
                 'accused.username as against_username',
                 'projects.project_title')
             ->where('disputes.dispute_id', $id)

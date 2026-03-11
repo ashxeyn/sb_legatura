@@ -399,21 +399,25 @@ class platformPaymentClass
     public static function checkBidEligibility(int $userId): array
     {
         try {
-            // Get contractor info
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            // Get contractor info via property_owners
+            $po = DB::table('property_owners')->where('user_id', $userId)->first();
+            $contractor = null;
 
-            // Also check staff membership (representatives)
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->first();
+            if ($po) {
+                $contractor = DB::table('contractors')->where('owner_id', $po->owner_id)->first();
 
-                if ($contractorUser) {
-                    $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
+                // Also check staff membership
+                if (!$contractor) {
+                    $staff = DB::table('contractor_staff')
+                        ->where('owner_id', $po->owner_id)
+                        ->where('is_active', 1)
                         ->first();
+
+                    if ($staff) {
+                        $contractor = DB::table('contractors')
+                            ->where('contractor_id', $staff->contractor_id)
+                            ->first();
+                    }
                 }
             }
 

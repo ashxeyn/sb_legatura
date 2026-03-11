@@ -15,12 +15,11 @@ class postingManagementClass
             ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->select(
-                'property_owners.first_name',
-                'property_owners.last_name',
-                'users.profile_pic',
+                'users.first_name',
+                'users.last_name',
+                'property_owners.profile_pic',
                 'users.user_type',
                 'users.email as owner_email',
-                'property_owners.phone_number as owner_phone',
                 'projects.project_description as project_description',
                 'projects.project_location as project_location',
                 'projects.property_type as property_type',
@@ -41,9 +40,9 @@ class postingManagementClass
             $search = $filters['search'];
             $query->where(function($q) use ($search) {
                 $q->where('projects.project_title', 'like', "%{$search}%")
-                  ->orWhere('property_owners.first_name', 'like', "%{$search}%")
-                  ->orWhere('property_owners.last_name', 'like', "%{$search}%")
-                  ->orWhere(DB::raw("CONCAT(property_owners.first_name, ' ', property_owners.last_name)"), 'like', "%{$search}%");
+                  ->orWhere('users.first_name', 'like', "%{$search}%")
+                  ->orWhere('users.last_name', 'like', "%{$search}%")
+                  ->orWhere(DB::raw("CONCAT(users.first_name, ' ', users.last_name)"), 'like', "%{$search}%");
             });
         }
 
@@ -86,14 +85,13 @@ class postingManagementClass
                 'project_relationships.admin_reason',
                 'project_relationships.created_at as post_created_at',
                 'project_relationships.updated_at as post_updated_at',
-                'property_owners.first_name',
-                'property_owners.last_name',
-                'property_owners.phone_number',
+                'users.first_name',
+                'users.last_name',
                 'property_owners.created_at as owner_created_at',
-                'users.profile_pic',
+                'property_owners.profile_pic',
                 'users.email',
                 'users.user_type',
-                DB::raw("CONCAT(property_owners.first_name, ' ', property_owners.last_name) AS owner_full_name")
+                DB::raw("CONCAT(users.first_name, ' ', users.last_name) AS owner_full_name")
             )
             ->first();
 
@@ -110,7 +108,6 @@ class postingManagementClass
             'owner' => [
                 'name' => $project->owner_full_name,
                 'email' => $project->email,
-                'phone' => $project->phone_number,
                 'registered_at' => $project->owner_created_at ?? null,
                 'type' => $project->user_type,
                 'profile_pic' => $project->profile_pic,

@@ -16,10 +16,9 @@ class contractorClass extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
-        'user_id',
+        'owner_id',
         'company_logo',
         'company_banner',
-        'bio',
         'company_name',
         'company_start_date',
         'years_of_experience',
@@ -28,7 +27,6 @@ class contractorClass extends Model
         'services_offered',
         'business_address',
         'company_email',
-        'company_phone',
         'company_website',
         'company_social_media',
         'picab_number',
@@ -52,9 +50,17 @@ class contractorClass extends Model
         return $this->hasMany(bid::class, 'contractor_id', 'contractor_id');
     }
 
-    public function user()
+    /**
+     * Get the user associated with this contractor through property_owners.
+     * contractors.owner_id → property_owners.owner_id → users.user_id
+     */
+    public function getUser()
     {
-        return $this->belongsTo(User::class, 'user_id', 'user_id');
+        return DB::table('property_owners')
+            ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+            ->where('property_owners.owner_id', $this->owner_id)
+            ->select('users.*')
+            ->first();
     }
 
     /**
@@ -63,75 +69,24 @@ class contractorClass extends Model
     public function getContractors($search = null, $status = null, $dateFrom = null, $dateTo = null, $perPage = 15)
     {
         $query = DB::table('contractors')
-            ->leftJoin('users', 'contractors.user_id', '=', 'users.user_id')
-            ->leftJoin('contractor_users', function($join) {
-                $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
-                     ->where('contractor_users.role', '=', 'owner');
-            })
-            ->leftJoin('bids', 'contractors.contractor_id', '=', 'bids.contractor_id')
+            ->leftJoin('property_owners as owner_po', 'contractors.owner_id', '=', 'owner_po.owner_id')
+            ->leftJoin('users as owner_u', 'owner_po.user_id', '=', 'owner_u.user_id')
             ->select(
                 'contractors.*',
-                'users.email',
-                'users.username',
-                'users.profile_pic',
-                'contractor_users.authorized_rep_fname',
-                'contractor_users.authorized_rep_lname',
-                'contractor_users.authorized_rep_mname',
-                DB::raw('COUNT(bids.bid_id) as bids_count')
-            )
-            ->groupBy(
-                'contractors.contractor_id',
-                'contractors.user_id',
-                'contractors.company_name',
-                'contractors.company_start_date',
-                'contractors.years_of_experience',
-                'contractors.type_id',
-                'contractors.contractor_type_other',
-                'contractors.services_offered',
-                'contractors.business_address',
-                'contractors.company_email',
-                'contractors.company_phone',
-                'contractors.company_website',
-                'contractors.company_social_media',
-                    'contractors.company_description',
-                    'contractors.company_logo',
-                    'contractors.company_banner',
-                    'contractors.bio',
-                'contractors.picab_number',
-                'contractors.picab_category',
-                'contractors.picab_expiration_date',
-                'contractors.business_permit_number',
-                'contractors.business_permit_city',
-                'contractors.business_permit_expiration',
-                'contractors.tin_business_reg_number',
-                'contractors.dti_sec_registration_photo',
-                'contractors.verification_status',
-                'contractors.verification_date',
-                'contractors.is_active',
-                'contractors.suspension_until',
-                'contractors.suspension_reason',
-                'contractors.deletion_reason',
-                'contractors.rejection_reason',
-                'contractors.completed_projects',
-                'contractors.created_at',
-                'contractors.updated_at',
-                'contractors.company_logo',
-                'contractors.company_banner',
-                'contractors.bio',
-                'users.email',
-                'users.username',
-                'users.profile_pic',
-                'contractor_users.authorized_rep_fname',
-                'contractor_users.authorized_rep_lname',
-                'contractor_users.authorized_rep_mname'
+                'owner_u.email',
+                'owner_u.username',
+                'owner_u.first_name as authorized_rep_fname',
+                'owner_u.last_name as authorized_rep_lname',
+                'owner_u.middle_name as authorized_rep_mname',
+                DB::raw('(SELECT COUNT(*) FROM bids WHERE bids.contractor_id = contractors.contractor_id) as bids_count')
             );
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('contractors.company_name', 'like', "%{$search}%")
-                  ->orWhere('contractor_users.authorized_rep_fname', 'like', "%{$search}%")
-                  ->orWhere('contractor_users.authorized_rep_lname', 'like', "%{$search}%")
-                  ->orWhere('users.email', 'like', "%{$search}%");
+                  ->orWhere('owner_u.first_name', 'like', "%{$search}%")
+                  ->orWhere('owner_u.last_name', 'like', "%{$search}%")
+                  ->orWhere('owner_u.email', 'like', "%{$search}%");
             });
         }
 
@@ -141,13 +96,9 @@ class contractorClass extends Model
             $query->where('contractors.verification_status', 'approved');
         }
 
-        // Filter by owner status: active, not deleted, not suspended
-        $query->where('contractor_users.is_active', 1)
-              ->where('contractor_users.is_deleted', 0)
-              ->where(function($q) {
-                  $q->whereNull('contractor_users.suspension_until')
-                    ->orWhere('contractor_users.suspension_until', 0);
-              });
+        // Filter by contractor status: active, not deleted
+        $query->where('contractors.is_active', 1)
+              ->where('contractors.verification_status', '!=', 'deleted');
 
         if ($dateFrom) {
             $query->whereDate('contractors.created_at', '>=', $dateFrom);
@@ -166,19 +117,16 @@ class contractorClass extends Model
     public function getContractorById($id)
     {
         return DB::table('contractors')
-            ->leftJoin('users', 'contractors.user_id', '=', 'users.user_id')
-            ->leftJoin('contractor_users', function($join) {
-                $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
-                     ->where('contractor_users.role', '=', 'owner');
-            })
+            ->leftJoin('property_owners as owner_po', 'contractors.owner_id', '=', 'owner_po.owner_id')
+            ->leftJoin('users as owner_u', 'owner_po.user_id', '=', 'owner_u.user_id')
             ->select(
                 'contractors.*',
-                'users.email',
-                'users.username',
-                'users.profile_pic',
-                'contractor_users.authorized_rep_fname',
-                'contractor_users.authorized_rep_lname',
-                'contractor_users.authorized_rep_mname'
+                'owner_u.email',
+                'owner_u.username',
+                'owner_po.profile_pic',
+                'owner_u.first_name as authorized_rep_fname',
+                'owner_u.last_name as authorized_rep_lname',
+                'owner_u.middle_name as authorized_rep_mname'
             )
             ->where('contractors.contractor_id', $id)
             ->first();
@@ -196,24 +144,35 @@ class contractorClass extends Model
             } while (DB::table('users')->where('username', $username)->exists());
 
             // Create User (use DB insert to align with propertyOwner flow and DB schema)
-            // NOTE: contractors should not store their company logo/profile image in the users table.
-            // Save company logo only in the contractors table (`company_logo`).
             $userId = DB::table('users')->insertGetId(array(
                 'username' => $username,
                 'email' => $data['company_email'],
                 'password_hash' => bcrypt('contractor123@!'),
                 'OTP_hash' => 'admin_created',
                 'user_type' => 'contractor',
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'middle_name' => $data['middle_name'] ?? null,
                 'created_at' => now(),
                 'updated_at' => now()
             ));
 
-            // Create Contractor (align fields with legatura.sql)
-            $contractorId = DB::table('contractors')->insertGetId(array(
+            // Create Property Owner profile for this user
+            $ownerId = DB::table('property_owners')->insertGetId(array(
                 'user_id' => $userId,
+                'address' => $data['business_address'] ?? '',
+                'date_of_birth' => $data['date_of_birth'] ?? '2000-01-01',
+                'age' => $data['age'] ?? 0,
+                'verification_status' => 'approved',
+                'is_active' => 1,
+                'created_at' => now()
+            ));
+
+            // Create Contractor (align fields with new schema)
+            $contractorId = DB::table('contractors')->insertGetId(array(
+                'owner_id' => $ownerId,
                 'company_logo' => $data['company_logo'] ?? null,
                 'company_banner' => $data['company_banner'] ?? null,
-                'bio' => $data['bio'] ?? null,
                 'company_name' => $data['company_name'],
                 'company_start_date' => $data['company_start_date'],
                 'years_of_experience' => $data['years_of_experience'] ?? 0,
@@ -222,7 +181,6 @@ class contractorClass extends Model
                 'services_offered' => $data['services_offered'] ?? null,
                 'business_address' => $data['business_address'] ?? null,
                 'company_email' => $data['company_email'],
-                'company_phone' => $data['company_phone'] ?? null,
                 'company_website' => $data['company_website'] ?? null,
                 'company_social_media' => $data['company_social_media'] ?? null,
                 'company_description' => $data['company_description'] ?? null,
@@ -239,19 +197,6 @@ class contractorClass extends Model
                 'is_active' => 1,
                 'created_at' => now(),
                 'updated_at' => now()
-            ));
-
-            // Create Contractor User (Representative)
-            DB::table('contractor_users')->insert(array(
-                'contractor_id' => $contractorId,
-                'user_id' => $userId,
-                'authorized_rep_fname' => $data['first_name'],
-                'authorized_rep_lname' => $data['last_name'],
-                'authorized_rep_mname' => $data['middle_name'],
-                'phone_number' => $data['company_phone'] ?? null,
-                'role' => 'owner',
-                'is_active' => 1,
-                'created_at' => now()
             ));
 
             return array(
@@ -283,10 +228,8 @@ class contractorClass extends Model
 
             // Update Contractor
             $contractorUpdateData = [
-                // allow updating company media and bio when provided
                 'company_logo' => $data['company_logo'] ?? null,
                 'company_banner' => $data['company_banner'] ?? null,
-                'bio' => $data['bio'] ?? null,
                 'company_name' => $data['company_name'],
                 'company_start_date' => $data['company_start_date'],
                 'years_of_experience' => $data['years_of_experience'],
@@ -295,7 +238,6 @@ class contractorClass extends Model
                 'services_offered' => $data['services_offered'],
                 'business_address' => $data['business_address'],
                 'company_email' => $data['company_email'],
-                'company_phone' => $data['company_phone'],
                 'company_website' => $data['company_website'],
                 'company_social_media' => $data['company_social_media'],
                 'picab_number' => $data['picab_number'],
@@ -318,19 +260,18 @@ class contractorClass extends Model
             }
 
             DB::table('contractors')
-                ->where('user_id', $userId)
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('property_owners.user_id', $userId)
                 ->update($contractorUpdateData);
 
-            // Update Contractor User (Representative)
-            DB::table('contractor_users')
-                ->where('user_id', $userId)
-                ->where('role', 'owner')
-                ->update([
-                    'authorized_rep_fname' => $data['authorized_rep_fname'],
-                    'authorized_rep_lname' => $data['authorized_rep_lname'],
-                    'authorized_rep_mname' => $data['authorized_rep_mname'],
-                    'phone_number' => $data['phone_number']
-                ]);
+            // Update representative name on users table
+            $nameUpdate = [];
+            if (isset($data['authorized_rep_fname'])) $nameUpdate['first_name'] = $data['authorized_rep_fname'];
+            if (isset($data['authorized_rep_lname'])) $nameUpdate['last_name'] = $data['authorized_rep_lname'];
+            if (isset($data['authorized_rep_mname'])) $nameUpdate['middle_name'] = $data['authorized_rep_mname'];
+            if (!empty($nameUpdate)) {
+                DB::table('users')->where('user_id', $userId)->update($nameUpdate);
+            }
 
             return true;
         });
@@ -352,22 +293,22 @@ class contractorClass extends Model
                         'deletion_reason' => $reason
                     ]);
 
-                // Update Contractor Users table
-                DB::table('contractor_users')
+                // Deactivate all staff members
+                DB::table('contractor_staff')
                     ->where('contractor_id', $contractorId)
-                    ->where('role', 'owner')
                     ->update([
-                        'is_deleted' => 1,
                         'is_active' => 0,
                         'deletion_reason' => $reason
                     ]);
 
-                // Update User
-                DB::table('users')
-                    ->where('user_id', $contractor->user_id)
-                    ->update([
-                        'updated_at' => now()
-                    ]);
+                // Update User timestamp via property_owners
+                $ownerId = $contractor->owner_id;
+                $ownerUserId = DB::table('property_owners')->where('owner_id', $ownerId)->value('user_id');
+                if ($ownerUserId) {
+                    DB::table('users')
+                        ->where('user_id', $ownerUserId)
+                        ->update(['updated_at' => now()]);
+                }
             }
 
             return true;
@@ -381,15 +322,16 @@ class contractorClass extends Model
     {
         // Get main contractor data
         $contractor = DB::table('contractors')
-            ->join('users', 'contractors.user_id', '=', 'users.user_id')
+            ->join('property_owners as owner_po', 'contractors.owner_id', '=', 'owner_po.owner_id')
+            ->join('users', 'owner_po.user_id', '=', 'users.user_id')
             ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
             ->where('contractors.contractor_id', $contractorId)
             ->select(
                 'contractors.*',
                 'users.email',
                 'users.username',
-                'users.profile_pic',
-                'users.cover_photo',
+                'owner_po.profile_pic',
+                'owner_po.cover_photo',
                 'users.user_type',
                 'users.created_at as member_since',
                 DB::raw("CASE WHEN contractors.verification_status = 'approved' THEN 1 ELSE 0 END as is_active"),
@@ -399,20 +341,20 @@ class contractorClass extends Model
 
         if (!$contractor) return null;
 
-        // Get Representative (representative role from contractor_users)
-        $representative = DB::table('contractor_users')
-            ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
-            ->where('contractor_users.contractor_id', $contractorId)
-            ->where('contractor_users.role', 'representative')
+        // Get Representative (representative role from contractor_staff)
+        $representative = DB::table('contractor_staff')
+            ->join('property_owners as rep_po', 'contractor_staff.owner_id', '=', 'rep_po.owner_id')
+            ->join('users as rep_u', 'rep_po.user_id', '=', 'rep_u.user_id')
+            ->where('contractor_staff.contractor_id', $contractorId)
+            ->where('contractor_staff.company_role', 'representative')
             ->select(
-                'contractor_users.authorized_rep_fname',
-                'contractor_users.authorized_rep_lname',
-                'contractor_users.authorized_rep_mname',
-                'contractor_users.phone_number',
-                'contractor_users.role',
-                'users.profile_pic as rep_profile_pic',
-                'users.email as rep_email',
-                'users.username as rep_username'
+                'rep_u.first_name as authorized_rep_fname',
+                'rep_u.last_name as authorized_rep_lname',
+                'rep_u.middle_name as authorized_rep_mname',
+                'contractor_staff.company_role as role',
+                'rep_po.profile_pic as rep_profile_pic',
+                'rep_u.email as rep_email',
+                'rep_u.username as rep_username'
             )
             ->first();
 
@@ -427,9 +369,9 @@ class contractorClass extends Model
             ->select(
                 'projects.*',
                 'project_relationships.created_at',
-                'property_owners.first_name as owner_first_name',
-                'property_owners.last_name as owner_last_name',
-                'owner_users.profile_pic as owner_profile_pic'
+                'owner_users.first_name as owner_first_name',
+                'owner_users.last_name as owner_last_name',
+                'property_owners.profile_pic as owner_profile_pic'
             )
             ->orderBy('project_relationships.created_at', 'desc')
             ->get();
@@ -445,17 +387,22 @@ class contractorClass extends Model
         $contractor->ongoing_projects_count = $ongoingCount;
         $contractor->total_projects_count = $totalProjects;
 
-        // Get Team Members (all contractor_users for this contractor)
-        $teamMembers = DB::table('contractor_users')
-            ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
-            ->where('contractor_users.contractor_id', $contractorId)
+        // Get Team Members (all contractor_staff for this contractor)
+        $teamMembers = DB::table('contractor_staff')
+            ->join('property_owners as staff_po', 'contractor_staff.owner_id', '=', 'staff_po.owner_id')
+            ->join('users as staff_u', 'staff_po.user_id', '=', 'staff_u.user_id')
+            ->where('contractor_staff.contractor_id', $contractorId)
             ->select(
-                'contractor_users.*',
-                'users.email',
-                'users.username',
-                'users.profile_pic'
+                'contractor_staff.*',
+                'staff_u.first_name as authorized_rep_fname',
+                'staff_u.last_name as authorized_rep_lname',
+                'staff_u.middle_name as authorized_rep_mname',
+                'staff_u.email',
+                'staff_u.username',
+                'staff_po.profile_pic',
+                'contractor_staff.company_role as role'
             )
-            ->orderByRaw("FIELD(contractor_users.role, 'owner', 'manager', 'engineer', 'architect', 'representative', 'others')")
+            ->orderByRaw("FIELD(contractor_staff.company_role, 'manager', 'engineer', 'architect', 'representative', 'others')")
             ->get();
 
         $contractor->team_members = $teamMembers;
@@ -463,22 +410,11 @@ class contractorClass extends Model
         // Store original is_active based on verification_status
         $originalIsActive = $contractor->is_active;
 
-        // Check if OWNER is suspended (only owner suspension affects entire contractor)
-        $ownerSuspended = DB::table('contractor_users')
-            ->where('contractor_id', $contractorId)
-            ->where('role', 'owner')
-            ->where('is_active', 0)
-            ->first();
-
-        if ($ownerSuspended) {
+        // Check if contractor is suspended (suspension fields are on contractors table)
+        if ($contractor->suspension_reason || $contractor->suspension_until) {
             $contractor->is_active = 0;
-            $contractor->suspension_reason = $ownerSuspended->suspension_reason ?? null;
-            $contractor->suspension_until = $ownerSuspended->suspension_until ?? null;
         } else {
-            // Owner is not suspended - restore original is_active and clear suspension fields
             $contractor->is_active = $originalIsActive;
-            $contractor->suspension_reason = null;
-            $contractor->suspension_until = null;
         }
 
         return $contractor;
@@ -497,28 +433,36 @@ class contractorClass extends Model
 
             // Create User (type: staff)
             $userId = DB::table('users')->insertGetId([
-                'profile_pic' => $data['profile_pic'] ?? null,
                 'username' => $username,
                 'email' => $data['email'],
                 'password_hash' => bcrypt('teammember123@!'),
                 'OTP_hash' => 'admin_created',
-                'user_type' => 'staff',
+                'user_type' => 'property_owner',
+                'first_name' => $data['first_name'],
+                'middle_name' => $data['middle_name'] ?? null,
+                'last_name' => $data['last_name'],
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
 
-            // Create Contractor User (Team Member)
-            DB::table('contractor_users')->insert([
-                'contractor_id' => $data['contractor_id'],
+            // Create Property Owner profile for this staff user
+            $staffOwnerId = DB::table('property_owners')->insertGetId([
                 'user_id' => $userId,
-                'authorized_rep_fname' => $data['first_name'],
-                'authorized_rep_mname' => $data['middle_name'] ?? null,
-                'authorized_rep_lname' => $data['last_name'],
-                'phone_number' => $data['phone_number'],
-                'role' => $data['role'],
-                'if_others' => $data['role_other'] ?? null,
+                'address' => '',
+                'date_of_birth' => '2000-01-01',
+                'age' => 0,
+                'verification_status' => 'approved',
                 'is_active' => 1,
-                'is_deleted' => 0,
+                'created_at' => now()
+            ]);
+
+            // Create Contractor Staff (Team Member)
+            DB::table('contractor_staff')->insert([
+                'contractor_id' => $data['contractor_id'],
+                'owner_id' => $staffOwnerId,
+                'company_role' => $data['role'],
+                'role_if_others' => $data['role_other'] ?? null,
+                'is_active' => 1,
                 'created_at' => now()
             ]);
 
@@ -534,17 +478,17 @@ class contractorClass extends Model
     {
         return DB::transaction(function () use ($contractorId, $newRepresentativeId) {
             // Get the current representative
-            $currentRepresentative = DB::table('contractor_users')
+            $currentRepresentative = DB::table('contractor_staff')
                 ->where('contractor_id', $contractorId)
-                ->where('role', 'representative')
-                ->where('is_deleted', 0)
+                ->where('company_role', 'representative')
+                ->where('is_active', 1)
                 ->first();
 
             // Get the new representative details
-            $newRepresentative = DB::table('contractor_users')
-                ->where('contractor_user_id', $newRepresentativeId)
+            $newRepresentative = DB::table('contractor_staff')
+                ->where('staff_id', $newRepresentativeId)
                 ->where('contractor_id', $contractorId)
-                ->where('is_deleted', 0)
+                ->where('is_active', 1)
                 ->first();
 
             if (!$newRepresentative) {
@@ -553,25 +497,22 @@ class contractorClass extends Model
 
             // If there's a current representative, demote them
             if ($currentRepresentative) {
-                // Save their current role to role_other if needed, then change to their previous role
-                // If they have a role_other value, restore it to role
-                $previousRole = $currentRepresentative->role_other ?: 'manager';
+                $previousRole = $currentRepresentative->company_role_before ?: 'manager';
 
-                DB::table('contractor_users')
-                    ->where('contractor_user_id', $currentRepresentative->contractor_user_id)
+                DB::table('contractor_staff')
+                    ->where('staff_id', $currentRepresentative->staff_id)
                     ->update([
-                        'role' => $previousRole,
-                        'role_other' => null // Clear role_other after restoration
+                        'company_role' => $previousRole,
+                        'company_role_before' => null
                     ]);
             }
 
             // Promote the new representative
-            // Save their current role to role_other before promoting
-            DB::table('contractor_users')
-                ->where('contractor_user_id', $newRepresentativeId)
+            DB::table('contractor_staff')
+                ->where('staff_id', $newRepresentativeId)
                 ->update([
-                    'role_other' => $newRepresentative->role, // Save current role
-                    'role' => 'representative' // Promote to representative
+                    'company_role_before' => $newRepresentative->company_role,
+                    'company_role' => 'representative'
                 ]);
 
             return [
@@ -597,11 +538,12 @@ class contractorClass extends Model
                     'suspension_until' => $suspensionUntil
                 ]);
 
-            // Suspend ALL contractor_users for this contractor (owner suspension affects entire company)
-            DB::table('contractor_users')
+            // Suspend ALL contractor_staff for this contractor (owner suspension affects entire company)
+            DB::table('contractor_staff')
                 ->where('contractor_id', $id)
                 ->update([
                     'is_active' => 0,
+                    'is_suspended' => 1,
                     'suspension_reason' => $reason,
                     'suspension_until' => $suspensionUntil
                 ]);

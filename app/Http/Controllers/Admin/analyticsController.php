@@ -277,20 +277,24 @@ class analyticsController extends authController
         $status = $request->input('status', '');
         $sort   = $request->input('sort',   'newest');
 
-        // Pre-join subquery: one representative contractor_user per contractor
-        $cuMin = DB::table('contractor_users')
-            ->select('contractor_id', DB::raw('MIN(contractor_user_id) as min_cu_id'))
-            ->where('is_deleted', 0)
+        // Pre-join subquery: get owner name for each contractor via property_owners→users
+        $cuMin = DB::table('contractor_staff')
+            ->select('contractor_id', DB::raw('MIN(staff_id) as min_cu_id'))
+            ->where('is_active', 1)
+            ->where('company_role', 'representative')
             ->groupBy('contractor_id');
 
         $query = DB::table('platform_payments as pp')
             ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
             // Contractor chain
             ->leftJoin('contractors as c',      'c.contractor_id',     '=', 'pp.contractor_id')
+            ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+            ->leftJoin('users as c_u', 'c_po.user_id', '=', 'c_u.user_id')
             ->leftJoinSub($cuMin, 'cu_min',    'cu_min.contractor_id','=', 'c.contractor_id')
-            ->leftJoin('contractor_users as cu','cu.contractor_user_id','=', 'cu_min.min_cu_id')
+            ->leftJoin('contractor_staff as cs','cs.staff_id','=', 'cu_min.min_cu_id')
+            ->leftJoin('property_owners as rep_po', 'cs.owner_id', '=', 'rep_po.owner_id')
+            ->leftJoin('users as rep_u', 'rep_po.user_id', '=', 'rep_u.user_id')
             // Property owner chain
-            // BUG 1 FIX: pp.owner_id matches property_owners.owner_id (NOT user_id)
             ->leftJoin('property_owners as po', 'po.owner_id',         '=', 'pp.owner_id')
             ->leftJoin('users as u',            'u.user_id',           '=', 'po.user_id')
             ->select(
@@ -309,12 +313,12 @@ class analyticsController extends authController
                 'sp.for_contractor',
                 DB::raw("CASE
                     WHEN pp.contractor_id IS NOT NULL THEN c.company_name
-                    WHEN pp.owner_id      IS NOT NULL THEN CONCAT(po.first_name, ' ', po.last_name)
+                    WHEN pp.owner_id      IS NOT NULL THEN CONCAT(u.first_name, ' ', u.last_name)
                     ELSE 'Unknown'
                 END as subscriber_name"),
                 DB::raw("CASE
                     WHEN pp.contractor_id IS NOT NULL
-                        THEN CONCAT(cu.authorized_rep_fname, ' ', cu.authorized_rep_lname)
+                        THEN CONCAT(rep_u.first_name, ' ', rep_u.last_name)
                     ELSE NULL
                 END as rep_name"),
                 DB::raw("CASE
@@ -329,12 +333,12 @@ class analyticsController extends authController
                 END as subscriber_type"),
                 DB::raw("CASE
                     WHEN pp.contractor_id IS NOT NULL THEN c.company_logo
-                    WHEN pp.owner_id      IS NOT NULL THEN u.profile_pic
+                    WHEN pp.owner_id      IS NOT NULL THEN po.profile_pic
                     ELSE NULL
                 END as avatar"),
                 DB::raw("UPPER(LEFT(CASE
                     WHEN pp.contractor_id IS NOT NULL THEN c.company_name
-                    WHEN pp.owner_id      IS NOT NULL THEN CONCAT(po.first_name,' ',po.last_name)
+                    WHEN pp.owner_id      IS NOT NULL THEN CONCAT(u.first_name,' ',u.last_name)
                     ELSE '??'
                 END, 2)) as initials"),
                 DB::raw("CASE
@@ -658,7 +662,9 @@ class analyticsController extends authController
     //    dispute_status weights: open/under_review=1.0 (active), resolved/closed=0.4 (mitigated)
     //    Formula: SUM(type_weight * status_weight) capped at 20
     $disputeSub = DB::table('disputes as d')
-        ->join('contractors as dc', 'dc.user_id', '=', 'd.against_user_id')
+        ->join('users as du', 'du.user_id', '=', 'd.against_user_id')
+        ->join('property_owners as dpo', 'du.user_id', '=', 'dpo.user_id')
+        ->join('contractors as dc', 'dpo.owner_id', '=', 'dc.owner_id')
         ->select(
             'dc.contractor_id',
             DB::raw("
@@ -704,7 +710,8 @@ class analyticsController extends authController
 
     // ── 5. Average rating from reviews ────────────────────────────
     $ratingSub = DB::table('reviews as r')
-        ->join('contractors as rc', 'rc.user_id', '=', 'r.reviewee_user_id')
+        ->join('property_owners as rev_po', 'rev_po.user_id', '=', 'r.reviewee_user_id')
+        ->join('contractors as rc', 'rc.owner_id', '=', 'rev_po.owner_id')
         ->select(
             'rc.contractor_id',
             DB::raw('ROUND(AVG(r.rating), 2) as avg_rating'),
@@ -714,10 +721,8 @@ class analyticsController extends authController
 
     // ── Main query ─────────────────────────────────────────────────
     $rows = DB::table('contractors as c')
-        ->join('contractor_users as cu', function ($j) {
-            $j->on('cu.contractor_id', '=', 'c.contractor_id')
-              ->where('cu.is_deleted', 0);
-        })
+        ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+        ->join('users as c_u', 'c_po.user_id', '=', 'c_u.user_id')
         ->leftJoinSub($assignedSub,     'ap',  'ap.selected_contractor_id', '=', 'c.contractor_id')
         ->leftJoinSub($disputeSub,      'dp',  'dp.contractor_id',          '=', 'c.contractor_id')
         ->leftJoinSub($delaySub,        'dl',  'dl.contractor_id',          '=', 'c.contractor_id')
@@ -731,7 +736,7 @@ class analyticsController extends authController
             'c.completed_projects',
             'c.years_of_experience',
             'c.company_logo',
-            DB::raw("CONCAT(cu.authorized_rep_fname, ' ', cu.authorized_rep_lname) as rep_name"),
+            DB::raw("CONCAT(c_u.first_name, ' ', c_u.last_name) as rep_name"),
             DB::raw('IFNULL(ap.assigned_count,      0) as assigned_count'),
             DB::raw('IFNULL(dp.dispute_score,        0) as dispute_score'),
             DB::raw('IFNULL(dl.total_items,          0) as total_items'),
@@ -934,12 +939,12 @@ class analyticsController extends authController
 
         $activeUsers = DB::table('users')->where(function ($q) {
             $q->whereExists(fn($s) => $s->select(DB::raw(1))->from('property_owners')->whereColumn('property_owners.user_id', 'users.user_id')->where('property_owners.is_active', 1))
-              ->orWhereExists(fn($s) => $s->select(DB::raw(1))->from('contractor_users')->whereColumn('contractor_users.user_id', 'users.user_id')->where('contractor_users.is_active', 1)->where('contractor_users.is_deleted', 0));
+              ->orWhereExists(fn($s) => $s->select(DB::raw(1))->from('contractors')->join('property_owners as cp', 'contractors.owner_id', '=', 'cp.owner_id')->whereColumn('cp.user_id', 'users.user_id')->where('contractors.is_active', 1));
         })->count();
 
         $suspendedUsers = DB::table('users')->where(function ($q) {
             $q->whereExists(fn($s) => $s->select(DB::raw(1))->from('property_owners')->whereColumn('property_owners.user_id', 'users.user_id')->where('property_owners.is_active', 0))
-              ->orWhereExists(fn($s) => $s->select(DB::raw(1))->from('contractor_users')->whereColumn('contractor_users.user_id', 'users.user_id')->where('contractor_users.is_active', 0)->where('contractor_users.is_deleted', 0));
+              ->orWhereExists(fn($s) => $s->select(DB::raw(1))->from('contractors')->join('property_owners as cp2', 'contractors.owner_id', '=', 'cp2.owner_id')->whereColumn('cp2.user_id', 'users.user_id')->where('contractors.is_active', 0));
         })->count();
 
         $prevTotal  = DB::table('users')->where('created_at', '<', now()->startOfMonth())->count();
@@ -989,17 +994,15 @@ class analyticsController extends authController
     {
         $recentBids = DB::table('bids')
             ->join('contractors', 'contractors.contractor_id', '=', 'bids.contractor_id')
-            ->join('users', 'users.user_id', '=', 'contractors.user_id')
-            ->join('contractor_users as cu', function ($j) {
-                $j->on('cu.contractor_id', '=', 'bids.contractor_id')->where('cu.is_deleted', 0);
-            })
-            ->select('users.user_id', DB::raw("CONCAT(cu.authorized_rep_fname, ' ', cu.authorized_rep_lname) as full_name"), 'users.email', 'users.user_type', DB::raw("'Submitted a bid' as action"), 'bids.submitted_at as activity_time', 'users.profile_pic', 'cu.is_active')
+            ->join('property_owners as bid_po', 'contractors.owner_id', '=', 'bid_po.owner_id')
+            ->join('users', 'bid_po.user_id', '=', 'users.user_id')
+            ->select('users.user_id', DB::raw("CONCAT(users.first_name, ' ', users.last_name) as full_name"), 'users.email', 'users.user_type', DB::raw("'Submitted a bid' as action"), 'bids.submitted_at as activity_time', 'bid_po.profile_pic', 'contractors.is_active')
             ->orderByDesc('bids.submitted_at')->limit(5)->get();
 
         $recentProjects = DB::table('project_relationships')
-            ->join('property_owners', 'property_owners.user_id', '=', 'project_relationships.owner_id')
-            ->join('users', 'users.user_id', '=', 'project_relationships.owner_id')
-            ->select('users.user_id', DB::raw("CONCAT(property_owners.first_name, ' ', property_owners.last_name) as full_name"), 'users.email', 'users.user_type', DB::raw("'Posted a project' as action"), 'project_relationships.created_at as activity_time', 'users.profile_pic', 'property_owners.is_active')
+            ->join('property_owners', 'property_owners.owner_id', '=', 'project_relationships.owner_id')
+            ->join('users', 'users.user_id', '=', 'property_owners.user_id')
+            ->select('users.user_id', DB::raw("CONCAT(users.first_name, ' ', users.last_name) as full_name"), 'users.email', 'users.user_type', DB::raw("'Posted a project' as action"), 'project_relationships.created_at as activity_time', 'property_owners.profile_pic', 'property_owners.is_active')
             ->orderByDesc('project_relationships.created_at')->limit(5)->get();
 
         return collect($recentBids)->concat($recentProjects)->sortByDesc('activity_time')->take(10)->values()->toArray();
@@ -1230,10 +1233,8 @@ class analyticsController extends authController
         $recentBids = DB::table('bids as b')
             ->join('projects as p',          'p.project_id',     '=', 'b.project_id')
             ->join('contractors as c',       'c.contractor_id',  '=', 'b.contractor_id')
-            ->join('contractor_users as cu', function ($j) {
-                $j->on('cu.contractor_id', '=', 'c.contractor_id')
-                  ->where('cu.is_deleted', 0);
-            })
+            ->join('property_owners as bid_c_po', 'c.owner_id', '=', 'bid_c_po.owner_id')
+            ->join('users as bid_c_u', 'bid_c_po.user_id', '=', 'bid_c_u.user_id')
             ->leftJoin('platform_payments as pp', function ($j) {
                 $j->on('pp.contractor_id', '=', 'c.contractor_id')
                   ->where('pp.is_approved', 1)
@@ -1249,7 +1250,7 @@ class analyticsController extends authController
                 'p.project_location',
                 'c.company_name',
                 'c.company_logo',
-                DB::raw("CONCAT(cu.authorized_rep_fname, ' ', cu.authorized_rep_lname) as rep_name"),
+                DB::raw("CONCAT(bid_c_u.first_name, ' ', bid_c_u.last_name) as rep_name"),
                 DB::raw("UPPER(LEFT(c.company_name, 2)) as initials"),
                 DB::raw("COALESCE(MAX(sp.name), 'No Subscription') as subscription_tier")
             )
@@ -1257,7 +1258,7 @@ class analyticsController extends authController
                 'b.bid_id', 'b.proposed_cost', 'b.bid_status', 'b.submitted_at',
                 'p.project_title', 'p.project_location',
                 'c.company_name', 'c.company_logo',
-                'cu.authorized_rep_fname', 'cu.authorized_rep_lname'
+                'bid_c_u.first_name', 'bid_c_u.last_name'
             )
             ->orderByDesc('b.submitted_at')
             ->limit(10)

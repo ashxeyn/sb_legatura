@@ -9,51 +9,50 @@ class bothReactivateClass extends Model
 {
     /**
      * Get suspended contractors (owners with is_active = 0 and suspension data)
-     * Only fetch owner role from contractor_users
+     * Fetch suspended contractors
      */
     public static function getSuspendedContractors($search = null, $dateFrom = null, $dateTo = null)
     {
-        $query = DB::table('contractor_users as cu')
-            ->join('contractors as c', 'cu.contractor_id', '=', 'c.contractor_id')
-            ->join('users as u', 'cu.user_id', '=', 'u.user_id')
-            ->where('cu.role', 'owner')
-            ->where('cu.is_active', 0)
-            ->whereNotNull('cu.suspension_reason')
-            ->whereNotNull('cu.suspension_until')
-            ->where('cu.is_deleted', 0);
+        $query = DB::table('contractors as c')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
+            ->where('c.is_active', 0)
+            ->whereNotNull('c.suspension_reason')
+            ->whereNotNull('c.suspension_until');
 
         // Apply search filter
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('c.company_name', 'like', "%{$search}%")
                   ->orWhere('u.email', 'like', "%{$search}%")
-                  ->orWhere('cu.authorized_rep_fname', 'like', "%{$search}%")
-                  ->orWhere('cu.authorized_rep_lname', 'like', "%{$search}%");
+                  ->orWhere('u.first_name', 'like', "%{$search}%")
+                  ->orWhere('u.last_name', 'like', "%{$search}%");
             });
         }
 
         // Apply date range filter
         if ($dateFrom) {
-            $query->whereDate('cu.created_at', '>=', $dateFrom);
+            $query->whereDate('c.created_at', '>=', $dateFrom);
         }
         if ($dateTo) {
-            $query->whereDate('cu.created_at', '<=', $dateTo);
+            $query->whereDate('c.created_at', '<=', $dateTo);
         }
 
         return $query->select(
-                'cu.contractor_user_id',
-                'cu.contractor_id',
-                'cu.user_id',
+                'c.contractor_id',
+                'c.contractor_id as contractor_user_id',
+                'po.owner_id',
+                'po.user_id',
                 'c.company_name as name',
                 'u.email',
-                'cu.suspension_reason as reason',
-                'cu.suspension_until',
-                'cu.created_at as date_registered',
-                'cu.created_at as updated_at',
+                'c.suspension_reason as reason',
+                'c.suspension_until',
+                'c.created_at as date_registered',
+                'c.created_at as updated_at',
                 DB::raw("'contractor' as user_type"),
                 DB::raw('(SELECT COUNT(*) FROM projects p INNER JOIN project_relationships pr ON p.relationship_id = pr.rel_id WHERE pr.selected_contractor_id = c.contractor_id) as total_projects')
             )
-            ->orderBy('cu.created_at', 'desc')
+            ->orderBy('c.created_at', 'desc')
             ->get();
     }
 
@@ -72,9 +71,9 @@ class bothReactivateClass extends Model
         // Apply search filter
         if ($search) {
             $query->where(function($q) use ($search) {
-                $q->where('po.first_name', 'like', "%{$search}%")
-                  ->orWhere('po.last_name', 'like', "%{$search}%")
-                  ->orWhere('po.middle_name', 'like', "%{$search}%")
+                $q->where('u.first_name', 'like', "%{$search}%")
+                  ->orWhere('u.last_name', 'like', "%{$search}%")
+                  ->orWhere('u.middle_name', 'like', "%{$search}%")
                   ->orWhere('u.email', 'like', "%{$search}%");
             });
         }
@@ -90,7 +89,7 @@ class bothReactivateClass extends Model
         return $query->select(
                 'po.owner_id',
                 'po.user_id',
-                DB::raw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) as name"),
+                DB::raw("CONCAT(u.first_name, ' ', COALESCE(u.middle_name, ''), ' ', u.last_name) as name"),
                 'u.email',
                 'po.suspension_reason as reason',
                 'po.suspension_until',
@@ -108,8 +107,8 @@ class bothReactivateClass extends Model
      */
     public static function reactivateContractor($contractorUserId)
     {
-        return DB::table('contractor_users')
-            ->where('contractor_user_id', $contractorUserId)
+        return DB::table('contractors')
+            ->where('contractor_id', $contractorUserId)
             ->update([
                 'is_active' => 1,
                 'suspension_reason' => null,

@@ -7,6 +7,7 @@ use App\Http\Requests\admin\storeBidRequest;
 use App\Http\Requests\admin\updateBidRequest;
 use App\Models\admin\bid;
 use Illuminate\Http\Request;
+use App\Services\AdminActivityLog;
 
 class bidController extends Controller
 {
@@ -32,6 +33,7 @@ class bidController extends Controller
     public function store(storeBidRequest $request)
     {
         $bid = bid::create($request->validated());
+        AdminActivityLog::log('bid_created', ['bid_id' => $bid->bid_id ?? $bid->id]);
         return response()->json($bid,201);
     }
 
@@ -40,6 +42,7 @@ class bidController extends Controller
         $bid = bid::find($id);
         if (!$bid) return response()->json(['error'=>'Not found'],404);
         $bid->update($request->validated());
+        AdminActivityLog::log('bid_updated_direct', ['bid_id' => $id]);
         return response()->json($bid);
     }
 
@@ -48,6 +51,7 @@ class bidController extends Controller
         $bid = bid::find($id);
         if (!$bid) return response()->json(['error'=>'Not found'],404);
         $bid->delete();
+        AdminActivityLog::log('bid_deleted_direct', ['bid_id' => $id]);
         return response()->json(['deleted'=>true]);
     }
 }

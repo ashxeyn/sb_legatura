@@ -22,7 +22,7 @@ class deactivateContractorTeamMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'contractor_user_id' => 'required|exists:contractor_users,contractor_user_id',
+            'contractor_user_id' => 'required|exists:contractor_staff,staff_id',
             'deletion_reason' => 'required|string|min:10',
         ];
     }

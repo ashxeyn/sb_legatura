@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use App\Services\AdminActivityLog;
 use App\Services\UserActivityLogger;
 class authController extends Controller
 {
@@ -192,6 +193,14 @@ class authController extends Controller
                 // Also store the high-level user type (e.g., 'user' or 'admin')
                 if (isset($result['userType'])) {
                     Session::put('userType', $result['userType']);
+                }
+
+                // Log admin login event
+                if (!empty($result['userType']) && $result['userType'] === 'admin') {
+                    $adminId = is_object($user) ? ($user->admin_id ?? null) : ($user['admin_id'] ?? null);
+                    if ($adminId) {
+                        AdminActivityLog::log('admin_login', null, (string) $adminId);
+                    }
                 }
 
                 // Default current role to user_type if present, else fall back to userType

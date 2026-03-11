@@ -15,7 +15,9 @@ class propertyOwnerClass
                 'property_owners.*',
                 'users.email',
                 'users.username',
-                'users.profile_pic',
+                'users.first_name',
+                'users.last_name',
+                'property_owners.profile_pic',
                 DB::raw("CASE WHEN occupations.occupation_name = 'Others' OR occupations.occupation_name IS NULL THEN property_owners.occupation_other ELSE occupations.occupation_name END as occupation")
             );
 
@@ -43,10 +45,9 @@ class propertyOwnerClass
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('property_owners.first_name', 'like', "%{$search}%")
-                  ->orWhere('property_owners.last_name', 'like', "%{$search}%")
-                  ->orWhere('users.email', 'like', "%{$search}%")
-                  ->orWhere('property_owners.phone_number', 'like', "%{$search}%");
+                $q->where('users.first_name', 'like', "%{$search}%")
+                  ->orWhere('users.last_name', 'like', "%{$search}%")
+                  ->orWhere('users.email', 'like', "%{$search}%");
             });
         }
 
@@ -81,8 +82,9 @@ class propertyOwnerClass
                 'property_owners.*',
                 'users.email',
                 'users.username',
-                'users.profile_pic',
-                'users.cover_photo',
+                'property_owners.profile_pic',
+                'users.first_name',
+                'users.last_name',
                 'users.user_type',
                 'valid_ids.valid_id_name',
                 DB::raw("CASE WHEN occupations.occupation_name = 'Others' OR occupations.occupation_name IS NULL THEN property_owners.occupation_other ELSE occupations.occupation_name END as occupation")
@@ -99,13 +101,11 @@ class propertyOwnerClass
         // If user is also a contractor, fetch contractor details
         if ($owner->user_type === 'both') {
             $contractorDetails = DB::table('contractors')
-                ->join('contractor_users', 'contractors.contractor_id', '=', 'contractor_users.contractor_id')
                 ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
-                ->where('contractors.user_id', $owner->user_id)
+                ->where('contractors.owner_id', $owner->owner_id)
                 ->select(
                     'contractors.company_name',
                     'contractors.dti_sec_registration_photo',
-                    'contractor_users.role as position',
                     DB::raw("CASE WHEN contractor_types.type_name = 'Others' OR contractor_types.type_name IS NULL THEN contractors.contractor_type_other ELSE contractor_types.type_name END as contractor_type")
                 )
                 ->first();
@@ -117,19 +117,16 @@ class propertyOwnerClass
         $projects = DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
-            ->leftJoin('users', 'contractors.user_id', '=', 'users.user_id')
-            ->leftJoin('contractor_users', function($join) {
-                $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
-                     ->on('contractors.user_id', '=', 'contractor_users.user_id');
-            })
+            ->leftJoin('property_owners as contractor_po', 'contractors.owner_id', '=', 'contractor_po.owner_id')
+            ->leftJoin('users as contractor_users', 'contractor_po.user_id', '=', 'contractor_users.user_id')
             ->where('project_relationships.owner_id', $owner->owner_id)
             ->select(
                 'projects.*',
                 'project_relationships.created_at',
                 'contractors.company_name',
-                'users.profile_pic as contractor_profile_pic',
-                'contractor_users.authorized_rep_fname as contractor_first_name',
-                'contractor_users.authorized_rep_lname as contractor_last_name'
+                'contractor_po.profile_pic as contractor_profile_pic',
+                'contractor_users.first_name as contractor_first_name',
+                'contractor_users.last_name as contractor_last_name'
             )
             ->orderBy('project_relationships.created_at', 'desc')
             ->get();
@@ -156,12 +153,13 @@ class propertyOwnerClass
 
             // Create User
             $userId = DB::table('users')->insertGetId([
-                'profile_pic' => $data['profile_pic'] ?? null,
                 'username' => $username,
                 'email' => $data['email'],
                 'password_hash' => bcrypt('owner123@!'),
                 'OTP_hash' => 'admin_created',
                 'user_type' => 'property_owner',
+                'first_name' => $data['first_name'] ?? '',
+                'last_name' => $data['last_name'] ?? '',
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -169,10 +167,7 @@ class propertyOwnerClass
             // Create Property Owner
             $ownerId = DB::table('property_owners')->insertGetId([
                 'user_id' => $userId,
-                'last_name' => $data['last_name'],
-                'middle_name' => $data['middle_name'],
-                'first_name' => $data['first_name'],
-                'phone_number' => $data['phone_number'],
+                'profile_pic' => $data['profile_pic'] ?? null,
                 'valid_id_id' => $data['valid_id_id'],
                 'valid_id_photo' => $data['valid_id_photo'],
                 'valid_id_back_photo' => $data['valid_id_back_photo'],
@@ -200,16 +195,15 @@ class propertyOwnerClass
     public function editPropertyOwner($userId, array $data)
     {
         return DB::transaction(function () use ($userId, $data) {
-            // Update User
+            // Update User (names go on users table)
             $userUpdateData = [
                 'email' => $data['email'],
                 'username' => $data['username'],
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'middle_name' => $data['middle_name'] ?? null,
                 'updated_at' => now()
             ];
-
-            if (isset($data['profile_pic'])) {
-                $userUpdateData['profile_pic'] = $data['profile_pic'];
-            }
 
             if (!empty($data['password'])) {
                 $userUpdateData['password_hash'] = bcrypt($data['password']);
@@ -217,12 +211,8 @@ class propertyOwnerClass
 
             DB::table('users')->where('user_id', $userId)->update($userUpdateData);
 
-            // Update Property Owner
+            // Update Property Owner (profile_pic goes on property_owners)
             $ownerUpdateData = [
-                'last_name' => $data['last_name'],
-                'middle_name' => $data['middle_name'],
-                'first_name' => $data['first_name'],
-                'phone_number' => $data['phone_number'],
                 'valid_id_id' => $data['valid_id_id'],
                 'date_of_birth' => $data['date_of_birth'],
                 'age' => $data['age'],
@@ -230,6 +220,10 @@ class propertyOwnerClass
                 'occupation_other' => $data['occupation_other'],
                 'address' => $data['address']
             ];
+
+            if (isset($data['profile_pic'])) {
+                $ownerUpdateData['profile_pic'] = $data['profile_pic'];
+            }
 
             if (isset($data['valid_id_photo'])) {
                 $ownerUpdateData['valid_id_photo'] = $data['valid_id_photo'];

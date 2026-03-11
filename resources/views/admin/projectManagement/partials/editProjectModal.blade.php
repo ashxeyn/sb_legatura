@@ -225,7 +225,7 @@
                       data-bid-id="{{ $contractor->bid_id }}"
                       data-company="{{ $contractor->company_name }}"
                       data-type="{{ $contractor->contractor_type }}"
-                      data-phone="{{ $contractor->phone_number }}"
+                      data-phone=""
                       data-email="{{ $contractor->email }}"
                       data-address="{{ $contractor->address }}"
                       data-pcab="{{ $contractor->pcab_license_no }}"

@@ -245,32 +245,39 @@ class AiService
     /**
      * Get contractor record by user ID.
      *
-     * Handles both direct contractors and contractor_users (team members).
+     * Handles both direct contractors and contractor_staff (team members).
      *
      * @param int $userId
      * @return object|null
      */
     public function getContractorByUserId(int $userId)
     {
-        // Direct contractor lookup
-        $contractor = DB::table('contractors')
+        $po = DB::table('property_owners')
             ->where('user_id', $userId)
+            ->first();
+
+        if (!$po) {
+            return null;
+        }
+
+        // Direct contractor lookup via owner_id
+        $contractor = DB::table('contractors')
+            ->where('owner_id', $po->owner_id)
             ->first();
 
         if ($contractor) {
             return $contractor;
         }
 
-        // Fallback: Check contractor_users (team member)
-        $contractorUser = DB::table('contractor_users')
-            ->where('user_id', $userId)
+        // Fallback: Check contractor_staff (team member)
+        $staff = DB::table('contractor_staff')
+            ->where('owner_id', $po->owner_id)
             ->where('is_active', 1)
-            ->where('is_deleted', 0)
             ->first();
 
-        if ($contractorUser) {
+        if ($staff) {
             return DB::table('contractors')
-                ->where('contractor_id', $contractorUser->contractor_id)
+                ->where('contractor_id', $staff->contractor_id)
                 ->first();
         }
 

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Service for contractor member authorization.
  *
- * ROLE PERMISSIONS (based on contractor_users.role):
+ * ROLE PERMISSIONS (based on contractor_staff.company_role):
  *
  * FULL ACCESS ROLES (can do everything):
  * - owner: contractor primary account - full privileges
@@ -52,7 +52,9 @@ class ContractorAuthorizationService
     {
         // First check if user is a direct contractor owner
         $contractor = DB::table('contractors')
-            ->where('user_id', $userId)
+            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+            ->where('property_owners.user_id', $userId)
+            ->select('contractors.*')
             ->first();
 
         if ($contractor) {
@@ -60,10 +62,10 @@ class ContractorAuthorizationService
         }
 
         // Check if user is a staff member
-        $contractorUser = DB::table('contractor_users')
-            ->where('user_id', $userId)
-            ->where('is_active', 1)
-            ->where('is_deleted', 0)
+        $contractorUser = DB::table('contractor_staff')
+            ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+            ->where('property_owners.user_id', $userId)
+            ->where('contractor_staff.is_active', 1)
             ->first();
 
         if ($contractorUser) {
@@ -84,22 +86,25 @@ class ContractorAuthorizationService
     {
         // First, check if user is a contractor owner (main account)
         $contractor = DB::table('contractors')
-            ->where('user_id', $userId)
+            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+            ->where('property_owners.user_id', $userId)
+            ->select('contractors.*')
             ->first();
 
         if ($contractor) {
             // User is the primary contractor account owner
-            $memberRecord = DB::table('contractor_users')
+            $memberRecord = DB::table('contractor_staff')
                 ->where('contractor_id', $contractor->contractor_id)
-                ->where('user_id', $userId)
-                ->where('is_deleted', 0)
+                ->where('owner_id', $contractor->owner_id)
                 ->first();
 
             if ($memberRecord) {
                 // If the parent contractor is approved, ensure owner is treated as active
-                if (isset($contractor->verification_status) && $contractor->verification_status === 'approved' && ($memberRecord->role ?? null) === 'owner') {
+                if (isset($contractor->verification_status) && $contractor->verification_status === 'approved' && ($memberRecord->company_role ?? null) === 'owner') {
                     $memberRecord->is_active = 1;
                 }
+                $memberRecord->role = $memberRecord->company_role;
+                $memberRecord->contractor_user_id = $memberRecord->staff_id;
                 $memberRecord->contractor_name = $contractor->company_name ?? null;
                 $memberRecord->is_contractor_owner = true;
                 return $memberRecord;
@@ -108,25 +113,27 @@ class ContractorAuthorizationService
             // Virtual owner context if no member record exists
             return (object) [
                 'contractor_user_id' => 0,
+                'staff_id' => 0,
                 'contractor_id' => $contractor->contractor_id,
-                'user_id' => $userId,
                 'role' => 'owner',
+                'company_role' => 'owner',
                 'is_active' => 1,
-                'is_deleted' => 0,
                 'contractor_name' => $contractor->company_name ?? null,
                 'is_contractor_owner' => true,
             ];
         }
 
         // Check if user is a team member
-        $memberRecord = DB::table('contractor_users')
-            ->join('contractors', 'contractor_users.contractor_id', '=', 'contractors.contractor_id')
-            ->where('contractor_users.user_id', $userId)
-            ->where('contractor_users.is_deleted', 0)
+        $memberRecord = DB::table('contractor_staff')
+            ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
+            ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+            ->where('property_owners.user_id', $userId)
             ->select(
-                'contractor_users.*',
+                'contractor_staff.*',
+                'contractor_staff.company_role as role',
+                'contractor_staff.staff_id as contractor_user_id',
                 'contractors.company_name as contractor_name',
-                'contractors.user_id as contractor_owner_user_id'
+                'contractors.owner_id as contractor_owner_id'
             )
             ->first();
 
@@ -303,27 +310,26 @@ class ContractorAuthorizationService
      */
     public function getContractorMembers(int $contractorId): array
     {
-        return DB::table('contractor_users')
-            ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
-            ->where('contractor_users.contractor_id', $contractorId)
-            ->where('contractor_users.is_deleted', 0)
+        return DB::table('contractor_staff')
+            ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+            ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+            ->where('contractor_staff.contractor_id', $contractorId)
             ->select(
-                'contractor_users.contractor_user_id as id',
-                'contractor_users.user_id',
-                'contractor_users.authorized_rep_fname as first_name',
-                'contractor_users.authorized_rep_mname as middle_name',
-                'contractor_users.authorized_rep_lname as last_name',
-                'contractor_users.phone_number as phone',
-                'contractor_users.role',
-                'contractor_users.if_others as role_other',
-                'contractor_users.is_active',
-                'contractor_users.created_at',
+                'contractor_staff.staff_id as id',
+                'property_owners.owner_id',
+                'users.first_name',
+                'users.middle_name',
+                'users.last_name',
+                'contractor_staff.company_role as role',
+                'contractor_staff.role_if_others as role_other',
+                'contractor_staff.is_active',
+                'contractor_staff.created_at',
                 'users.email',
                 'users.username',
-                'users.profile_pic',
+                'property_owners.profile_pic',
                 'users.updated_at'
             )
-            ->orderByRaw("FIELD(contractor_users.role, 'owner', 'representative', 'manager', 'engineer', 'architect', 'others')")
+            ->orderByRaw("FIELD(contractor_staff.company_role, 'owner', 'representative', 'manager', 'engineer', 'architect', 'others')")
             ->get()
             ->toArray();
     }

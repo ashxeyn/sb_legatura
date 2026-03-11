@@ -7,6 +7,7 @@ use App\Http\Requests\admin\storeProjectRequest;
 use App\Http\Requests\admin\updateProjectRequest;
 use App\Models\admin\project;
 use Illuminate\Http\Request;
+use App\Services\AdminActivityLog;
 
 class projectController extends Controller
 {
@@ -34,6 +35,7 @@ class projectController extends Controller
     {
         $data = $request->validated();
         $project = project::create($data);
+        AdminActivityLog::log('project_created', ['project_id' => $project->project_id ?? $project->id]);
         return response()->json($project, 201);
     }
 
@@ -42,6 +44,7 @@ class projectController extends Controller
         $project = project::find($id);
         if (!$project) return response()->json(['error' => 'Not found'], 404);
         $project->update($request->validated());
+        AdminActivityLog::log('project_updated', ['project_id' => $id]);
         return response()->json($project);
     }
 
@@ -50,6 +53,7 @@ class projectController extends Controller
         $project = project::find($id);
         if (!$project) return response()->json(['error' => 'Not found'], 404);
         $project->delete();
+        AdminActivityLog::log('project_deleted', ['project_id' => $id]);
         return response()->json(['deleted' => true]);
     }
 }

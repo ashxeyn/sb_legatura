@@ -25,11 +25,11 @@ class bid extends Model
 
     public function project(): BelongsTo
     {
-        return $this->belongsTo(project::class, 'project_id', 'project_id');
+        return $this->belongsTo(\App\Models\project::class, 'project_id', 'project_id');
     }
 
     public function contractor(): BelongsTo
     {
-        return $this->belongsTo(contractor::class, 'contractor_id', 'contractor_id');
+        return $this->belongsTo(\App\Models\admin\contractorClass::class, 'contractor_id', 'contractor_id');
     }
 }

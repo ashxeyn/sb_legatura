@@ -7,6 +7,7 @@ use App\Http\Requests\admin\storeMilestoneRequest;
 use App\Http\Requests\admin\updateMilestoneRequest;
 use App\Models\admin\milestone;
 use Illuminate\Http\Request;
+use App\Services\AdminActivityLog;
 
 class milestoneController extends Controller
 {
@@ -30,6 +31,7 @@ class milestoneController extends Controller
     public function store(storeMilestoneRequest $request)
     {
         $m = milestone::create($request->validated());
+        AdminActivityLog::log('milestone_created', ['milestone_id' => $m->milestone_id ?? $m->id, 'project_id' => $m->project_id]);
         return response()->json($m,201);
     }
 
@@ -38,6 +40,7 @@ class milestoneController extends Controller
         $m = milestone::find($id);
         if (!$m) return response()->json(['error'=>'Not found'],404);
         $m->update($request->validated());
+        AdminActivityLog::log('milestone_updated', ['milestone_id' => $id]);
         return response()->json($m);
     }
 
@@ -46,6 +49,7 @@ class milestoneController extends Controller
         $m = milestone::find($id);
         if (!$m) return response()->json(['error'=>'Not found'],404);
         $m->delete();
+        AdminActivityLog::log('milestone_deleted', ['milestone_id' => $id]);
         return response()->json(['deleted'=>true]);
     }
 }

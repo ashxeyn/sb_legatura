@@ -93,11 +93,11 @@ class MilestoneService
             ->update(['project_status' => 'in_progress']);
 
         // Notify contractor
-        $cUserId = DB::table('contractor_users')
-            ->where('contractor_id', $milestone->contractor_id)
-            ->where('is_active', 1)
-            ->where('is_deleted', 0)
-            ->value('user_id');
+        $cUserId = DB::table('contractors')
+            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+            ->where('contractors.contractor_id', $milestone->contractor_id)
+            ->where('contractors.is_active', 1)
+            ->value('property_owners.user_id');
         if ($cUserId) {
             $msName = $milestone->milestone_name ?? 'Milestone';
             NotificationService::create(
@@ -147,11 +147,11 @@ class MilestoneService
             ]);
 
         // Notify contractor
-        $cUserId = DB::table('contractor_users')
-            ->where('contractor_id', $milestone->contractor_id)
-            ->where('is_active', 1)
-            ->where('is_deleted', 0)
-            ->value('user_id');
+        $cUserId = DB::table('contractors')
+            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+            ->where('contractors.contractor_id', $milestone->contractor_id)
+            ->where('contractors.is_active', 1)
+            ->value('property_owners.user_id');
         if ($cUserId) {
             $msName     = $milestone->milestone_name ?? 'Milestone';
             $reasonNote = $reason ? " Reason: {$reason}" : '';
@@ -196,11 +196,11 @@ class MilestoneService
             ->select('m.milestone_name', 'm.contractor_id', 'p.project_id', 'p.project_title')
             ->first();
         if ($ms) {
-            $cUserId = DB::table('contractor_users')
-                ->where('contractor_id', $ms->contractor_id)
-                ->where('is_active', 1)
-                ->where('is_deleted', 0)
-                ->value('user_id');
+            $cUserId = DB::table('contractors')
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('contractors.contractor_id', $ms->contractor_id)
+                ->where('contractors.is_active', 1)
+                ->value('property_owners.user_id');
             if ($cUserId) {
                 NotificationService::create(
                     $cUserId,
@@ -294,11 +294,11 @@ class MilestoneService
             ->select('mi.milestone_item_title', 'm.contractor_id', 'p.project_id', 'p.project_title')
             ->first();
         if ($itemInfo) {
-            $cUserId = DB::table('contractor_users')
-                ->where('contractor_id', $itemInfo->contractor_id)
-                ->where('is_active', 1)
-                ->where('is_deleted', 0)
-                ->value('user_id');
+            $cUserId = DB::table('contractors')
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('contractors.contractor_id', $itemInfo->contractor_id)
+                ->where('contractors.is_active', 1)
+                ->value('property_owners.user_id');
             if ($cUserId) {
                 NotificationService::create(
                     $cUserId,
@@ -764,15 +764,20 @@ class MilestoneService
      */
     public function resolveContractor(int $userId): ?object
     {
-        $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+        $po = DB::table('property_owners')->where('user_id', $userId)->first();
+        if (!$po) {
+            return null;
+        }
+        // Check if owner of a contractor company
+        $contractor = DB::table('contractors')->where('owner_id', $po->owner_id)->first();
         if (!$contractor) {
-            $cu = DB::table('contractor_users')
-                ->where('user_id', $userId)
+            // Check if staff member
+            $staff = DB::table('contractor_staff')
+                ->where('owner_id', $po->owner_id)
                 ->where('is_active', 1)
-                ->where('is_deleted', 0)
                 ->first();
-            if ($cu) {
-                $contractor = DB::table('contractors')->where('contractor_id', $cu->contractor_id)->first();
+            if ($staff) {
+                $contractor = DB::table('contractors')->where('contractor_id', $staff->contractor_id)->first();
             }
         }
         return $contractor;
@@ -799,7 +804,7 @@ class MilestoneService
         // Verify payment exists and belongs to contractor's project
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
-            ->leftJoin('contractor_users as cu', 'mp.contractor_user_id', '=', 'cu.contractor_user_id')
+            ->leftJoin('contractor_staff as cu', 'mp.contractor_user_id', '=', 'cu.staff_id')
             ->where('mp.payment_id', $paymentId)
             ->select('mp.*', 'p.selected_contractor_id', 'p.project_title', 'p.project_id as proj_id')
             ->first();
@@ -811,7 +816,7 @@ class MilestoneService
         // Access check: contractor_user_id match OR selected_contractor_id match
         $hasAccess = false;
         if ($payment->contractor_user_id) {
-            $cu = DB::table('contractor_users')->where('contractor_user_id', $payment->contractor_user_id)->first();
+            $cu = DB::table('contractor_staff')->where('staff_id', $payment->contractor_user_id)->first();
             if ($cu && $cu->contractor_id == $contractorId) {
                 $hasAccess = true;
             }
@@ -889,7 +894,7 @@ class MilestoneService
         // Access check
         $hasAccess = false;
         if ($payment->contractor_user_id) {
-            $cu = DB::table('contractor_users')->where('contractor_user_id', $payment->contractor_user_id)->first();
+            $cu = DB::table('contractor_staff')->where('staff_id', $payment->contractor_user_id)->first();
             if ($cu && $cu->contractor_id == $contractorId) {
                 $hasAccess = true;
             }

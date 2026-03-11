@@ -120,7 +120,7 @@
                         </div>
                         <div>
                           <p class="text-xs text-gray-500">Contact No.</p>
-                          <p class="font-semibold text-gray-800">{{ $propertyOwner->phone_number }}</p>
+                          <p class="font-semibold text-gray-800">{{ $propertyOwner->contact_number ?? 'N/A' }}</p>
                         </div>
                       </div>
                       <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-lg hover:bg-gradient-to-br hover:from-purple-50 hover:to-purple-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer">
@@ -573,10 +573,6 @@
                 <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Last name</label>
                 <input type="text" id="edit_last_name" name="last_name" placeholder="Enter last name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                </div>
-                <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Contact no.</label>
-                <input type="tel" id="edit_phone_number" name="phone_number" placeholder="Enter contact number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
                 </div>
             </div>
             </div>

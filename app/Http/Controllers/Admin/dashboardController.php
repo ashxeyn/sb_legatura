@@ -143,12 +143,13 @@ class dashboardController extends authController
                 'projects.project_title',
                 DB::raw('NULL as project_image'),
                 'projects.project_status',
-                DB::raw("COALESCE(property_owners.first_name, '') as first_name"),
-                DB::raw("COALESCE(property_owners.last_name, '') as last_name"),
+                DB::raw("COALESCE(users.first_name, '') as first_name"),
+                DB::raw("COALESCE(users.last_name, '') as last_name"),
                 DB::raw('COUNT(bids.bid_id) as bid_count')
             )
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
             ->leftJoin('bids', 'projects.project_id', '=', 'bids.project_id');
 
         if ($start !== null && $end !== null) {
@@ -159,8 +160,8 @@ class dashboardController extends authController
                 'projects.project_id',
                 'projects.project_title',
                 'projects.project_status',
-                'property_owners.first_name',
-                'property_owners.last_name'
+                'users.first_name',
+                'users.last_name'
             )
             ->orderByDesc('bid_count')
             ->limit($limit)
@@ -365,9 +366,10 @@ class dashboardController extends authController
             ->where(function ($query) {
                 $query->whereExists(function ($sub) {
                     $sub->select(DB::raw(1))
-                        ->from('contractor_users')
-                        ->whereColumn('contractor_users.user_id', 'users.user_id')
-                        ->where('contractor_users.is_active', 1);
+                        ->from('contractors')
+                        ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('contractors.is_active', 1);
                 })
                 ->orWhereExists(function ($sub) {
                     $sub->select(DB::raw(1))
@@ -410,11 +412,12 @@ class dashboardController extends authController
                     'contractors.contractor_id',
                     'contractors.company_name',
                     'contractors.completed_projects',
-                    'users.profile_pic',
+                    'owner_po.profile_pic',
                     'contractor_types.type_name',
                     DB::raw('contractors.completed_projects as period_count')
                 )
-                ->join('users', 'contractors.user_id', '=', 'users.user_id')
+                ->join('property_owners as owner_po', 'contractors.owner_id', '=', 'owner_po.owner_id')
+                ->join('users', 'owner_po.user_id', '=', 'users.user_id')
                 ->join('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
                 ->orderByDesc('contractors.completed_projects')
                 ->limit($limit)
@@ -437,11 +440,12 @@ class dashboardController extends authController
                 'contractors.contractor_id',
                 'contractors.company_name',
                 'contractors.completed_projects',
-                'users.profile_pic',
+                'owner_po.profile_pic',
                 'contractor_types.type_name',
                 DB::raw('IFNULL(pc.period_count, 0) as period_count')
             )
-            ->join('users', 'contractors.user_id', '=', 'users.user_id')
+            ->join('property_owners as owner_po', 'contractors.owner_id', '=', 'owner_po.owner_id')
+            ->join('users', 'owner_po.user_id', '=', 'users.user_id')
             ->join('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
             ->leftJoinSub($periodCounts, 'pc', 'pc.selected_contractor_id', '=', 'contractors.contractor_id')
             ->orderByDesc('pc.period_count')
@@ -455,9 +459,6 @@ class dashboardController extends authController
      */
     private function getTopPropertyOwners(?string $start = null, ?string $end = null, $limit = 5)
     {
-        $hasPic    = Schema::hasColumn('users', 'profile_pic');
-        $hasUserFk = Schema::hasColumn('property_owners', 'user_id');
-
         // Count projects per owner in the period (via project_relationships)
         $periodCounts = DB::table('project_relationships')
             ->select('owner_id', DB::raw('COUNT(*) as period_projects'));
@@ -470,24 +471,16 @@ class dashboardController extends authController
 
         $selects = [
             'property_owners.owner_id',
-            'property_owners.first_name',
-            'property_owners.last_name',
+            'users.first_name',
+            'users.last_name',
             DB::raw('IFNULL(pc.period_projects, 0) as completed_projects'),
+            'property_owners.profile_pic',
         ];
-
-        if ($hasPic && $hasUserFk) {
-            $selects[] = 'users.profile_pic';
-        } else {
-            $selects[] = DB::raw('NULL as profile_pic');
-        }
 
         $qb = DB::table('property_owners')
             ->leftJoinSub($periodCounts, 'pc', 'pc.owner_id', '=', 'property_owners.owner_id')
+            ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->select($selects);
-
-        if ($hasPic && $hasUserFk) {
-            $qb->join('users', 'property_owners.user_id', '=', 'users.user_id');
-        }
 
         // No outer GROUP BY needed: the subquery already produces one row per owner_id
         // and both joins are 1-to-1, so ONLY_FULL_GROUP_BY is not triggered.
@@ -511,9 +504,10 @@ class dashboardController extends authController
             ->where(function ($query) {
                 $query->whereExists(function ($sub) {
                     $sub->select(DB::raw(1))
-                        ->from('contractor_users')
-                        ->whereColumn('contractor_users.user_id', 'users.user_id')
-                        ->where('contractor_users.is_active', 1);
+                        ->from('contractors')
+                        ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('contractors.is_active', 1);
                 })
                 ->orWhereExists(function ($sub) {
                     $sub->select(DB::raw(1))
@@ -532,9 +526,10 @@ class dashboardController extends authController
             })
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
-                    ->from('contractor_users')
-                    ->whereColumn('contractor_users.user_id', 'users.user_id')
-                    ->where('contractor_users.is_active', 1);
+                    ->from('contractors')
+                    ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                    ->whereColumn('property_owners.user_id', 'users.user_id')
+                    ->where('contractors.is_active', 1);
             })
             ->count();
 
@@ -661,9 +656,10 @@ class dashboardController extends authController
             ->where(function ($query) {
                 $query->whereExists(function ($sub) {
                     $sub->select(DB::raw(1))
-                        ->from('contractor_users')
-                        ->whereColumn('contractor_users.user_id', 'users.user_id')
-                        ->where('contractor_users.is_active', 1);
+                        ->from('contractors')
+                        ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('contractors.is_active', 1);
                 })
                 ->orWhereExists(function ($sub) {
                     $sub->select(DB::raw(1))
@@ -812,9 +808,10 @@ class dashboardController extends authController
                 ->where(function ($q) {
                     $q->whereExists(function ($sub) {
                         $sub->select(DB::raw(1))
-                            ->from('contractor_users')
-                            ->whereColumn('contractor_users.user_id', 'users.user_id')
-                            ->where('contractor_users.is_active', 1);
+                            ->from('contractors')
+                            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                            ->whereColumn('property_owners.user_id', 'users.user_id')
+                            ->where('contractors.is_active', 1);
                     })
                     ->orWhereExists(function ($sub) {
                         $sub->select(DB::raw(1))
@@ -837,9 +834,10 @@ class dashboardController extends authController
             })
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
-                    ->from('contractor_users')
-                    ->whereColumn('contractor_users.user_id', 'users.user_id')
-                    ->where('contractor_users.is_active', 1);
+                    ->from('contractors')
+                    ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                    ->whereColumn('property_owners.user_id', 'users.user_id')
+                    ->where('contractors.is_active', 1);
             })
             ->count();
 

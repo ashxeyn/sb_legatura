@@ -232,17 +232,20 @@ class AuthService
             if ($user->user_type === 'admin') {
                 $isVerified = true;
             } elseif ($user->user_type === 'staff') {
-                // Staff members (contractor team members) - verify via contractor_users and parent contractor
-                \Log::info('Staff user detected, checking contractor_users table', ['user_id' => $user->user_id]);
-                $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
-                \Log::info('contractor_users lookup result', ['found' => $contractorUser ? 'yes' : 'no']);
-                \Log::info('contractor_users lookup result', ['found' => $contractorUser ? 'yes' : 'no']);
+                // Staff members (contractor team members) - verify via contractor_staff and parent contractor
+                \Log::info('Staff user detected, checking contractor_staff table', ['user_id' => $user->user_id]);
+                $propertyOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                $contractorStaff = null;
+                if ($propertyOwner) {
+                    $contractorStaff = DB::table('contractor_staff')->where('owner_id', $propertyOwner->owner_id)->first();
+                }
+                \Log::info('contractor_staff lookup result', ['found' => $contractorStaff ? 'yes' : 'no']);
 
-                if ($contractorUser && $contractorUser->is_active == 1 && $contractorUser->is_deleted == 0) {
+                if ($contractorStaff && $contractorStaff->is_active == 1) {
                     // Check if parent contractor is approved
-                    $contractor = DB::table('contractors')->where('contractor_id', $contractorUser->contractor_id)->first();
+                    $contractor = DB::table('contractors')->where('contractor_id', $contractorStaff->contractor_id)->first();
                     \Log::info('Parent contractor lookup', [
-                        'contractor_id' => $contractorUser->contractor_id,
+                        'contractor_id' => $contractorStaff->contractor_id,
                         'found' => $contractor ? 'yes' : 'no',
                         'verification_status' => $contractor->verification_status ?? 'N/A'
                     ]);
@@ -258,33 +261,26 @@ class AuthService
                         $rejectionReason = 'The contractor account is pending verification';
                         \Log::info('Staff user - contractor pending verification');
                     }
-                } elseif ($contractorUser && $contractorUser->is_active == 0) {
+                } elseif ($contractorStaff && $contractorStaff->is_active == 0) {
                     $rejectionReason = 'Your team member account has been deactivated by the contractor';
-                    \Log::info('Staff user - contractor_users record inactive');
-                } elseif ($contractorUser && $contractorUser->is_deleted == 1) {
-                    $rejectionReason = 'Your team member account has been removed';
-                    \Log::info('Staff user - contractor_users record deleted');
+                    \Log::info('Staff user - contractor_staff record inactive');
                 } else {
-                    \Log::warning('Staff user has NO contractor_users record', ['user_id' => $user->user_id]);
+                    \Log::warning('Staff user has NO contractor_staff record', ['user_id' => $user->user_id]);
                 }
             } elseif ($user->user_type === 'contractor') {
                 $contractor = null;
-                $contractorUser = null;
                 try {
-                    $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+                    $po = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                    if ($po) {
+                        $contractor = DB::table('contractors')->where('owner_id', $po->owner_id)->first();
+                    }
                 } catch (\Exception $e) {
                     \Log::warning('contractors lookup failed: ' . $e->getMessage());
                     $contractor = null;
                 }
-                try {
-                    $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
-                } catch (\Exception $e) {
-                    \Log::warning('contractor_users lookup failed: ' . $e->getMessage());
-                    $contractorUser = null;
-                }
 
                 if ($contractor && $contractor->verification_status === 'approved' &&
-                    $contractorUser && $contractorUser->is_active == 1) {
+                    $contractor->is_active == 1) {
                     $isVerified = true;
                 } elseif ($contractor && $contractor->verification_status === 'rejected') {
                     $rejectionReason = $contractor->rejection_reason;
@@ -312,8 +308,9 @@ class AuthService
                 $oApproved = false;
                 try {
                     $cApproved = DB::table('contractors')
-                        ->where('user_id', $user->user_id)
-                        ->where('verification_status', 'approved')
+                        ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                        ->where('property_owners.user_id', $user->user_id)
+                        ->where('contractors.verification_status', 'approved')
                         ->exists();
                 } catch (\Exception $e) {
                     \Log::warning('contractors exists lookup failed: ' . $e->getMessage());
@@ -341,7 +338,10 @@ class AuthService
                     $contractorCreated = null;
                     $ownerCreated = null;
                     try {
-                        $contractorCreated = DB::table('contractors')->where('user_id', $user->user_id)->value('created_at');
+                        $contractorCreated = DB::table('contractors')
+                            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                            ->where('property_owners.user_id', $user->user_id)
+                            ->value('contractors.created_at');
                     } catch (\Exception $e) {
                         \Log::warning('contractors value(created_at) lookup failed: ' . $e->getMessage());
                         $contractorCreated = null;
@@ -364,8 +364,9 @@ class AuthService
                     $oRejected = false;
                     try {
                         $cRejected = DB::table('contractors')
-                            ->where('user_id', $user->user_id)
-                            ->where('verification_status', 'rejected')
+                            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                            ->where('property_owners.user_id', $user->user_id)
+                            ->where('contractors.verification_status', 'rejected')
                             ->exists();
                     } catch (\Exception $e) {
                         \Log::warning('contractors rejected exists lookup failed: ' . $e->getMessage());
@@ -385,10 +386,11 @@ class AuthService
                     if ($cRejected) {
                         try {
                             $reason = DB::table('contractors')
-                                ->where('user_id', $user->user_id)
-                                ->whereNotNull('rejection_reason')
-                                ->orderBy('updated_at', 'desc')
-                                ->value('rejection_reason');
+                                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                                ->where('property_owners.user_id', $user->user_id)
+                                ->whereNotNull('contractors.rejection_reason')
+                                ->orderBy('contractors.updated_at', 'desc')
+                                ->value('contractors.rejection_reason');
                         } catch (\Exception $e) {
                             \Log::warning('contractors rejection reason lookup failed: ' . $e->getMessage());
                             $reason = null;
