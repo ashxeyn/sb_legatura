@@ -221,6 +221,39 @@ class accountClass
     public function createContractorUser($data)
     {
         try {
+            // Prefer the new contractor_staff table when available. It links to property_owners
+            // via owner_id so we resolve owner_id from the provided user_id when possible.
+            if (Schema::hasTable('contractor_staff')) {
+                $ownerId = null;
+                try {
+                    if (!empty($data['user_id'])) {
+                        $ownerRow = DB::table('property_owners')->where('user_id', $data['user_id'])->first();
+                        if ($ownerRow) $ownerId = $ownerRow->owner_id ?? null;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to resolve owner_id in createContractorUser: ' . $e->getMessage());
+                }
+
+                $insertData = [
+                    'contractor_id' => $data['contractor_id'],
+                    'owner_id' => $ownerId ?? null,
+                    'company_role' => 'representative',
+                    'role_if_others' => null,
+                    'is_active' => 0,
+                    'created_at' => now()
+                ];
+
+                try {
+                    // Try to return an id when possible; if not supported, fall back to plain insert
+                    $id = DB::table('contractor_staff')->insertGetId($insertData);
+                    return $id;
+                } catch (\Throwable $e) {
+                    DB::table('contractor_staff')->insert($insertData);
+                    return null;
+                }
+            }
+
+            // Backwards-compatible fallback: insert into legacy contractor_users if present
             if (!Schema::hasTable('contractor_users')) {
                 Log::warning('createContractorUser skipped: contractor_users table does not exist');
                 return null;

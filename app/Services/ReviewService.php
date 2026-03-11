@@ -71,6 +71,7 @@ class ReviewService
         $existing = DB::table('reviews')
             ->where('reviewer_user_id', $reviewerUserId)
             ->where('project_id', $projectId)
+            ->where('is_deleted', 0)
             ->first();
         if ($existing) {
             return ['success' => false, 'message' => 'You have already reviewed this project.'];
@@ -221,6 +222,7 @@ class ReviewService
             ->leftJoin('property_owners as rpo', 'ru.user_id', '=', 'rpo.user_id')
             ->leftJoin('contractors as c', 'rpo.owner_id', '=', 'c.owner_id')
             ->where('r.project_id', $projectId)
+            ->where('r.is_deleted', 0)
             ->select(
                 'r.review_id', 'r.project_id', 'r.reviewer_user_id', 'r.reviewee_user_id',
                 'r.rating', 'r.comment', 'r.created_at',
@@ -252,6 +254,7 @@ class ReviewService
         $existing = DB::table('reviews')
             ->where('reviewer_user_id', $userId)
             ->where('project_id', $projectId)
+            ->where('is_deleted', 0)
             ->first();
         if ($existing) {
             return ['can_review' => false, 'reason' => 'Already reviewed.'];
@@ -283,6 +286,7 @@ class ReviewService
     {
         $stats = DB::table('reviews')
             ->where('reviewee_user_id', $userId)
+            ->where('is_deleted', 0)
             ->whereNotNull('rating')
             ->select(
                 DB::raw('COUNT(review_id) as total_reviews'),

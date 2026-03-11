@@ -444,7 +444,8 @@ class messageClass extends Model
 
         $name = $user->username ?? $user->email;
         $type = $user->user_type ?? 'user';
-        $avatar = url('storage/' . ($user->profile_pic ?? 'default-avatar.png'));
+        $profilePic = isset($user->profile_pic) ? $user->profile_pic : null;
+        $avatar = url('storage/' . ($profilePic ?: 'default-avatar.png'));
 
         // Polymorphic lookup for profile details
         if ($type === 'admin') {
@@ -467,8 +468,8 @@ class messageClass extends Model
             }
         }
 
-        // Use UI Avatars as fallback
-        if (!$user->profile_pic) {
+        // Use UI Avatars as fallback when no profile picture is available
+        if (empty($profilePic)) {
             $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=6366f1&color=fff&bold=true';
         }
 

@@ -74,6 +74,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
   // Personal Information Fields
   const [username, setUsername] = useState(userData?.username || '');
   const [firstName, setFirstName] = useState(userData?.first_name || '');
+  const [middleName, setMiddleName] = useState(userData?.middle_name || '');
   const [lastName, setLastName] = useState(userData?.last_name || '');
 
   const [occupation, setOccupation] = useState(userData?.occupation || '');
@@ -122,6 +123,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
   const [prefilledFields, setPrefilledFields] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [showConfirmSaveModal, setShowConfirmSaveModal] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     // Load startup data in sequence: provinces -> profile -> occupations
@@ -137,24 +140,20 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       try { await loadVerificationStatus(); } catch (e) { }
 
       // Now fetch full profile after provinces are populated so address resolution can match
-      console.log('EditProfile: forcing full profile fetch from /api/profile/fetch (after provinces)');
       try { await fetchFullProfile(); } catch (e) { console.warn('fetchFullProfile failed on startup', e); }
 
       // load occupations dropdown (normalize multiple possible shapes)
       (async () => {
         try {
           const formRes = await api_request('/api/signup-form', { method: 'GET' });
-          console.log('EditProfile: /api/signup-form response ->', formRes);
           const rawOcc = formRes?.data?.data?.occupations || formRes?.data?.occupations || formRes?.data?.form_data?.occupations ||
             formRes?.data?.data?.form_data?.occupations || (await role_service.get_switch_form_data())?.data?.form_data?.occupations || [];
-          console.log('EditProfile: raw occupations array ->', rawOcc);
           const normalized = (Array.isArray(rawOcc) ? rawOcc : []).map((item: any) => {
             const id = item?.id ?? item?.occupation_id ?? item?.ID ?? '';
             const name = item?.name ?? item?.occupation_name ?? item?.occupation ?? item?.title ?? '';
             return { id: `${id}`, name: `${name}`.trim() };
           }).filter((it: any) => it.name && it.name.length > 0);
           setOccupationsList(normalized);
-          console.log('Loaded occupations for dropdown (normalized):', normalized.length, normalized[0] || null);
         } catch (e) {
           console.warn('Failed to load occupations for dropdown', e);
         }
@@ -198,16 +197,14 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       const activeFromStored = sType === 'both' ? sPref : (sType === 'property_owner' ? 'owner' : sType);
       const roleToUse = activeFromStored || activeRole;
       const roleQuery = roleToUse ? `?role=${encodeURIComponent(roleToUse)}` : '';
-      console.log('Fetching profile with role (resolved):', roleToUse);
       const resp = await api_request(`/api/profile/fetch${roleQuery}`);
-      console.log('fetchFullProfile response:', resp);
       if (resp && resp.success && resp.data) {
         const payload = resp.data.data || resp.data || {};
         const u = payload.user || payload;
         const owner = payload.owner || {};
         const c = payload.contractor || {};
         if (u || owner || (c && Object.keys(c).length)) {
-          console.log('fetchFullProfile user payload:', u);
+
           // Merge carefully: prefer base user row, then overlay only the active role's fields
           const activeIsOwner = String(roleToUse).toLowerCase().includes('owner');
           const activeIsContractor = String(roleToUse).toLowerCase().includes('contractor');
@@ -219,6 +216,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
 
           setUsername((merged && (merged.username || merged.user_name)) || '');
           setFirstName((merged && (merged.first_name || merged.fname)) || '');
+          setMiddleName((merged && (merged.middle_name || merged.mname)) || '');
           setLastName((merged && (merged.last_name || merged.lname)) || '');
           // Occupation fields: prefer explicit occupation_name, then occupation, then occupation_other
           const resolvedOccupationName = (payload && payload.occupation_name) || merged.occupation_name || merged.occupation || merged.occupation_other || '';
@@ -232,8 +230,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           setDateOfBirth(merged.date_of_birth || '');
 
           // Bio: populate per-role state so both tabs show the correct value
-          setOwnerBio((owner && owner.bio) || '');
-          setContractorBio((c && c.bio) || '');
+          setOwnerBio(owner?.bio ?? merged?.bio ?? (u && u.bio) ?? '');
+          setContractorBio(c?.bio ?? merged?.bio ?? (u && u.bio) ?? '');
 
           // Address: user row may store address_* or owner.address; parse combined address when separate fields missing
           let street = (u && (u.address_street || u.address)) || owner.address_street || '';
@@ -306,13 +304,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                 setAddressBarangay(barangay || '');
               }
             }
-            console.log('Address populated (owner):', {
-              street: resolved.street || street,
-              province: resolved.provCode || province,
-              city: resolved.cityCode || city,
-              barangay: resolved.barangayCode || barangay,
-              postal: resolved.postal || postal,
-            });
+
           } catch (e) {
             console.warn('Failed to map address names to PSGC codes:', e);
             setAddressStreet(street);
@@ -324,9 +316,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
 
           // contractor-specific
           if (c && Object.keys(c).length) {
-            console.log('fetchFullProfile contractor payload:', c);
             // Only set contractor-specific fields if viewing contractor
-            if (activeIsContractor) {
+              if (activeIsContractor) {
               setCompanyName(c.company_name || '');
               setCompanyWebsite(c.company_website || '');
               setCompanySocialMedia(c.company_social_media || '');
@@ -335,7 +326,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
               setPicabNumber(c.picab_number || '');
               setBusinessPermitNumber(c.business_permit_number || '');
               setTinNumber(c.picab_number || c.tin_business_reg_number || '');
-              setContractorBio(c.bio || '');
+              setContractorBio(c?.bio ?? merged?.bio ?? (u && u.bio) ?? '');
             }
 
             // If the fetched role is contractor, prefer contractor business_address for Addresses tab
@@ -350,7 +341,6 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
               // Attempt to map textual province/city/barangay into PSGC codes so dropdowns display correctly
               try {
                 const resolved = await resolveAddressParts([bStreet, bBarangay, bCity, bProvince, bPostal]);
-                console.log('Contractor business_address mapping:', { bStreet, bBarangay, bCity, bProvince, bPostal, provCode: resolved.provCode, cityCode: resolved.cityCode, barangayCode: resolved.barangayCode });
                 setAddressStreet(resolved.street || bStreet);
                 setAddressPostal(resolved.postal || bPostal);
                 if (resolved.provCode) {
@@ -396,13 +386,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                     setAddressBarangay(bBarangay || '');
                   }
                 }
-                console.log('Address populated (contractor):', {
-                  street: resolved.street || bStreet,
-                  province: resolved.provCode || bProvince,
-                  city: resolved.cityCode || bCity,
-                  barangay: resolved.barangayCode || bBarangay,
-                  postal: resolved.postal || bPostal,
-                });
+
               } catch (err) {
                 // fallback to raw values
                 setAddressStreet(bStreet);
@@ -417,20 +401,10 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           // No client-side 'pending verification' flags — all updates apply immediately.
           setPendingVerifications({});
 
-          console.log('fetchFullProfile populated fields:', {
-            username: u.username,
-            first_name: u.first_name,
-            last_name: u.last_name,
-            address_street: u.address_street || u.address,
-            company_name: (payload.contractor || {}).company_name,
-            picab_number: (payload.contractor || {}).picab_number,
-          });
-
           // Optionally persist enriched user data (merge owner/contractor into a single object)
           try {
             const mergedToSave = { ...(u || {}), ...(owner || {}), contractor: c || {} };
             await storage_service.save_user_data(mergedToSave);
-            console.log('Saved merged user to storage');
           } catch (e) {
             // ignore storage errors
           }
@@ -741,11 +715,70 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
     return null;
   };
 
+  // Validation helpers for inline field errors
+  const clearError = (field: string) => {
+    setErrors(prev => {
+      const { [field]: _, ...rest } = prev as any;
+      return rest as Record<string, string>;
+    });
+  };
+
+  const validateField = (field: string, value: string) => {
+    const v = (value || '').toString().trim();
+    // Fields to validate: username, firstName, lastName
+    if (field === 'username' || field === 'firstName' || field === 'lastName') {
+      if (!v) {
+        const msg = field === 'username' ? 'Username is required' : 'This field is required';
+        setErrors(prev => ({ ...prev, [field]: msg }));
+        return false;
+      }
+      // Disallow digits or special characters (allow letters and spaces only)
+      const invalidRe = /[^A-Za-z\s]/;
+      if (invalidRe.test(v)) {
+        setErrors(prev => ({ ...prev, [field]: 'No numbers or special characters allowed' }));
+        return false;
+      }
+    }
+    // clear error if ok
+    setErrors(prev => {
+      const { [field]: _, ...rest } = prev as any;
+      return rest as Record<string, string>;
+    });
+    return true;
+  };
+
+  const validateAll = () => {
+    const ok1 = validateField('username', username);
+    const ok2 = validateField('firstName', firstName);
+    const ok3 = validateField('lastName', lastName);
+    return ok1 && ok2 && ok3;
+  };
+
+  const validateAddressFields = () => {
+    // require all address fields when Addresses tab is active
+    const missing: Record<string, string> = {};
+    if (!addressProvince || `${addressProvince}`.toString().trim() === '') missing.addressProvince = 'Province is required';
+    if (!addressCity || `${addressCity}`.toString().trim() === '') missing.addressCity = 'City/Municipality is required';
+    if (!addressBarangay || `${addressBarangay}`.toString().trim() === '') missing.addressBarangay = 'Barangay is required';
+    if (!addressStreet || `${addressStreet}`.toString().trim() === '') missing.addressStreet = 'Street address is required';
+    if (!addressPostal || `${addressPostal}`.toString().trim() === '') missing.addressPostal = 'Postal code is required';
+
+    setErrors(prev => {
+      // remove previous address errors
+      const cleaned = { ...prev } as any;
+      delete cleaned.addressProvince; delete cleaned.addressCity; delete cleaned.addressBarangay; delete cleaned.addressStreet; delete cleaned.addressPostal;
+      return { ...cleaned, ...missing } as Record<string, string>;
+    });
+
+    return Object.keys(missing).length === 0;
+  };
+
   const handleSave = async () => {
-    // Validate required fields
-    if (!username.trim()) {
-      Alert.alert('Error', 'Username is required');
-      return;
+    // Validate fields based on active tab
+    if (currentTab === 'personal') {
+      if (!validateAll()) return;
+    } else if (currentTab === 'addresses') {
+      if (!validateAddressFields()) return;
     }
 
     setIsSaving(true);
@@ -755,6 +788,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       // Personal Information
       formData.append('username', username);
       formData.append('first_name', firstName);
+      // Always include middle_name field so backend can clear it when user empties the input
+      formData.append('middle_name', middleName ?? '');
 
       // Last name: allow updates
       if (lastName) formData.append('last_name', lastName);
@@ -957,8 +992,9 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
 
         await storage_service.save_user_data(updatedUser);
 
-        // Notify parent (App.tsx) so its user_data stays fresh
-        if (typeof onSaveSuccess === 'function') {
+        // Notify parent (App.tsx) so its user_data stays fresh and optionally navigate away.
+        // Do NOT call onSaveSuccess when saving from Addresses tab to avoid automatic navigation.
+        if (currentTab === 'personal' && typeof onSaveSuccess === 'function') {
           try { onSaveSuccess(updatedUser); } catch (e) {}
         }
 
@@ -1058,12 +1094,14 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
 
               <Text style={styles.label}>Username</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.username && styles.inputError]}
                 value={username}
-                onChangeText={setUsername}
+                onChangeText={(v) => { setUsername(v); if (errors.username) clearError('username'); }}
+                onBlur={() => validateField('username', username)}
                 placeholder="Enter username"
                 placeholderTextColor="#999"
               />
+              {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
 
               {/* Email removed from edit form */}
 
@@ -1071,21 +1109,34 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                 <>
                   <Text style={styles.label}>First Name</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, errors.firstName && styles.inputError]}
                     value={firstName}
-                    onChangeText={setFirstName}
+                    onChangeText={(v) => { setFirstName(v); if (errors.firstName) clearError('firstName'); }}
+                    onBlur={() => validateField('firstName', firstName)}
                     placeholder="Enter first name"
+                    placeholderTextColor="#999"
+                  />
+                  {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
+
+                  <Text style={styles.label}>Middle Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={middleName}
+                    onChangeText={setMiddleName}
+                    placeholder="Enter middle name"
                     placeholderTextColor="#999"
                   />
 
                   <Text style={styles.label}>Last Name</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, errors.lastName && styles.inputError]}
                     value={lastName}
-                    onChangeText={setLastName}
+                    onChangeText={(v) => { setLastName(v); if (errors.lastName) clearError('lastName'); }}
+                    onBlur={() => validateField('lastName', lastName)}
                     placeholder="Enter last name"
                     placeholderTextColor="#999"
                   />
+                  {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
                 </>
               )}
 
@@ -1329,51 +1380,58 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                 Address Information {renderVerificationBadge('address')}
               </Text>
 
-              <Text style={styles.label}>Street Address</Text>
-              <TextInput
-                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
-                value={addressStreet}
-                onChangeText={setAddressStreet}
-                onBlur={handleAddressChange}
-                placeholder="Enter street address"
-                placeholderTextColor="#999"
-              />
+
               <Text style={styles.label}>Province</Text>
               <TouchableOpacity
-                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                style={[styles.input, pendingVerifications.address && styles.pendingInput, errors.addressProvince && styles.inputError]}
                 onPress={() => setShowProvinceModal(true)}
               >
                 <Text style={{ color: addressProvince ? '#000' : '#999' }}>{provinces.find(p => `${p.code}` === `${addressProvince}`)?.name || 'Select Province'}</Text>
               </TouchableOpacity>
+              {errors.addressProvince ? <Text style={styles.errorText}>{errors.addressProvince}</Text> : null}
 
               <Text style={styles.label}>City/Municipality</Text>
               <TouchableOpacity
-                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                style={[styles.input, pendingVerifications.address && styles.pendingInput, errors.addressCity && styles.inputError]}
                 onPress={() => setShowCityModal(true)}
                 disabled={!addressProvince}
               >
                 <Text style={{ color: addressCity ? '#000' : '#999' }}>{cities.find(c => `${c.code}` === `${addressCity}`)?.name || (addressProvince ? 'Select City/Municipality' : 'Select Province First')}</Text>
               </TouchableOpacity>
+              {errors.addressCity ? <Text style={styles.errorText}>{errors.addressCity}</Text> : null}
 
               <Text style={styles.label}>Barangay</Text>
               <TouchableOpacity
-                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                style={[styles.input, pendingVerifications.address && styles.pendingInput, errors.addressBarangay && styles.inputError]}
                 onPress={() => setShowBarangayModal(true)}
                 disabled={!addressCity}
               >
                 <Text style={{ color: addressBarangay ? '#000' : '#999' }}>{barangays.find(b => `${b.code}` === `${addressBarangay}`)?.name || (addressCity ? 'Select Barangay' : 'Select City First')}</Text>
               </TouchableOpacity>
+              {errors.addressBarangay ? <Text style={styles.errorText}>{errors.addressBarangay}</Text> : null}
+
+              <Text style={styles.label}>Street Address</Text>
+              <TextInput
+                style={[styles.input, pendingVerifications.address && styles.pendingInput, errors.addressStreet && styles.inputError]}
+                value={addressStreet}
+                onChangeText={(v) => { setAddressStreet(v); if (errors.addressStreet) clearError('addressStreet'); }}
+                onBlur={() => { handleAddressChange(); validateAddressFields(); }}
+                placeholder="Enter street address"
+                placeholderTextColor="#999"
+              />
+              {errors.addressStreet ? <Text style={styles.errorText}>{errors.addressStreet}</Text> : null}
 
               <Text style={styles.label}>Postal Code</Text>
               <TextInput
-                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                style={[styles.input, pendingVerifications.address && styles.pendingInput, errors.addressPostal && styles.inputError]}
                 value={addressPostal}
-                onChangeText={setAddressPostal}
-                onBlur={handleAddressChange}
+                onChangeText={(v) => { setAddressPostal(v); if (errors.addressPostal) clearError('addressPostal'); }}
+                onBlur={() => { handleAddressChange(); validateAddressFields(); }}
                 placeholder="Enter postal code"
                 placeholderTextColor="#999"
                 keyboardType="number-pad"
               />
+              {errors.addressPostal ? <Text style={styles.errorText}>{errors.addressPostal}</Text> : null}
 
               {pendingVerifications.address && (
                 <View style={styles.verificationMessage}>
@@ -1399,7 +1457,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                   data={provinces}
                   keyExtractor={(item, index) => `${item.code}-${index}`}
                   renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressProvince(item.code); setShowProvinceModal(false); try { await loadCities(item.code); } catch { } }}>
+                    <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressProvince(item.code); clearError('addressProvince'); setShowProvinceModal(false); try { await loadCities(item.code); } catch { } }}>
                       <Text style={styles.pickerItemText}>{item.name}</Text>
                     </TouchableOpacity>
                   )}
@@ -1419,7 +1477,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                   data={cities}
                   keyExtractor={(item, index) => `${item.code}-${index}`}
                   renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressCity(item.code); setShowCityModal(false); try { await loadBarangays(item.code); } catch { } }}>
+                    <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressCity(item.code); clearError('addressCity'); setShowCityModal(false); try { await loadBarangays(item.code); } catch { } }}>
                       <Text style={styles.pickerItemText}>{item.name}</Text>
                     </TouchableOpacity>
                   )}
@@ -1439,7 +1497,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                   data={barangays}
                   keyExtractor={(item, index) => `${item.code}-${index}`}
                   renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.pickerItem} onPress={() => { setAddressBarangay(item.code); setShowBarangayModal(false); }}>
+                    <TouchableOpacity style={styles.pickerItem} onPress={() => { setAddressBarangay(item.code); clearError('addressBarangay'); setShowBarangayModal(false); }}>
                       <Text style={styles.pickerItemText}>{item.name}</Text>
                     </TouchableOpacity>
                   )}
@@ -1451,7 +1509,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           {/* Save Button */}
           <TouchableOpacity
             style={[styles.saveButton, isSaving && styles.buttonDisabled]}
-            onPress={handleSave}
+            onPress={() => setShowConfirmSaveModal(true)}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -1460,6 +1518,51 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
               <Text style={styles.saveButtonText}>Save Changes</Text>
             )}
           </TouchableOpacity>
+
+          {/* Confirmation Modal */}
+          <Modal
+            visible={showConfirmSaveModal}
+            animationType="fade"
+            transparent
+            onRequestClose={() => setShowConfirmSaveModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContainer, { maxHeight: 220 }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Confirm Changes</Text>
+                  <TouchableOpacity onPress={() => setShowConfirmSaveModal(false)}>
+                    <Ionicons name="close" size={22} color="#333" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ color: '#333', marginBottom: 18 }}>
+                  Are you sure you want to save these changes?
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: '#DDD', flex: 1, marginRight: 8 }]}
+                    onPress={() => setShowConfirmSaveModal(false)}
+                  >
+                    <Text style={[styles.modalButtonText, { color: '#333' }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { flex: 1 }]}
+                    onPress={async () => {
+                      // validate based on current tab
+                      let ok = true;
+                      if (currentTab === 'personal') ok = validateAll();
+                      else if (currentTab === 'addresses') ok = validateAddressFields();
+                      if (!ok) return;
+                      setShowConfirmSaveModal(false);
+                      try { await handleSave(); } catch (e) {}
+                    }}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.modalButtonText}>Confirm</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </ScrollView>
       )}
 
@@ -1674,5 +1777,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+  },
+  inputError: {
+    borderColor: '#cc0000',
+  },
+  errorText: {
+    color: '#cc0000',
+    fontSize: 12,
+    marginTop: 6,
+    marginBottom: -6,
   },
 });

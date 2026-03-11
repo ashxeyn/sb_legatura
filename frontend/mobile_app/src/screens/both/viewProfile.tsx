@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import {
   View,
   Text,
@@ -507,6 +507,17 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const [reviews, setReviews] = useState<Review[]>([]);
   const [profilePic, setProfilePic] = useState(userData?.profile_pic);
   const [coverPhoto, setCoverPhoto] = useState(userData?.cover_photo);
+  // Local previews so uploads reflect immediately without a full refresh
+  const [previewProfileUri, setPreviewProfileUri] = useState<string | null>(null);
+  const [previewCoverUri, setPreviewCoverUri] = useState<string | null>(null);
+  // Timestamp of the last successful local upload to avoid immediate overwrite
+  const recentLocalUpdateRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
   const [userState, setUserData] = useState<UserData>(userData);
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null);
   const [contractorInfo, setContractorInfo] = useState<any | null>(null);
@@ -556,7 +567,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const userId = useMemo(() => userState?.user_id, [userState?.user_id]);
 
   const displayName = useMemo(() => {
-    // Staff: always show their own name, not the contractor's company name
+    // Staff: always show their own name from the users table
     if (userState?.user_type === 'staff') {
       const fn = userState?.first_name || '';
       const mn = userState?.middle_name || '';
@@ -564,16 +575,28 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
       const full = `${fn}${mn ? ' ' + mn : ''}${ln ? ' ' + ln : ''}`.trim();
       return full || userState?.username || 'Staff';
     }
+
+    // Contractors: prefer company name when viewing as contractor
     if (activeRoleState === 'contractor' && contractorInfo && contractorInfo.company_name) {
       return contractorInfo.company_name;
     }
+
+    // Primary source for personal names: users table (`userState`).
+    // Use first/middle/last from `users` when available.
+    const ufn = userState?.first_name || '';
+    const umn = userState?.middle_name || '';
+    const uln = userState?.last_name || '';
+    if (ufn || umn || uln) {
+      return `${ufn}${umn ? ' ' + umn : ''}${uln ? ' ' + uln : ''}`.trim() || userState?.username || 'Member';
+    }
+
+    // Fallback to ownerInfo if users table doesn't have name fields populated
     if (ownerInfo) {
       const { first_name = '', middle_name = '', last_name = '' } = ownerInfo;
-      return `${first_name}${middle_name ? ' ' + middle_name : ''}${last_name ? ' ' + last_name : ''}`.trim();
+      const ownerFull = `${first_name}${middle_name ? ' ' + middle_name : ''}${last_name ? ' ' + last_name : ''}`.trim();
+      if (ownerFull) return ownerFull;
     }
-    if (userState?.first_name || userState?.last_name) {
-      return `${userState.first_name || ''} ${userState.last_name || ''}`.trim();
-    }
+
     return userState?.username || 'Member';
   }, [activeRoleState, contractorInfo, ownerInfo, userState]);
 
@@ -744,8 +767,12 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           setRating(Number(data.rating));
         }
         try {
-          const roleArg = data.role ? String(data.role) : undefined;
-          fetchReviews(roleArg);
+          // Use the returned user id from the profile response when available
+          const responseUserId = (data.user && (data.user.user_id ?? data.user.userId)) || data.user_id || userId;
+          console.log('[fetchProfile] calling fetchReviews for', { responseUserId });
+          // Do not pass an explicit role here; let the server infer the reviewee role
+          // from the provided user id to avoid mismatches.
+          fetchReviews(undefined, responseUserId);
         } catch (e) { }
         // Ensure profile and cover images are populated from available fields.
         // If the response includes a role (preferred_role/current role), respect it:
@@ -806,8 +833,23 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
               data.cover_photo || undefined;
           }
 
-          if (candidateProfile) setProfilePic(candidateProfile);
-          if (candidateCover) setCoverPhoto(candidateCover);
+          const nowTs = Date.now();
+          if (candidateProfile) {
+            const last = recentLocalUpdateRef.current;
+            if (!last || (nowTs - last) > 30000) {
+              setProfilePic(candidateProfile);
+            } else {
+              console.log('[fetchProfile] skipping profilePic overwrite due to recent local upload');
+            }
+          }
+          if (candidateCover) {
+            const last = recentLocalUpdateRef.current;
+            if (!last || (nowTs - last) > 30000) {
+              setCoverPhoto(candidateCover);
+            } else {
+              console.log('[fetchProfile] skipping coverPhoto overwrite due to recent local upload');
+            }
+          }
         } catch (e) {
           // non-fatal
         }
@@ -918,31 +960,57 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     }
   }, [userId, handleError, activeRoleState]);
 
-  const fetchReviews = useCallback(async (roleArg?: string) => {
-    if (!userId) return;
+  const fetchReviews = useCallback(async (roleArg?: string, idArg?: string | number) => {
+    const idToUse = idArg ?? userId;
+    if (!idToUse) {
+      console.log('[fetchReviews] no user id provided, aborting');
+      return;
+    }
+
+    const roleToUse = roleArg ?? activeRoleState;
+    const roleQuery = roleToUse ? `&role=${encodeURIComponent(roleToUse)}` : '';
+    const url = `${api_config.base_url}/api/profile/reviews?reviewee_user_id=${encodeURIComponent(idToUse)}${roleQuery}`;
+    console.log('[fetchReviews] fetching', { idToUse, roleToUse, url });
 
     try {
       setLoading(prev => ({ ...prev, reviews: true }));
       setErrors(prev => ({ ...prev, reviews: null }));
 
-      const roleToUse = roleArg ?? activeRoleState;
-      const roleQuery = roleToUse ? `&role=${encodeURIComponent(roleToUse)}` : '';
-      const response = await fetch(
-        `${api_config.base_url}/api/profile/reviews?reviewee_user_id=${encodeURIComponent(userId)}${roleQuery}`
-      );
-      const data = await response.json();
+      const response = await fetch(url);
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch (parseErr) {
+        console.error('[fetchReviews] failed to parse JSON', parseErr, rawText);
+        throw parseErr;
+      }
+
+      console.log('[fetchReviews] response', { status: response.status, ok: response.ok, body: data });
 
       if (data?.success) {
         const payload = data.data || {};
-        const reviewsData = Array.isArray(payload.reviews) ? payload.reviews : (Array.isArray(payload) ? payload : []);
+        // Normalize reviews payload: backend may return an array or an object with numeric keys.
+        let reviewsData: any[] = [];
+        const rawReviews = payload.reviews ?? payload ?? [];
+        if (Array.isArray(rawReviews)) {
+          reviewsData = rawReviews;
+        } else if (rawReviews && typeof rawReviews === 'object') {
+          reviewsData = Object.values(rawReviews);
+        } else if (Array.isArray(payload)) {
+          reviewsData = payload;
+        }
+        console.log('[fetchReviews] success - normalized reviews count', reviewsData.length, 'stats', payload.stats);
         setReviews(reviewsData);
         if (payload.stats && typeof payload.stats.avg_rating !== 'undefined' && payload.stats.avg_rating !== null) {
           setRating(Number(payload.stats.avg_rating));
         }
       } else {
-        setErrors(prev => ({ ...prev, reviews: data.message || 'Failed to load reviews' }));
+        console.warn('[fetchReviews] API returned failure', data);
+        setErrors(prev => ({ ...prev, reviews: data?.message || 'Failed to load reviews' }));
       }
     } catch (e) {
+      console.error('[fetchReviews] error', e);
       setErrors(prev => ({ ...prev, reviews: handleError(e, 'Failed to load reviews') }));
     } finally {
       setLoading(prev => ({ ...prev, reviews: false }));
@@ -1025,6 +1093,14 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const uploadImage = useCallback(async (uri: string, type: 'profile' | 'cover') => {
     setIsUploading(true);
 
+    // Keep copies so we can revert UI on failure
+    const previousProfile = profilePic;
+    const previousCover = coverPhoto;
+
+    // Show a local preview immediately so the user sees the change
+    if (type === 'profile') setPreviewProfileUri(uri);
+    else setPreviewCoverUri(uri);
+
     const formData = new FormData();
     const filename = uri.split('/').pop() || 'image.jpg';
     const match = /\.(\w+)$/.exec(filename);
@@ -1063,16 +1139,61 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     console.log('[uploadImage] preparing upload', { effectiveRole, fieldName, filename, fileType, uri });
 
     try {
-      // If a token wasn't passed in props, warn — api_request will still try to read stored token.
-      if (!userToken) console.warn('[uploadImage] no userToken prop provided — api_request will use stored token if available');
+      // Perform upload via direct fetch to avoid the global `api_request` behavior
+      // that injects `X-User-Id` header. Some backend installs expect `owner_id`
+      // and will error when `contractors.user_id` is assumed — omitting the
+      // header lets the server use the Authorization token (preferred).
+      let authTokenLocal = userToken;
+      if (!authTokenLocal) {
+        try {
+          authTokenLocal = await storage_service.get_auth_token();
+        } catch (e) {
+          authTokenLocal = null;
+        }
+      }
 
-      // Use the shared api_request helper so stored auth token is applied consistently.
-      const resp = await api_request('/api/user/profile', {
+      // Help servers that accept explicit IDs by including owner/contractor ids
+      try {
+        if (effectiveRole === 'contractor') {
+          if (contractorInfo?.contractor_id) formData.append('contractor_id', String(contractorInfo.contractor_id));
+          if (contractorInfo?.owner_id) formData.append('owner_id', String(contractorInfo.owner_id));
+          if (ownerInfo?.owner_id) formData.append('owner_id', String(ownerInfo.owner_id));
+        } else {
+          if (ownerInfo?.owner_id) formData.append('owner_id', String(ownerInfo.owner_id));
+        }
+      } catch (e) { /* non-fatal */ }
+
+      const headers: any = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      };
+      if (authTokenLocal) headers['Authorization'] = `Bearer ${authTokenLocal}`;
+
+      const uploadUrl = `${api_config.base_url}/api/user/profile`;
+      console.log('[uploadImage] uploading via fetch', { uploadUrl, effectiveRole, fieldName, filename, tokenPresent: !!authTokenLocal });
+
+      const respFetch = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
+        headers,
+        // If we have a bearer token, omit credentials; otherwise include cookies
+        credentials: authTokenLocal ? 'omit' : 'include',
       });
 
-      console.log('[uploadImage] api_request response', resp);
+      const rawText = await respFetch.text();
+      let parsed: any = null;
+      try {
+        parsed = rawText ? JSON.parse(rawText) : null;
+      } catch (e) {
+        console.error('[uploadImage] failed to parse JSON response', e, rawText);
+        throw new Error('Invalid server response');
+      }
+
+      const resp = { success: respFetch.ok, data: parsed, status: respFetch.status, message: parsed?.message };
+      console.log('[uploadImage] fetch response', resp);
 
       if (resp?.success) {
         const wrapper = resp.data || resp;
@@ -1084,8 +1205,6 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         if (userObj && typeof userObj === 'object') setUserData(prev => ({ ...(prev || {}), ...(userObj || {}) }));
         if (contractorObj && typeof contractorObj === 'object') setContractorInfo(contractorObj);
 
-        // Resolve the returned path by type to avoid picking the wrong field.
-        // e.g. if uploading a cover, don't accidentally read profile_pic first.
         let returnedPath: string | null = null;
         if (type === 'profile') {
           returnedPath = userObj?.profile_pic || contractorObj?.company_logo || inner?.profile_pic || inner?.company_logo || (wrapper.path ?? null);
@@ -1096,7 +1215,8 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           if (type === 'profile') setProfilePic(returnedPath);
           else setCoverPhoto(returnedPath);
         }
-        // Persist updated paths to storage so other screens (e.g. Settings) stay in sync
+
+        // Persist updated paths to storage so other screens stay in sync
         try {
           const stored = await storage_service.get_user_data();
           if (stored) {
@@ -1106,13 +1226,118 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             await storage_service.save_user_data(merged);
           }
         } catch (e) { /* non-critical */ }
-        Alert.alert('Success', 'Photo updated successfully');
+        if (returnedPath) {
+          // Clear local preview now that server returned the stored path
+          if (type === 'profile') setPreviewProfileUri(null);
+          else setPreviewCoverUri(null);
+
+          // Mark recent local update to avoid immediate overwrite by a concurrent fetch
+          try {
+            recentLocalUpdateRef.current = Date.now();
+            setTimeout(() => { recentLocalUpdateRef.current = null; }, 5000);
+          } catch (e) { /* non-fatal */ }
+
+          Alert.alert('Success', 'Photo updated successfully');
+        } else {
+          // Server did not return a path in the response; keep the local preview
+          // visible and poll the profile endpoint briefly until the new path appears.
+          // Mark as recent local update so other background fetches don't overwrite
+          try {
+            recentLocalUpdateRef.current = Date.now();
+            setTimeout(() => { recentLocalUpdateRef.current = null; }, 30000);
+          } catch (e) { /* non-fatal */ }
+          (async () => {
+            const maxAttempts = 20;
+            let found = false;
+            for (let i = 0; i < maxAttempts && isMountedRef.current; i++) {
+              try {
+                const q = userState?.user_id ? `?user_id=${encodeURIComponent(userState.user_id)}` : (userState?.username ? `?username=${encodeURIComponent(userState.username)}` : '');
+                if (!q) break;
+                const pf = await api_request(`/api/profile/fetch${q}`);
+                if (pf?.success && pf.data) {
+                  const d = pf.data.data || pf.data;
+                  const contractorLogo = d.contractor && (d.contractor.company_logo || d.contractor.profile_pic);
+                  const contractorBanner = d.contractor && (d.contractor.company_banner || d.contractor.cover_photo);
+                  const roleFromResponse = (d.role || '').toString().toLowerCase();
+                  const isStaff = (d.user?.user_type || '').toString().toLowerCase() === 'staff';
+                  let candidateProfile;
+                  let candidateCover;
+                  if (isStaff) {
+                    candidateProfile = (d.user && (d.user.profile_pic || d.user.profilePic)) || undefined;
+                    candidateCover = (d.user && (d.user.cover_photo || d.user.coverPhoto)) || undefined;
+                  } else if (roleFromResponse === 'owner') {
+                    candidateProfile = (d.user && (d.user.profile_pic || d.user.profilePic)) || (d.owner && (d.owner.profile_pic || d.owner.profilePic)) || d.owner_profile_pic || d.owner_profile || undefined;
+                    candidateCover = (d.user && (d.user.cover_photo || d.user.coverPhoto)) || (d.owner && (d.owner.cover_photo || d.owner.coverPhoto)) || d.cover_photo || undefined;
+                  } else if (roleFromResponse === 'contractor') {
+                    candidateProfile = contractorLogo || (d.user && (d.user.profile_pic || d.user.profilePic)) || (d.owner && (d.owner.profile_pic || d.owner.profilePic)) || d.owner_profile_pic || d.owner_profile || undefined;
+                    candidateCover = contractorBanner || (d.user && (d.user.cover_photo || d.user.coverPhoto)) || (d.owner && (d.owner.cover_photo || d.owner.coverPhoto)) || d.cover_photo || undefined;
+                  } else {
+                    candidateProfile = contractorLogo || (d.user && (d.user.profile_pic || d.user.profilePic)) || (d.owner && (d.owner.profile_pic || d.owner.profilePic)) || d.owner_profile_pic || d.owner_profile || undefined;
+                    candidateCover = contractorBanner || (d.user && (d.user.cover_photo || d.user.coverPhoto)) || (d.owner && (d.owner.cover_photo || d.owner.coverPhoto)) || d.cover_photo || undefined;
+                  }
+                  if (type === 'profile' && candidateProfile && candidateProfile !== previousProfile) {
+                    if (isMountedRef.current) {
+                      setProfilePic(candidateProfile);
+                      setPreviewProfileUri(null);
+                      recentLocalUpdateRef.current = Date.now();
+                      setTimeout(() => { recentLocalUpdateRef.current = null; }, 5000);
+                    }
+                    found = true;
+                    break;
+                  }
+                  if (type === 'cover' && candidateCover && candidateCover !== previousCover) {
+                    if (isMountedRef.current) {
+                      setCoverPhoto(candidateCover);
+                      setPreviewCoverUri(null);
+                      recentLocalUpdateRef.current = Date.now();
+                      setTimeout(() => { recentLocalUpdateRef.current = null; }, 5000);
+                    }
+                    found = true;
+                    break;
+                  }
+                }
+              } catch (e) {
+                // ignore and retry
+              }
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            // If polling finished without finding a new path, keep preview and notify.
+            if (isMountedRef.current) {
+              if (!found) {
+                try {
+                  recentLocalUpdateRef.current = Date.now();
+                  setTimeout(() => { recentLocalUpdateRef.current = null; }, 30000);
+                } catch (e) { /* non-fatal */ }
+                Alert.alert('Notice', 'Photo uploaded. The preview is kept locally; pull to refresh if it does not appear elsewhere.');
+              } else {
+                // Poll succeeded and we updated the profile/cover — show success
+                Alert.alert('Success', 'Photo updated successfully');
+              }
+            }
+          })();
+        }
       } else {
         console.error('[uploadImage] upload failed', resp);
+        // revert preview to previous state
+        if (type === 'profile') {
+          setProfilePic(previousProfile);
+          setPreviewProfileUri(null);
+        } else {
+          setCoverPhoto(previousCover);
+          setPreviewCoverUri(null);
+        }
         Alert.alert('Error', resp?.message || 'Failed to update photo');
       }
     } catch (error) {
       console.error('[uploadImage] network/error', error);
+      // revert preview to previous state
+      if (type === 'profile') {
+        setProfilePic(previousProfile);
+        setPreviewProfileUri(null);
+      } else {
+        setCoverPhoto(previousCover);
+        setPreviewCoverUri(null);
+      }
       Alert.alert('Error', 'Network error. Please try again.');
     } finally {
       setIsUploading(false);
@@ -1165,12 +1390,16 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
 
       <View style={styles.heroSection}>
         <View style={styles.coverWrapper}>
-          <ImageFallback
-            uri={getStorageUrl(coverPhoto)}
-            defaultImage={defaultCoverPhoto}
-            style={styles.coverImg}
-            resizeMode="cover"
-          />
+          {previewCoverUri ? (
+            <Image source={{ uri: previewCoverUri }} style={styles.coverImg} resizeMode="cover" />
+          ) : (
+            <ImageFallback
+              uri={getStorageUrl(coverPhoto)}
+              defaultImage={defaultCoverPhoto}
+              style={styles.coverImg}
+              resizeMode="cover"
+            />
+          )}
           {userState?.user_type !== 'staff' && (
           <TouchableOpacity
             style={styles.editCoverBtn}
@@ -1184,12 +1413,16 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
 
         <View style={styles.profileInfoContainer}>
           <View style={styles.avatarWrapper}>
-            <ImageFallback
-              uri={getStorageUrl(profilePic)}
-              defaultImage={activeRoleState === 'contractor' ? defaultContractorAvatar : defaultOwnerAvatar}
-              style={styles.avatarImg}
-              resizeMode="cover"
-            />
+            {previewProfileUri ? (
+              <Image source={{ uri: previewProfileUri }} style={styles.avatarImg} resizeMode="cover" />
+            ) : (
+              <ImageFallback
+                uri={getStorageUrl(profilePic)}
+                defaultImage={activeRoleState === 'contractor' ? defaultContractorAvatar : defaultOwnerAvatar}
+                style={styles.avatarImg}
+                resizeMode="cover"
+              />
+            )}
             {userState?.user_type !== 'staff' && (
             <TouchableOpacity
               style={styles.editAvatarBtn}
@@ -1271,7 +1504,9 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         onPress={() => setShowCreateShowcase(true)}
       >
         <View style={styles.postInputAvatar}>
-          {profilePic ? (
+          {previewProfileUri ? (
+            <Image source={{ uri: previewProfileUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
+          ) : profilePic ? (
             <Image
               source={{ uri: String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}` }}
               style={{ width: 38, height: 38, borderRadius: 19 }}
@@ -1867,7 +2102,9 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         onPress={() => setShowCreateShowcase(true)}
       >
         <View style={styles.postInputAvatar}>
-          {profilePic ? (
+          {previewProfileUri ? (
+            <Image source={{ uri: previewProfileUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
+          ) : profilePic ? (
             <Image
               source={{ uri: String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}` }}
               style={{ width: 38, height: 38, borderRadius: 19 }}

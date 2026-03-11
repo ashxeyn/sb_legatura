@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * profileService — Aggregated profile data for dynamic profile pages.
@@ -78,8 +79,10 @@ class ProfileService
 
         // Verification status
         $verificationStatus = 'unverified';
+        // Use resilient contractor lookup to support schemas using owner_id
+        $contractor = null;
         if ($role === 'contractor') {
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            $contractor = $this->getContractorByUserId($userId);
             if ($contractor) {
                 $verificationStatus = $contractor->verification_status ?? 'pending';
             }
@@ -93,7 +96,7 @@ class ProfileService
         // Display name
         $displayName = $user->username;
         if ($role === 'contractor') {
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            if (!$contractor) $contractor = $this->getContractorByUserId($userId);
             if ($contractor && !empty($contractor->company_name)) {
                 $displayName = $contractor->company_name;
             }
@@ -108,11 +111,11 @@ class ProfileService
         // Project counts
         $projectStats = $this->getProjectCounts($userId, $role);
 
-        // Profile/cover images
-        $profilePic = $user->profile_pic;
-        $coverPhoto = $user->cover_photo ?? null;
+        // Profile/cover images — guard missing columns to avoid undefined property notices
+        $profilePic = isset($user->profile_pic) ? $user->profile_pic : null;
+        $coverPhoto = isset($user->cover_photo) ? $user->cover_photo : null;
         if ($role === 'contractor') {
-            $contractor = $contractor ?? DB::table('contractors')->where('user_id', $userId)->first();
+            $contractor = $contractor ?? $this->getContractorByUserId($userId);
             if ($contractor) {
                 if (empty($profilePic) && !empty($contractor->company_logo)) $profilePic = $contractor->company_logo;
                 if (empty($coverPhoto) && !empty($contractor->company_banner)) $coverPhoto = $contractor->company_banner;
@@ -199,20 +202,26 @@ class ProfileService
         ];
 
         if ($role === 'contractor') {
-            $contractor = DB::table('contractors as c')
-                ->leftJoin('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
-                ->where('c.user_id', $userId)
-                ->select('c.*', 'ct.type_name')
-                ->first();
-
+            // Resolve contractor robustly (supports schemas using owner_id)
+            $contractor = $this->getContractorByUserId($userId);
             if ($contractor) {
+                // Attempt to resolve type name when available
+                $typeName = null;
+                if (!empty($contractor->type_id)) {
+                    try {
+                        $typeName = DB::table('contractor_types')->where('type_id', $contractor->type_id)->value('type_name');
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to resolve contractor type_name: ' . $e->getMessage());
+                    }
+                }
+
                 $about['contractor'] = [
                     'company_name'         => $contractor->company_name,
                     'bio'                  => $contractor->bio,
                     'company_description'  => $contractor->company_description ?? null,
-                    'type_name'            => ($contractor->type_name === 'Others' || $contractor->type_name === null)
-                        ? ($contractor->contractor_type_other ?? $contractor->type_name)
-                        : $contractor->type_name,
+                    'type_name'            => ($typeName === 'Others' || $typeName === null)
+                        ? ($contractor->contractor_type_other ?? $typeName)
+                        : $typeName,
                     'years_of_experience'  => $contractor->years_of_experience,
                     'completed_projects'   => $contractor->completed_projects ?? 0,
                     'services_offered'     => $contractor->services_offered ?? null,
@@ -273,8 +282,14 @@ class ProfileService
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id');
 
         if ($role === 'contractor') {
-            $query->join('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
-                  ->where('c.user_id', $userId);
+            // Resolve contractor and filter by contractor_id to avoid direct user_id assumptions
+            $contractor = $this->getContractorByUserId($userId);
+            if ($contractor) {
+                $query->where('p.selected_contractor_id', $contractor->contractor_id);
+            } else {
+                // No contractor -> empty result set
+                return ['completed' => 0, 'ongoing' => 0, 'total' => 0];
+            }
         } else {
             $query->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                   ->where('po.user_id', $userId);
@@ -295,8 +310,13 @@ class ProfileService
             ->whereNotIn('p.project_status', ['deleted', 'deleted_post']);
 
         if ($role === 'contractor') {
-            $query->join('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
-                  ->where('c.user_id', $userId);
+            $contractor = $this->getContractorByUserId($userId);
+            if ($contractor) {
+                $query->where('p.selected_contractor_id', $contractor->contractor_id);
+            } else {
+                // Return empty collection if contractor record can't be resolved
+                return collect();
+            }
         } else {
             $query->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                   ->where('po.user_id', $userId);
@@ -331,5 +351,37 @@ class ProfileService
             ->first();
 
         return $payment ? $payment->plan_key : 'free';
+    }
+
+    /**
+     * Resolve contractor row for a given user_id in a schema-agnostic way.
+     * Supports `contractors.user_id` (legacy) and `contractors.owner_id` (newer schemas).
+     */
+    private function getContractorByUserId(int $userId)
+    {
+        try {
+            if (Schema::hasColumn('contractors', 'user_id')) {
+                return DB::table('contractors')->where('user_id', $userId)->first();
+            }
+
+            if (Schema::hasColumn('contractors', 'owner_id')) {
+                $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+                $ownerId = $owner->owner_id ?? null;
+                if ($ownerId) return DB::table('contractors')->where('owner_id', $ownerId)->first();
+                return null;
+            }
+
+            // Fallback to attempting user_id lookup
+            return DB::table('contractors')->where('user_id', $userId)->first();
+        } catch (\Throwable $e) {
+            Log::warning('ProfileService::getContractorByUserId failed: ' . $e->getMessage());
+            try {
+                $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+                if ($owner) return DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
+            } catch (\Throwable $e2) {
+                Log::warning('ProfileService::getContractorByUserId fallback failed: ' . $e2->getMessage());
+            }
+            return null;
+        }
     }
 }

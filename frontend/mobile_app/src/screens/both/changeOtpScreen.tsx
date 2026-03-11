@@ -19,7 +19,7 @@ import { storage_service } from '../../utils/storage';
 
 interface ChangeOtpScreenProps {
   token?: string;
-  purpose: 'change_email' | 'change_contact' | 'change_password';
+  purpose: 'change_email' | 'change_password';
   onSuccess?: () => void;
   onBack?: () => void;
 }
@@ -56,8 +56,6 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
   const [maskedDest, setMaskedDest] = useState<string | null>(null);
   const [otpToken, setOtpToken] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-  const [currentPhone, setCurrentPhone] = useState<string | null>(null);
-  const [activeRole, setActiveRole] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const timerRef = useRef<number | null>(null);
   let navigation: any = null;
@@ -73,13 +71,12 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
   // Label and titles
   const getTitle = () => {
     if (activePurpose === 'change_email') return 'Change Email';
-    if (activePurpose === 'change_contact') return 'Change Contact Number';
-    return 'Change Password';
+    if (activePurpose === 'change_password') return 'Change Password';
+    return 'Change';
   };
 
   const getSubtitle = () => {
     if (activePurpose === 'change_email') return 'We will send an OTP to your new email to confirm the change.';
-    if (activePurpose === 'change_contact') return 'We will send an OTP to your new contact number to confirm the change.';
     return 'We will send an OTP to your email to confirm the change.';
   };
 
@@ -125,14 +122,7 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
         sendBody.current_password = currentPassword;
       }
 
-      // For contact change: send OTP to user's registered email (email-delivered OTP)
-      if (activePurpose === 'change_contact') {
-        try {
-          const stored = await storage_service.get_user_data();
-          const userEmail = stored?.email || stored?.user_email || null;
-          if (userEmail) sendBody.destination = userEmail;
-        } catch (e) { console.warn('Could not read stored user email for OTP delivery:', e); }
-      }
+      // contact change removed — destination handled by email/password flows
 
       const res = await api_request('/api/change-otp/send', {
         method: 'POST',
@@ -262,48 +252,9 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
     return () => { mounted = false; if (timerRef.current) clearInterval(timerRef.current as any); };
   }, [activePurpose]);
 
-  // Fetch profile (current phone) and resolve active role for contact changes
-  useEffect(() => {
-    let mounted = true;
-    const loadProfile = async () => {
-      try {
-        const stored = await storage_service.get_user_data();
-        const userType = (stored?.user_type || stored?.userType || '').toString().toLowerCase();
-        const preferred = (stored?.preferred_role || stored?.preferredRole || '').toString().toLowerCase();
-        const resolvedRole = userType === 'both' ? (preferred || 'owner') : (userType === 'property_owner' ? 'owner' : userType);
-        if (mounted && resolvedRole) setActiveRole(resolvedRole);
-        const roleQuery = resolvedRole ? `?role=${encodeURIComponent(resolvedRole)}` : '';
-        const resp = await api_request(`/api/profile/fetch${roleQuery}`, { method: 'GET' });
-        if (mounted && resp && resp.success && resp.data) {
-          const payload = resp.data.data || resp.data || {};
-          const owner = payload.owner || {};
-          const contractor = payload.contractor || {};
-          // Prefer contractor phone_number, then contractor_user.phone_number, then legacy company_phone, then owner/user phone
-          const contractorPhone = contractor.phone_number ?? (contractor.contractor_user ? contractor.contractor_user.phone_number : null) ?? contractor.company_phone ?? null;
-          if (resolvedRole && String(resolvedRole).includes('contractor') && contractorPhone) {
-            setCurrentPhone(contractorPhone);
-          } else if (resolvedRole && String(resolvedRole).includes('owner') && owner && owner.phone_number) {
-            setCurrentPhone(owner.phone_number);
-          } else if (payload.user && payload.user.phone_number) {
-            setCurrentPhone(payload.user.phone_number);
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to fetch profile for contact change:', e);
-      }
-    };
+  // contact change removed — no profile fetch required
 
-    // Only fetch once on mount (or when purpose is contact)
-    if (activePurpose === 'change_contact') loadProfile();
-    return () => { mounted = false; };
-  }, [activePurpose]);
-
-  // Ensure newValue is empty when switching to contact change so email isn't shown
-  useEffect(() => {
-    if (activePurpose === 'change_contact') {
-      setNewValue('');
-    }
-  }, [activePurpose]);
+  // contact purpose removed — no need to clear newValue on purpose switch
 
   const passwordsMatch = newPassword && newPassword === confirmPassword;
   const passwordRules = useMemo(() => {
@@ -323,9 +274,7 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
     ? (passwordsMatch && !!newValue && !isSubmitting)
     : activePurpose === 'change_email'
       ? (!!newValue && !!currentPassword && !isSubmitting)
-      : activePurpose === 'change_contact'
-        ? (!!newValue && !!currentPhone && !isSubmitting)
-        : (!!newValue && !isSubmitting);
+      : (!!newValue && !isSubmitting);
   const canVerify = otpSent && otp.length >= 4 && !isSubmitting;
 
   const handleBack = useCallback(async () => {
@@ -392,12 +341,6 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
             onPress={() => setSelectedPurpose('change_email')}
           >
             <Text style={[styles.purposeButtonText, activePurpose === 'change_email' && styles.purposeButtonTextActive]}>Email</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.purposeButton, activePurpose === 'change_contact' && styles.purposeButtonActive]}
-            onPress={() => setSelectedPurpose('change_contact')}
-          >
-            <Text style={[styles.purposeButtonText, activePurpose === 'change_contact' && styles.purposeButtonTextActive]}>Contact</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.purposeButton, activePurpose === 'change_password' && styles.purposeButtonActive]}
@@ -494,65 +437,33 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
                 </View>
               </>
             ) : (
-              // change_email or change_contact
+              // change_email
               <>
-                {activePurpose === 'change_email' ? (
-                  <>
-                    <Text style={styles.label}>Current Password *</Text>
-                    <View style={styles.inputWrapper}>
-                      <TextInput
-                        style={styles.input}
-                        value={currentPassword}
-                        onChangeText={setCurrentPassword}
-                        placeholder="Enter your current password"
-                        secureTextEntry
-                        autoCapitalize="none"
-                        editable={!isSubmitting}
-                      />
-                    </View>
+                <Text style={styles.label}>Current Password *</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Enter your current password"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    editable={!isSubmitting}
+                  />
+                </View>
 
-                    <Text style={styles.label}>New Email Address *</Text>
-                    <View style={styles.inputWrapper}>
-                      <TextInput
-                        style={styles.input}
-                        value={newValue}
-                        onChangeText={setNewValue}
-                        placeholder="you@example.com"
-                        keyboardType="default"
-                        autoCapitalize="none"
-                        editable={!isSubmitting}
-                      />
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.label}>Current Contact Number</Text>
-                    <View style={styles.inputWrapper}>
-                      <TextInput
-                        style={[styles.input, styles.disabledInput]}
-                        value={currentPhone ?? ''}
-                        onChangeText={() => {}}
-                        placeholder="Not available"
-                        keyboardType="phone-pad"
-                        autoCapitalize="none"
-                        editable={false}
-                      />
-                    </View>
-
-                    <Text style={styles.label}>New Contact Number *</Text>
-                    <View style={styles.inputWrapper}>
-                      <TextInput
-                        style={styles.input}
-                        value={newValue}
-                        onChangeText={setNewValue}
-                        placeholder="09xxxxxxxxx"
-                        keyboardType="phone-pad"
-                        autoCapitalize="none"
-                        editable={!isSubmitting}
-                      />
-                    </View>
-                  </>
-                )}
+                <Text style={styles.label}>New Email Address *</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    value={newValue}
+                    onChangeText={setNewValue}
+                    placeholder="you@example.com"
+                    keyboardType="default"
+                    autoCapitalize="none"
+                    editable={!isSubmitting}
+                  />
+                </View>
               </>
             )}
 
