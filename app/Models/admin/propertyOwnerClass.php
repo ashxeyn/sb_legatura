@@ -35,7 +35,7 @@ class propertyOwnerClass
                 ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
                 ->join('milestones', 'projects.project_id', '=', 'milestones.project_id')
                 ->whereColumn('project_relationships.owner_id', 'property_owners.owner_id')
-                ->whereNotNull('projects.selected_contractor_id')
+                ->whereNotNull('project_relationships.selected_contractor_id')
                 ->where(function($q) {
                     $q->where('milestones.milestone_status', 'approved')
                       ->orWhere('milestones.setup_status', 'approved');
@@ -137,7 +137,7 @@ class propertyOwnerClass
         // Get Projects
         $projects = DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as contractor_owner', 'contractors.owner_id', '=', 'contractor_owner.owner_id')
             ->leftJoin('users as contractor_user', 'contractor_owner.user_id', '=', 'contractor_user.user_id')
             ->where('project_relationships.owner_id', $owner->owner_id)

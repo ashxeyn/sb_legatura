@@ -189,7 +189,7 @@ class projectAdminController extends Controller
         $query = DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
             ->select(
                 'projects.*',
@@ -275,7 +275,7 @@ class projectAdminController extends Controller
         $query = DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
             ->select(
                 'projects.*',

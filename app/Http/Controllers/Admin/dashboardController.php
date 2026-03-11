@@ -428,12 +428,12 @@ class dashboardController extends authController
         $periodCounts = DB::table('projects')
             ->join('project_relationships', 'project_relationships.rel_id', '=', 'projects.relationship_id')
             ->select(
-                'projects.selected_contractor_id',
+                'project_relationships.selected_contractor_id',
                 DB::raw('COUNT(projects.project_id) as period_count')
             )
-            ->whereNotNull('projects.selected_contractor_id')
+            ->whereNotNull('project_relationships.selected_contractor_id')
             ->whereBetween('project_relationships.created_at', [$start, $end . ' 23:59:59'])
-            ->groupBy('projects.selected_contractor_id');
+            ->groupBy('project_relationships.selected_contractor_id');
 
         return DB::table('contractors')
             ->select(

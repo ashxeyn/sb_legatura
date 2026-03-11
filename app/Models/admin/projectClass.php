@@ -13,7 +13,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.*',
                 'project_relationships.created_at as submitted_at',
@@ -128,7 +128,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as c_user', 'c_po.user_id', '=', 'c_user.user_id')
             ->select(
@@ -195,7 +195,8 @@ class projectClass
         // Get payment details
         $payments = DB::table('milestone_payments')
             ->leftJoin('milestones', 'milestone_payments.item_id', '=', 'milestones.milestone_id')
-            ->leftJoin('users', 'milestone_payments.contractor_user_id', '=', 'users.user_id')
+            ->leftJoin('property_owners', 'milestone_payments.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
             ->select(
                 'milestone_payments.payment_id',
                 'milestone_payments.amount',
@@ -207,7 +208,7 @@ class projectClass
                 'milestones.milestone_name',
                 'milestones.start_date',
                 'milestones.end_date',
-                'users.username as uploader_name'
+                DB::raw("CONCAT(COALESCE(users.first_name, ''), ' ', COALESCE(users.last_name, '')) as uploader_name")
             )
             ->where('milestone_payments.project_id', $id)
             ->orderBy('milestone_payments.transaction_date', 'desc')
@@ -304,7 +305,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.*',
                 'project_relationships.bidding_due',
@@ -551,8 +552,12 @@ class projectClass
 
         // Get project updates
         $projectUpdates = DB::table('project_updates as pu')
-            ->leftJoin('contractors as c', 'pu.contractor_user_id', '=', 'c.user_id')
+            ->leftJoin('property_owners as c_po', function($join) {
+                $join->on('pu.contractor_user_id', '=', 'c_po.user_id');
+            })
+            ->leftJoin('contractors as c', 'c_po.owner_id', '=', 'c.owner_id')
             ->leftJoin('property_owners as po', 'pu.owner_user_id', '=', 'po.user_id')
+            ->leftJoin('users as po_user', 'po.user_id', '=', 'po_user.user_id')
             ->select(
                 'pu.extension_id',
                 'pu.created_at',
@@ -560,7 +565,7 @@ class projectClass
                 'pu.reason',
                 'pu.proposed_budget',
                 'pu.proposed_end_date',
-                DB::raw("COALESCE(c.company_name, CONCAT(po.first_name, ' ', po.last_name)) as performed_by")
+                DB::raw("COALESCE(c.company_name, CONCAT(po_user.first_name, ' ', COALESCE(po_user.middle_name, ''), ' ', po_user.last_name)) as performed_by")
             )
             ->where('pu.project_id', $id)
             ->get();
@@ -588,14 +593,16 @@ class projectClass
             ->leftJoin('milestone_items as mi', 'h.item_id', '=', 'mi.item_id')
             ->leftJoin('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
             ->leftJoin('property_owners as po', 'h.changed_by', '=', 'po.user_id')
-            ->leftJoin('contractors as c', 'h.changed_by', '=', 'c.user_id')
+            ->leftJoin('users as po_user', 'po.user_id', '=', 'po_user.user_id')
+            ->leftJoin('property_owners as c_po', 'h.changed_by', '=', 'c_po.user_id')
+            ->leftJoin('contractors as c', 'c_po.owner_id', '=', 'c.owner_id')
             ->select(
                 'h.changed_at',
                 'h.previous_date',
                 'h.new_date',
                 'h.change_reason',
                 'mi.milestone_item_title',
-                DB::raw("COALESCE(CONCAT(po.first_name, ' ', po.last_name), c.company_name) as performed_by")
+                DB::raw("COALESCE(CONCAT(po_user.first_name, ' ', COALESCE(po_user.middle_name, ''), ' ', po_user.last_name), c.company_name) as performed_by")
             )
             ->where('m.project_id', $id)
             ->get();
@@ -731,7 +738,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.*',
                 'project_relationships.bidding_due',
@@ -994,7 +1001,7 @@ class projectClass
         // ── NEW: Pending Payments ──
         $pendingPayments = DB::table('milestone_payments')
             ->where('project_id', $id)
-            ->where('payment_status', 'pending')
+            ->where('payment_status', 'submitted')
             ->sum('amount');
 
         $project->pending_payment_amount = $pendingPayments;
@@ -1009,7 +1016,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.*',
                 'project_relationships.bidding_due',
@@ -1305,7 +1312,7 @@ class projectClass
             ->leftJoin('contract_terminations', 'projects.project_id', '=', 'contract_terminations.project_id')
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as c_user', 'c_po.user_id', '=', 'c_user.user_id')
             ->select(
@@ -1452,7 +1459,7 @@ class projectClass
 
         $project->milestone_items = array_values($groupedItems);
 
-        // Payment summary calculations - using BOTH 'approved' and 'paid' statuses
+        // Payment summary calculations - using approved status
         $paymentSummary = DB::table('milestone_payments')
             ->select(
                 DB::raw('COUNT(DISTINCT item_id) as total_milestones_paid'),
@@ -1460,7 +1467,7 @@ class projectClass
                 DB::raw('MAX(transaction_date) as last_payment_date')
             )
             ->where('project_id', $id)
-            ->whereIn('payment_status', ['approved', 'paid'])
+            ->where('payment_status', 'approved')
             ->first();
 
         $totalMilestoneItems = count($groupedItems);
@@ -1490,7 +1497,7 @@ class projectClass
                 END as milestone_period")
             )
             ->where('milestone_payments.project_id', $id)
-            ->whereIn('milestone_payments.payment_status', ['approved', 'paid'])
+            ->where('milestone_payments.payment_status', 'approved')
             ->orderBy('milestone_items.sequence_order', 'asc')
             ->get();
 
@@ -1506,7 +1513,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as c_user', 'c_po.user_id', '=', 'c_user.user_id')
             ->select(
@@ -1629,10 +1636,10 @@ class projectClass
 
         $project->milestone_items = array_values($groupedItems);
 
-        // Payment summary calculations - approved/paid only
+        // Payment summary calculations - approved only
         $paymentSummary = DB::table('milestone_payments')
             ->where('project_id', $id)
-            ->whereIn('payment_status', ['approved', 'paid'])
+            ->where('payment_status', 'approved')
             ->selectRaw('COUNT(*) as total_milestones_paid')
             ->selectRaw('SUM(amount) as total_amount_paid')
             ->selectRaw('MAX(transaction_date) as last_payment_date')
@@ -1647,12 +1654,12 @@ class projectClass
             ? 'Partially Paid'
             : 'No Payments';
 
-        // Get payment records for table - approved/paid only
+        // Get payment records for table - approved only
         $payments = DB::table('milestone_payments')
             ->leftJoin('milestone_items', 'milestone_payments.item_id', '=', 'milestone_items.item_id')
             ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
             ->where('milestone_payments.project_id', $id)
-            ->whereIn('milestone_payments.payment_status', ['approved', 'paid'])
+            ->where('milestone_payments.payment_status', 'approved')
             ->select(
                 'milestone_payments.*',
                 'milestone_items.milestone_item_title',
@@ -1681,7 +1688,7 @@ class projectClass
         $affectedMilestones = DB::table('milestone_items')
             ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
             ->where('milestones.project_id', $id)
-            ->whereIn('milestone_items.item_status', ['pending', 'in_progress'])
+            ->whereIn('milestone_items.item_status', ['not_started', 'in_progress', 'delayed', 'halt'])
             ->count();
 
         $project->affected_milestones = (int) $affectedMilestones;
@@ -1699,10 +1706,10 @@ class projectClass
         // Estimate timeline impact (days halted = days extension needed)
         $project->timeline_impact_days = $project->halt_duration_days;
 
-        // Count payments affected (pending payments)
+        // Count payments affected (submitted payments waiting for approval)
         $paymentsAffected = DB::table('milestone_payments')
             ->where('project_id', $id)
-            ->where('payment_status', 'pending')
+            ->where('payment_status', 'submitted')
             ->count();
 
         $project->payments_affected = (int) $paymentsAffected;
@@ -1871,7 +1878,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
             ->select(
                 'projects.project_id',
@@ -1881,7 +1888,7 @@ class projectClass
                 'projects.lot_size',
                 'projects.floor_area',
                 'projects.project_location',
-                'projects.selected_contractor_id',
+                'project_relationships.selected_contractor_id',
                 'projects.project_status',
                 // Owner details
                 DB::raw("CONCAT(owner_users.first_name, ' ', COALESCE(owner_users.middle_name, ''), ' ', owner_users.last_name) as owner_name"),
@@ -1957,7 +1964,7 @@ class projectClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
@@ -2091,7 +2098,7 @@ class projectClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
@@ -2384,7 +2391,7 @@ class projectClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
@@ -2439,7 +2446,7 @@ class projectClass
                 ->get();
 
             foreach ($milestones as $milestone) {
-                $restoreStatus = $milestone->previous_status ?? 'pending';
+                $restoreStatus = $milestone->previous_status ?? 'not_started';
                 DB::table('milestones')
                     ->where('milestone_id', $milestone->milestone_id)
                     ->update([
@@ -2457,7 +2464,7 @@ class projectClass
                     ->get();
 
                 foreach ($items as $item) {
-                    $restoreStatus = $item->previous_status ?? 'pending';
+                    $restoreStatus = $item->previous_status ?? 'not_started';
                     DB::table('milestone_items')
                         ->where('item_id', $item->item_id)
                         ->update([
@@ -2575,7 +2582,7 @@ class projectClass
             $project = DB::table('projects')
                 ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
                 ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-                ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+                ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
                 ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
                 ->select(
                     'projects.*',
@@ -3251,8 +3258,8 @@ class projectClass
 
             // Get project with user IDs
             $project = DB::table('projects')
-                ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
                 ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
                 ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
                 ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
                 ->where('projects.project_id', $projectId)
@@ -3276,7 +3283,7 @@ class projectClass
             $milestones = DB::table('milestone_items')
                 ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
                 ->where('milestones.project_id', $projectId)
-                ->whereIn('milestone_items.item_status', ['pending', 'in_progress'])
+                ->whereIn('milestone_items.item_status', ['not_started', 'in_progress', 'delayed', 'halt'])
                 ->select('milestone_items.*')
                 ->orderBy('milestone_items.sequence_order')
                 ->get();
@@ -3413,7 +3420,7 @@ class projectClass
             $milestones = DB::table('milestone_items')
                 ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
                 ->where('milestones.project_id', $projectId)
-                ->whereIn('milestone_items.item_status', ['pending', 'in_progress'])
+                ->whereIn('milestone_items.item_status', ['not_started', 'in_progress', 'delayed', 'halt'])
                 ->select(
                     'milestone_items.item_id',
                     'milestone_items.milestone_item_title as title',
@@ -3492,6 +3499,7 @@ class projectClass
                 ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                ->leftJoin('users as u', 'po.user_id', '=', 'u.user_id')
                 ->where('mp.project_id', $projectId)
                 ->where(function ($q) {
                     $q->whereNull('mp.payment_status')
@@ -3512,7 +3520,7 @@ class projectClass
                     'mi.date_to_finish',
                     'm.milestone_name',
                     'm.start_date as milestone_start_date',
-                    DB::raw('CONCAT(COALESCE(po.first_name, ""), " ", COALESCE(po.last_name, "")) as owner_name')
+                    DB::raw('CONCAT(COALESCE(u.first_name, ""), " ", COALESCE(u.middle_name, ""), " ", COALESCE(u.last_name, "")) as owner_name')
                 )
                 ->orderBy('mi.sequence_order')
                 ->orderBy('mp.transaction_date')

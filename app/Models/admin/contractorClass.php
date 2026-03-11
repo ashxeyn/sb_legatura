@@ -469,7 +469,7 @@ class contractorClass extends Model
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->where('projects.selected_contractor_id', $contractorId)
+            ->where('project_relationships.selected_contractor_id', $contractorId)
             ->select(
                 'projects.*',
                 'project_relationships.created_at',
