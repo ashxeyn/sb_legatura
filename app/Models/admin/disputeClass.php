@@ -194,6 +194,7 @@ class disputeClass
                 'reporter.username as reporter_username',
                 'reporter_po.profile_pic as reporter_profile_pic',
                 'accused.username as against_username',
+                'accused.user_type as against_user_type',
                 'projects.project_title')
             ->where('disputes.dispute_id', $id)
             ->first();
@@ -322,6 +323,8 @@ class disputeClass
             'header' => [
                 'reporter_name' => $dispute->reporter_username ?? null,
                 'against_name' => $dispute->against_username ?? null,
+                'against_user_id' => $dispute->against_user_id ?? null,
+                'against_user_type' => $dispute->against_user_type ?? null,
                 'dispute_type' => $dispute->dispute_type ?? null,
                 'date_submitted' => $dispute->created_at ?? null,
                 'dispute_status' => $dispute->dispute_status ?? null,

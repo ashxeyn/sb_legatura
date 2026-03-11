@@ -659,6 +659,18 @@ Route::get('/admin/global-management/posting-management', [globalManagementContr
 Route::get('/admin/global-management/review-management', [globalManagementController::class, 'reviewManagement'])->name('admin.globalManagement.reviewManagement');
 Route::post('/admin/global-management/review-management/{id}/delete', [globalManagementController::class, 'deleteReview'])->name('admin.globalManagement.deleteReview');
 
+// Report Management
+Route::get('/admin/global-management/report-management', [globalManagementController::class, 'reportManagement'])->name('admin.globalManagement.reportManagement');
+Route::get('/admin/global-management/report-management/api', [globalManagementController::class, 'getReportsApi'])->name('admin.globalManagement.reportsApi');
+Route::get('/admin/global-management/report-management/detail/{source}/{id}', [globalManagementController::class, 'getReportDetail'])->name('admin.globalManagement.reportDetail');
+Route::get('/admin/global-management/report-management/user-profile/{userId}', [globalManagementController::class, 'getUserProfileCard'])->name('admin.globalManagement.userProfileCard');
+Route::post('/admin/global-management/report-management/{source}/{id}/dismiss', [globalManagementController::class, 'dismissReport'])->name('admin.globalManagement.dismissReport');
+Route::post('/admin/global-management/report-management/{source}/{id}/confirm', [globalManagementController::class, 'confirmReport'])->name('admin.globalManagement.confirmReport');
+Route::post('/admin/global-management/report-management/{source}/{id}/status', [globalManagementController::class, 'updateReportStatus'])->name('admin.globalManagement.updateReportStatus');
+Route::get('/admin/global-management/report-management/reporters', [globalManagementController::class, 'getReporterStatsApi'])->name('admin.globalManagement.reporterStatsApi');
+Route::get('/admin/global-management/report-management/admin-search', [globalManagementController::class, 'adminSearch'])->name('admin.globalManagement.adminSearch');
+Route::post('/admin/global-management/report-management/admin-action', [globalManagementController::class, 'adminDirectAction'])->name('admin.globalManagement.adminDirectAction');
+
 // Project Management Routes
 // Specific routes first (to avoid conflict with {id} parameter)
 Route::get('/admin/project-management/list-of-projects', [projectManagementController::class, 'listOfProjects'])->name('admin.projectManagement.listOfProjects');

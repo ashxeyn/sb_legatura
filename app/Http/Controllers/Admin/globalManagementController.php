@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Http\Requests\admin\rejectPostRequest;
 use App\Models\admin\postingManagementClass;
 use App\Models\admin\reviewsClass;
+use App\Models\admin\reportManagementClass;
 use Illuminate\Support\Facades\Http;
 use App\Services\AdminActivityLog;
 
@@ -807,5 +808,319 @@ class globalManagementController extends Controller
     public function getAiStatsApi()
     {
         return response()->json($this->getAIUsageStats());
+    }
+
+    /**
+     * Display the Report Management page
+     */
+    public function reportManagement(Request $request)
+    {
+        $counts = reportManagementClass::getCounts();
+        $reports = reportManagementClass::getActiveReports();
+        $reporterStats = reportManagementClass::getReporterStats();
+
+        return view('admin.globalManagement.reportManagement', compact('counts', 'reports', 'reporterStats'));
+    }
+
+    /**
+     * API: Get filtered reports for AJAX
+     */
+    public function getReportsApi(Request $request)
+    {
+        $filters = [
+            'status' => $request->input('status', 'all'),
+            'source' => $request->input('source', 'all'),
+            'search' => $request->input('search'),
+            'date_from' => $request->input('date_from'),
+            'date_to' => $request->input('date_to'),
+        ];
+
+        $reports = reportManagementClass::getActiveReports($filters);
+        $counts = reportManagementClass::getCounts();
+
+        return response()->json([
+            'success' => true,
+            'reports' => $reports,
+            'counts' => $counts,
+        ]);
+    }
+
+    /**
+     * API: Get report detail with evidence for the View modal
+     */
+    public function getReportDetail(Request $request, $source, $id)
+    {
+        $detail = reportManagementClass::getReportWithEvidence($source, $id);
+
+        if (!$detail) {
+            return response()->json(['success' => false, 'message' => 'Report not found'], 404);
+        }
+
+        return response()->json(['success' => true, 'report' => $detail]);
+    }
+
+    /**
+     * API: Get user profile card for suspension modal
+     */
+    public function getUserProfileCard(Request $request, $userId)
+    {
+        $profile = reportManagementClass::getUserProfileCard($userId);
+
+        if (!$profile) {
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        return response()->json(['success' => true, 'profile' => $profile]);
+    }
+
+    /**
+     * Dismiss a report (mark as invalid, no action against reported user)
+     */
+    public function dismissReport(Request $request, $source, $id)
+    {
+        $reason = $request->input('reason');
+        if (empty($reason)) {
+            return response()->json(['success' => false, 'message' => 'Dismissal reason is required'], 422);
+        }
+
+        $adminId = session('admin_user_id');
+        $result = reportManagementClass::updateReportStatus($source, $id, 'dismissed', $reason, $adminId);
+
+        AdminActivityLog::log('report_dismissed', [
+            'source' => $source,
+            'report_id' => $id,
+            'reason' => $reason,
+        ]);
+
+        return response()->json(['success' => (bool) $result]);
+    }
+
+    /**
+     * Confirm a report: resolve the report + suspend the user + hide offending content
+     * Single-step execution
+     */
+    public function confirmReport(Request $request, $source, $id)
+    {
+        $suspensionReason = $request->input('suspension_reason');
+        $suspensionType   = $request->input('suspension_type', 'temporary');
+        $suspensionUntil  = $request->input('suspension_until');
+        $reportedUserId   = $request->input('reported_user_id');
+
+        if (empty($suspensionReason)) {
+            return response()->json(['success' => false, 'message' => 'Suspension reason is required'], 422);
+        }
+        if ($suspensionType === 'temporary' && empty($suspensionUntil)) {
+            return response()->json(['success' => false, 'message' => 'Suspension end date is required for temporary bans'], 422);
+        }
+        if (empty($reportedUserId)) {
+            return response()->json(['success' => false, 'message' => 'Reported user ID is required'], 422);
+        }
+
+        $adminId = session('admin_user_id');
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Resolve the report
+            reportManagementClass::updateReportStatus($source, $id, 'resolved', $suspensionReason, $adminId);
+
+            // 2. Hide offending content (reviews, posts, etc.)
+            reportManagementClass::hideContent($source, $id);
+
+            // 3. Suspend the reported user
+            $user = DB::table('users')->where('user_id', $reportedUserId)->first();
+
+            if ($user) {
+                $duration = $suspensionType === 'permanent' ? 'permanent' : 'temporary';
+                $suspUntilDate = $suspensionType === 'permanent' ? '9999-12-31' : $suspensionUntil;
+
+                if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
+                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                    if ($owner) {
+                        $ownerModel = new \App\Models\admin\propertyOwnerClass();
+                        $ownerModel->suspendOwner($owner->owner_id, $suspensionReason, $duration, $suspUntilDate);
+                    }
+                } elseif ($user->user_type === 'contractor') {
+                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                    if ($owner) {
+                        $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
+                        if ($contractor) {
+                            $contractorModel = new \App\Models\admin\contractorClass();
+                            $contractorModel->suspendContractor($contractor->contractor_id, $suspensionReason, $duration, $suspUntilDate);
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+
+            AdminActivityLog::log('report_confirmed_and_suspended', [
+                'source' => $source,
+                'report_id' => $id,
+                'reported_user_id' => $reportedUserId,
+                'suspension_type' => $suspensionType,
+                'suspension_until' => $suspensionUntil,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Report resolved and user suspended successfully']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update a report's status (basic status change)
+     */
+    public function updateReportStatus(Request $request, $source, $id)
+    {
+        $status = $request->input('status');
+        $adminNotes = $request->input('admin_notes');
+        $adminId = session('admin_user_id');
+
+        if (!in_array($status, ['under_review', 'resolved', 'dismissed'])) {
+            return response()->json(['success' => false, 'message' => 'Invalid status'], 422);
+        }
+
+        $result = reportManagementClass::updateReportStatus($source, $id, $status, $adminNotes, $adminId);
+
+        AdminActivityLog::log('report_status_updated', [
+            'source' => $source,
+            'report_id' => $id,
+            'new_status' => $status,
+        ]);
+
+        return response()->json(['success' => (bool) $result]);
+    }
+
+    /**
+     * API: Get reporter statistics for Report History tab
+     */
+    public function getReporterStatsApi(Request $request)
+    {
+        $stats = reportManagementClass::getReporterStats();
+        return response()->json(['success' => true, 'stats' => $stats]);
+    }
+
+    /**
+     * API: Admin search for users, posts, or reviews (Direct Admin Action tab)
+     */
+    public function adminSearch(Request $request)
+    {
+        $type = $request->input('type', 'user');
+        $query = $request->input('query', '');
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = 15;
+
+        $results = match ($type) {
+            'user'   => reportManagementClass::searchUsers($query, $page, $perPage),
+            'post'   => reportManagementClass::searchPosts($query, $page, $perPage),
+            'review' => reportManagementClass::searchReviews($query, $page, $perPage),
+            default  => ['data' => [], 'total' => 0, 'page' => 1, 'per_page' => $perPage, 'last_page' => 1],
+        };
+
+        return response()->json(['success' => true, 'type' => $type, 'results' => $results['data'], 'pagination' => [
+            'total' => $results['total'],
+            'page' => $results['page'],
+            'per_page' => $results['per_page'],
+            'last_page' => $results['last_page'],
+        ]]);
+    }
+
+    /**
+     * Admin direct action: suspend user, hide post, or hide review
+     */
+    public function adminDirectAction(Request $request)
+    {
+        $actionType = $request->input('action_type'); // suspend_user, hide_post, hide_review
+        $targetId   = $request->input('target_id');
+        $reason     = $request->input('reason', '');
+
+        if (empty($actionType) || empty($targetId)) {
+            return response()->json(['success' => false, 'message' => 'Action type and target ID are required'], 422);
+        }
+
+        if (empty($reason)) {
+            return response()->json(['success' => false, 'message' => 'A reason is required for this action'], 422);
+        }
+
+        $adminId = session('user')->admin_id ?? null;
+
+        try {
+            DB::beginTransaction();
+
+            if ($actionType === 'suspend_user') {
+                $suspensionType  = $request->input('suspension_type', 'temporary');
+                $suspensionUntil = $request->input('suspension_until');
+
+                if ($suspensionType === 'temporary' && empty($suspensionUntil)) {
+                    return response()->json(['success' => false, 'message' => 'Suspension end date is required for temporary bans'], 422);
+                }
+
+                $user = DB::table('users')->where('user_id', $targetId)->first();
+                if (!$user) {
+                    return response()->json(['success' => false, 'message' => 'User not found'], 404);
+                }
+
+                $duration = $suspensionType === 'permanent' ? 'permanent' : 'temporary';
+                $suspUntilDate = $suspensionType === 'permanent' ? '9999-12-31' : $suspensionUntil;
+
+                if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
+                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                    if ($owner) {
+                        $ownerModel = new \App\Models\admin\propertyOwnerClass();
+                        $ownerModel->suspendOwner($owner->owner_id, $reason, $duration, $suspUntilDate);
+                    }
+                } elseif ($user->user_type === 'contractor') {
+                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                    if ($owner) {
+                        $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
+                        if ($contractor) {
+                            $contractorModel = new \App\Models\admin\contractorClass();
+                            $contractorModel->suspendContractor($contractor->contractor_id, $reason, $duration, $suspUntilDate);
+                        }
+                    }
+                }
+
+                // Notify suspended user
+                reportManagementClass::notifyUser($user->user_id, 'Your Account Has Been Suspended',
+                    "Your account has been suspended by an administrator. Reason: {$reason}. Duration: {$duration}.",
+                    'Admin Announcement');
+
+                AdminActivityLog::log('admin_direct_suspend', [
+                    'user_id' => $targetId,
+                    'suspension_type' => $suspensionType,
+                    'suspension_until' => $suspensionUntil,
+                    'reason' => $reason,
+                ]);
+
+            } elseif ($actionType === 'hide_post') {
+                reportManagementClass::adminHidePost($targetId, $reason);
+
+                AdminActivityLog::log('admin_direct_hide_post', [
+                    'post_id' => $targetId,
+                    'reason' => $reason,
+                ]);
+
+            } elseif ($actionType === 'hide_review') {
+                reportManagementClass::adminHideReview($targetId, $reason);
+
+                AdminActivityLog::log('admin_direct_hide_review', [
+                    'review_id' => $targetId,
+                    'reason' => $reason,
+                ]);
+
+            } else {
+                return response()->json(['success' => false, 'message' => 'Invalid action type'], 422);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Action completed successfully']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
     }
 }
