@@ -209,8 +209,25 @@ export default function App() {
         set_app_state('login');
     };
 
-    const handle_register = () => {
-        set_app_state('user_type_selection');
+    const handle_register = async () => {
+        try {
+            // Try to load signup form data and open Property Owner flow directly
+            const response = await auth_service.get_signup_form_data();
+            if (response && response.success) {
+                const data = response.data;
+                set_form_data(data);
+                set_selected_user_type('property_owner');
+                set_app_state('po_personal_info');
+                return;
+            }
+            // Fallback to explicit user type selection when form data fails
+            Alert.alert('Error', 'Failed to load signup form. Please select account type.');
+            set_app_state('user_type_selection');
+        } catch (error) {
+            console.error('Failed to load signup form data:', error);
+            Alert.alert('Error', 'Unable to load signup form. Please check your connection.');
+            set_app_state('user_type_selection');
+        }
     };
 
     const handle_back_to_auth_choice = () => {
@@ -723,7 +740,7 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <PersonalInfoScreen
-                    onBackPress={handle_back_to_user_type_selection}
+                    onBackPress={handle_back_to_auth_choice}
                     onNext={handle_po_personal_info_next}
                     formData={form_data}
                     initialData={po_personal_info}

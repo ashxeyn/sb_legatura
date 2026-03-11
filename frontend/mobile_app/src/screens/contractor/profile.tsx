@@ -14,7 +14,7 @@ import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/imageFallback';
 import { contractors_service } from '../../services/contractors_service';
 import { api_config } from '../../config/api';
 import { role_service } from '../../services/role_service';

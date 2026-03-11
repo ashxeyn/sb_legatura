@@ -42,7 +42,8 @@ class feedClass
     public function getActiveContractors(?int $excludeUserId = null, int $page = 1, int $perPage = 15, array $filters = []): array
     {
         $query = DB::table('contractors as c')
-            ->join('users as u', 'c.user_id', '=', 'u.user_id')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
             ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
             ->where('c.verification_status', 'approved')
             ->select(
@@ -64,14 +65,14 @@ class feedClass
                 'c.type_id',
                 'u.user_id',
                 'u.username',
-                'u.profile_pic',
-                'u.cover_photo',
+                'po.profile_pic as profile_pic',
+                'po.cover_photo as cover_photo',
                 'c.company_logo',
                 'c.company_banner'
             );
 
         if ($excludeUserId) {
-            $query->where('c.user_id', '!=', $excludeUserId);
+            $query->where('po.user_id', '!=', $excludeUserId);
         }
 
         // ── Search keyword ──────────────────────────────────────────────
@@ -243,8 +244,8 @@ class feedClass
                 DB::raw('DATE(pr.created_at) as created_at'),
                 'pr.owner_id as owner_id',
                 DB::raw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) as owner_name"),
-                'u.profile_pic as owner_profile_pic',
-                'u.user_id as owner_user_id'
+                'po.profile_pic as owner_profile_pic',
+                'po.user_id as owner_user_id'
             );
 
         // Exclude projects the contractor already bid on
@@ -350,8 +351,8 @@ class feedClass
             'pr.created_at',
             'pr.owner_id as owner_id',
             DB::raw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) as owner_name"),
-            'u.profile_pic as owner_profile_pic',
-            'u.user_id as owner_user_id'
+            'po.profile_pic as owner_profile_pic',
+            'po.user_id as owner_user_id'
         );
 
         // Exclude projects the contractor already bid on
@@ -439,8 +440,8 @@ class feedClass
                 'project_relationships.bidding_due as bidding_deadline',
                 'project_relationships.created_at',
                 DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
-                'users.profile_pic as owner_profile_pic',
-                'users.user_id as owner_user_id'
+                'property_owners.profile_pic as owner_profile_pic',
+                'property_owners.user_id as owner_user_id'
             )
             ->orderBy('project_relationships.created_at', 'desc')
             ->get();

@@ -4,6 +4,7 @@ namespace App\Models\accounts;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class accountClass
 {
@@ -118,9 +119,7 @@ class accountClass
 
     public function createUser($data)
     {
-        $userId = DB::table('users')->insertGetId([
-            'profile_pic' => $data['profile_pic'] ?? null,
-            'cover_photo' => $data['cover_photo'] ?? null,
+        $payload = [
             'username' => $data['username'],
             'email' => $data['email'],
             'password_hash' => $data['password_hash'],
@@ -131,15 +130,40 @@ class accountClass
             'user_type' => $data['user_type'] ?? 'property_owner',
             'created_at' => now(),
             'updated_at' => now()
-        ]);
+        ];
+
+        try {
+            if (Schema::hasColumn('users', 'profile_pic')) {
+                $payload['profile_pic'] = $data['profile_pic'] ?? null;
+            }
+            if (Schema::hasColumn('users', 'cover_photo')) {
+                $payload['cover_photo'] = $data['cover_photo'] ?? null;
+            }
+            // Ensure name fields are present when the schema requires them.
+            if (Schema::hasColumn('users', 'first_name')) {
+                $payload['first_name'] = $data['first_name'] ?? '';
+            }
+            if (Schema::hasColumn('users', 'middle_name')) {
+                $payload['middle_name'] = $data['middle_name'] ?? null;
+            }
+            if (Schema::hasColumn('users', 'last_name')) {
+                $payload['last_name'] = $data['last_name'] ?? '';
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Schema check failed when creating user: ' . $e->getMessage());
+        }
+
+        $userId = DB::table('users')->insertGetId($payload);
 
         return $userId;
     }
 
     public function createContractor($data)
     {
-        $contractorId = DB::table('contractors')->insertGetId([
-            'user_id' => $data['user_id'],
+        // Support databases that use either `user_id` or `owner_id` on the contractors table.
+        $userIdColumn = Schema::hasColumn('contractors', 'user_id') ? 'user_id' : (Schema::hasColumn('contractors', 'owner_id') ? 'owner_id' : 'user_id');
+
+        $payload = [
             'company_logo' => $data['company_logo'] ?? null,
             'company_banner' => $data['company_banner'] ?? null,
             'company_name' => $data['company_name'],
@@ -149,7 +173,6 @@ class accountClass
             'services_offered' => $data['services_offered'],
             'business_address' => $data['business_address'],
             'company_email' => $data['company_email'],
-            'company_phone' => $data['company_phone'],
             'company_website' => $data['company_website'] ?? null,
             'company_social_media' => $data['company_social_media'] ?? null,
             'picab_number' => $data['picab_number'],
@@ -164,26 +187,62 @@ class accountClass
             'verification_date' => null,
             'created_at' => now(),
             'updated_at' => now()
-        ]);
+        ];
+
+        // Attach identifier column depending on schema
+        try {
+            if ($userIdColumn === 'user_id') {
+                $payload['user_id'] = $data['user_id'] ?? null;
+            } else {
+                // owner_id expected — try to resolve a property_owners.owner_id for this user
+                $userId = $data['user_id'] ?? null;
+                $ownerId = null;
+                if ($userId) {
+                    try {
+                        $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
+                        if ($ownerRow) $ownerId = $ownerRow->owner_id ?? null;
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to resolve owner_id for contractor payload: ' . $e->getMessage());
+                    }
+                }
+                // If owner_id couldn't be resolved, fallback to user id to avoid immediate DB exception.
+                $payload['owner_id'] = $ownerId ?? ($data['user_id'] ?? null);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Error resolving contractor identifier column: ' . $e->getMessage());
+            $payload['user_id'] = $data['user_id'] ?? null;
+        }
+
+        $contractorId = DB::table('contractors')->insertGetId($payload);
 
         return $contractorId;
     }
 
     public function createContractorUser($data)
     {
-        $contractorUserId = DB::table('contractor_users')->insertGetId([
-            'contractor_id' => $data['contractor_id'],
-            'user_id' => $data['user_id'],
-            'authorized_rep_lname' => $data['last_name'],
-            'authorized_rep_mname' => $data['middle_name'] ?? null,
-            'authorized_rep_fname' => $data['first_name'],
-            'phone_number' => $data['phone_number'] ?? '',
-            'role' => 'owner',
-            'is_active' => 0,
-            'created_at' => now()
-        ]);
+        try {
+            if (!Schema::hasTable('contractor_users')) {
+                Log::warning('createContractorUser skipped: contractor_users table does not exist');
+                return null;
+            }
 
-        return $contractorUserId;
+            $contractorUserId = DB::table('contractor_users')->insertGetId([
+                'contractor_id' => $data['contractor_id'],
+                'user_id' => $data['user_id'],
+                'authorized_rep_lname' => $data['last_name'],
+                'authorized_rep_mname' => $data['middle_name'] ?? null,
+                'authorized_rep_fname' => $data['first_name'],
+                'phone_number' => $data['phone_number'] ?? '',
+                'role' => 'owner',
+                'is_active' => 0,
+                'created_at' => now()
+            ]);
+
+            return $contractorUserId;
+        } catch (\Throwable $e) {
+            Log::warning('createContractorUser failed: ' . $e->getMessage());
+            return null;
+        }
     }
 
     public function createPropertyOwner($data)
@@ -197,25 +256,111 @@ class accountClass
             }
         }
 
-        $ownerId = DB::table('property_owners')->insertGetId([
+        $payload = [
             'user_id' => $data['user_id'],
-            'last_name' => $data['last_name'],
-            'middle_name' => $data['middle_name'] ?? null,
-            'first_name' => $data['first_name'],
-            'phone_number' => $data['phone_number'],
-            'valid_id_id' => $validIdId,
-            'valid_id_photo' => $data['valid_id_photo'] ?? null,
-            'valid_id_back_photo' => $data['valid_id_back_photo'] ?? null,
-            'police_clearance' => $data['police_clearance'] ?? null,
-            'date_of_birth' => $data['date_of_birth'],
-            'age' => $data['age'],
-            'occupation_id' => $data['occupation_id'],
-            'occupation_other' => $data['occupation_other'] ?? null,
-            'address' => $data['address'] ?? null,
             'verification_status' => 'pending',
             'verification_date' => null,
             'created_at' => now()
-        ]);
+        ];
+
+        try {
+            if (Schema::hasColumn('property_owners', 'last_name')) {
+                $payload['last_name'] = $data['last_name'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'middle_name')) {
+                $payload['middle_name'] = $data['middle_name'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'first_name')) {
+                $payload['first_name'] = $data['first_name'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'phone_number')) {
+                $payload['phone_number'] = $data['phone_number'] ?? null;
+            }
+
+            // Address components (preferred). If the DB has dedicated columns, store them.
+            if (Schema::hasColumn('property_owners', 'province')) {
+                $payload['province'] = $data['province'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'city')) {
+                $payload['city'] = $data['city'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'barangay')) {
+                $payload['barangay'] = $data['barangay'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'street')) {
+                $payload['street'] = $data['street'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'postal_code')) {
+                $payload['postal_code'] = $data['postal_code'] ?? null;
+            }
+
+            // Backwards-compatible: if the table still uses a single `address` field,
+            // prefer an explicitly provided `address`, otherwise construct one from components.
+            if (Schema::hasColumn('property_owners', 'address')) {
+                if (!empty($data['address'])) {
+                    $payload['address'] = $data['address'];
+                } else {
+                    $constructed = [];
+                    if (!empty($data['street'])) {
+                        $constructed[] = $data['street'];
+                    }
+                    if (!empty($data['barangay'])) {
+                        $constructed[] = $data['barangay'];
+                    }
+                    if (!empty($data['city'])) {
+                        $constructed[] = $data['city'];
+                    }
+                    if (!empty($data['province'])) {
+                        $constructed[] = $data['province'];
+                    }
+                    if (!empty($data['postal_code'])) {
+                        $constructed[] = $data['postal_code'];
+                    }
+
+                    if (!empty($constructed)) {
+                        $payload['address'] = implode(', ', $constructed);
+                    }
+                }
+            }
+
+            if (Schema::hasColumn('property_owners', 'date_of_birth')) {
+                $payload['date_of_birth'] = $data['date_of_birth'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'age')) {
+                $payload['age'] = $data['age'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'occupation_id')) {
+                $payload['occupation_id'] = $data['occupation_id'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'occupation_other')) {
+                $payload['occupation_other'] = $data['occupation_other'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'valid_id_id')) {
+                $payload['valid_id_id'] = $validIdId;
+            }
+            if (Schema::hasColumn('property_owners', 'valid_id_photo')) {
+                $payload['valid_id_photo'] = $data['valid_id_photo'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'valid_id_back_photo')) {
+                $payload['valid_id_back_photo'] = $data['valid_id_back_photo'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'profile_pic')) {
+                $payload['profile_pic'] = $data['profile_pic'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'cover_photo')) {
+                $payload['cover_photo'] = $data['cover_photo'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'police_clearance')) {
+                $payload['police_clearance'] = $data['police_clearance'] ?? null;
+            }
+            if (Schema::hasColumn('property_owners', 'is_active')) {
+                $payload['is_active'] = $data['is_active'] ?? 0;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Schema check failed when creating property owner: ' . $e->getMessage());
+        }
+
+        $ownerId = DB::table('property_owners')->insertGetId($payload);
 
         return $ownerId;
     }
@@ -237,6 +382,15 @@ class accountClass
 
     public function updateUserProfilePic($userId, $profilePicPath)
     {
+        try {
+            if (!Schema::hasColumn('users', 'profile_pic')) {
+                Log::warning('updateUserProfilePic called but users.profile_pic column is missing');
+                return 0;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Schema check failed in updateUserProfilePic: ' . $e->getMessage());
+        }
+
         return DB::table('users')
             ->where('user_id', $userId)
             ->update(['profile_pic' => $profilePicPath]);

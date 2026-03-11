@@ -32,16 +32,14 @@ class dashboardClass
      */
     public function getContractorByUserId(int $userId): ?object
     {
-        // Direct contractor
-        $contractor = DB::table('contractors')
-            ->where('user_id', $userId)
-            ->first();
-
-        if ($contractor) {
-            return $contractor;
+        // First, check if this user is an owner that has a contractor record
+        $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+        if ($owner) {
+            $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
+            if ($contractor) return $contractor;
         }
 
-        // Staff member — get parent contractor
+        // Staff member — get parent contractor via contractor_users table
         $staffMember = DB::table('contractor_users')
             ->where('user_id', $userId)
             ->first();
@@ -112,13 +110,14 @@ class dashboardClass
 
             if ($acceptedBid) {
                 $project->contractor_info = DB::table('contractors as c')
-                    ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                    ->leftJoin('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->leftJoin('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('c.contractor_id', $acceptedBid->contractor_id)
                     ->select(
                         'c.contractor_id',
                         'c.company_name',
                         'u.username',
-                        'u.profile_pic'
+                        'po.profile_pic as profile_pic'
                     )
                     ->first();
             }
@@ -219,7 +218,7 @@ class dashboardClass
                         'po.owner_id',
                         'po.first_name',
                         'po.last_name',
-                        'u.profile_pic'
+                        'po.profile_pic as profile_pic'
                     )
                     ->first();
                 $project->owner_info = $owner;

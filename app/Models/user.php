@@ -14,6 +14,13 @@ class user extends Authenticatable
     use HasFactory, Notifiable, HasApiTokens;
 
     /**
+     * Explicit table name to match provided schema.
+     *
+     * @var string
+     */
+    protected $table = 'users';
+
+    /**
      * The primary key for the model.
      *
      * @var string
@@ -45,8 +52,12 @@ class user extends Authenticatable
         'password_hash',
         'OTP_hash',
         'user_type',
+        'preferred_role',
+        'bio',
+        'first_name',
+        'middle_name',
+        'last_name',
         'is_verified',
-        'profile_pic'
     ];
 
     /**
@@ -60,16 +71,21 @@ class user extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string,string>
      */
-    protected function casts(): array
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
+     * Ensure Eloquent consumers can access `id` as an alias for `user_id`.
+     */
+    public function getIdAttribute()
     {
-        return [
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
+        return $this->attributes[$this->primaryKey] ?? null;
     }
 
     /**

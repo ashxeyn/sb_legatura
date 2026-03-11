@@ -8,7 +8,9 @@ import {
   SafeAreaView,
   Image,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PersonalInfo } from './personal_info';
@@ -84,7 +86,12 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.logoContainer}>
           <Image
             source={require('../../../assets/images/logos/legatura-logo.png')}
@@ -210,6 +217,7 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -145,7 +145,8 @@ class projectsController extends Controller
                     // ── Accepted bid + contractor info ──────────────────────────
                     $acceptedBid = DB::table('bids as b')
                         ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
-                        ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                        ->leftJoin('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                        ->leftJoin('users as u', 'po.user_id', '=', 'u.user_id')
                         ->select(
                             'b.bid_id',
                             'b.proposed_cost',
@@ -158,7 +159,7 @@ class projectsController extends Controller
                             'c.years_of_experience',
                             'c.completed_projects',
                             'u.username',
-                            'u.profile_pic'
+                            'po.profile_pic as profile_pic'
                         )
                         ->where('b.project_id', $project->project_id)
                         ->where('b.contractor_id', $effectiveContractorId)

@@ -610,7 +610,8 @@ class profileController extends Controller
                     ->leftJoin(DB::raw($pfSub), 'p.project_id', '=', 'pfagg.project_id')
                     ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                     ->join('contractors as c', 'c.contractor_id', '=', 'p.selected_contractor_id')
-                    ->join('users as u', 'u.user_id', '=', 'c.user_id')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('u.user_id', $userId)
                     ->select('p.*', 'pfagg.files', 'pr.created_at as post_created_at')
                     ->orderBy('pr.created_at', 'desc')
@@ -619,7 +620,8 @@ class profileController extends Controller
                 $finished = DB::table('projects as p')
                     ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                     ->join('contractors as c', 'c.contractor_id', '=', 'p.selected_contractor_id')
-                    ->join('users as u', 'u.user_id', '=', 'c.user_id')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('u.user_id', $userId)
                     ->where('p.project_status', 'completed')
                     ->count();
@@ -662,12 +664,13 @@ class profileController extends Controller
                 $contractor_id = $contractor->contractor_id;
                 $representatives = DB::table('contractor_users as cu')
                     ->join('users as u', 'cu.user_id', '=', 'u.user_id')
+                    ->leftJoin('property_owners as rep_po', 'u.user_id', '=', 'rep_po.user_id')
                     ->where('cu.contractor_id', $contractor_id)
                     ->where('cu.role', 'representative')
                     ->where('cu.is_deleted', 0)
                     ->where('cu.is_active', 1)
                     ->select(
-                        'u.profile_pic',
+                        'rep_po.profile_pic as profile_pic',
                         'u.email',
                         'cu.phone_number',
                         DB::raw("CONCAT(cu.authorized_rep_fname, ' ', IFNULL(cu.authorized_rep_mname, ''), ' ', cu.authorized_rep_lname) as full_name"),
@@ -713,7 +716,8 @@ class profileController extends Controller
         try {
             $query = DB::table('reviews as r')
                 ->leftJoin('users as ru', 'r.reviewer_user_id', '=', 'ru.user_id')
-                ->leftJoin('contractors as c', 'ru.user_id', '=', 'c.user_id')
+                ->leftJoin('property_owners as rpo', 'ru.user_id', '=', 'rpo.user_id')
+                ->leftJoin('contractors as c', 'rpo.owner_id', '=', 'c.owner_id')
                 ->orderBy('r.created_at', 'desc');
 
             if ($projectId) {
@@ -730,7 +734,11 @@ class profileController extends Controller
                 $role = $roleParam ? strtolower(str_replace(' ', '_', $roleParam)) : null;
 
                 if ($role === 'contractor') {
-                    $contractor = DB::table('contractors')->where('user_id', $reviewee)->first();
+                    $owner = DB::table('property_owners')->where('user_id', $reviewee)->first();
+                    if (!$owner) {
+                        return response()->json(['success' => true, 'data' => []], 200);
+                    }
+                    $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
                     if (!$contractor) {
                         return response()->json(['success' => true, 'data' => []], 200);
                     }
@@ -755,7 +763,8 @@ class profileController extends Controller
                 // build a dedicated stats query (no ORDER/LIMIT) that mirrors the filters above
                 $statsQuery = DB::table('reviews as r')
                     ->leftJoin('users as ru', 'r.reviewer_user_id', '=', 'ru.user_id')
-                    ->leftJoin('contractors as c', 'ru.user_id', '=', 'c.user_id');
+                    ->leftJoin('property_owners as rpo', 'ru.user_id', '=', 'rpo.user_id')
+                    ->leftJoin('contractors as c', 'rpo.owner_id', '=', 'c.owner_id');
 
                 if ($projectId) {
                     $statsQuery->where('r.project_id', $projectId);
@@ -764,7 +773,11 @@ class profileController extends Controller
                 if ($reviewee) {
                     if ($role === 'contractor') {
                         // contractor filter
-                        $contractor = DB::table('contractors')->where('user_id', $reviewee)->first();
+                        $owner = DB::table('property_owners')->where('user_id', $reviewee)->first();
+                        if (!$owner) {
+                            return response()->json(['success' => true, 'data' => []], 200);
+                        }
+                        $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
                         if (!$contractor) {
                             return response()->json(['success' => true, 'data' => []], 200);
                         }
@@ -795,7 +808,7 @@ class profileController extends Controller
                     'r.rating',
                     'r.comment',
                     'r.created_at',
-                    'ru.profile_pic as reviewer_profile_pic',
+                    'rpo.profile_pic as reviewer_profile_pic',
                     'ru.username as reviewer_username',
                     DB::raw("COALESCE(c.company_name, ru.username) as reviewer_name"),
                     'c.company_name as reviewer_company_name',
@@ -846,7 +859,7 @@ class profileController extends Controller
                     'po.middle_name',
                     'po.last_name',
                     'u.user_id as owner_user_id',
-                    'u.profile_pic as owner_profile_pic'
+                    'po.profile_pic as owner_profile_pic'
                 )
                 ->where('p.project_id', $projectId)
                 ->first();

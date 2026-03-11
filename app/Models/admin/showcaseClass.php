@@ -14,7 +14,8 @@ class showcaseClass
     {
         $query = DB::table('showcases as pp')
             ->join('users as u', 'pp.user_id', '=', 'u.user_id')
-            ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
+            ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
             ->select(
                 'pp.post_id',
                 'pp.title',
@@ -26,7 +27,7 @@ class showcaseClass
                 'pp.rejection_reason',
                 'pp.linked_project_id',
                 'pp.created_at',
-                'u.profile_pic as contractor_pic',
+                'po.profile_pic as contractor_pic',
                 DB::raw("COALESCE(c.company_name, u.username) as contractor_name")
             );
 
@@ -72,11 +73,12 @@ class showcaseClass
     {
         $post = DB::table('showcases as pp')
             ->join('users as u', 'pp.user_id', '=', 'u.user_id')
-            ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
+            ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
             ->where('pp.post_id', $postId)
             ->select(
                 'pp.*',
-                'u.profile_pic as contractor_pic',
+                'po.profile_pic as contractor_pic',
                 'u.email as contractor_email',
                 DB::raw("COALESCE(c.company_name, u.username) as contractor_name")
             )

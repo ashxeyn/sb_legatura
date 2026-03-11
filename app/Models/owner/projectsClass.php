@@ -121,8 +121,8 @@ class projectsClass
             'project_relationships.bidding_due as bidding_deadline',
             'project_relationships.created_at',
             DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
-            'users.profile_pic as owner_profile_pic',
-            'users.user_id as owner_user_id',
+            'property_owners.profile_pic as owner_profile_pic',
+            'property_owners.user_id as owner_user_id',
             DB::raw('(SELECT COUNT(*) FROM platform_payments
                       LEFT JOIN subscription_plans ON platform_payments.subscriptionPlanId = subscription_plans.id
                       WHERE platform_payments.project_id = projects.project_id
@@ -242,10 +242,10 @@ class projectsClass
     public function getActiveContractors($excludeUserId = null)
     {
         $query = DB::table('contractors as c')
-            ->join('users as u', 'c.user_id', '=', 'u.user_id')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
             ->join('contractor_users as cu', function ($join) {
-            $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                ->on('c.user_id', '=', 'cu.user_id');
+            $join->on('c.contractor_id', '=', 'cu.contractor_id');
         })
             ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
             ->where('cu.is_active', 1)
@@ -267,13 +267,13 @@ class projectsClass
             'ct.type_name',
             'u.user_id',
             'u.username',
-            'u.profile_pic',
-            'u.cover_photo'
+            'po.profile_pic as profile_pic',
+            'po.cover_photo as cover_photo'
         );
 
         // Exclude current user if they have a contractor account
         if ($excludeUserId) {
-            $query->where('c.user_id', '!=', $excludeUserId);
+            $query->where('po.user_id', '!=', $excludeUserId);
         }
 
         return $query->orderBy('c.created_at', 'desc')->get();
@@ -284,7 +284,8 @@ class projectsClass
         // Fetch all bids with contractor details
         $bids = DB::table('bids as b')
             ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
-            ->join('users as u', 'c.user_id', '=', 'u.user_id')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
             ->leftJoin('bid_files as bf', function ($join) {
             $join->on('b.bid_id', '=', 'bf.bid_id');
         })
@@ -306,7 +307,7 @@ class projectsClass
             'c.company_website',
             'c.completed_projects',
             'u.username',
-            'u.profile_pic',
+            'po.profile_pic as profile_pic',
             DB::raw('COUNT(DISTINCT bf.file_id) as file_count')
         )
             ->groupBy('b.bid_id', 'b.proposed_cost', 'b.estimated_timeline', 'b.contractor_notes',

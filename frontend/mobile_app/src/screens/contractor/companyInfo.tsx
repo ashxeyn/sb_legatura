@@ -20,7 +20,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 // Company Info interface for contractor step 1
 export interface CompanyInfo {
     companyName: string;
-    companyPhone: string;
     foundedDate: string; // ISO date YYYY-MM-DD
     contractorTypeId: string;
     contractorTypeOtherText: string;
@@ -45,7 +44,6 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
     const [isLoading, setIsLoading] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
     const [companyName, setCompanyName] = useState(initialData?.companyName || '');
-    const [companyPhone, setCompanyPhone] = useState(initialData?.companyPhone || '');
     const [foundedDate, setFoundedDate] = useState(initialData?.foundedDate || '');
     const [contractorTypeId, setContractorTypeId] = useState(initialData?.contractorTypeId || '');
     const [contractorTypeOtherText, setContractorTypeOtherText] = useState(initialData?.contractorTypeOtherText || '');
@@ -62,7 +60,6 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
     useEffect(() => {
         if (initialData) {
             setCompanyName(initialData.companyName || '');
-            setCompanyPhone(initialData.companyPhone || '');
             setFoundedDate(initialData.foundedDate || '');
             setContractorTypeId(initialData.contractorTypeId || '');
             setContractorTypeOtherText(initialData.contractorTypeOtherText || '');
@@ -163,11 +160,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
         // Local validation — build inline errors
         const errors: Record<string, string[]> = {};
         if (!companyName.trim()) errors.company_name = ['Company name is required.'];
-        if (!companyPhone.trim()) {
-            errors.company_phone = ['Company phone is required.'];
-        } else if (!/^09[0-9]{9}$/.test(companyPhone.replace(/\s+/g, '').replace(/-/g, ''))) {
-            errors.company_phone = ['Phone number must be 11 digits starting with 09.'];
-        }
+
         if (!foundedDate.trim()) errors.founded_date = ['Please select founding date.'];
         if (!contractorTypeId) errors.contractor_type_id = ['Please select contractor type.'];
         if (contractorTypeId === '9' && !contractorTypeOtherText.trim()) errors.contractor_type_other_text = ['Please specify other contractor type.'];
@@ -192,7 +185,6 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
         const companyInfo: CompanyInfo = {
             companyName: companyName.trim(),
-            companyPhone: companyPhone.trim(),
             foundedDate: foundedDate.trim(),
             contractorTypeId,
             contractorTypeOtherText: contractorTypeOtherText.trim(),
@@ -218,7 +210,6 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
     const isFormValid = () => {
         return companyName.trim() !== '' &&
-            companyPhone.trim() !== '' &&
             foundedDate.trim() !== '' &&
             contractorTypeId !== '' &&
             (contractorTypeId !== '9' || contractorTypeOtherText.trim() !== '') &&
@@ -324,18 +315,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                         {fieldErrors.company_name && <Text style={styles.fieldErrorText}>{fieldErrors.company_name[0]}</Text>}
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            style={[styles.input, fieldErrors.company_phone && styles.inputError]}
-                            value={companyPhone}
-                            onChangeText={(text) => { setCompanyPhone(text); setFieldErrors(prev => { const { company_phone, ...rest } = prev; return rest; }); }}
-                            placeholder="Company Phone * (e.g., 09171234567)"
-                            placeholderTextColor="#999"
-                            keyboardType="phone-pad"
-                            maxLength={11}
-                        />
-                        {fieldErrors.company_phone ? <Text style={styles.fieldErrorText}>{fieldErrors.company_phone[0]}</Text> : <Text style={styles.fieldHint}>11 digits starting with 09</Text>}
-                    </View>
+                    {/* Company phone removed: field no longer collected */}
 
                     <View style={styles.inputContainer}>
                         <TouchableOpacity onPress={() => { setShowDatePicker(true); setFieldErrors(prev => { const { founded_date, ...rest } = prev; return rest; }); }} style={[styles.input, styles.dateInput, fieldErrors.founded_date && styles.inputError]}>

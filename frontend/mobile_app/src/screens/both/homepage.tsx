@@ -21,7 +21,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/imageFallback';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';

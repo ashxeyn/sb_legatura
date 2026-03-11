@@ -145,7 +145,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           setExistingData(existing);
           if (targetRole === 'contractor') {
             const phone = existing?.property_owner?.phone_number || existing?.user?.phone_number;
-            if (phone) updatePrefilled({ company_phone: phone });
+            // no longer prefilling company_phone (DB no longer stores this column)
             // Prefill authorized representative fields if available from existing contractor_user
             const cu = existing?.contractor_user || existing?.contractor_user_for_this_user || existing?.contractor_user_for_current;
             const repPrefill: any = {};
@@ -927,8 +927,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                 <Text style={styles.sectionTitle}>Company Information</Text>
                 <Text style={styles.inputLabel}>Company Name *</Text>
                 <TextInput style={styles.input} value={formData.company_name || ''} onChangeText={(t) => updateForm({ company_name: t })} placeholder="Company Name *" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Company Phone *</Text>
-                <TextInput style={[styles.input, prefilledFields.company_phone && styles.prefilledInput]} value={formData.company_phone || ''} onChangeText={(t) => updateForm({ company_phone: t })} keyboardType="phone-pad" placeholder="Company Phone *" placeholderTextColor="#999" />
+                {/* Company phone removed: DB no longer stores this field */}
                 <Text style={styles.inputLabel}>Years of Experience *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowExperienceDateModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
@@ -1091,7 +1090,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <View style={styles.previewCard}>
                       <Text style={styles.previewHeader}>Company Information</Text>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Name</Text><Text style={styles.previewValue}>{formData.company_name || '—'}</Text></View>
-                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Phone</Text><Text style={styles.previewValue}>{formData.company_phone || '—'}</Text></View>
+                      {/* Company Phone removed from preview (no longer stored in DB) */}
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Experience</Text><Text style={styles.previewValue}>{formData.experience_start_date ? formatExperience(formData.experience_start_date) : '—'}</Text></View>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Contractor Type</Text><Text style={styles.previewValue}>{(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); return sel?.name || '—'; })()}</Text></View>
                       {(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); const isOther = (sel?.name || '').toLowerCase().includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Other Type</Text><Text style={styles.previewValue}>{formData.contractor_type_other_text || '—'}</Text></View>) : null; })()}

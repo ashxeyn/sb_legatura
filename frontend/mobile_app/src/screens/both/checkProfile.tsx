@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/imageFallback';
 import { storage_service } from '../../utils/storage';
 import CreateShowcase from './createShowcase';
 import ShowcasePostDetail from './showcasePostDetail';
@@ -769,7 +769,7 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     );
   }
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Header */}

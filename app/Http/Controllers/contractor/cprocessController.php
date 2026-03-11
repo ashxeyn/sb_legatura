@@ -1311,7 +1311,7 @@ class cprocessController extends Controller
                     'pr.project_post_status',
                     DB::raw('DATE(pr.created_at) as created_at'),
                     DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
-                    'u.profile_pic as owner_profile_pic',
+                    'po.profile_pic as owner_profile_pic',
                     'u.user_id as owner_user_id',
                     'b.bid_id',
                     'b.proposed_cost',
@@ -1417,7 +1417,7 @@ class cprocessController extends Controller
                         'po.phone_number',
                         'u.username',
                         'u.email',
-                        'u.profile_pic'
+                        'po.profile_pic as profile_pic'
                     )
                     ->first();
 

@@ -133,7 +133,8 @@ class ReviewService
     {
         $query = DB::table('reviews as r')
             ->join('users as ru', 'r.reviewer_user_id', '=', 'ru.user_id')
-            ->leftJoin('contractors as c', 'ru.user_id', '=', 'c.user_id')
+            ->leftJoin('property_owners as rpo', 'ru.user_id', '=', 'rpo.user_id')
+            ->leftJoin('contractors as c', 'rpo.owner_id', '=', 'c.owner_id')
             ->leftJoin('projects as p', 'r.project_id', '=', 'p.project_id')
             ->where('r.reviewee_user_id', $revieweeUserId);
 
@@ -177,7 +178,7 @@ class ReviewService
             'r.comment',
             'r.created_at',
             'ru.username as reviewer_username',
-            'ru.profile_pic as reviewer_profile_pic',
+            'rpo.profile_pic as reviewer_profile_pic',
             'c.company_name as reviewer_company_name',
             'p.project_title',
             DB::raw("COALESCE(c.company_name, ru.username) as reviewer_name")
@@ -217,12 +218,13 @@ class ReviewService
     {
         $reviews = DB::table('reviews as r')
             ->join('users as ru', 'r.reviewer_user_id', '=', 'ru.user_id')
-            ->leftJoin('contractors as c', 'ru.user_id', '=', 'c.user_id')
+            ->leftJoin('property_owners as rpo', 'ru.user_id', '=', 'rpo.user_id')
+            ->leftJoin('contractors as c', 'rpo.owner_id', '=', 'c.owner_id')
             ->where('r.project_id', $projectId)
             ->select(
                 'r.review_id', 'r.project_id', 'r.reviewer_user_id', 'r.reviewee_user_id',
                 'r.rating', 'r.comment', 'r.created_at',
-                'ru.username as reviewer_username', 'ru.profile_pic as reviewer_profile_pic',
+                'ru.username as reviewer_username', 'rpo.profile_pic as reviewer_profile_pic',
                 'c.company_name as reviewer_company_name',
                 DB::raw("COALESCE(c.company_name, ru.username) as reviewer_name")
             )
@@ -311,11 +313,12 @@ class ReviewService
 
         if ($asOwner) return true;
 
-        // Check as selected contractor
+        // Check as selected contractor (compare against contractor owner's user_id)
         $asContractor = DB::table('projects as p')
             ->join('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
             ->where('p.project_id', $projectId)
-            ->where('c.user_id', $userId)
+            ->where('po.user_id', $userId)
             ->exists();
 
         return $asContractor;
@@ -330,8 +333,9 @@ class ReviewService
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
             ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('property_owners as po_c', 'c.owner_id', '=', 'po_c.owner_id')
             ->where('p.project_id', $projectId)
-            ->select('po.user_id as owner_user_id', 'c.user_id as contractor_user_id')
+            ->select('po.user_id as owner_user_id', 'po_c.user_id as contractor_user_id')
             ->first();
 
         if (!$project) return null;

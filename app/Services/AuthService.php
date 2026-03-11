@@ -198,14 +198,26 @@ class AuthService
             $determinedRole = null;
 
             // Check contractors and property_owners for verification_status = 'approved'
-            $contractorApproved = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->where('verification_status', 'approved')
-                ->first();
-            $propertyOwnerApproved = DB::table('property_owners')
-                ->where('user_id', $user->user_id)
-                ->where('verification_status', 'approved')
-                ->first();
+            $contractorApproved = false;
+            $propertyOwnerApproved = false;
+            try {
+                $contractorApproved = DB::table('contractors')
+                    ->where('user_id', $user->user_id)
+                    ->where('verification_status', 'approved')
+                    ->first();
+            } catch (\Exception $e) {
+                \Log::warning('contractors lookup failed: ' . $e->getMessage());
+                $contractorApproved = false;
+            }
+            try {
+                $propertyOwnerApproved = DB::table('property_owners')
+                    ->where('user_id', $user->user_id)
+                    ->where('verification_status', 'approved')
+                    ->first();
+            } catch (\Exception $e) {
+                \Log::warning('property_owners lookup failed: ' . $e->getMessage());
+                $propertyOwnerApproved = false;
+            }
 
             if ($contractorApproved || $propertyOwnerApproved) {
                 $isVerified = true;
@@ -256,8 +268,20 @@ class AuthService
                     \Log::warning('Staff user has NO contractor_users record', ['user_id' => $user->user_id]);
                 }
             } elseif ($user->user_type === 'contractor') {
-                $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
-                $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
+                $contractor = null;
+                $contractorUser = null;
+                try {
+                    $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+                } catch (\Exception $e) {
+                    \Log::warning('contractors lookup failed: ' . $e->getMessage());
+                    $contractor = null;
+                }
+                try {
+                    $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
+                } catch (\Exception $e) {
+                    \Log::warning('contractor_users lookup failed: ' . $e->getMessage());
+                    $contractorUser = null;
+                }
 
                 if ($contractor && $contractor->verification_status === 'approved' &&
                     $contractorUser && $contractorUser->is_active == 1) {
@@ -266,7 +290,13 @@ class AuthService
                     $rejectionReason = $contractor->rejection_reason;
                 }
             } elseif ($user->user_type === 'property_owner') {
-                $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                $owner = null;
+                try {
+                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                } catch (\Exception $e) {
+                    \Log::warning('property_owners lookup failed: ' . $e->getMessage());
+                    $owner = null;
+                }
                 if ($owner && $owner->verification_status === 'approved' && $owner->is_active == 1) {
                     $isVerified = true;
                 } elseif ($owner && $owner->verification_status === 'rejected') {
@@ -278,14 +308,26 @@ class AuthService
                 // PENDING record from masking an earlier APPROVED record (e.g., when adding a
                 // new role creates a pending row while an approved row still exists).
                 // Prefer the primary contractor record for verification status
-                $cApproved = DB::table('contractors')
-                    ->where('user_id', $user->user_id)
-                    ->where('verification_status', 'approved')
-                    ->exists();
-                $oApproved = DB::table('property_owners')
-                    ->where('user_id', $user->user_id)
-                    ->where('verification_status', 'approved')
-                    ->exists();
+                $cApproved = false;
+                $oApproved = false;
+                try {
+                    $cApproved = DB::table('contractors')
+                        ->where('user_id', $user->user_id)
+                        ->where('verification_status', 'approved')
+                        ->exists();
+                } catch (\Exception $e) {
+                    \Log::warning('contractors exists lookup failed: ' . $e->getMessage());
+                    $cApproved = false;
+                }
+                try {
+                    $oApproved = DB::table('property_owners')
+                        ->where('user_id', $user->user_id)
+                        ->where('verification_status', 'approved')
+                        ->exists();
+                } catch (\Exception $e) {
+                    \Log::warning('property_owners exists lookup failed: ' . $e->getMessage());
+                    $oApproved = false;
+                }
 
                 // If either is approved, allow login and set determinedRole
                 if ($cApproved && !$oApproved) {
@@ -296,8 +338,20 @@ class AuthService
                     $determinedRole = 'property_owner';
                 } elseif ($cApproved && $oApproved) {
                     // Both approved, choose by earliest created_at timestamp
-                    $contractorCreated = DB::table('contractors')->where('user_id', $user->user_id)->value('created_at');
-                    $ownerCreated = DB::table('property_owners')->where('user_id', $user->user_id)->value('created_at');
+                    $contractorCreated = null;
+                    $ownerCreated = null;
+                    try {
+                        $contractorCreated = DB::table('contractors')->where('user_id', $user->user_id)->value('created_at');
+                    } catch (\Exception $e) {
+                        \Log::warning('contractors value(created_at) lookup failed: ' . $e->getMessage());
+                        $contractorCreated = null;
+                    }
+                    try {
+                        $ownerCreated = DB::table('property_owners')->where('user_id', $user->user_id)->value('created_at');
+                    } catch (\Exception $e) {
+                        \Log::warning('property_owners value(created_at) lookup failed: ' . $e->getMessage());
+                        $ownerCreated = null;
+                    }
                     $isVerified = true;
                     if ($contractorCreated && $ownerCreated && $contractorCreated < $ownerCreated) {
                         $determinedRole = 'contractor';
@@ -306,30 +360,52 @@ class AuthService
                     }
                 } else {
                     // Neither role is approved. Build rejection/pending info from latest records.
-                    $cRejected = DB::table('contractors')
-                        ->where('user_id', $user->user_id)
-                        ->where('verification_status', 'rejected')
-                        ->exists();
-                    $oRejected = DB::table('property_owners')
-                        ->where('user_id', $user->user_id)
-                        ->where('verification_status', 'rejected')
-                        ->exists();
+                    $cRejected = false;
+                    $oRejected = false;
+                    try {
+                        $cRejected = DB::table('contractors')
+                            ->where('user_id', $user->user_id)
+                            ->where('verification_status', 'rejected')
+                            ->exists();
+                    } catch (\Exception $e) {
+                        \Log::warning('contractors rejected exists lookup failed: ' . $e->getMessage());
+                        $cRejected = false;
+                    }
+                    try {
+                        $oRejected = DB::table('property_owners')
+                            ->where('user_id', $user->user_id)
+                            ->where('verification_status', 'rejected')
+                            ->exists();
+                    } catch (\Exception $e) {
+                        \Log::warning('property_owners rejected exists lookup failed: ' . $e->getMessage());
+                        $oRejected = false;
+                    }
 
                     $rejectionReason = null;
                     if ($cRejected) {
-                        $reason = DB::table('contractors')
-                            ->where('user_id', $user->user_id)
-                            ->whereNotNull('rejection_reason')
-                            ->orderBy('updated_at', 'desc')
-                            ->value('rejection_reason');
+                        try {
+                            $reason = DB::table('contractors')
+                                ->where('user_id', $user->user_id)
+                                ->whereNotNull('rejection_reason')
+                                ->orderBy('updated_at', 'desc')
+                                ->value('rejection_reason');
+                        } catch (\Exception $e) {
+                            \Log::warning('contractors rejection reason lookup failed: ' . $e->getMessage());
+                            $reason = null;
+                        }
                         $rejectionReason = "Contractor: " . ($reason ?: 'rejected');
                     }
                     if ($oRejected) {
-                        $reason = DB::table('property_owners')
-                            ->where('user_id', $user->user_id)
-                            ->whereNotNull('rejection_reason')
-                            ->orderBy('updated_at', 'desc')
-                            ->value('rejection_reason');
+                        try {
+                            $reason = DB::table('property_owners')
+                                ->where('user_id', $user->user_id)
+                                ->whereNotNull('rejection_reason')
+                                ->orderBy('updated_at', 'desc')
+                                ->value('rejection_reason');
+                        } catch (\Exception $e) {
+                            \Log::warning('property_owners rejection reason lookup failed: ' . $e->getMessage());
+                            $reason = null;
+                        }
                         $rejectionReason = $rejectionReason ? $rejectionReason . " | Owner: " . ($reason ?: 'rejected') : "Owner: " . ($reason ?: 'rejected');
                     }
 
@@ -466,7 +542,7 @@ class AuthService
         // If admin-only login, skip user table check
         if ($adminOnly) {
             $adminLogin = $this->attemptAdminLogin($username, $password);
-            
+
             // If admin login failed, check if this username exists in users table
             if (!$adminLogin['success']) {
                 try {
@@ -476,7 +552,7 @@ class AuthService
                                   ->orWhere('email', $username);
                         })
                         ->first();
-                    
+
                     // If user exists in users table, return admin-only error
                     if ($user) {
                         return [
@@ -490,7 +566,7 @@ class AuthService
                     \Log::warning('Admin-only login user check failed: ' . $e->getMessage());
                 }
             }
-            
+
             return $adminLogin;
         }
 

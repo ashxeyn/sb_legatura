@@ -12,7 +12,9 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
-  Image
+  Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -316,7 +318,12 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.logoContainer}>
           <Image
             source={require('../../../assets/images/logos/legatura-logo.png')}
@@ -448,17 +455,6 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
           <Text style={styles.sectionTitle}>Address</Text>
 
           <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, fieldErrors.owner_address_street && styles.inputError]}
-              value={addressStreet}
-              onChangeText={(text) => { setAddressStreet(text); setFieldErrors(prev => { const { owner_address_street, ...rest } = prev; return rest; }); }}
-              placeholder="Street/Building No. * (e.g., 456 Oak Avenue)"
-              placeholderTextColor="#999"
-            />
-            {fieldErrors.owner_address_street && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_street[0]}</Text>}
-          </View>
-
-          <View style={styles.inputContainer}>
             <TouchableOpacity style={[styles.dropdownContainer, fieldErrors.owner_address_province && styles.dropdownError]} onPress={() => { setShowProvinceModal(true); setFieldErrors(prev => { const { owner_address_province, ...rest } = prev; return rest; }); }}>
               <View style={styles.dropdownInputWrapper}>
                 <Text style={[styles.dropdownInputText, !addressProvince && styles.placeholderText]}>
@@ -500,6 +496,17 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
               </View>
             </TouchableOpacity>
             {fieldErrors.owner_address_barangay && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_barangay[0]}</Text>}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.input, fieldErrors.owner_address_street && styles.inputError]}
+              value={addressStreet}
+              onChangeText={(text) => { setAddressStreet(text); setFieldErrors(prev => { const { owner_address_street, ...rest } = prev; return rest; }); }}
+              placeholder="Street/Building No. * (e.g., 456 Oak Avenue)"
+              placeholderTextColor="#999"
+            />
+            {fieldErrors.owner_address_street && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_street[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
@@ -704,6 +711,7 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
           </View>
         </View>
       </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

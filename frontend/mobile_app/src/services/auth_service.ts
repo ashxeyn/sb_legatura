@@ -478,12 +478,8 @@ export class auth_service {
   // Contractor Registration Steps
   static async contractor_step1(companyInfo: any): Promise<api_response> {
     // Transform camelCase to snake_case to match Laravel backend expectations
-    // Clean phone number: remove spaces, dashes, and ensure it's exactly 11 digits starting with 09
-    let cleanedPhone = companyInfo.companyPhone.replace(/\s+/g, '').replace(/-/g, '');
-
     const requestData: any = {
       company_name: companyInfo.companyName,
-      company_phone: cleanedPhone,
       founded_date: companyInfo.foundedDate || '', // ISO date (YYYY-MM-DD)
       contractor_type_id: parseInt(companyInfo.contractorTypeId) || 0, // Convert to integer as required by backend
       contractor_type_other_text: companyInfo.contractorTypeOtherText || null,
@@ -583,23 +579,22 @@ export class auth_service {
       const formData = new FormData();
 
       // Attach JSON-encoded step data
-      if (companyInfo) {
-        formData.append('step1_data', JSON.stringify({
-          company_name: companyInfo.companyName,
-          company_phone: companyInfo.companyPhone,
-          founded_date: companyInfo.foundedDate || '',
-          contractor_type_id: companyInfo.contractorTypeId || 0,
-          contractor_type_other: companyInfo.contractorTypeOtherText || null,
-          services_offered: companyInfo.servicesOffered || '',
-          business_address_street: companyInfo.businessAddressStreet || '',
-          business_address_province: companyInfo.businessAddressProvince || '',
-          business_address_city: companyInfo.businessAddressCity || '',
-          business_address_barangay: companyInfo.businessAddressBarangay || '',
-          business_address_postal: companyInfo.businessAddressPostal || '',
-          company_website: companyInfo.companyWebsite || null,
-          company_social_media: companyInfo.companySocialMedia || null,
-        }));
-      }
+        if (companyInfo) {
+          formData.append('step1_data', JSON.stringify({
+            company_name: companyInfo.companyName,
+            founded_date: companyInfo.foundedDate || '',
+            contractor_type_id: companyInfo.contractorTypeId || 0,
+            contractor_type_other: companyInfo.contractorTypeOtherText || null,
+            services_offered: companyInfo.servicesOffered || '',
+            business_address_street: companyInfo.businessAddressStreet || '',
+            business_address_province: companyInfo.businessAddressProvince || '',
+            business_address_city: companyInfo.businessAddressCity || '',
+            business_address_barangay: companyInfo.businessAddressBarangay || '',
+            business_address_postal: companyInfo.businessAddressPostal || '',
+            company_website: companyInfo.companyWebsite || null,
+            company_social_media: companyInfo.companySocialMedia || null,
+          }));
+        }
 
       if (accountInfo) {
         formData.append('step2_data', JSON.stringify({

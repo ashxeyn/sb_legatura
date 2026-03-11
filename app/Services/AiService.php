@@ -299,8 +299,8 @@ class AiService
         $totalAnalyses = $logs->count();
         $delayedCount = $logs->where('prediction', 'DELAYED')->count();
         $onTimeCount = $logs->where('prediction', 'ON_TIME')->count();
-        $avgDelayProbability = $totalAnalyses > 0 
-            ? round($logs->avg('delay_probability') * 100, 1) 
+        $avgDelayProbability = $totalAnalyses > 0
+            ? round($logs->avg('delay_probability') * 100, 1)
             : 0;
 
         return [

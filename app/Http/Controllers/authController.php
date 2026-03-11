@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Services\UserActivityLogger;
 class authController extends Controller
 {
@@ -34,7 +35,11 @@ class authController extends Controller
         }
 
         if ($role === 'contractor') {
-            $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+            list($col, $idVal) = $this->resolveContractorIdentifier($user->user_id ?? null);
+            if (!$idVal) {
+                return response()->json(['success' => false, 'message' => 'No contractor application found.'], 404);
+            }
+            $contractor = DB::table('contractors')->where($col, $idVal)->first();
             if (!$contractor) {
                 return response()->json(['success' => false, 'message' => 'No contractor application found.'], 404);
             }
@@ -75,6 +80,35 @@ class authController extends Controller
         $this->authService = new AuthService();
         $this->accountClass = new accountClass();
         $this->psgcService = new PsgcApiService();
+    }
+
+    /**
+     * Return the contractor identifier column name used in the `contractors` table.
+     * Supports legacy schemas using `user_id` and newer schemas using `owner_id`.
+     */
+    private function getContractorUserColumn()
+    {
+        return Schema::hasColumn('contractors', 'user_id') ? 'user_id' : (Schema::hasColumn('contractors', 'owner_id') ? 'owner_id' : 'user_id');
+    }
+
+    /**
+     * Resolve the identifier value to use for contractor lookups/inserts for a given user_id.
+     * Returns array: [columnName, identifierValue]
+     */
+    private function resolveContractorIdentifier($userId)
+    {
+        $col = $this->getContractorUserColumn();
+        if ($col === 'user_id') return [$col, $userId];
+
+        // owner_id expected — attempt to find matching property_owners.owner_id
+        try {
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            $ownerId = $owner->owner_id ?? null;
+        } catch (\Throwable $e) {
+            $ownerId = null;
+        }
+
+        return [$col, $ownerId];
     }
 
 
@@ -245,12 +279,12 @@ class authController extends Controller
             return back()->with('error', $result['message'] ?? 'Invalid credentials')->withInput();
         } catch (\Exception $e) {
             \Log::error('Web login error: ' . $e->getMessage());
-            
+
             // For admin login route, redirect to landing page
             if ($isAdminRoute) {
                 return redirect('/')->with('error', 'An error occurred during login')->withInput();
             }
-            
+
             return back()->with('error', 'An error occurred during login')->withInput();
         }
     }
@@ -380,7 +414,6 @@ class authController extends Controller
 
         $step1Data = [
             'company_name' => $request->company_name,
-            'company_phone' => $request->company_phone,
             'years_of_experience' => $yearsOfExperience,
             'type_id' => $request->contractor_type_id,
             'contractor_type_other' => $request->contractor_type_other_text,
@@ -929,7 +962,6 @@ class authController extends Controller
 
         // Provide other default values to avoid undefined array key notices
         $step1['company_name'] = $step1['company_name'] ?? '';
-        $step1['company_phone'] = $step1['company_phone'] ?? '';
         $step1['company_logo'] = $step1['company_logo'] ?? null;
         $step1['company_banner'] = $step1['company_banner'] ?? null;
         $step1['type_id'] = $step1['type_id'] ?? null;
@@ -1148,7 +1180,11 @@ class authController extends Controller
 
             // If contractor already exists for this user, return success rather than duplicate
             try {
-                $existingContractor = DB::table('contractors')->where('user_id', $userId)->first();
+                list($col, $val) = $this->resolveContractorIdentifier($userId);
+                $existingContractor = null;
+                if ($val) {
+                    $existingContractor = DB::table('contractors')->where($col, $val)->first();
+                }
                 if ($existingContractor) {
                     return response()->json([
                         'success' => true,
@@ -1192,7 +1228,6 @@ class authController extends Controller
             'services_offered' => $step1['services_offered'],
             'business_address' => $step1['business_address'],
             'company_email' => $step2['company_email'],
-            'company_phone' => $step1['company_phone'],
             'company_website' => $step1['company_website'],
             'company_social_media' => $step1['company_social_media'],
             'picab_number' => $step4['picab_number'],
@@ -1218,7 +1253,7 @@ class authController extends Controller
             'first_name' => $step2['first_name'],
             'middle_name' => $step2['middle_name'],
             'last_name' => $step2['last_name'],
-            'phone_number' => $step1['company_phone']
+            'phone_number' => $step2['phone_number'] ?? ''
         ]);
 
         // Send account pending approval email notification
@@ -2114,6 +2149,9 @@ class authController extends Controller
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
                 'user_type' => 'property_owner',
+                'first_name' => $step1['first_name'] ?? null,
+                'middle_name' => $step1['middle_name'] ?? null,
+                'last_name' => $step1['last_name'] ?? null,
             ]);
 
             try {
@@ -2137,7 +2175,17 @@ class authController extends Controller
             'age' => $step1['age'],
             'occupation_id' => $step1['occupation_id'],
             'occupation_other' => $step1['occupation_other'] ?? null,
-            'address' => $step1['address'],
+            // Ensure image paths are saved to property_owners as requested
+            'profile_pic' => $profilePicPath,
+            'cover_photo' => $coverPhotoPath,
+            // Structured address components (preferred). Controller passes both
+            // components and legacy `address` for backward compatibility.
+            'province' => $step1['province'] ?? null,
+            'city' => $step1['city'] ?? null,
+            'barangay' => $step1['barangay'] ?? null,
+            'street' => $step1['street'] ?? null,
+            'postal_code' => $step1['postal_code'] ?? null,
+            'address' => $step1['address'] ?? null,
             'verification_status' => 'pending', // Mark as pending until admin approval
         ]);
 
@@ -2489,7 +2537,6 @@ class authController extends Controller
             // This is company information step
             $companyData = $request->only([
                 'company_name',
-                'company_phone',
                 'years_of_experience',
                 'contractor_type_id',
                 'contractor_type_other_text',
@@ -2514,7 +2561,6 @@ class authController extends Controller
 
             $step1Data = array_merge($step1Data, [
                 'company_name' => $companyData['company_name'],
-                'company_phone' => $companyData['company_phone'],
                 'years_of_experience' => $companyData['years_of_experience'],
                 'type_id' => $companyData['contractor_type_id'],
                 'contractor_type_other' => $companyData['contractor_type_other_text'] ?? null,
@@ -2709,9 +2755,14 @@ class authController extends Controller
             $ownerData = DB::table('property_owners')->where('user_id', $userId)->first();
 
             // If a contractors row already exists for this user, update it and set verification back to pending.
-            $existingContractor = DB::table('contractors')->where('user_id', $userId)->first();
+            list($col, $lookupId) = $this->resolveContractorIdentifier($userId);
+            $existingContractor = null;
+            if ($lookupId) {
+                $existingContractor = DB::table('contractors')->where($col, $lookupId)->first();
+            }
+
             if ($existingContractor) {
-                DB::table('contractors')->where('user_id', $userId)->update([
+                DB::table('contractors')->where($col, $lookupId)->update([
                     'company_name' => $step1['company_name'] ?? '',
                     'company_logo' => $step1['company_logo'] ?? null,
                     'company_banner' => $step1['company_banner'] ?? null,
@@ -2721,7 +2772,6 @@ class authController extends Controller
                     'services_offered' => $step1['services_offered'] ?? '',
                     'business_address' => $businessAddress,
                     'company_email' => $userEmail,
-                    'company_phone' => $step1['company_phone'] ?? '',
                     'company_website' => $step1['company_website'] ?? null,
                     'company_social_media' => $step1['company_social_media'] ?? null,
                     'picab_number' => $step2['picab_number'] ?? '',
@@ -2739,8 +2789,8 @@ class authController extends Controller
                 ]);
                 $contractorId = $existingContractor->contractor_id;
             } else {
-                $contractorId = DB::table('contractors')->insertGetId([
-                    'user_id' => $userId,
+                // Build payload dynamically depending on which identifier column exists
+                $payload = [
                     'company_name' => $step1['company_name'] ?? '',
                     'company_logo' => $step1['company_logo'] ?? null,
                     'company_banner' => $step1['company_banner'] ?? null,
@@ -2750,7 +2800,6 @@ class authController extends Controller
                     'services_offered' => $step1['services_offered'] ?? '',
                     'business_address' => $businessAddress,
                     'company_email' => $userEmail,
-                    'company_phone' => $step1['company_phone'] ?? '',
                     'company_website' => $step1['company_website'] ?? null,
                     'company_social_media' => $step1['company_social_media'] ?? null,
                     'picab_number' => $step2['picab_number'] ?? '',
@@ -2764,7 +2813,20 @@ class authController extends Controller
                     'verification_status' => 'pending',
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
+
+                if ($lookupId) {
+                    $payload[$col] = $lookupId;
+                } else {
+                    // If we cannot resolve an identifier for owner_id-based schemas, abort with clear error
+                    if ($col === 'owner_id') {
+                        DB::rollBack();
+                        return response()->json(['success' => false, 'errors' => ['owner_id' => ['No property_owner record found for this user. Complete owner profile before adding contractor role.']]] , 400);
+                    }
+                    $payload['user_id'] = $userId;
+                }
+
+                $contractorId = DB::table('contractors')->insertGetId($payload);
             }
 
             if ($ownerData) {
@@ -2772,7 +2834,7 @@ class authController extends Controller
                 $auth_fname = $step2['first_name'] ?? $ownerData->first_name ?? '';
                 $auth_mname = $step2['middle_name'] ?? $ownerData->middle_name ?? null;
                 $auth_lname = $step2['last_name'] ?? $ownerData->last_name ?? '';
-                $auth_phone = $step1['company_phone'] ?? $ownerData->phone_number ?? '';
+                $auth_phone = $ownerData->phone_number ?? (is_object($user) ? ($user->phone_number ?? null) : ($user['phone_number'] ?? null)) ?? '';
 
                 $existingContractorUser = DB::table('contractor_users')->where('user_id', $userId)->first();
                 if ($existingContractorUser) {
@@ -3046,11 +3108,22 @@ class authController extends Controller
         try {
             DB::beginTransaction();
 
+            // Prepare variables for any uploaded images
+            $profilePicPath = null;
+            $coverPhotoPath = null;
+
             if ($request->hasFile('profile_pic')) {
                 $file = $request->file('profile_pic');
                 $filename = time() . '_profile_' . $file->getClientOriginalName();
                 $profilePicPath = $file->storeAs('profile_pictures', $filename, 'public');
+                // update user's avatar as well for consistency
                 DB::table('users')->where('user_id', $user->user_id)->update(['profile_pic' => $profilePicPath]);
+            }
+
+            if ($request->hasFile('cover_photo')) {
+                $file = $request->file('cover_photo');
+                $filename = time() . '_cover_' . $file->getClientOriginalName();
+                $coverPhotoPath = $file->storeAs('cover_photos', $filename, 'public');
             }
 
             // Get existing contractor user data (optional fallback)
@@ -3060,6 +3133,8 @@ class authController extends Controller
             $existingOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
             $ownerPayload = [
                 'user_id' => $user->user_id,
+                'profile_pic' => $profilePicPath ?? ($existingOwner->profile_pic ?? null),
+                'cover_photo' => $coverPhotoPath ?? ($existingOwner->cover_photo ?? null),
                 'last_name' => $validated['last_name'] ?? ($contractorUser->authorized_rep_lname ?? null),
                 'middle_name' => $validated['middle_name'] ?? ($contractorUser->authorized_rep_mname ?? null),
                 'first_name' => $validated['first_name'] ?? ($contractorUser->authorized_rep_fname ?? null),
@@ -3292,7 +3367,6 @@ class authController extends Controller
         $validated = $request->validate([
             // Step 1: Company Information (12 fields matching mobile CompanyInfo)
             'company_name' => 'required|string|max:255',
-            'company_phone' => 'required|string|max:11|regex:/^09\d{9}$/',
             'founded_date' => 'required|date|before_or_equal:today',
             'contractor_type_id' => 'required|string',
             'contractor_type_other_text' => 'nullable|string|max:255',
@@ -3324,7 +3398,6 @@ class authController extends Controller
             'tin_registration_number' => 'nullable|string|max:255',
             'dti_sec_registration' => 'nullable|file|max:5120'
         ], [
-            'company_phone.regex' => 'Phone must be 11 digits starting with 09',
             'founded_date.before_or_equal' => 'Founded date cannot be in the future',
             'password.confirmed' => 'Passwords do not match',
             'company_email.unique' => 'This email is already in use',
@@ -3350,7 +3423,6 @@ class authController extends Controller
         // Store Step 1 data in session (matching mobile CompanyInfo structure)
         $step1Data = [
             'company_name' => $validated['company_name'],
-            'company_phone' => $validated['company_phone'],
             'founded_date' => $validated['founded_date'],
             'years_of_experience' => $yearsOfExperience,
             'contractor_type_id' => $validated['contractor_type_id'],

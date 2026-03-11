@@ -198,8 +198,8 @@ class postController extends Controller
                 'u.profile_pic',
                 'c.company_name',
                 'c.company_logo',
-                'po.first_name as owner_first_name',
-                'po.last_name as owner_last_name',
+                'u.first_name as owner_first_name',
+                'u.last_name as owner_last_name',
                 'lp.project_title as linked_project_title'
             )
             ->orderByDesc('s.created_at');

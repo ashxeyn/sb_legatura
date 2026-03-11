@@ -479,7 +479,8 @@ class BidRankingService
     {
         return DB::table('bids as b')
             ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
-            ->join('users as u', 'c.user_id', '=', 'u.user_id')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
             ->leftJoin('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
             ->where('b.project_id', $projectId)
             ->whereNotIn('b.bid_status', ['cancelled'])
@@ -497,7 +498,7 @@ class BidRankingService
                 'c.company_phone',
                 'c.company_website',
                 'u.username',
-                'u.profile_pic',
+                'po.profile_pic as profile_pic',
                 'ct.type_name as contractor_type'
             )
             ->get();

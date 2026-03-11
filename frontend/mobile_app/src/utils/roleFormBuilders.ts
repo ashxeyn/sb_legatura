@@ -2,10 +2,8 @@ import { computeYears } from './roleFormUtils';
 
 export function validateContractorStep1(formData: any, dropdowns: any): string[] {
   const errors: string[] = [];
-  const phone = (formData.company_phone || '').trim();
   if (!formData.company_name?.trim()) errors.push('Company name is required');
-  if (!phone) errors.push('Company phone is required');
-  if (phone && !/^09\d{9}$/.test(phone)) errors.push('Company phone must be 11 digits starting with 09');
+
   if (!formData.experience_start_date) errors.push('Years of experience (start date) is required');
   if (!formData.contractor_type_id) errors.push('Contractor type is required');
   const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`);
@@ -25,7 +23,6 @@ export function validateContractorStep1(formData: any, dropdowns: any): string[]
 export function buildContractorStep1Payload(formData: any) {
   return {
     company_name: formData.company_name,
-    company_phone: formData.company_phone,
     years_of_experience: computeYears(formData.experience_start_date),
     contractor_type_id: formData.contractor_type_id,
     contractor_type_other_text: formData.contractor_type_other_text,
@@ -75,7 +72,6 @@ export function buildContractorFinalBody(formData: any, provinces: any[] = [], c
 
   const step1_data = {
     company_name: formData.company_name,
-    company_phone: formData.company_phone,
     years_of_experience: computeYears(formData.experience_start_date),
     type_id: formData.contractor_type_id,
     contractor_type_other: formData.contractor_type_other_text,

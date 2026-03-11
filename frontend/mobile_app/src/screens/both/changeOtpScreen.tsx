@@ -278,8 +278,10 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
           const payload = resp.data.data || resp.data || {};
           const owner = payload.owner || {};
           const contractor = payload.contractor || {};
-          if (resolvedRole && String(resolvedRole).includes('contractor') && contractor && contractor.company_phone) {
-            setCurrentPhone(contractor.company_phone);
+          // Prefer contractor phone_number, then contractor_user.phone_number, then legacy company_phone, then owner/user phone
+          const contractorPhone = contractor.phone_number ?? (contractor.contractor_user ? contractor.contractor_user.phone_number : null) ?? contractor.company_phone ?? null;
+          if (resolvedRole && String(resolvedRole).includes('contractor') && contractorPhone) {
+            setCurrentPhone(contractorPhone);
           } else if (resolvedRole && String(resolvedRole).includes('owner') && owner && owner.phone_number) {
             setCurrentPhone(owner.phone_number);
           } else if (payload.user && payload.user.phone_number) {

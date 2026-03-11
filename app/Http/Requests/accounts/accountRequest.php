@@ -102,11 +102,6 @@ class accountRequest extends FormRequest
     {
         return [
             'company_name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\-\.\,\&0-9]+$/u'],
-            'company_phone' => [
-                'required',
-                'string',
-                'regex:/^09[0-9]{9}$/'
-            ],
             'founded_date' => 'required|date|before:today',
             'contractor_type_id' => 'required|integer',
             'contractor_type_other_text' => 'nullable|string|max:255',
@@ -343,7 +338,7 @@ class accountRequest extends FormRequest
             'company_name.regex' => 'Company name may only contain letters, numbers, spaces, hyphens, periods, commas, and ampersands.',
             'founded_date.required' => 'Founding date is required.',
             'founded_date.before' => 'Founding date must be a past date.',
-            'company_phone.regex' => 'Phone number must be 11 digits starting with 09 (e.g., 09171234567)',
+
             'phone_number.regex' => 'Phone number must be 11 digits starting with 09 (e.g., 09171234567)',
             'password.min' => 'Password must be at least 8 characters',
             'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character',

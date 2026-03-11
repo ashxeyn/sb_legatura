@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/imageFallback';
 import { storage_service } from '../../utils/storage';
 import {
   profile_service,

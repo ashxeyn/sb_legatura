@@ -107,7 +107,6 @@ export interface ContractorAbout {
   business_address: string | null;
   company_website: string | null;
   company_email: string | null;
-  company_phone: string | null;
   verification_status: string;
   picab_category: string | null;
   subscription_tier: string;

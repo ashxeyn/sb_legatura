@@ -16,7 +16,7 @@ import {
   FlatList,
 } from 'react-native';
 import { MaterialIcons, Ionicons, FontAwesome5, Feather } from '@expo/vector-icons';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/imageFallback';
 import ProjectPostDetail from './projectPostDetail';
 import CreateShowcase from './createShowcase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

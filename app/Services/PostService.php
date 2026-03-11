@@ -129,15 +129,17 @@ class PostService
     {
         $post = DB::table('showcases as pp')
             ->leftJoin('users as u', 'pp.user_id', '=', 'u.user_id')
-            ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
             ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
             ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
             ->where('pp.post_id', $postId)
             ->select(
                 'pp.*',
-                'u.username', 'u.profile_pic', 'u.user_type',
+                'u.username',
+                'po.profile_pic as profile_pic',
+                'u.user_type',
                 'c.company_name', 'c.company_logo',
-                'po.first_name as owner_first_name', 'po.last_name as owner_last_name',
+                'u.first_name as owner_first_name', 'u.last_name as owner_last_name',
                 'lp.project_title as linked_project_title',
                 'lp.project_status as linked_project_status'
             )
@@ -281,11 +283,17 @@ class PostService
 
         $contractorCount = 0;
         if ($isOwner) {
-            $contractorCount = DB::table('contractors as c')
-                ->join('users as u', 'c.user_id', '=', 'u.user_id')
-                ->where('c.verification_status', 'approved')
-                ->where('c.user_id', '!=', $userId)
-                ->count();
+            try {
+                $contractorCount = DB::table('contractors as c')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
+                    ->where('c.verification_status', 'approved')
+                    ->where('po.user_id', '!=', $userId)
+                    ->count();
+            } catch (\Exception $e) {
+                Log::warning('Contractor count lookup failed: ' . $e->getMessage());
+                $contractorCount = 0;
+            }
         }
 
         $postCount = DB::table('showcases')
@@ -331,7 +339,7 @@ class PostService
                     'pr.bidding_due as bidding_deadline',
                     'pr.owner_id',
                     'u.user_id as owner_user_id',
-                    'u.profile_pic as owner_profile_pic',
+                    'po.profile_pic as owner_profile_pic',
                     DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
                     'pr.created_at'
                 )
@@ -349,45 +357,51 @@ class PostService
         // ── 1b. Contractor profiles (property owners only) ──
         $contractors = collect();
         if ($isOwner) {
-            $contractors = DB::table('contractors as c')
-                ->join('users as u', 'c.user_id', '=', 'u.user_id')
-                ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
-                ->where('c.verification_status', 'approved')
-                ->where('c.user_id', '!=', $userId)
-                ->select(
-                    'c.contractor_id',
-                    'c.company_name',
-                    'c.years_of_experience',
-                    'c.services_offered',
-                    'c.business_address',
-                    'c.company_description',
-                    'c.completed_projects',
-                    'c.company_logo',
-                    'c.company_banner',
-                    'c.created_at',
-                    'ct.type_name',
-                    'c.type_id',
-                    'u.user_id',
-                    'u.username',
-                    'u.profile_pic',
-                    'u.cover_photo'
-                )
-                ->orderByDesc('c.created_at')
-                ->limit($fetchLimit)
-                ->get()
-                ->map(fn ($c) => (object) [
-                    'feed_type'  => 'contractor',
-                    'item_id'    => $c->contractor_id,
-                    'created_at' => $c->created_at,
-                    'data'       => $c,
-                ]);
+            try {
+                $contractors = DB::table('contractors as c')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
+                    ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
+                    ->where('c.verification_status', 'approved')
+                    ->where('po.user_id', '!=', $userId)
+                    ->select(
+                        'c.contractor_id',
+                        'c.company_name',
+                        'c.years_of_experience',
+                        'c.services_offered',
+                        'c.business_address',
+                        'c.company_description',
+                        'c.completed_projects',
+                        'c.company_logo',
+                        'c.company_banner',
+                        'c.created_at',
+                        'ct.type_name',
+                        'c.type_id',
+                        'po.user_id as user_id',
+                        'u.username',
+                        'po.profile_pic as profile_pic',
+                        'po.cover_photo as cover_photo'
+                    )
+                    ->orderByDesc('c.created_at')
+                    ->limit($fetchLimit)
+                    ->get()
+                    ->map(fn ($c) => (object) [
+                        'feed_type'  => 'contractor',
+                        'item_id'    => $c->contractor_id,
+                        'created_at' => $c->created_at,
+                        'data'       => $c,
+                    ]);
+            } catch (\Exception $e) {
+                Log::warning('Contractors fetch failed: ' . $e->getMessage());
+                $contractors = collect();
+            }
         }
 
         // ── 2. Showcase posts ──
         $posts = DB::table('showcases as pp')
             ->join('users as u', 'pp.user_id', '=', 'u.user_id')
-            ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
             ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
             ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
             ->leftJoin('milestones as ms', function ($join) {
                 $join->on('ms.project_id', '=', 'lp.project_id')
@@ -397,10 +411,10 @@ class PostService
             ->where('pp.status', 'approved')
             ->select(
                 'pp.*',
-                'u.username', 'u.profile_pic', 'u.user_type',
+                'u.username', 'po.profile_pic as profile_pic', 'u.user_type',
                 'c.company_name', 'c.company_logo',
-                'po.first_name as owner_first_name',
-                'po.last_name as owner_last_name',
+                'u.first_name as owner_first_name',
+                'u.last_name as owner_last_name',
                 'lp.project_title as linked_project_title',
                 'ms.milestone_name as linked_milestone_name'
             )
@@ -544,8 +558,8 @@ class PostService
                         'po.owner_id',
                         'u.user_id',
                         'u.username',
-                        'u.profile_pic',
-                        'u.cover_photo',
+                        'po.profile_pic as profile_pic',
+                        'po.cover_photo as cover_photo',
                         'po.address',
                         'po.created_at',
                         DB::raw("CONCAT(po.first_name, ' ', po.last_name) as display_name")
@@ -562,10 +576,11 @@ class PostService
 
             if ($isOwner) {
                 $users = DB::table('contractors as c')
-                    ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
                     ->where('c.verification_status', 'approved')
-                    ->where('u.user_id', '!=', $userId)
+                    ->where('po.user_id', '!=', $userId)
                     ->where(function ($q) use ($like) {
                         $q->where('c.company_name', 'LIKE', $like)
                           ->orWhere('u.username', 'LIKE', $like)
@@ -588,8 +603,8 @@ class PostService
                         'ct.type_id',
                         'u.user_id',
                         'u.username',
-                        'u.profile_pic',
-                        'u.cover_photo'
+                        'po.profile_pic as profile_pic',
+                        'po.cover_photo as cover_photo'
                     )
                     ->orderByDesc('c.created_at')
                     ->get()
@@ -640,7 +655,7 @@ class PostService
                         'pr.bidding_due as bidding_deadline',
                         'pr.owner_id',
                         'u.user_id as owner_user_id',
-                        'u.profile_pic as owner_profile_pic',
+                        'po.profile_pic as owner_profile_pic',
                         DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
                         'pr.created_at'
                     )
@@ -654,11 +669,11 @@ class PostService
                     ]);
             }
 
-            $showcases = DB::table('showcases as pp')
-                ->join('users as u', 'pp.user_id', '=', 'u.user_id')
-                ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
-                ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
-                ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
+                $showcases = DB::table('showcases as pp')
+                    ->join('users as u', 'pp.user_id', '=', 'u.user_id')
+                    ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+                    ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
+                    ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
                 ->leftJoin('milestones as ms', function ($join) {
                     $join->on('ms.project_id', '=', 'lp.project_id')
                         ->on('ms.contractor_id', '=', 'lp.selected_contractor_id')
@@ -683,10 +698,10 @@ class PostService
                 })
                 ->select(
                     'pp.*',
-                    'u.username', 'u.profile_pic', 'u.user_type',
+                    'u.username', 'po.profile_pic as profile_pic', 'u.user_type',
                     'c.company_name', 'c.company_logo',
-                    'po.first_name as owner_first_name',
-                    'po.last_name as owner_last_name',
+                    'u.first_name as owner_first_name',
+                    'u.last_name as owner_last_name',
                     'lp.project_title as linked_project_title',
                     'ms.milestone_name as linked_milestone_name'
                 )
@@ -783,9 +798,10 @@ class PostService
     {
         $query = DB::table('showcases as pp')
             ->join('users as u', 'pp.user_id', '=', 'u.user_id')
+            ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
             ->where('pp.status', 'approved')
             ->where('pp.user_id', '!=', $userId)
-            ->select('pp.*', 'u.username', 'u.profile_pic', 'u.user_type');
+            ->select('pp.*', 'u.username', 'po.profile_pic as profile_pic', 'u.user_type');
 
         $total = (clone $query)->count();
         $totalPages = max(1, (int) ceil($total / $perPage));
@@ -836,23 +852,31 @@ class PostService
             ->groupBy('post_id');
 
         // Batch load contractor/owner info for display names
-        $contractors = DB::table('contractors')
-            ->whereIn('user_id', $userIds)
-            ->pluck('company_name', 'user_id');
         $owners = DB::table('property_owners')
             ->whereIn('user_id', $userIds)
             ->get()
             ->keyBy('user_id');
 
-        return $posts->map(function ($post) use ($images, $contractors, $owners) {
+        $ownerIds = $owners->pluck('owner_id')->toArray();
+        $contractorsByOwner = collect();
+        if (!empty($ownerIds)) {
+            $contractorsByOwner = DB::table('contractors')
+                ->whereIn('owner_id', $ownerIds)
+                ->pluck('company_name', 'owner_id');
+        }
+
+        return $posts->map(function ($post) use ($images, $contractorsByOwner, $owners) {
             $post->images = isset($images[$post->post_id]) ? $images[$post->post_id]->values()->toArray() : [];
 
-            // Display name
-            if (isset($contractors[$post->user_id]) && !empty($contractors[$post->user_id])) {
-                $post->display_name = $contractors[$post->user_id];
-            } elseif (isset($owners[$post->user_id])) {
+            // Display name: prefer contractor company name (if this user is an owner with a contractor), else owner name, else username
+            if (isset($owners[$post->user_id])) {
                 $o = $owners[$post->user_id];
-                $post->display_name = trim(($o->first_name ?? '') . ' ' . ($o->last_name ?? ''));
+                $ownerId = $o->owner_id ?? null;
+                if ($ownerId && isset($contractorsByOwner[$ownerId]) && !empty($contractorsByOwner[$ownerId])) {
+                    $post->display_name = $contractorsByOwner[$ownerId];
+                } else {
+                    $post->display_name = trim(($o->first_name ?? '') . ' ' . ($o->last_name ?? ''));
+                }
             } else {
                 $post->display_name = $post->username ?? 'User';
             }
