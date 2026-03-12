@@ -804,9 +804,10 @@ class MilestoneService
         // Verify payment exists and belongs to contractor's project
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('contractor_staff as cu', 'mp.contractor_user_id', '=', 'cu.staff_id')
             ->where('mp.payment_id', $paymentId)
-            ->select('mp.*', 'p.selected_contractor_id', 'p.project_title', 'p.project_id as proj_id')
+            ->select('mp.*', 'pr.selected_contractor_id', 'p.project_title', 'p.project_id as proj_id')
             ->first();
 
         if (!$payment) {
@@ -883,8 +884,9 @@ class MilestoneService
     {
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->where('mp.payment_id', $paymentId)
-            ->select('mp.*', 'p.selected_contractor_id', 'p.project_title', 'p.project_id as proj_id')
+            ->select('mp.*', 'pr.selected_contractor_id', 'p.project_title', 'p.project_id as proj_id')
             ->first();
 
         if (!$payment) {

@@ -413,7 +413,7 @@ class milestoneController extends Controller
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->where('mi.item_id', $itemId)
             ->where('pr.owner_id', $owner->owner_id)
-            ->select('mi.*', 'm.project_id', 'm.milestone_name', 'p.project_title', 'p.selected_contractor_id')
+            ->select('mi.*', 'm.project_id', 'm.milestone_name', 'p.project_title', 'pr.selected_contractor_id')
             ->first();
 
         if (!$item) {

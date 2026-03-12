@@ -403,9 +403,10 @@ class PostService
             ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
             ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
             ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
+            ->leftJoin('project_relationships as pr', 'lp.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('milestones as ms', function ($join) {
                 $join->on('ms.project_id', '=', 'lp.project_id')
-                     ->on('ms.contractor_id', '=', 'lp.selected_contractor_id')
+                     ->on('ms.contractor_id', '=', 'pr.selected_contractor_id')
                      ->where('ms.setup_status', '=', 'approved');
             })
             ->where('pp.status', 'approved')
@@ -674,9 +675,10 @@ class PostService
                     ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
                     ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
                     ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
+                    ->leftJoin('project_relationships as pr', 'lp.relationship_id', '=', 'pr.rel_id')
                 ->leftJoin('milestones as ms', function ($join) {
                     $join->on('ms.project_id', '=', 'lp.project_id')
-                        ->on('ms.contractor_id', '=', 'lp.selected_contractor_id')
+                        ->on('ms.contractor_id', '=', 'pr.selected_contractor_id')
                         ->where('ms.setup_status', '=', 'approved');
                 })
                 ->where('pp.status', 'approved')

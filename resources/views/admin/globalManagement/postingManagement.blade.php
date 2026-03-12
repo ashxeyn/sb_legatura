@@ -91,24 +91,32 @@
       </div>
 
       <!-- View Modal -->
-      <div id="viewModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+      <div id="viewModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 {{ $postDetails ? 'flex' : 'hidden' }} items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 modal-content">
           <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex items-center justify-between rounded-t-2xl">
             <h3 class="text-xl font-bold text-white">Post Details</h3>
-            <button class="text-white hover:text-gray-200 transition-colors duration-200 close-modal">
+            <a href="{{ route('admin.globalManagement.postingManagement', request()->except('view')) }}" class="text-white hover:text-gray-200 transition-colors duration-200">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
-            </button>
+            </a>
           </div>
           <div class="p-6 space-y-5">
             <!-- Header Info -->
             <div class="flex items-center gap-4 pb-4 border-b">
-              <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg overflow-hidden" id="modalAvatar">GD</div>
+              <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg overflow-hidden" id="modalAvatar">
+                @if($postDetails && $postDetails['owner']['profile_pic'])
+                  <img src="{{ asset('storage/' . $postDetails['owner']['profile_pic']) }}" alt="Profile" class="w-full h-full object-cover rounded-full">
+                @elseif($postDetails)
+                  {{ strtoupper(substr($postDetails['owner']['name'], 0, 2)) }}
+                @else
+                  GD
+                @endif
+              </div>
               <div>
-                <h4 class="text-xl font-bold text-gray-800" id="modalName">Loading...</h4>
+                <h4 class="text-xl font-bold text-gray-800" id="modalName">{{ $postDetails['owner']['name'] ?? 'Loading...' }}</h4>
                 <div class="flex items-center gap-2">
-                  <p class="text-sm text-gray-500" id="modalType">Loading...</p>
+                  <p class="text-sm text-gray-500" id="modalType">{{ $postDetails['owner']['username'] ?? 'Loading...' }}</p>
                 </div>
               </div>
             </div>
@@ -117,46 +125,58 @@
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <p class="text-sm text-gray-600 mb-1">Date Registered</p>
-                <p class="font-semibold text-gray-800" id="modalDate">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalDate">
+                  @if($postDetails && $postDetails['owner']['registered_at'])
+                    {{ \Carbon\Carbon::parse($postDetails['owner']['registered_at'])->format('d M, Y') }}
+                  @else
+                    Loading...
+                  @endif
+                </p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Account Type</p>
-                <p class="font-semibold text-gray-800" id="modalAccountType">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalAccountType">{{ $postDetails['owner']['type'] ?? 'Loading...' }}</p>
               </div>
             </div>
 
             <!-- Project Description -->
             <div class="bg-gray-50 rounded-xl p-4">
               <h5 class="text-sm font-semibold text-gray-700 mb-2">Project Description</h5>
-              <p class="text-lg font-bold text-gray-800 mb-2" id="modalProjectTitle">Loading title...</p>
-              <p class="text-sm text-gray-700" id="modalDescription">Loading...</p>
+              <p class="text-lg font-bold text-gray-800 mb-2" id="modalProjectTitle">{{ $postDetails['project']['title'] ?? 'Loading title...' }}</p>
+              <p class="text-sm text-gray-700" id="modalDescription">{{ $postDetails['project']['description'] ?? 'Loading...' }}</p>
             </div>
 
             <!-- Project Details -->
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <p class="text-sm text-gray-600 mb-1">Location</p>
-                <p class="font-semibold text-gray-800" id="modalLocation">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalLocation">{{ $postDetails['project']['project_location'] ?? 'N/A' }}</p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Property Type</p>
-                <p class="font-semibold text-gray-800" id="modalPropertyType">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalPropertyType">{{ $postDetails['project']['property_type'] ?? 'N/A' }}</p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Budget Range</p>
-                <p class="font-semibold text-gray-800" id="modalBudget">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalBudget">
+                  @if($postDetails && $postDetails['project']['budget_range_min'] && $postDetails['project']['budget_range_max'])
+                    ₱{{ number_format($postDetails['project']['budget_range_min'], 2) }} - ₱{{ number_format($postDetails['project']['budget_range_max'], 2) }}
+                  @else
+                    N/A
+                  @endif
+                </p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Lot Size</p>
-                <p class="font-semibold text-gray-800" id="modalLotSize">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalLotSize">{{ $postDetails && $postDetails['project']['lot_size'] ? $postDetails['project']['lot_size'] . ' sqm' : 'N/A' }}</p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Floor Area</p>
-                <p class="font-semibold text-gray-800" id="modalFloorArea">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalFloorArea">{{ $postDetails && $postDetails['project']['floor_area'] ? $postDetails['project']['floor_area'] . ' sqm' : 'N/A' }}</p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Timeline</p>
-                <p class="font-semibold text-gray-800" id="modalTimeline">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalTimeline">{{ $postDetails['project']['to_finish'] ?? 'N/A' }}</p>
               </div>
             </div>
 
@@ -171,33 +191,44 @@
                 </h5>
               </div>
               <div class="px-5 py-4">
-                <div id="fileViewer" class="mb-4"></div>
                 <div id="postFilesContainer">
-                  <p class="text-sm text-gray-500 text-center py-4">Loading files...</p>
+                  @if($postDetails && count($postDetails['files']) > 0)
+                    <div class="grid grid-cols-2 gap-3">
+                      @foreach($postDetails['files'] as $file)
+                        <a href="{{ asset('storage/' . $file->file_path) }}" target="_blank" class="flex items-center gap-2 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                          </svg>
+                          <span class="text-sm text-gray-700 truncate">{{ $file->file_name }}</span>
+                        </a>
+                      @endforeach
+                    </div>
+                  @else
+                    <p class="text-sm text-gray-500 text-center py-4">No files attached</p>
+                  @endif
                 </div>  
               </div>
             </div>
 
             <!-- Additional info -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-4">
               <div>
                 <p class="text-sm text-gray-600 mb-1">Email</p>
-                <p class="font-semibold text-gray-800" id="modalEmail">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalEmail">{{ $postDetails['owner']['email'] ?? 'N/A' }}</p>
               </div>
-              <div>
-                <p class="text-sm text-gray-600 mb-1">Phone</p>
-                <p class="font-semibold text-gray-800" id="modalPhone">Loading...</p>
-              </div>
-              <div class="col-span-2">
+              <div class="col-span-1">
                 <p class="text-sm text-gray-600 mb-1">Post Status</p>
-                <p class="font-semibold text-gray-800" id="modalPostStatus">Loading...</p>
+                <p class="font-semibold text-gray-800" id="modalPostStatus">{{ ucfirst(str_replace('_', ' ', $postDetails['project']['status'] ?? 'N/A')) }}</p>
               </div>
             </div>
           </div>
           <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-            <button id="viewModalCloseBtn" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors duration-200 close-modal hidden">Close</button>
-            <button id="viewModalDeclineBtn" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200">Decline</button>
-            <button id="viewModalApproveBtn" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200">Approve</button>
+            @if($postDetails && $postDetails['project']['status'] === 'under_review')
+              <button id="viewModalDeclineBtn" data-project-id="{{ $postDetails['project']['id'] }}" data-name="{{ $postDetails['owner']['name'] }}" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200">Decline</button>
+              <button id="viewModalApproveBtn" data-project-id="{{ $postDetails['project']['id'] }}" data-name="{{ $postDetails['owner']['name'] }}" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200">Approve</button>
+            @else
+              <a href="{{ route('admin.globalManagement.postingManagement', request()->except('view')) }}" id="viewModalCloseBtn" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors duration-200">Close</a>
+            @endif
           </div>
         </div>
       </div>

@@ -50,9 +50,10 @@ class progressUploadController extends Controller
         $item = DB::table('milestone_items as mi')
             ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
             ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->where('mi.item_id', $itemId)
             ->where('p.project_id', $projectId)
-            ->where('p.selected_contractor_id', $contractor->contractor_id)
+            ->where('pr.selected_contractor_id', $contractor->contractor_id)
             ->select('mi.*', 'm.milestone_id', 'p.project_id', 'p.project_title')
             ->first();
 
@@ -186,9 +187,10 @@ class progressUploadController extends Controller
             $milestoneItem = DB::table('milestone_items as mi')
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->where('mi.item_id', $validated['item_id'])
                 ->where(function ($query) use ($contractor) {
-                    $query->where('p.selected_contractor_id', $contractor->contractor_id)
+                    $query->where('pr.selected_contractor_id', $contractor->contractor_id)
                         ->orWhere('m.contractor_id', $contractor->contractor_id);
                 })
                 ->select('mi.item_id', 'm.milestone_id', 'p.project_id', 'p.project_title', 'mi.milestone_item_title')
@@ -449,8 +451,9 @@ class progressUploadController extends Controller
                 $milestoneItem = DB::table('milestone_items as mi')
                     ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                     ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                    ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                     ->where('mi.item_id', $progress->item_id)
-                    ->where('p.selected_contractor_id', $contractor->contractor_id)
+                    ->where('pr.selected_contractor_id', $contractor->contractor_id)
                     ->select('p.project_id', 'p.project_title', 'mi.milestone_item_title as item_title')
                     ->first();
 
@@ -579,7 +582,7 @@ class progressUploadController extends Controller
                 ->join('projects as p', 'm.project_id', '=', 'p.project_id')
                 ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-                ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+                ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
                 ->where('mi.item_id', $itemId)
                 ->where(function ($query) use ($user) {
                     $query->where('po.user_id', $user->user_id)
@@ -674,9 +677,10 @@ class progressUploadController extends Controller
             $milestoneItem = DB::table('milestone_items as mi')
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->where('mi.item_id', $progress->item_id)
                 ->where(function ($query) use ($contractor) {
-                    $query->where('p.selected_contractor_id', $contractor->contractor_id)
+                    $query->where('pr.selected_contractor_id', $contractor->contractor_id)
                         ->orWhere('m.contractor_id', $contractor->contractor_id);
                 })
                 ->first();
@@ -804,8 +808,9 @@ class progressUploadController extends Controller
             $milestoneItem = DB::table('milestone_items as mi')
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->where(function ($query) use ($contractor) {
-                    $query->where('p.selected_contractor_id', $contractor->contractor_id)
+                    $query->where('pr.selected_contractor_id', $contractor->contractor_id)
                         ->orWhere('m.contractor_id', $contractor->contractor_id);
                 })
                 ->first();

@@ -477,17 +477,24 @@ class profileController extends Controller
             ->join('projects as p', 'r.project_id', '=', 'p.project_id');
 
         if ($activeRole === 'contractor') {
+            // Get contractor - $contractorUserColumn is either 'user_id' (old) or 'owner_id' (new)
             $contractor = DB::table('contractors')->where($contractorUserColumn, $userId)->first();
             // For staff, resolve their parent contractor
             if (!$contractor && $userType === 'staff') {
-                $staffLink = DB::table('contractor_users')->where('user_id', $userId)->first();
+                $staffLink = DB::table('contractor_staff')->where('user_id', $userId)->first();
                 if ($staffLink) {
                     $contractor = DB::table('contractors')->where('contractor_id', $staffLink->contractor_id)->first();
                 }
             }
             if ($contractor) {
-                $statsQuery->where('p.selected_contractor_id', $contractor->contractor_id)
-                           ->where('r.reviewee_user_id', $contractor->user_id);
+                // Get the contractor's user_id through property_owners
+                $contractorUserId = DB::table('property_owners')
+                    ->where('owner_id', $contractor->owner_id)
+                    ->value('user_id');
+                
+                $statsQuery->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                           ->where('pr.selected_contractor_id', $contractor->contractor_id)
+                           ->where('r.reviewee_user_id', $contractorUserId);
             } else {
                 // no contractor profile -> no reviews
                 $statsQuery->whereRaw('1=0');
@@ -690,7 +697,7 @@ class profileController extends Controller
                 $projects = DB::table('projects as p')
                     ->leftJoin(DB::raw($pfSub), 'p.project_id', '=', 'pfagg.project_id')
                     ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-                    ->join('contractors as c', 'c.contractor_id', '=', 'p.selected_contractor_id')
+                    ->join('contractors as c', 'c.contractor_id', '=', 'pr.selected_contractor_id')
                     ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
                     ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('u.user_id', $userId)
@@ -700,7 +707,7 @@ class profileController extends Controller
 
                 $finished = DB::table('projects as p')
                     ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-                    ->join('contractors as c', 'c.contractor_id', '=', 'p.selected_contractor_id')
+                    ->join('contractors as c', 'c.contractor_id', '=', 'pr.selected_contractor_id')
                     ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
                     ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('u.user_id', $userId)
@@ -709,7 +716,7 @@ class profileController extends Controller
 
                 $ongoing = DB::table('projects as p')
                     ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-                    ->join('contractors as c', 'c.contractor_id', '=', 'p.selected_contractor_id')
+                    ->join('contractors as c', 'c.contractor_id', '=', 'pr.selected_contractor_id')
                     ->join('users as u', 'u.user_id', '=', 'c.user_id')
                     ->where('u.user_id', $userId)
                     ->whereIn('p.project_status', ['in_progress', 'open', 'bidding_closed'])

@@ -651,11 +651,12 @@ class analyticsController extends authController
     private function getTopContractors(): array
 {
     // ── 1. Base: projects assigned to this contractor ─────────────
-    $assignedSub = DB::table('projects')
-        ->select('selected_contractor_id', DB::raw('COUNT(*) as assigned_count'))
-        ->whereNotNull('selected_contractor_id')
-        ->whereNotIn('project_status', ['deleted', 'deleted_post'])
-        ->groupBy('selected_contractor_id');
+    $assignedSub = DB::table('projects as p')
+        ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+        ->select('pr.selected_contractor_id', DB::raw('COUNT(*) as assigned_count'))
+        ->whereNotNull('pr.selected_contractor_id')
+        ->whereNotIn('p.project_status', ['deleted', 'deleted_post'])
+        ->groupBy('pr.selected_contractor_id');
 
     // ── 2. Disputes raised AGAINST the contractor (by type & status)
     //    dispute_type weights: Quality=1.5x, Delay=1.2x, Halt=1.2x, others=1.0x

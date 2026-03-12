@@ -81,13 +81,9 @@ class summaryController extends Controller
         // 2. Direct contractor owner (via selected_contractor_id)
         $isContractorDirect = DB::table('projects as p')
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c1', 'p.selected_contractor_id', '=', 'c1.contractor_id')
-            ->leftJoin('contractors as c2', 'pr.selected_contractor_id', '=', 'c2.contractor_id')
+            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
             ->where('p.project_id', $projectId)
-            ->where(function ($q) use ($userId) {
-                $q->where('c1.user_id', $userId)
-                  ->orWhere('c2.user_id', $userId);
-            })
+            ->where('c.user_id', $userId)
             ->exists();
 
         if ($isContractorDirect) return true;

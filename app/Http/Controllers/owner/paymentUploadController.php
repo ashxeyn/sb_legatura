@@ -126,7 +126,7 @@ class paymentUploadController extends Controller
 			$project = DB::table('projects as p')
 				->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
 				->leftJoin('payment_plans as pp', 'p.project_id', '=', 'pp.project_id')
-				->leftJoin('contractors as c', DB::raw('COALESCE(p.selected_contractor_id, pp.contractor_id)'), '=', 'c.contractor_id')
+				->leftJoin('contractors as c', DB::raw('COALESCE(pr.selected_contractor_id, pp.contractor_id)'), '=', 'c.contractor_id')
 			->leftJoin('contractor_users as cu', function($join) {
 				$join->on('c.contractor_id', '=', 'cu.contractor_id')
 					->where('cu.is_deleted', '=', 0);

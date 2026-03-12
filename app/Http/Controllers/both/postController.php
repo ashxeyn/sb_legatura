@@ -293,7 +293,7 @@ class postController extends Controller
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-                ->where('p.selected_contractor_id', $contractor->contractor_id)
+                ->where('pr.selected_contractor_id', $contractor->contractor_id)
                 ->where('p.project_status', 'completed')
                 ->select(
                     'p.project_id',

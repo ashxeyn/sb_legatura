@@ -44,13 +44,14 @@ class contractorClass
 	public function getContractorProjects($contractorId, $excludeMilestoneId = null)
 	{
 		$query = DB::table('projects as p')
+			->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
 			->select(
 				'p.project_id',
 				'p.project_title',
 				'p.project_description',
 				'p.project_status'
 			)
-			->where('p.selected_contractor_id', $contractorId);
+			->where('pr.selected_contractor_id', $contractorId);
 
 		// If editing a milestone, include projects with that milestone
 		// Otherwise, exclude projects that already have milestones

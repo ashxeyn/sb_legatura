@@ -91,6 +91,7 @@ class postingManagementClass
                 'property_owners.profile_pic',
                 'users.email',
                 'users.user_type',
+                'users.username',
                 DB::raw("CONCAT(users.first_name, ' ', users.last_name) AS owner_full_name")
             )
             ->first();
@@ -110,6 +111,7 @@ class postingManagementClass
                 'email' => $project->email,
                 'registered_at' => $project->owner_created_at ?? null,
                 'type' => $project->user_type,
+                'username' => $project->username,
                 'profile_pic' => $project->profile_pic,
             ],
             'project' => [

@@ -285,7 +285,7 @@ class ProfileService
             // Resolve contractor and filter by contractor_id to avoid direct user_id assumptions
             $contractor = $this->getContractorByUserId($userId);
             if ($contractor) {
-                $query->where('p.selected_contractor_id', $contractor->contractor_id);
+                $query->where('pr.selected_contractor_id', $contractor->contractor_id);
             } else {
                 // No contractor -> empty result set
                 return ['completed' => 0, 'ongoing' => 0, 'total' => 0];
@@ -312,7 +312,7 @@ class ProfileService
         if ($role === 'contractor') {
             $contractor = $this->getContractorByUserId($userId);
             if ($contractor) {
-                $query->where('p.selected_contractor_id', $contractor->contractor_id);
+                $query->where('pr.selected_contractor_id', $contractor->contractor_id);
             } else {
                 // Return empty collection if contractor record can't be resolved
                 return collect();

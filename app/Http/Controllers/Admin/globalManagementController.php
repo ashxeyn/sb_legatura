@@ -177,6 +177,13 @@ class globalManagementController extends Controller
         $model = new postingManagementClass();
         $postings = $model->fetchPosts($filters);
 
+        // Check if viewing a specific post
+        $viewPostId = $request->query('view');
+        $postDetails = null;
+        if ($viewPostId) {
+            $postDetails = $model->getPostDetails($viewPostId);
+        }
+
         if ($request->ajax()) {
             return response()->json([
                 'owners_html' => view('admin.globalManagement.partials.postManagementTable', ['postings' => $postings])->render()
@@ -184,7 +191,8 @@ class globalManagementController extends Controller
         }
 
         return view('admin.globalManagement.postingManagement', [
-            'postings' => $postings
+            'postings' => $postings,
+            'postDetails' => $postDetails
         ]);
     }
 

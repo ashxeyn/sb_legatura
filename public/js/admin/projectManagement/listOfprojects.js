@@ -2006,18 +2006,48 @@ document.addEventListener('DOMContentLoaded', function() {
           const completedModal = document.getElementById('completedProjectModal');
 
           if (ongoingModal && !ongoingModal.classList.contains('hidden')) {
+            // Save scroll position before refresh
+            const scrollContainer = ongoingModal.querySelector('.overflow-y-auto');
+            const scrollPosition = scrollContainer ? scrollContainer.scrollTop : 0;
+            
             // Refresh ongoing project modal
             await showOngoingProjectModal(window.currentProjectId);
+            
+            // Restore scroll position after refresh
+            if (scrollContainer) {
+              setTimeout(() => {
+                const newScrollContainer = ongoingModal.querySelector('.overflow-y-auto');
+                if (newScrollContainer) {
+                  newScrollContainer.scrollTop = scrollPosition;
+                }
+              }, 100);
+            }
+            
             // Re-select the milestone after refresh
             if (selectedItemId) {
               setTimeout(() => showOngoingMilestoneDetails(selectedItemId), 300);
             }
           } else if (completedModal && !completedModal.classList.contains('hidden')) {
+            // Save scroll position before refresh
+            const scrollContainer = completedModal.querySelector('.overflow-y-auto');
+            const scrollPosition = scrollContainer ? scrollContainer.scrollTop : 0;
+            
             // Refresh completed project modal
             const detailsResponse = await fetch(`/admin/project-management/${window.currentProjectId}/details`);
             const detailsResult = await detailsResponse.json();
             if (detailsResult.success && detailsResult.data) {
               await openCompletedProjectModal(detailsResult.data);
+              
+              // Restore scroll position after refresh
+              if (scrollContainer) {
+                setTimeout(() => {
+                  const newScrollContainer = completedModal.querySelector('.overflow-y-auto');
+                  if (newScrollContainer) {
+                    newScrollContainer.scrollTop = scrollPosition;
+                  }
+                }, 100);
+              }
+              
               // Re-select the milestone after refresh
               if (selectedItemId) {
                 setTimeout(() => showMilestoneDetails(selectedItemId), 300);

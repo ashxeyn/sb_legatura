@@ -72,14 +72,12 @@
           <div>
             <label class="block text-sm font-semibold text-gray-900 mb-2">Item Status <span class="text-rose-600">*</span></label>
             <select id="editMilestoneItemStatus" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-              <option value="pending" {{ $item->item_status === 'pending' ? 'selected' : '' }}>Pending</option>
               <option value="not_started" {{ $item->item_status === 'not_started' ? 'selected' : '' }}>Not Started</option>
               <option value="in_progress" {{ $item->item_status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
               <option value="delayed" {{ $item->item_status === 'delayed' ? 'selected' : '' }}>Delayed</option>
               <option value="completed" {{ $item->item_status === 'completed' ? 'selected' : '' }}>Completed</option>
               <option value="cancelled" {{ $item->item_status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
               <option value="halt" {{ $item->item_status === 'halt' ? 'selected' : '' }}>Halt</option>
-              <option value="deleted" {{ $item->item_status === 'deleted' ? 'selected' : '' }}>Deleted</option>
             </select>
             <p class="text-xs text-red-600 mt-1 hidden" id="error-item-status"></p>
           </div>

@@ -205,7 +205,7 @@ class projectManagementController extends Controller
     public function rejectDispute($id, Request $request)
     {
         $reason = $request->input('reason', null);
-        disputeClass::updateStatus($id, 'cancelled', null);
+        disputeClass::updateStatus($id, 'cancelled', $reason);
 
         // fetch reporter email
         $row = DB::table('disputes')

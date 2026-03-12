@@ -456,15 +456,24 @@ class messageClass extends Model
                 $name = !empty($fullName) ? ($fullName) : ($profile->username ?? $name);
             }
         } elseif ($type === 'contractor' || $type === 'staff') {
-            $profile = DB::table('contractors')->where('user_id', $userId)->first();
-            if ($profile) {
-                $name = $profile->company_name ?? $name;
+            // Get contractor through property_owners
+            $contractor = DB::table('contractors as c')
+                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                ->where('po.user_id', $userId)
+                ->first();
+            if ($contractor) {
+                $name = $contractor->company_name ?? $name;
             }
         } elseif ($type === 'owner' || $type === 'property_owner') {
             $profile = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($profile) {
-                $fullName = trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? ''));
+                // Get names from users table
+                $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
                 $name = !empty($fullName) ? $fullName : $name;
+                // Get profile pic from property_owners
+                if (!empty($profile->profile_pic)) {
+                    $profilePic = $profile->profile_pic;
+                }
             }
         }
 

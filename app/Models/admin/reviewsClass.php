@@ -57,8 +57,8 @@ class reviewsClass
                     ->orWhere('u_ree.username', 'like', "%{$search}%")
                     ->orWhere('c_rev.company_name', 'like', "%{$search}%")
                     ->orWhere('c_ree.company_name', 'like', "%{$search}%")
-                    ->orWhere(DB::raw("CONCAT(po_rev.first_name, ' ', po_rev.last_name)"), 'like', "%{$search}%")
-                    ->orWhere(DB::raw("CONCAT(po_ree.first_name, ' ', po_ree.last_name)"), 'like', "%{$search}%");
+                    ->orWhere(DB::raw("CONCAT(u_rev.first_name, ' ', u_rev.last_name)"), 'like', "%{$search}%")
+                    ->orWhere(DB::raw("CONCAT(u_ree.first_name, ' ', u_ree.last_name)"), 'like', "%{$search}%");
             });
         }
 

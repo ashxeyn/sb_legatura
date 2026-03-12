@@ -39,31 +39,13 @@
     </td>
     <td class="px-6 py-4">
         <div class="flex items-center gap-3">
-            <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" 
-                data-id="{{ $post->project_id }}" 
-                data-name="{{ $post->first_name }} {{ $post->last_name }}" 
-                data-title="{{ $post->project_title }}"
-                data-date="{{ \Carbon\Carbon::parse($post->created_at)->format('d M, Y') }}"
-                data-status="{{ $post->project_post_status }}"
-                data-type="{{ ucfirst($post->user_type ?? 'Property Owner') }}"
-                data-pic="{{ $post->profile_pic ? asset('storage/' . $post->profile_pic) : '' }}"
-                data-description="{{ e($post->project_description ?? '') }}"
-                data-location="{{ e($post->project_location ?? '') }}"
-                data-property-type="{{ e($post->property_type ?? '') }}"
-                data-budget-min="{{ $post->budget_range_min ?? '' }}"
-                data-budget-max="{{ $post->budget_range_max ?? '' }}"
-                data-lot-size="{{ $post->lot_size ?? '' }}"
-                data-floor-area="{{ $post->floor_area ?? '' }}"
-                data-to-finish="{{ $post->to_finish ?? '' }}"
-                data-email="{{ $post->owner_email ?? '' }}"
-                data-phone="{{ $post->owner_phone ?? '' }}"
-                data-post-status="{{ $post->project_post_status ?? '' }}"
-                >
+            <a href="{{ route('admin.globalManagement.postingManagement', array_merge(request()->query(), ['view' => $post->project_id])) }}" 
+                class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                 </svg>
-            </button>
+            </a>
         </div>
     </td>
 </tr>
