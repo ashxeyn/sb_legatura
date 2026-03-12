@@ -2458,7 +2458,7 @@ class projectsController extends Controller
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->where('p.project_id', $projectId)
                 ->where('pr.owner_id', $owner->owner_id)
-                ->select('p.*')
+                ->select('p.*', 'pr.selected_contractor_id')
                 ->first();
 
             if (!$project) {
