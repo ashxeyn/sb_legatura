@@ -420,7 +420,7 @@ class dashboardController extends authController
                     'contractors.contractor_id',
                     'contractors.company_name',
                     'contractors.completed_projects',
-                    'owner_po.profile_pic',
+                    'cpo.profile_pic',
                     'contractor_types.type_name',
                     DB::raw('contractors.completed_projects as period_count')
                 )
@@ -448,7 +448,7 @@ class dashboardController extends authController
                 'contractors.contractor_id',
                 'contractors.company_name',
                 'contractors.completed_projects',
-                'owner_po.profile_pic',
+                'cpo.profile_pic',
                 'contractor_types.type_name',
                 DB::raw('IFNULL(pc.period_count, 0) as period_count')
             )

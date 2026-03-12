@@ -8,20 +8,17 @@ use Illuminate\Support\Facades\DB;
 class bothReactivateClass extends Model
 {
     /**
-     * Get suspended contractors (owners with is_active = 0 and suspension data)
-     * Only fetch owner role from contractor_staff
+     * Get suspended contractors (contractors with is_active = 0 and suspension data)
      */
     public static function getSuspendedContractors($search = null, $dateFrom = null, $dateTo = null)
     {
-        $query = DB::table('contractor_staff as cs')
-            ->join('contractors as c', 'cs.contractor_id', '=', 'c.contractor_id')
-            ->join('property_owners as po', 'cs.owner_id', '=', 'po.owner_id')
+        $query = DB::table('contractors as c')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
             ->join('users as u', 'po.user_id', '=', 'u.user_id')
-            ->where('cs.company_role', 'owner')
-            ->where('cs.is_active', 0)
-            ->whereNotNull('cs.suspension_reason')
-            ->whereNotNull('cs.suspension_until')
-            ->whereNull('cs.deletion_reason');
+            ->where('c.is_active', 0)
+            ->whereNotNull('c.suspension_reason')
+            ->whereNotNull('c.suspension_until')
+            ->where('c.verification_status', '!=', 'deleted');
 
         // Apply search filter
         if ($search) {
@@ -35,26 +32,26 @@ class bothReactivateClass extends Model
 
         // Apply date range filter
         if ($dateFrom) {
-            $query->whereDate('cs.created_at', '>=', $dateFrom);
+            $query->whereDate('c.created_at', '>=', $dateFrom);
         }
         if ($dateTo) {
-            $query->whereDate('cs.created_at', '<=', $dateTo);
+            $query->whereDate('c.created_at', '<=', $dateTo);
         }
 
         return $query->select(
-                'cs.staff_id as contractor_user_id',
-                'cs.contractor_id',
-                'po.user_id',
+                'c.contractor_id',
+                'po.owner_id',
+                'u.user_id',
                 'c.company_name as name',
                 'u.email',
-                'cs.suspension_reason as reason',
-                'cs.suspension_until',
-                'cs.created_at as date_registered',
-                'cs.created_at as updated_at',
+                'c.suspension_reason as reason',
+                'c.suspension_until',
+                'c.created_at as date_registered',
+                'c.updated_at',
                 DB::raw("'contractor' as user_type"),
                 DB::raw('(SELECT COUNT(*) FROM projects p INNER JOIN project_relationships pr ON p.relationship_id = pr.rel_id WHERE pr.selected_contractor_id = c.contractor_id) as total_projects')
             )
-            ->orderBy('cs.created_at', 'desc')
+            ->orderBy('c.created_at', 'desc')
             ->get();
     }
 
@@ -107,15 +104,92 @@ class bothReactivateClass extends Model
     /**
      * Get suspended contractor staff (is_active = 0 and suspension data)
      */
-    public static function reactivateContractor($staffId)
+    public static function getSuspendedStaff($search = null, $dateFrom = null, $dateTo = null, $contractorId = null)
     {
-        return DB::table('contractor_staff')
-            ->where('staff_id', $staffId)
-            ->update([
-                'is_active' => 1,
-                'suspension_reason' => null,
-                'suspension_until' => null
-            ]);
+        $query = DB::table('contractor_staff as cs')
+            ->join('contractors as c', 'cs.contractor_id', '=', 'c.contractor_id')
+            ->join('property_owners as po', 'cs.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
+            ->where('cs.is_active', 0)
+            ->whereNotNull('cs.suspension_reason')
+            ->whereNotNull('cs.suspension_until')
+            ->whereNull('cs.deletion_reason'); // Not deleted/cancelled
+
+        // Apply contractor filter
+        if ($contractorId) {
+            $query->where('cs.contractor_id', $contractorId);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('u.first_name', 'like', "%{$search}%")
+                  ->orWhere('u.last_name', 'like', "%{$search}%")
+                  ->orWhere('u.email', 'like', "%{$search}%")
+                  ->orWhere('c.company_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply date range filter
+        if ($dateFrom) {
+            $query->whereDate('cs.created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('cs.created_at', '<=', $dateTo);
+        }
+
+        return $query->select(
+                'cs.staff_id',
+                'cs.contractor_id',
+                'cs.owner_id',
+                'u.user_id',
+                DB::raw("CONCAT(u.first_name, ' ', COALESCE(u.middle_name, ''), ' ', u.last_name) as name"),
+                'u.email',
+                'c.company_name',
+                DB::raw("COALESCE(cs.company_role, cs.role_if_others, 'N/A') as role"),
+                'cs.suspension_reason as reason',
+                'cs.suspension_until',
+                'cs.created_at as date_registered',
+                DB::raw("'staff' as user_type")
+            )
+            ->orderBy('cs.created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Reactivate a suspended contractor (set is_active = 1)
+     */
+    public static function reactivateContractor($contractorId)
+    {
+        return DB::transaction(function () use ($contractorId) {
+            // 1. Reactivate the contractor
+            $result = DB::table('contractors')
+                ->where('contractor_id', $contractorId)
+                ->update([
+                    'is_active' => 1,
+                    'suspension_reason' => null,
+                    'suspension_until' => null
+                ]);
+
+            // 2. Reactivate staff members that were suspended due to contractor suspension
+            // Only reactivate staff whose suspension reason indicates they were suspended due to contractor suspension
+            DB::table('contractor_staff')
+                ->where('contractor_id', $contractorId)
+                ->where('is_active', 0)
+                ->where('is_suspended', 1)
+                ->where(function($query) {
+                    $query->where('suspension_reason', 'like', 'Contractor company suspended:%')
+                          ->orWhere('suspension_reason', 'like', 'Property owner account suspended:%');
+                })
+                ->update([
+                    'is_active' => 1,
+                    'is_suspended' => 0,
+                    'suspension_reason' => null,
+                    'suspension_until' => null
+                ]);
+
+            return $result;
+        });
     }
 
     /**

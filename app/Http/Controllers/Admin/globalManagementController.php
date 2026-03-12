@@ -378,9 +378,8 @@ class globalManagementController extends Controller
             // owner info
             ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
             ->leftJoin('users as owner_u', 'owner_u.user_id', '=', 'po.user_id')
-            // contractor info via contractor_staff
-            ->leftJoin('contractor_staff as cs', 'mp.contractor_user_id', '=', 'cs.staff_id')
-            ->leftJoin('contractors as c', 'cs.contractor_id', '=', 'c.contractor_id')
+            // contractor info
+            ->leftJoin('contractors as c', 'mp.contractor_id', '=', 'c.contractor_id')
             // milestone item title
             ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->select(
@@ -552,9 +551,8 @@ class globalManagementController extends Controller
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
             ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
             ->leftJoin('users as owner_u', 'owner_u.user_id', '=', 'po.user_id')
-            // contractor info via contractor_staff
-            ->leftJoin('contractor_staff as cs', 'mp.contractor_user_id', '=', 'cs.staff_id')
-            ->leftJoin('contractors as c', 'cs.contractor_id', '=', 'c.contractor_id')
+            // contractor info
+            ->leftJoin('contractors as c', 'mp.contractor_id', '=', 'c.contractor_id')
             ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->select(
                 'mp.*',

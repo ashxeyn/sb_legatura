@@ -851,15 +851,13 @@ class userManagementController extends authController
     public function fetchContractorTeamMember($id)
     {
         try {
+            // First, try to get the staff member with all joins
             $member = DB::table('contractor_staff')
                 ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
                 ->join('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->where('contractor_staff.staff_id', $id)
                 ->select(
                     'contractor_staff.*',
-                    'users.first_name',
-                    'users.last_name',
-                    'users.middle_name',
                     'users.username',
                     'users.email',
                     'users.first_name',
@@ -905,16 +903,15 @@ class userManagementController extends authController
 
             // Map database column names to expected frontend field names
             $memberData = [
-                'contractor_user_id' => $member->staff_id,
-                'first_name' => $member->first_name,
-                'middle_name' => $member->middle_name,
-                'last_name' => $member->last_name,
-                'phone_number' => $member->phone_number,
-                'role' => $member->company_role,
-                'if_others' => $member->if_others ?? null,
-                'username' => $member->username,
-                'email' => $member->email,
-                'profile_pic' => $member->profile_pic
+                'staff_id' => $member->staff_id,
+                'first_name' => $member->first_name ?? '-',
+                'middle_name' => $member->middle_name ?? '-',
+                'last_name' => $member->last_name ?? '-',
+                'company_role' => $member->company_role,
+                'role_if_others' => $member->role_if_others,
+                'username' => $member->username ?? '-',
+                'email' => $member->email ?? '-',
+                'profile_pic' => $member->profile_pic ?? null
             ];
 
             // Check if there's an active representative for this contractor
@@ -948,9 +945,9 @@ class userManagementController extends authController
         try {
             $validated = $request->validated();
 
-            // Get the contractor_staff record to get owner_id â†’ user_id
-            $contractorUser = DB::table('contractor_staff')
-                ->where('staff_id', $validated['contractor_user_id'])
+            // Get the contractor_staff record to get owner_id
+            $staffMember = DB::table('contractor_staff')
+                ->where('staff_id', $validated['staff_id'])
                 ->first();
 
             if (!$staffMember) {
@@ -960,61 +957,24 @@ class userManagementController extends authController
                 ], 404);
             }
 
-            $userId = DB::table('property_owners')->where('owner_id', $contractorUser->owner_id)->value('user_id');
-
-            // Handle profile picture upload if present
-            $profilePicPath = null;
-            if ($request->hasFile('profile_pic')) {
-                $file = $request->file('profile_pic');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $file->move(public_path('img/profile_pics'), $filename);
-                $profilePicPath = 'img/profile_pics/' . $filename;
-            }
-
-            // Prepare user table update data
-            $userData = [
-                'username' => $validated['username'],
-                'email' => $validated['email']
+            // Prepare contractor_staff table update data - only update role
+            $staffData = [
+                'company_role' => $validated['role'],
+                'company_role_before' => $staffMember->company_role  // Save the previous role
             ];
 
-            // Only update password if provided
-            if (!empty($validated['password'])) {
-                $userData['password_hash'] = password_hash($validated['password'], PASSWORD_DEFAULT);
-            }
-
-            // Only update profile pic if new one uploaded
-            if ($profilePicPath) {
-                $userData['profile_pic'] = $profilePicPath;
-            }
-
-            // Update users table (includes name fields now)
-            $userData['first_name'] = $validated['first_name'];
-            $userData['last_name'] = $validated['last_name'];
-            if (isset($validated['middle_name'])) {
-                $userData['middle_name'] = $validated['middle_name'];
-            }
-
-            DB::table('users')
-                ->where('user_id', $userId)
-                ->update($userData);
-
-            // Prepare contractor_staff table update data
-            $contractorStaffData = [
-                'phone_number' => $validated['phone_number'],
-                'company_role' => $validated['role']
-            ];
-
-            // Handle role "others" - store custom role in if_others column
+            // Handle role "others" - store custom role in role_if_others column
             if ($validated['role'] === 'others' && isset($validated['role_other'])) {
-                $contractorStaffData['if_others'] = $validated['role_other'];
+                $staffData['role_if_others'] = $validated['role_other'];
             } else {
-                $contractorStaffData['if_others'] = null;
+                // Clear role_if_others if role is not "others"
+                $staffData['role_if_others'] = null;
             }
 
             // Update contractor_staff table
             DB::table('contractor_staff')
-                ->where('staff_id', $validated['contractor_user_id'])
-                ->update($contractorStaffData);
+                ->where('staff_id', $validated['staff_id'])
+                ->update($staffData);
 
             return response()->json([
                 'success' => true,
@@ -1116,9 +1076,9 @@ class userManagementController extends authController
         try {
             $validated = $request->validated();
 
-            // Update contractor_staff table to deactivate and save deletion reason
+            // Update contractor_staff table to set is_active = 0 and save reason
             DB::table('contractor_staff')
-                ->where('staff_id', $validated['contractor_user_id'])
+                ->where('staff_id', $validated['staff_id'])
                 ->update([
                     'is_active' => 0,
                     'deletion_reason' => $validated['deletion_reason']
@@ -1145,12 +1105,36 @@ class userManagementController extends authController
         try {
             $validated = $request->validated();
 
+            // Check if the contractor company is active
+            $staff = DB::table('contractor_staff')
+                ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
+                ->where('contractor_staff.staff_id', $validated['staff_id'])
+                ->select('contractors.is_active as contractor_active', 'contractors.company_name')
+                ->first();
+            
+            if (!$staff) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Staff member not found'
+                ], 404);
+            }
+            
+            if ($staff->contractor_active == 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot reactivate staff member. The contractor company "' . $staff->company_name . '" is currently suspended or inactive. Please reactivate the company first.'
+                ], 400);
+            }
+
             // Update contractor_staff table to reactivate the member
             DB::table('contractor_staff')
-                ->where('staff_id', $validated['contractor_user_id'])
+                ->where('staff_id', $validated['staff_id'])
                 ->update([
                     'is_active' => 1,
-                    'deletion_reason' => null
+                    'is_suspended' => 0,
+                    'deletion_reason' => null,
+                    'suspension_reason' => null,
+                    'suspension_until' => null
                 ]);
 
             return response()->json([
@@ -1206,9 +1190,7 @@ class userManagementController extends authController
             'contractors.contractor_id',
             'contractors.verification_status',
             'contractors.created_at as request_date',
-            'contractors.company_name',
-            'users.first_name as authorized_rep_fname',
-            'users.last_name as authorized_rep_lname'
+            'contractors.company_name'
         )
             ->paginate(10, ['*'], 'contractors_page');
 
@@ -1289,9 +1271,7 @@ class userManagementController extends authController
 
         // Recalculate and ensure users.user_type reflects current profiles (contractor/owner/both)
         try {
-            $hasContractor = DB::table('property_owners')
-                ->join('contractors', 'property_owners.owner_id', '=', 'contractors.owner_id')
-                ->where('property_owners.user_id', $id)->exists();
+            $hasContractor = DB::table('contractors')->where('user_id', $id)->exists();
             $hasOwner = DB::table('property_owners')->where('user_id', $id)->exists();
             $currentUser = DB::table('users')->where('user_id', $id)->first();
             $oldUserType = $currentUser->user_type ?? null;
@@ -1304,7 +1284,7 @@ class userManagementController extends authController
                 // hasn't been explicitly chosen yet.
                 if (empty($currentUser->preferred_role)) {
                     $preservedRole = $oldUserType;
-                    // Normalize 'property_owner' â†’ 'owner' for the preferred_role column
+                    // Normalize 'property_owner' → 'owner' for the preferred_role column
                     if ($preservedRole === 'property_owner') {
                         $preservedRole = 'owner';
                     }
@@ -1331,13 +1311,11 @@ class userManagementController extends authController
             // Determine first name from the relevant profile table
             $firstName = '';
             if ($targetRole === 'contractor') {
-                $profile = DB::table('contractors')
-                    ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                    ->where('property_owners.user_id', $id)->first();
-                $firstName = $user->first_name ?? ($profile->company_name ?? '');
+                $profile = DB::table('contractors')->where('user_id', $id)->first();
+                $firstName = $profile->first_name ?? ($profile->company_name ?? '');
             } else {
                 $profile = DB::table('property_owners')->where('user_id', $id)->first();
-                $firstName = $user->first_name ?? '';
+                $firstName = $profile->first_name ?? '';
             }
 
             // In-app notification
@@ -1402,13 +1380,11 @@ class userManagementController extends authController
 
             $firstName = '';
             if ($targetRole === 'contractor') {
-                $profile = DB::table('contractors')
-                    ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                    ->where('property_owners.user_id', $id)->first();
-                $firstName = $user->first_name ?? ($profile->company_name ?? '');
+                $profile = DB::table('contractors')->where('user_id', $id)->first();
+                $firstName = $profile->first_name ?? ($profile->company_name ?? '');
             } else {
                 $profile = DB::table('property_owners')->where('user_id', $id)->first();
-                $firstName = $user->first_name ?? '';
+                $firstName = $profile->first_name ?? '';
             }
 
             $reason = $validated['reason'];

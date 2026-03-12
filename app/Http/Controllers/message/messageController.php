@@ -500,7 +500,8 @@ class messageController extends Controller
                 'receiver_id' => $effectiveReceiverId,
                 'content' => $validated['content'] ?? '',
                 'conversation_id' => $validated['conversation_id'] ?? null,
-                'attachments' => $request->file('attachments') ?? []
+                'attachments' => $request->file('attachments') ?? [],
+                'is_admin_sending' => $isAdminSession
             ];
 
             $message = messageClass::storeMessage($data);

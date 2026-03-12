@@ -48,7 +48,7 @@ class propertyOwnerClass
                 $q->where('users.first_name', 'like', "%{$search}%")
                   ->orWhere('users.last_name', 'like', "%{$search}%")
                   ->orWhere('users.email', 'like', "%{$search}%")
-                  ->orWhere('users.phone_number', 'like', "%{$search}%");
+                  ->orWhere('users.username', 'like', "%{$search}%");
             });
         }
 
@@ -106,12 +106,12 @@ class propertyOwnerClass
         if ($owner->user_type === 'both') {
             // Check if owner owns a contractor company
             $contractorDetails = DB::table('contractors')
-                ->join('property_owners as cpo', 'contractors.owner_id', '=', 'cpo.owner_id')
                 ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
-                ->where('cpo.user_id', $owner->user_id)
+                ->where('contractors.owner_id', $owner->owner_id)
                 ->select(
                     'contractors.company_name',
                     'contractors.dti_sec_registration_photo',
+                    DB::raw("'owner' as position"),
                     DB::raw("CASE WHEN contractor_types.type_name = 'Others' OR contractor_types.type_name IS NULL THEN contractors.contractor_type_other ELSE contractor_types.type_name END as contractor_type")
                 )
                 ->first();
@@ -137,17 +137,17 @@ class propertyOwnerClass
         // Get Projects
         $projects = DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
-            ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
-            ->leftJoin('users as c_user', 'c_po.user_id', '=', 'c_user.user_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('property_owners as contractor_owner', 'contractors.owner_id', '=', 'contractor_owner.owner_id')
+            ->leftJoin('users as contractor_user', 'contractor_owner.user_id', '=', 'contractor_user.user_id')
             ->where('project_relationships.owner_id', $owner->owner_id)
             ->select(
                 'projects.*',
                 'project_relationships.created_at',
                 'contractors.company_name',
-                'c_user.profile_pic as contractor_profile_pic',
-                'c_user.first_name as contractor_first_name',
-                'c_user.last_name as contractor_last_name'
+                'contractor_owner.profile_pic as contractor_profile_pic',
+                'contractor_user.first_name as contractor_first_name',
+                'contractor_user.last_name as contractor_last_name'
             )
             ->orderBy('project_relationships.created_at', 'desc')
             ->get();
@@ -287,23 +287,6 @@ class propertyOwnerClass
                     ->update([
                         'updated_at' => now()
                     ]);
-
-                // If this user also has contractor role(s), disable associated contractor records
-                $contractorRow = (new \App\Services\ProfileService())->getContractorByUserId($owner->user_id);
-                $contractors = collect();
-                if ($contractorRow && isset($contractorRow->contractor_id)) {
-                    $contractors = collect([$contractorRow->contractor_id]);
-                }
-                if ($contractors && $contractors->isNotEmpty()) {
-                    $contractorModel = new contractorClass();
-                    foreach ($contractors as $contractorId) {
-                        try {
-                            $contractorModel->deleteContractor($contractorId, 'Owner account deleted: ' . $reason);
-                        } catch (\Exception $e) {
-                            \Illuminate\Support\Facades\Log::error("Failed to delete associated contractor {$contractorId}: " . $e->getMessage());
-                        }
-                    }
-                }
             }
 
             return true;

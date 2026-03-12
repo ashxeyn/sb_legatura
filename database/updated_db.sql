@@ -30,7 +30,7 @@ SET time_zone = "+00:00";
 DROP TABLE IF EXISTS `admin_activity_logs`;
 CREATE TABLE `admin_activity_logs` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `admin_id` bigint(20) UNSIGNED NOT NULL,
+  `admin_id` varchar(20) NOT NULL,
   `action` varchar(100) NOT NULL,
   `details` text DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
@@ -119,6 +119,11 @@ INSERT INTO `admin_users` (`admin_id`, `username`, `email`, `password_hash`, `la
 --
 
 DROP TABLE IF EXISTS `ai_prediction_logs`;
+-- ============================================================================
+-- DISABLE FOREIGN KEY CHECKS TEMPORARILY FOR DATA IMPORT
+-- ============================================================================
+SET FOREIGN_KEY_CHECKS=0;
+
 CREATE TABLE `ai_prediction_logs` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -137,6 +142,11 @@ CREATE TABLE `ai_prediction_logs` (
 INSERT INTO `ai_prediction_logs` (`id`, `project_id`, `prediction`, `delay_probability`, `weather_severity`, `ai_response_snapshot`, `created_at`, `updated_at`) VALUES
 (1, 1057, 'ON-TIME', 0.1067, 0, '{\"prediction\":{\"delay_probability\":0.1067,\"prediction\":\"ON-TIME\",\"reason\":\"Standard AI analysis based on current metrics.\"},\"analysis_report\":{\"conclusion\":\"The project \'Wonderland\' is currently ahead of schedule. AI predicts a 10.7% probability of delay. Weather impact is Minimal (0.08mm rain). Holidays impact 0% of remaining time. Standard AI analysis based on current metrics.\",\"pacing_status\":{\"pacing_index\":1,\"avg_delay_days\":0,\"rejected_count\":0,\"details\":[{\"title\":\"First\",\"status\":\"No Submission\",\"days_variance\":0,\"pacing_label\":\"Pending\"},{\"title\":\"Secondt\",\"status\":\"No Submission\",\"days_variance\":0,\"pacing_label\":\"Pending\"}]},\"contractor_audit\":{\"experience\":\"5 Years\",\"historical_success\":\"39%\",\"flagged\":false}},\"weather\":{\"avg_temp\":28.5,\"avg_humidity\":74,\"avg_wind\":10.8,\"total_rain\":0.08,\"condition_text\":\"Patchy rain nearby\",\"condition_icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"forecast\":[{\"date\":\"Wed, Mar 04\",\"temp_avg\":25.9,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":96},{\"date\":\"Thu, Mar 05\",\"temp_avg\":25.9,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":79},{\"date\":\"Fri, Mar 06\",\"temp_avg\":26.4,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":84}]},\"weather_severity\":0,\"dds_recommendations\":[],\"enso_state\":\"Neutral\"}', '2026-03-03 21:40:30', '2026-03-03 21:40:30'),
 (2, 1048, 'DELAYED', 0.7500, 0, '{\"prediction\":{\"delay_probability\":0.75,\"prediction\":\"DELAYED\",\"reason\":\"CRITICAL: 1 active dispute(s) detected. Construction disputes typically slow or halt work progress.\"},\"analysis_report\":{\"conclusion\":\"The project \'noche buena\' is currently ahead of schedule. AI predicts a 75.0% probability of delay. Weather impact is Minimal (0.09mm rain). Holidays impact 0% of remaining time. CRITICAL: 1 active dispute(s) detected. Construction disputes typically slow or halt work progress.\",\"pacing_status\":{\"pacing_index\":1.2,\"avg_delay_days\":-259,\"rejected_count\":0,\"details\":[{\"title\":\"1st\",\"status\":\"approved\",\"days_variance\":-153,\"pacing_label\":\"ON-TIME\\/EARLY\"},{\"title\":\"2nd\",\"status\":\"approved\",\"days_variance\":-365,\"pacing_label\":\"ON-TIME\\/EARLY\"}]},\"contractor_audit\":{\"experience\":\"5 Years\",\"historical_success\":\"39%\",\"flagged\":false}},\"weather\":{\"avg_temp\":28.5,\"avg_humidity\":75,\"avg_wind\":10.4,\"total_rain\":0.09,\"condition_text\":\"Patchy rain nearby\",\"condition_icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"forecast\":[{\"date\":\"Wed, Mar 04\",\"temp_avg\":25.8,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":96},{\"date\":\"Thu, Mar 05\",\"temp_avg\":25.8,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":86},{\"date\":\"Fri, Mar 06\",\"temp_avg\":26.3,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":89}]},\"weather_severity\":0,\"dds_recommendations\":[\"\\ud83d\\udfe2 PACING GOOD: Work is ahead of schedule. Ensure quality isn\'t being sacrificed for speed.\",\"\\u2696\\ufe0f LEGAL RISK: Active disputes detected. Assign a mediator immediately.\",\"\\ud83d\\udce2 MANAGEMENT ACTION: High Risk of Delay. Convene emergency meeting with contractor.\"],\"enso_state\":\"Neutral\"}', '2026-03-03 21:41:46', '2026-03-03 21:41:46');
+
+-- ============================================================================
+-- RE-ENABLE FOREIGN KEY CHECKS
+-- ============================================================================
+SET FOREIGN_KEY_CHECKS=1;
 
 -- --------------------------------------------------------
 
@@ -3673,6 +3683,24 @@ ALTER TABLE `valid_ids`
 --
 ALTER TABLE `ai_prediction_logs`
   ADD CONSTRAINT `fk_ai_logs_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `admin_activity_logs`
+--
+ALTER TABLE `admin_activity_logs`
+  ADD CONSTRAINT `fk_admin_activity_logs_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin_users` (`admin_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `admin_notification_preferences`
+--
+ALTER TABLE `admin_notification_preferences`
+  ADD CONSTRAINT `fk_admin_notification_preferences_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin_users` (`admin_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `admin_sent_notifications`
+--
+ALTER TABLE `admin_sent_notifications`
+  ADD CONSTRAINT `fk_admin_sent_notifications_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin_users` (`admin_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `bids`

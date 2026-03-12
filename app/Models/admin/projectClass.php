@@ -22,7 +22,7 @@ class projectClass
                 'owner_users.first_name as owner_first_name',
                 'owner_users.last_name as owner_last_name',
                 'owner_users.middle_name as owner_middle_name',
-                'owner_users.profile_pic as owner_profile_pic',
+                'property_owners.profile_pic as owner_profile_pic',
                 'contractors.company_name as contractor_company'
             );
 
@@ -128,7 +128,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as c_user', 'c_po.user_id', '=', 'c_user.user_id')
             ->select(
@@ -138,7 +138,6 @@ class projectClass
                 'project_relationships.bidding_due',
                 'users.first_name as owner_first_name',
                 'users.last_name as owner_last_name',
-                'users.phone_number as owner_phone',
                 'property_owners.address as owner_address',
                 'users.email as owner_email',
                 'property_owners.profile_pic as owner_profile_pic',
@@ -152,8 +151,7 @@ class projectClass
                 'contractors.business_permit_expiration as contractor_permit_expiry',
                 'contractors.tin_business_reg_number as contractor_tin',
                 'c_user.first_name as contractor_rep_fname',
-                'c_user.last_name as contractor_rep_lname',
-                'c_user.phone_number as contractor_phone'
+                'c_user.last_name as contractor_rep_lname'
             )
             ->where('projects.project_id', $id)
             ->first();
@@ -197,7 +195,8 @@ class projectClass
         // Get payment details
         $payments = DB::table('milestone_payments')
             ->leftJoin('milestones', 'milestone_payments.item_id', '=', 'milestones.milestone_id')
-            ->leftJoin('property_owners as mp_po', 'milestone_payments.contractor_user_id', '=', 'mp_po.owner_id')
+            ->leftJoin('contractors', 'milestone_payments.contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('property_owners as mp_po', 'contractors.owner_id', '=', 'mp_po.owner_id')
             ->leftJoin('users as mp_u', 'mp_po.user_id', '=', 'mp_u.user_id')
             ->select(
                 'milestone_payments.payment_id',
@@ -210,7 +209,7 @@ class projectClass
                 'milestones.milestone_name',
                 'milestones.start_date',
                 'milestones.end_date',
-                DB::raw("CONCAT(COALESCE(users.first_name, ''), ' ', COALESCE(users.last_name, '')) as uploader_name")
+                DB::raw("CONCAT(COALESCE(mp_u.first_name, ''), ' ', COALESCE(mp_u.last_name, '')) as uploader_name")
             )
             ->where('milestone_payments.project_id', $id)
             ->orderBy('milestone_payments.transaction_date', 'desc')
@@ -228,7 +227,7 @@ class projectClass
                     'contractors.company_name',
                     'contractors.picab_number',
                     'contractors.picab_category',
-                    'bid_c_po.profile_pic as contractor_profile_pic'
+                    'bid_cpo.profile_pic as contractor_profile_pic'
                 )
                 ->where('bids.project_id', $id)
                 ->orderBy('bids.submitted_at', 'desc')
@@ -1135,7 +1134,7 @@ class projectClass
                 'contractors.business_permit_city',
                 'contractors.business_permit_expiration',
                 'contractors.tin_business_reg_number',
-                'bid_c_user.email as contractor_email',
+                'users.email as contractor_email',
                 // Project Information
                 'projects.project_title',
                 'projects.project_location',
@@ -1312,7 +1311,7 @@ class projectClass
             ->leftJoin('contract_terminations', 'projects.project_id', '=', 'contract_terminations.project_id')
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as contractor_user_email', 'c_po.user_id', '=', 'contractor_user_email.user_id')
             ->select(
@@ -1325,7 +1324,7 @@ class projectClass
                 // Contractor info
                 DB::raw("CONCAT(contractor_user_email.first_name, ' ', contractor_user_email.last_name) as contractor_name"),
                 'contractors.company_name',
-                'c_user.email as contractor_email',
+                'contractor_user_email.email as contractor_email',
                 'contractors.picab_number as contractor_pcab',
                 'contractors.picab_category as contractor_category',
                 'contractors.picab_expiration_date as contractor_pcab_expiry',
@@ -1513,7 +1512,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as contractor_user_email', 'c_po.user_id', '=', 'contractor_user_email.user_id')
             ->select(
@@ -1524,11 +1523,11 @@ class projectClass
                 'owner_users.first_name as owner_first_name',
                 'owner_users.middle_name as owner_middle_name',
                 'owner_users.last_name as owner_last_name',
-                'owner_users.profile_pic as owner_profile_pic',
+                'property_owners.profile_pic as owner_profile_pic',
                 // Contractor info
                 DB::raw("CONCAT(contractor_user_email.first_name, ' ', contractor_user_email.last_name) as contractor_name"),
                 'contractors.company_name',
-                'c_user.email as contractor_email',
+                'contractor_user_email.email as contractor_email',
                 'contractors.picab_number as contractor_pcab',
                 'contractors.picab_category as contractor_category',
                 'contractors.picab_expiration_date as contractor_pcab_expiry',
@@ -1878,7 +1877,7 @@ class projectClass
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
             ->select(
                 'projects.project_id',
@@ -1964,7 +1963,7 @@ class projectClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
@@ -2098,7 +2097,7 @@ class projectClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
@@ -2391,7 +2390,7 @@ class projectClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
-            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
@@ -2582,7 +2581,7 @@ class projectClass
             $project = DB::table('projects')
                 ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
                 ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-                ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+                ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
                 ->leftJoin('property_owners as cpo', 'contractors.owner_id', '=', 'cpo.owner_id')
                 ->select(
                     'projects.*',
@@ -3258,7 +3257,7 @@ class projectClass
 
             // Get project with user IDs
             $project = DB::table('projects')
-                ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+                ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
                 ->leftJoin('property_owners as cpo', 'contractors.owner_id', '=', 'cpo.owner_id')
                 ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
                 ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
@@ -3602,3 +3601,5 @@ class projectClass
         }
     }
 }
+
+

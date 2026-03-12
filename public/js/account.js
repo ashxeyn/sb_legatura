@@ -22,12 +22,12 @@ function switchRole(role, buttonElement) {
         // Reset button state
         if (target) {
             target.disabled = false;
-            target.textContent = role === 'contractor' ? 'Switch to Contractor Dashboard' : 'Switch to Owner Dashboard';
+            target.textContent = role === 'contractor' ? 'Switch to Contractor' : 'Switch to Property Owner';
         }
         return;
     }
 
-        // Make API call to switch dashboard
+        // Make API call to switch role
     fetch('/api/role/switch', {
         method: 'POST',
         headers: {
@@ -47,21 +47,21 @@ function switchRole(role, buttonElement) {
             // Reload the page to update the role display
             window.location.reload();
         } else {
-            alert('Failed to switch dashboard: ' + data.message);
+            alert('Failed to switch role: ' + data.message);
             // Reset button state
             if (target) {
                 target.disabled = false;
-                target.textContent = role === 'contractor' ? 'Switch to Contractor Dashboard' : 'Switch to Owner Dashboard';
+                target.textContent = role === 'contractor' ? 'Switch to Contractor' : 'Switch to Property Owner';
             }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while switching dashboards');
+        alert('An error occurred while switching roles');
         // Reset button state
         if (target) {
             target.disabled = false;
-            target.textContent = role === 'contractor' ? 'Switch to Contractor Dashboard' : 'Switch to Owner Dashboard';
+            target.textContent = role === 'contractor' ? 'Switch to Contractor' : 'Switch to Property Owner';
         }
     });
 }
