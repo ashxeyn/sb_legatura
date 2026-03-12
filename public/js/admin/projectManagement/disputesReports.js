@@ -101,6 +101,26 @@
 
     // Render dispute files helper: files -> populate #modalDocumentsTable
     function renderDisputeFiles(files) {
+
+    // ── Penalty panel toggle logic ──
+    (function initPenaltyPanels() {
+      ['reject', 'resolve'].forEach(prefix => {
+        const cb = document.getElementById(prefix + 'ApplyPenalty');
+        const fields = document.getElementById(prefix + 'PenaltyFields');
+        const typeSelect = document.getElementById(prefix + 'PenaltyType');
+        const durationWrap = document.getElementById(prefix + 'BanDurationWrap');
+        if (cb && fields) {
+          cb.addEventListener('change', () => {
+            fields.classList.toggle('hidden', !cb.checked);
+          });
+        }
+        if (typeSelect && durationWrap) {
+          typeSelect.addEventListener('change', () => {
+            durationWrap.classList.toggle('hidden', typeSelect.value !== 'temporary_ban');
+          });
+        }
+      });
+    })();
         const tbody = document.getElementById("modalDocumentsTable");
         if (!tbody) return;
         if (!files || files.length === 0) {
@@ -179,6 +199,22 @@
                     dispute.respondent_username ||
                     header.against_name ||
                     "-";
+
+            // Populate penalty panel user info for both reject and resolve modals
+            const penaltyUserName = dispute.against_username || dispute.respondent_username || header.against_name || '-';
+            const penaltyUserType = header.against_user_type || dispute.against_user_type || '-';
+            ['reject', 'resolve'].forEach(function(prefix) {
+                const nameEl = document.getElementById(prefix + 'PenaltyUserName');
+                const typeEl2 = document.getElementById(prefix + 'PenaltyUserType');
+                if (nameEl) nameEl.textContent = penaltyUserName;
+                if (typeEl2) typeEl2.textContent = penaltyUserType === 'property_owner' ? 'Property Owner' : penaltyUserType === 'contractor' ? 'Contractor' : penaltyUserType;
+                // reset penalty fields each time modal opens
+                const cb = document.getElementById(prefix + 'ApplyPenalty');
+                const fields = document.getElementById(prefix + 'PenaltyFields');
+                if (cb) cb.checked = false;
+                if (fields) fields.classList.add('hidden');
+            });
+
             const typeEl = document.getElementById("modalType");
             if (typeEl)
                 typeEl.textContent =
@@ -471,6 +507,16 @@
                             .value || "";
                     const useId = window.__selectedDisputeId || id;
                     if (!useId) return;
+
+                    // Gather penalty data
+                    const applyPenaltyCb = document.getElementById("rejectApplyPenalty");
+                    const penaltyPayload = {};
+                    if (applyPenaltyCb && applyPenaltyCb.checked) {
+                        penaltyPayload.apply_penalty = true;
+                        penaltyPayload.penalty_type = (document.getElementById("rejectPenaltyType") || {}).value || '';
+                        penaltyPayload.ban_duration = (document.getElementById("rejectBanDuration") || {}).value || '';
+                    }
+
                     const tokenMeta = document.querySelector(
                         'meta[name="csrf-token"]'
                     );
@@ -486,7 +532,7 @@
                             {
                                 method: "POST",
                                 headers,
-                                body: JSON.stringify({ reason }),
+                                body: JSON.stringify({ reason, ...penaltyPayload }),
                             }
                         );
                         const j = await resp.json();
@@ -621,6 +667,16 @@
                     }
                     const useId = window.__selectedDisputeId || id;
                     if (!useId) return;
+
+                    // Gather penalty data
+                    const applyPenaltyCb = document.getElementById("resolveApplyPenalty");
+                    const penaltyPayload = {};
+                    if (applyPenaltyCb && applyPenaltyCb.checked) {
+                        penaltyPayload.apply_penalty = true;
+                        penaltyPayload.penalty_type = (document.getElementById("resolvePenaltyType") || {}).value || '';
+                        penaltyPayload.ban_duration = (document.getElementById("resolveBanDuration") || {}).value || '';
+                    }
+
                     const tokenMeta = document.querySelector(
                         'meta[name="csrf-token"]'
                     );
@@ -636,7 +692,7 @@
                             {
                                 method: "POST",
                                 headers,
-                                body: JSON.stringify({ notes }),
+                                body: JSON.stringify({ notes, ...penaltyPayload }),
                             }
                         );
                         const j = await resp.json();
@@ -728,7 +784,18 @@
                         return;
                     }
                     const status = (row.dataset.status || "").toLowerCase();
-                    row.style.display = status === filter ? "" : "none";
+                    // Map filter tab values to actual DB status values
+                    let matches = false;
+                    if (filter === "pending") {
+                        matches = status === "open" || status === "pending";
+                    } else if (filter === "disputes") {
+                        matches = status === "under_review" || status === "escalated";
+                    } else if (filter === "resolved") {
+                        matches = status === "resolved";
+                    } else {
+                        matches = status === filter;
+                    }
+                    row.style.display = matches ? "" : "none";
                 });
             });
         });

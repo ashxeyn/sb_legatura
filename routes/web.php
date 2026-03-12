@@ -611,6 +611,14 @@ Route::get('/admin/analytics/project-performance', [analyticsController::class, 
 Route::get('/admin/analytics/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('admin.analytics.bidCompletion');
 Route::get('/admin/analytics/reports', [analyticsController::class, 'reportsAnalytics'])->name('admin.analytics.reports');
 
+// Analytics AJAX date-filter endpoints
+Route::get('/admin/analytics/project-data', [analyticsController::class, 'getProjectAnalyticsData'])->name('admin.analytics.projectData');
+Route::get('/admin/analytics/top-contractors-data', [analyticsController::class, 'getTopContractorsData'])->name('admin.analytics.topContractorsData');
+Route::get('/admin/analytics/subscription-data', [analyticsController::class, 'getSubscriptionAnalyticsData'])->name('admin.analytics.subscriptionData');
+Route::get('/admin/analytics/user-data', [analyticsController::class, 'getUserAnalyticsData'])->name('admin.analytics.userData');
+Route::get('/admin/analytics/user-activity-feed', [analyticsController::class, 'getUserActivityFeedData'])->name('admin.analytics.userActivityFeed');
+Route::get('/admin/analytics/bid-data', [analyticsController::class, 'getBidAnalyticsData'])->name('admin.analytics.bidData');
+
 // User Management Routes
 Route::get('/admin/user-management/property-owners', [userManagementController::class, 'propertyOwners'])->name('admin.userManagement.propertyOwner');
 Route::post('/admin/user-management/property-owners/store', [userManagementController::class, 'addPropertyOwner'])->name('admin.userManagement.propertyOwner.store');
@@ -659,6 +667,18 @@ Route::get('/admin/global-management/posting-management', [globalManagementContr
 Route::get('/admin/global-management/review-management', [globalManagementController::class, 'reviewManagement'])->name('admin.globalManagement.reviewManagement');
 Route::post('/admin/global-management/review-management/{id}/delete', [globalManagementController::class, 'deleteReview'])->name('admin.globalManagement.deleteReview');
 
+// Report Management
+Route::get('/admin/global-management/report-management', [globalManagementController::class, 'reportManagement'])->name('admin.globalManagement.reportManagement');
+Route::get('/admin/global-management/report-management/api', [globalManagementController::class, 'getReportsApi'])->name('admin.globalManagement.reportsApi');
+Route::get('/admin/global-management/report-management/detail/{source}/{id}', [globalManagementController::class, 'getReportDetail'])->name('admin.globalManagement.reportDetail');
+Route::get('/admin/global-management/report-management/user-profile/{userId}', [globalManagementController::class, 'getUserProfileCard'])->name('admin.globalManagement.userProfileCard');
+Route::post('/admin/global-management/report-management/{source}/{id}/dismiss', [globalManagementController::class, 'dismissReport'])->name('admin.globalManagement.dismissReport');
+Route::post('/admin/global-management/report-management/{source}/{id}/confirm', [globalManagementController::class, 'confirmReport'])->name('admin.globalManagement.confirmReport');
+Route::post('/admin/global-management/report-management/{source}/{id}/status', [globalManagementController::class, 'updateReportStatus'])->name('admin.globalManagement.updateReportStatus');
+Route::get('/admin/global-management/report-management/reporters', [globalManagementController::class, 'getReporterStatsApi'])->name('admin.globalManagement.reporterStatsApi');
+Route::get('/admin/global-management/report-management/admin-search', [globalManagementController::class, 'adminSearch'])->name('admin.globalManagement.adminSearch');
+Route::post('/admin/global-management/report-management/admin-action', [globalManagementController::class, 'adminDirectAction'])->name('admin.globalManagement.adminDirectAction');
+
 // Project Management Routes
 // Specific routes first (to avoid conflict with {id} parameter)
 Route::get('/admin/project-management/list-of-projects', [projectManagementController::class, 'listOfProjects'])->name('admin.projectManagement.listOfProjects');
@@ -678,6 +698,7 @@ Route::post('/admin/project-management/showcase-management/{id}/delete', [projec
 Route::post('/admin/project-management/showcase-management/{id}/restore', [projectManagementController::class, 'restoreShowcase'])->name('admin.projectManagement.restoreShowcase');
 Route::get('/admin/progress-feed', [\App\Http\Controllers\Admin\progressFeedController::class, 'index'])->name('admin.progressFeed');
 Route::get('/admin/progress-feed/data', [\App\Http\Controllers\Admin\progressFeedController::class, 'fetch'])->name('admin.progressFeed.fetch');
+Route::get('/admin/progress-feed/contractors', [\App\Http\Controllers\Admin\progressFeedController::class, 'contractors'])->name('admin.progressFeed.contractors');
 
 // Admin Messages API (Session-based for web dashboard)
 Route::prefix('admin/messages')->group(function () {

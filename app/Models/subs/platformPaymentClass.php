@@ -17,8 +17,8 @@ class platformPaymentClass
             return null;
 
         try {
-            // Get contractor ID for the user
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            // Get contractor ID for the user (schema-agnostic)
+            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($userId);
 
             if ($contractor) {
                 // Check for active subscription in platform_payments

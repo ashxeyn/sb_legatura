@@ -1,4 +1,5 @@
 import { api_config, api_request } from '../config/api';
+import { storage_service } from '../utils/storage';
 
 /**
  * Project Form Data structure for creating a new project
@@ -537,16 +538,43 @@ export class projects_service {
         });
 
         const url = `${api_config.base_url}/api/contractor/projects/${projectId}/bid`;
+
+        // Build headers similar to api_request so the backend receives auth/user context
+        const headers: any = {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        };
+
+        try {
+          const savedToken = await storage_service.get_auth_token();
+          if (savedToken) {
+            headers['Authorization'] = `Bearer ${savedToken}`;
+          }
+          const savedUser = await storage_service.get_user_data();
+          if (savedUser) {
+            const uid = savedUser.user_id || savedUser.id || savedUser.username || null;
+            if (uid) headers['X-User-Id'] = String(uid);
+          }
+        } catch (e) {
+          console.warn('Could not read auth/user from storage for bid upload headers', e);
+        }
+
         const response = await fetch(url, {
           method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
+          headers,
           body: formData,
         });
 
-        const data = await response.json();
+        let data: any = null;
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          const text = await response.text();
+          console.error('Failed to parse bid submit response as JSON:', parseErr, text);
+          throw new Error('Invalid response from server when submitting bid');
+        }
+
+        console.log('submit_bid response:', { status: response.status, ok: response.ok, data });
 
         return {
           success: response.ok && (data.success !== false),
@@ -626,16 +654,40 @@ export class projects_service {
       }
 
       const url = `${api_config.base_url}/api/contractor/bids/${bidId}`;
+
+      // Build headers similar to api_request so backend receives auth context
+      const headers: any = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      };
+      try {
+        const savedToken = await storage_service.get_auth_token();
+        if (savedToken) headers['Authorization'] = `Bearer ${savedToken}`;
+        const savedUser = await storage_service.get_user_data();
+        if (savedUser) {
+          const uid = savedUser.user_id || savedUser.id || savedUser.username || null;
+          if (uid) headers['X-User-Id'] = String(uid);
+        }
+      } catch (e) {
+        console.warn('Could not read auth/user from storage for bid update headers', e);
+      }
+
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers,
         body: formData,
       });
 
-      const data = await response.json();
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        const text = await response.text();
+        console.error('Failed to parse bid update response as JSON:', parseErr, text);
+        throw new Error('Invalid response from server when updating bid');
+      }
+
+      console.log('update_bid response:', { status: response.status, ok: response.ok, data });
 
       return {
         success: response.ok && (data.success !== false),

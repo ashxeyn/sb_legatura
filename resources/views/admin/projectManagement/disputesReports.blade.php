@@ -57,6 +57,40 @@
               <label class="block text-sm font-semibold text-gray-800 mb-2">Rejection Reason *</label>
               <textarea id="rejectionReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-300 focus:border-red-300 transition resize-none" placeholder="Provide reason for rejecting this dispute..."></textarea>
             </div>
+
+            <!-- Penalty Panel -->
+            <div class="border-t border-gray-200 pt-4">
+              <div class="flex items-center gap-3 mb-3">
+                <input type="checkbox" id="rejectApplyPenalty" class="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                <label for="rejectApplyPenalty" class="text-sm font-semibold text-gray-800">Apply penalty to the reported user</label>
+              </div>
+              <div id="rejectPenaltyFields" class="hidden space-y-3 pl-7">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Reported User</label>
+                  <p class="text-sm font-semibold text-gray-800" id="rejectPenaltyUserName">-</p>
+                  <p class="text-xs text-gray-500" id="rejectPenaltyUserType">-</p>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Penalty Type *</label>
+                  <select id="rejectPenaltyType" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-300 focus:border-red-300">
+                    <option value="">Select penalty...</option>
+                    <option value="temporary_ban">Temporary Ban</option>
+                    <option value="permanent_ban">Permanent Ban / Terminate</option>
+                  </select>
+                </div>
+                <div id="rejectBanDurationWrap" class="hidden">
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Ban Duration *</label>
+                  <select id="rejectBanDuration" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-300 focus:border-red-300">
+                    <option value="7">7 Days</option>
+                    <option value="14">14 Days</option>
+                    <option value="30" selected>30 Days</option>
+                    <option value="60">60 Days</option>
+                    <option value="90">90 Days</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
               <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
               <button id="confirmRejectBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
@@ -488,6 +522,39 @@
             <div>
               <label class="block text-sm font-semibold text-gray-800 mb-2">Resolution Notes *</label>
               <textarea id="resolutionNotes" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300 transition resize-none" placeholder="Provide details about how this case was resolved..."></textarea>
+            </div>
+
+            <!-- Penalty Panel -->
+            <div class="border-t border-gray-200 pt-4">
+              <div class="flex items-center gap-3 mb-3">
+                <input type="checkbox" id="resolveApplyPenalty" class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                <label for="resolveApplyPenalty" class="text-sm font-semibold text-gray-800">Apply penalty to the reported user</label>
+              </div>
+              <div id="resolvePenaltyFields" class="hidden space-y-3 pl-7">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Reported User</label>
+                  <p class="text-sm font-semibold text-gray-800" id="resolvePenaltyUserName">-</p>
+                  <p class="text-xs text-gray-500" id="resolvePenaltyUserType">-</p>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Penalty Type *</label>
+                  <select id="resolvePenaltyType" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300">
+                    <option value="">Select penalty...</option>
+                    <option value="temporary_ban">Temporary Ban</option>
+                    <option value="permanent_ban">Permanent Ban / Terminate</option>
+                  </select>
+                </div>
+                <div id="resolveBanDurationWrap" class="hidden">
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Ban Duration *</label>
+                  <select id="resolveBanDuration" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300">
+                    <option value="7">7 Days</option>
+                    <option value="14">14 Days</option>
+                    <option value="30" selected>30 Days</option>
+                    <option value="60">60 Days</option>
+                    <option value="90">90 Days</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">

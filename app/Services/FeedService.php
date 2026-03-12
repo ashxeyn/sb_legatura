@@ -97,7 +97,7 @@ class FeedService
         $contractorTypeId = null;
 
         if ($userId) {
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($userId);
             if ($contractor) {
                 $contractorId     = $contractor->contractor_id;
                 $contractorTypeId = $contractor->type_id;
@@ -139,7 +139,7 @@ class FeedService
         $contractorTypeId = null;
 
         if ($userId) {
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($userId);
             if ($contractor) {
                 $contractorId     = $contractor->contractor_id;
                 $contractorTypeId = $contractor->type_id;

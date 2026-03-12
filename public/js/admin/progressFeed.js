@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var dateTo       = document.getElementById('dateTo');
     var resetBtn     = document.getElementById('resetFilters');
 
+    var companyFilter   = document.getElementById('companyFilter');
+    var companyDropdown = document.getElementById('companyDropdown');
+    var companyFilterWrap = document.getElementById('companyFilterWrap');
+
     var ufvModal     = document.getElementById('ufvModal');
     var ufvFileName  = document.getElementById('ufvFileName');
     var ufvCounter   = document.getElementById('ufvCounter');
@@ -36,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var currentPage    = 1;
     var searchTimeout  = null;
+    var allCompanies   = [];
+    var selectedCompany = '';
 
     // ── File-type detection ──────────────────────────────────────────────────
     var IMG_EXT   = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'ico'];
@@ -479,6 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
             search:    searchInput  ? searchInput.value.trim() : '',
             date_from: dateFrom     ? dateFrom.value : '',
             date_to:   dateTo       ? dateTo.value   : '',
+            company:   selectedCompany,
         });
 
         fetch('/admin/progress-feed/data?' + params.toString(), {
@@ -533,9 +540,77 @@ document.addEventListener('DOMContentLoaded', function () {
             if (statusFilter) statusFilter.value  = 'all';
             if (dateFrom)     dateFrom.value       = '';
             if (dateTo)       dateTo.value         = '';
+            selectedCompany = '';
+            if (companyFilter) companyFilter.value = '';
             fetchFeed(true);
         });
     }
+
+    // ── Company / Contractor filter ──────────────────────────────────────
+    function loadCompanies() {
+        fetch('/admin/progress-feed/contractors', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (list) { allCompanies = list || []; })
+            .catch(function () { allCompanies = []; });
+    }
+
+    function renderCompanyDropdown(filter) {
+        if (!companyDropdown) return;
+        var term = (filter || '').toLowerCase();
+        var matches = allCompanies.filter(function (name) {
+            return name.toLowerCase().indexOf(term) !== -1;
+        });
+
+        if (matches.length === 0) {
+            companyDropdown.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400">No matches</div>';
+        } else {
+            companyDropdown.innerHTML = matches.map(function (name) {
+                return '<div class="px-3 py-2 text-sm cursor-pointer hover:bg-indigo-50 transition" data-company="' + escHtml(name) + '">'
+                     + escHtml(name) + '</div>';
+            }).join('');
+        }
+
+        companyDropdown.classList.remove('hidden');
+
+        companyDropdown.querySelectorAll('[data-company]').forEach(function (el) {
+            el.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                selectedCompany = el.dataset.company;
+                if (companyFilter) companyFilter.value = selectedCompany;
+                companyDropdown.classList.add('hidden');
+                fetchFeed(true);
+            });
+        });
+    }
+
+    if (companyFilter) {
+        companyFilter.addEventListener('focus', function () {
+            renderCompanyDropdown(companyFilter.value);
+        });
+        companyFilter.addEventListener('input', function () {
+            if (companyFilter.value.trim() === '') {
+                selectedCompany = '';
+            }
+            renderCompanyDropdown(companyFilter.value);
+        });
+        companyFilter.addEventListener('blur', function () {
+            setTimeout(function () { if (companyDropdown) companyDropdown.classList.add('hidden'); }, 150);
+        });
+        companyFilter.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                companyDropdown.classList.add('hidden');
+                companyFilter.blur();
+            }
+            if (e.key === 'Backspace' && companyFilter.value === '') {
+                selectedCompany = '';
+                fetchFeed(true);
+            }
+        });
+    }
+
+    loadCompanies();
 
     // ── Initial load ─────────────────────────────────────────────────────
     fetchFeed(true);

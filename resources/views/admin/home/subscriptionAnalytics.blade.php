@@ -62,6 +62,35 @@
 
     <div class="p-8 space-y-8">
 
+      {{-- ── GLOBAL DATE FILTER ──────────────────────────────────────────── --}}
+      <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm" id="globalDateFilter">
+        <div class="flex items-center gap-4 flex-wrap">
+          <span class="text-sm font-semibold text-gray-700 whitespace-nowrap">
+            <i class="fi fi-sr-calendar" style="font-size:1rem; vertical-align:middle; margin-right:.35rem;"></i>
+            Filter Period:
+          </span>
+          <div class="flex gap-2 flex-wrap" id="presetButtons">
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last3months">Last 3 Months</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last6months">Last 6 Months</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="thisyear">This Year</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="lastyear">Last Year</button>
+            <button class="date-preset-btn active px-3 py-1.5 rounded-full border border-indigo-500 text-sm font-semibold text-white bg-indigo-500 transition-all" data-range="all">All Time</button>
+          </div>
+          <div class="flex items-center gap-2 ml-auto">
+            <label class="text-xs font-medium text-gray-500">From</label>
+            <input type="date" id="globalDateFrom" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <label class="text-xs font-medium text-gray-500">To</label>
+            <input type="date" id="globalDateTo" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <button id="applyGlobalDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+          </div>
+          <div id="filterLoading" class="hidden flex items-center gap-1 ml-2">
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.1s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.2s"></span>
+          </div>
+        </div>
+      </div>
+
       {{-- ── KPI HERO CARDS ───────────────────────────────────────────────── --}}
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
 
@@ -103,14 +132,14 @@
         </div>
 
         {{-- Revenue --}}
-        <div class="relative bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+        <div id="revenueCard" class="relative bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
           <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
           <div class="relative">
             <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
               <i class="fi fi-sr-peso-sign text-white text-xl leading-none"></i>
             </div>
             <div class="text-white/80 text-sm font-medium mb-1">Total Revenue</div>
-            <div class="text-white text-4xl font-bold mb-2">
+            <div id="revenueValue" class="text-white text-4xl font-bold mb-2">
               ₱{{ number_format($subscriptionMetrics['revenue'], 2) }}
             </div>
             <div class="text-white/70 text-xs">All approved contractor subs</div>
@@ -118,7 +147,7 @@
         </div>
 
         {{-- Expiring / Expired --}}
-        <div class="relative bg-gradient-to-br from-rose-500 to-pink-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+        <div id="expiringCard" class="relative bg-gradient-to-br from-rose-500 to-pink-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
           <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
           <div class="relative">
             <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
@@ -126,7 +155,7 @@
             </div>
             <div class="text-white/80 text-sm font-medium mb-1">Expiring in 7 Days</div>
             <div class="text-white text-4xl font-bold mb-2 stat-counter" data-target="{{ $subscriptionMetrics['expiring'] }}">0</div>
-            <div class="text-white/70 text-xs">
+            <div id="expiredCount" class="text-white/70 text-xs">
               {{ $subscriptionMetrics['expired'] }} already expired
             </div>
           </div>

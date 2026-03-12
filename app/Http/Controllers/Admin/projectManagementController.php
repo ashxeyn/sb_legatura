@@ -16,6 +16,8 @@ use App\Http\Requests\admin\editSubRequest;
 use App\Http\Requests\admin\addSubRequest;
 use App\Models\admin\subscriptionClass;
 use App\Models\admin\showcaseClass;
+use App\Models\admin\propertyOwnerClass;
+use App\Models\admin\contractorClass;
 use App\Services\AdminActivityLog;
 
 class projectManagementController extends Controller
@@ -99,7 +101,7 @@ class projectManagementController extends Controller
         // if AJAX request, return partial HTML for the table and pagination
         if ($request->ajax()) {
             $table = view('admin.projectManagement.partials.disputeTable', compact('disputes'))->render();
-            $links = $disputes->links()->render();
+            $links = $disputes->links()->toHtml();
             return response()->json(['table' => $table, 'links' => $links]);
         }
 
@@ -111,7 +113,11 @@ class projectManagementController extends Controller
             'totalReports' => $totalReports,
             'pendingCount' => $pendingCount,
             'activeCount' => $activeCount,
-            'resolvedCount' => $resolvedCount
+            'resolvedCount' => $resolvedCount,
+            'pendingPercent' => $pendingPercent,
+            'activePercent' => $activePercent,
+            'resolvedPercent' => $resolvedPercent,
+            'totalChangePercent' => $totalChangePercent,
         ]);
     }
 
@@ -207,6 +213,12 @@ class projectManagementController extends Controller
         $reason = $request->input('reason', null);
         disputeClass::updateStatus($id, 'cancelled', $reason);
 
+        // Apply penalty if requested
+        $penaltyApplied = false;
+        if ($request->boolean('apply_penalty')) {
+            $penaltyApplied = $this->applyDisputePenalty($id, $request, $reason);
+        }
+
         // fetch reporter email
         $row = DB::table('disputes')
             ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
@@ -226,8 +238,8 @@ class projectManagementController extends Controller
             Log::error('Failed to send reject email: ' . $e->getMessage());
         }
 
-        AdminActivityLog::log('dispute_rejected', ['dispute_id' => $id, 'reason' => $reason]);
-        return response()->json(['success' => true]);
+        AdminActivityLog::log('dispute_rejected', ['dispute_id' => $id, 'reason' => $reason, 'penalty_applied' => $penaltyApplied]);
+        return response()->json(['success' => true, 'penalty_applied' => $penaltyApplied]);
     }
 
     // Finalize resolution: only here do we save admin_response and mark resolved; notify both parties
@@ -235,6 +247,12 @@ class projectManagementController extends Controller
     {
         $notes = $request->input('notes', null);
         disputeClass::updateStatus($id, 'resolved', $notes);
+
+        // Apply penalty if requested
+        $penaltyApplied = false;
+        if ($request->boolean('apply_penalty')) {
+            $penaltyApplied = $this->applyDisputePenalty($id, $request, 'Dispute resolution penalty: ' . ($notes ?: 'No notes'));
+        }
 
         // fetch reporter and accused emails
         $row = DB::table('disputes')
@@ -261,8 +279,59 @@ class projectManagementController extends Controller
             Log::error('Failed to send finalize emails: ' . $e->getMessage());
         }
 
-        AdminActivityLog::log('dispute_finalized', ['dispute_id' => $id]);
-        return response()->json(['success' => true]);
+        AdminActivityLog::log('dispute_finalized', ['dispute_id' => $id, 'penalty_applied' => $penaltyApplied]);
+        return response()->json(['success' => true, 'penalty_applied' => $penaltyApplied]);
+    }
+
+    /**
+     * Apply penalty (ban/terminate) to the reported user during dispute reject/resolve.
+     */
+    private function applyDisputePenalty($disputeId, Request $request, $reason)
+    {
+        $penaltyType = $request->input('penalty_type', 'temporary_ban');
+        $banDuration = (int) $request->input('ban_duration', 30);
+
+        // Get the dispute to find against_user_id and their user_type
+        $dispute = DB::table('disputes')
+            ->leftJoin('users', 'disputes.against_user_id', '=', 'users.user_id')
+            ->select('disputes.against_user_id', 'users.user_type')
+            ->where('disputes.dispute_id', $disputeId)
+            ->first();
+
+        if (!$dispute || !$dispute->against_user_id) {
+            return false;
+        }
+
+        $suspensionUntil = $penaltyType === 'permanent_ban'
+            ? '9999-12-31'
+            : now()->addDays($banDuration)->toDateString();
+        $duration = $penaltyType === 'permanent_ban' ? 'permanent' : $banDuration . ' days';
+        $suspensionReason = 'Dispute #' . $disputeId . ' - ' . $reason;
+
+        $userType = $dispute->user_type;
+        $userId = $dispute->against_user_id;
+
+        if ($userType === 'property_owner') {
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($owner) {
+                $model = new propertyOwnerClass();
+                $model->suspendOwner($owner->owner_id, $suspensionReason, $duration, $suspensionUntil);
+                return true;
+            }
+        } elseif ($userType === 'contractor') {
+            // A contractor user_id maps through property_owners -> contractors
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($owner) {
+                $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
+                if ($contractor) {
+                    $model = new contractorClass();
+                    $model->suspendContractor($contractor->contractor_id, $suspensionReason, $duration, $suspensionUntil);
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -357,22 +357,44 @@ class ProfileService
      * Resolve contractor row for a given user_id in a schema-agnostic way.
      * Supports `contractors.user_id` (legacy) and `contractors.owner_id` (newer schemas).
      */
-    private function getContractorByUserId(int $userId)
+    public function getContractorByUserId(int $userId)
     {
         try {
-            if (Schema::hasColumn('contractors', 'user_id')) {
-                return DB::table('contractors')->where('user_id', $userId)->first();
-            }
-
+            // Prefer a join-based lookup: many schemas store the canonical user_id on
+            // `property_owners` and link `contractors` via `owner_id`. Join to reliably
+            // find the contractor row for a given user_id when that schema is used.
             if (Schema::hasColumn('contractors', 'owner_id')) {
-                $owner = DB::table('property_owners')->where('user_id', $userId)->first();
-                $ownerId = $owner->owner_id ?? null;
-                if ($ownerId) return DB::table('contractors')->where('owner_id', $ownerId)->first();
-                return null;
+                try {
+                    $row = DB::table('contractors as c')
+                        ->join('property_owners as po', 'po.owner_id', '=', 'c.owner_id')
+                        ->where('po.user_id', $userId)
+                        ->select('c.*', 'po.user_id')
+                        ->first();
+
+                    if ($row) return $row;
+                } catch (\Throwable $e) {
+                    // Join failed for some reason — fall through to other strategies
+                    Log::warning('ProfileService join-based contractor lookup failed: ' . $e->getMessage());
+                }
             }
 
-            // Fallback to attempting user_id lookup
-            return DB::table('contractors')->where('user_id', $userId)->first();
+            // If contractors table exposes user_id directly, use it as a fast path.
+            if (Schema::hasColumn('contractors', 'user_id')) {
+                try {
+                    return DB::table('contractors')->where('user_id', $userId)->first();
+                } catch (\Throwable $e) {
+                    Log::warning('ProfileService user_id lookup failed: ' . $e->getMessage());
+                }
+            }
+
+            // As a last resort, resolve the owner_id from property_owners then query contractors.
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            $ownerId = $owner->owner_id ?? null;
+            if ($ownerId && Schema::hasColumn('contractors', 'owner_id')) {
+                return DB::table('contractors')->where('owner_id', $ownerId)->first();
+            }
+
+            return null;
         } catch (\Throwable $e) {
             Log::warning('ProfileService::getContractorByUserId failed: ' . $e->getMessage());
             try {

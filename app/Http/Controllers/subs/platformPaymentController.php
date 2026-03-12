@@ -75,8 +75,8 @@ class platformPaymentController extends Controller
             $currentRole = Session::get('current_role');
             $isContractor = ($currentRole === 'contractor' || !$currentRole);
         } elseif ($userId && !$role) {
-            // No role detected - check if user has a contractor record
-            $hasContractor = DB::table('contractors')->where('user_id', $userId)->exists();
+            // No role detected - check if user has a contractor record (schema-agnostic)
+            $hasContractor = (new \App\Services\ProfileService())->getContractorByUserId($userId) ? true : false;
             $isContractor = $hasContractor;
         }
 

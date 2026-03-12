@@ -27,6 +27,25 @@
     <main class="flex-1">
       @include('admin.layouts.topnav', ['pageTitle' => 'Bid Completion Analytics'])
 
+      {{-- ── GLOBAL DATE FILTER ─────────────────────────────────── --}}
+      <div id="globalDateFilter" style="background:linear-gradient(135deg,#f0f4ff 0%,#e8ecff 100%);border-bottom:1px solid #ddd8fe;padding:16px 32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span style="font-weight:700;color:#4338ca;font-size:14px;margin-right:4px;">📅 Filter Period:</span>
+        <div id="presetButtons" style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="date-preset-btn active" data-range="all" style="padding:6px 16px;border-radius:9999px;font-size:13px;border:1.5px solid #6366f1;cursor:pointer;transition:all .2s;font-weight:600;color:#fff;background:#6366f1;">All Time</button>
+          <button class="date-preset-btn" data-range="last3months" style="padding:6px 16px;border-radius:9999px;font-size:13px;border:1.5px solid #e5e7eb;cursor:pointer;transition:all .2s;font-weight:500;color:#4b5563;background:#fff;">Last 3 Months</button>
+          <button class="date-preset-btn" data-range="last6months" style="padding:6px 16px;border-radius:9999px;font-size:13px;border:1.5px solid #e5e7eb;cursor:pointer;transition:all .2s;font-weight:500;color:#4b5563;background:#fff;">Last 6 Months</button>
+          <button class="date-preset-btn" data-range="thisyear" style="padding:6px 16px;border-radius:9999px;font-size:13px;border:1.5px solid #e5e7eb;cursor:pointer;transition:all .2s;font-weight:500;color:#4b5563;background:#fff;">This Year</button>
+          <button class="date-preset-btn" data-range="lastyear" style="padding:6px 16px;border-radius:9999px;font-size:13px;border:1.5px solid #e5e7eb;cursor:pointer;transition:all .2s;font-weight:500;color:#4b5563;background:#fff;">Last Year</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+          <input type="date" id="globalDateFrom" style="padding:6px 10px;border:1.5px solid #c7d2fe;border-radius:8px;font-size:13px;color:#374151;">
+          <span style="color:#6b7280;">to</span>
+          <input type="date" id="globalDateTo" style="padding:6px 10px;border:1.5px solid #c7d2fe;border-radius:8px;font-size:13px;color:#374151;">
+          <button id="applyGlobalDateFilter" style="padding:6px 18px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Apply</button>
+          <span id="filterLoading" class="hidden" style="font-size:13px;color:#6366f1;">⏳ Loading...</span>
+        </div>
+      </div>
+
       <div class="p-8 space-y-8">
 
         {{-- ── HERO STAT CARDS ──────────────────────────────────────── --}}
@@ -244,7 +263,7 @@
           </div>
 
           {{-- District Cards (4) --}}
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div id="districtCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             @php
               $districtStyles = [
                 'Tetuan'    => ['bg' => 'from-green-50 to-green-100',   'border' => 'border-green-200',   'text' => 'text-green-600',  'sub' => 'text-green-700',  'val' => 'text-green-600'],
@@ -464,7 +483,7 @@
               </div>
             </div>
 
-            <div class="p-6 space-y-6">
+            <div id="paymentAnalyticsCards" class="p-6 space-y-6">
               {{-- Total Payments Released --}}
               <div class="bg-gray-50 rounded-xl p-5 hover:shadow-md transition-shadow duration-300">
                 <div class="flex items-center justify-between">

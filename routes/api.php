@@ -666,4 +666,8 @@ Route::get('/review-reports/mine', [reportController::class, 'myReviewReports'])
 Route::get('/admin/review-reports', [reportController::class, 'adminReviewReportsIndex']);
 Route::post('/admin/review-reports/{reportId}/review', [reportController::class, 'adminReviewReportAction']);
 
+// ── User Reports (users reporting other users)
+Route::post('/user-reports', [\App\Http\Controllers\both\userReportController::class, 'store']);
+Route::get('/user-reports/mine', [\App\Http\Controllers\both\userReportController::class, 'mine']);
+
 // NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)

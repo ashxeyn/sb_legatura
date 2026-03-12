@@ -271,4 +271,112 @@ export const profile_service = {
       };
     }
   },
+
+  /**
+   * Report a user.
+   * Endpoint: POST /api/user-reports
+   */
+  report_user: async (
+    reportedUserId: number,
+    reasons: string | string[],
+    description?: string,
+  ): Promise<ApiResponse<null>> => {
+    try {
+      const reasonString = Array.isArray(reasons)
+        ? (reasons as string[]).map((r) => String(r).trim()).filter(Boolean).join('|')
+        : String(reasons || '').trim();
+
+      const payload = {
+        reported_user_id: reportedUserId,
+        reason: reasonString,
+        description: description || null,
+      };
+
+      const response = await api_request('/api/user-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.success) {
+        return {
+          success: true,
+          message: response.data?.message || 'Report submitted',
+          status: response.status,
+        };
+      }
+
+      return {
+        success: false,
+        message: response.data?.message || 'Failed to submit report',
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('[profile_service] report_user error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Network error',
+        status: 0,
+      };
+    }
+  },
+
+  /**
+   * Get the current user's most recent report for a specific reported user (if any).
+   * Endpoint: GET /api/user-reports/mine
+   */
+  get_my_report_for_user: async (
+    reportedUserId: number,
+  ): Promise<ApiResponse<{ reasons: string[]; description?: string | null; report_id?: number; status?: string; created_at?: string }>> => {
+    try {
+      const response = await api_request('/api/user-reports/mine', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      });
+
+      if (!response.success || !response.data?.data) {
+        return { success: false, message: response.data?.message || 'No reports', status: response.status };
+      }
+
+      const reports = Array.isArray(response.data.data) ? response.data.data : [];
+      const found = (reports as any[]).find((r) => Number(r.reported_user_id) === Number(reportedUserId));
+      if (!found) {
+        return { success: false, message: 'No previous report', status: response.status };
+      }
+
+      const parseReasons = (raw: any): string[] => {
+        if (!raw) return [];
+        const s = String(raw).trim();
+        // Try JSON
+        if (s.startsWith('[') || s.startsWith('{')) {
+          try {
+            const j = JSON.parse(s);
+            if (Array.isArray(j)) return j.map((x) => String(x).trim()).filter(Boolean);
+          } catch (e) {
+            // ignore
+          }
+        }
+        if (s.includes('|')) return s.split('|').map((x) => x.trim()).filter(Boolean);
+        if (s.includes(',')) return s.split(',').map((x) => x.trim()).filter(Boolean);
+        return [s];
+      };
+
+      const reasons = parseReasons(found.reason);
+
+      return {
+        success: true,
+        data: {
+          reasons,
+          description: found.description ?? null,
+          report_id: found.report_id,
+          status: found.status ?? null,
+          created_at: found.created_at ?? null,
+        },
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('[profile_service] get_my_report_for_user error:', error);
+      return { success: false, message: error instanceof Error ? error.message : 'Network error', status: 0 };
+    }
+  },
 };

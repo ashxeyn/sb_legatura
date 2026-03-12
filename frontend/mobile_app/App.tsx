@@ -211,6 +211,9 @@ export default function App() {
 
     const handle_register = async () => {
         try {
+            // Ensure any previous registration state is cleared so the form opens empty
+            clearSignupState();
+
             // Try to load signup form data and open Property Owner flow directly
             const response = await auth_service.get_signup_form_data();
             if (response && response.success) {
@@ -220,6 +223,7 @@ export default function App() {
                 set_app_state('po_personal_info');
                 return;
             }
+
             // Fallback to explicit user type selection when form data fails
             Alert.alert('Error', 'Failed to load signup form. Please select account type.');
             set_app_state('user_type_selection');
@@ -353,6 +357,26 @@ export default function App() {
 
         // Navigate to auth choice screen
         set_app_state('auth_choice');
+    };
+
+    // Clear all signup-related transient state so forms open empty
+    const clearSignupState = () => {
+        set_form_data(null);
+        set_selected_user_type(null);
+        set_po_personal_info(null);
+        set_po_account_setup(null);
+        set_po_verification_info(null);
+        set_contractor_company_info(null);
+        set_contractor_account_info(null);
+        set_contractor_documents_info(null);
+    };
+
+    // Called when the registration success modal is dismissed. Clears signup state
+    // and navigates to the target app state (usually 'login').
+    const handle_registration_success_dismiss = () => {
+        set_show_registration_success(false);
+        clearSignupState();
+        set_app_state(registration_success_target);
     };
 
     // Register handle_logout as the global 401 handler so any api_request that
@@ -928,10 +952,7 @@ export default function App() {
                 />
                 <RegistrationSuccessModal
                     visible={show_registration_success}
-                    onDismiss={() => {
-                        set_show_registration_success(false);
-                        set_app_state(registration_success_target);
-                    }}
+                    onDismiss={handle_registration_success_dismiss}
                 />
             </SafeAreaProvider>
         );
@@ -1332,10 +1353,7 @@ export default function App() {
                 />
                 <RegistrationSuccessModal
                     visible={show_registration_success}
-                    onDismiss={() => {
-                        set_show_registration_success(false);
-                        set_app_state(registration_success_target);
-                    }}
+                    onDismiss={handle_registration_success_dismiss}
                 />
             </SafeAreaProvider>
         );
@@ -1347,10 +1365,7 @@ export default function App() {
             {/* Main app content will go here */}
             <RegistrationSuccessModal
                 visible={show_registration_success}
-                onDismiss={() => {
-                    set_show_registration_success(false);
-                    set_app_state(registration_success_target);
-                }}
+                onDismiss={handle_registration_success_dismiss}
             />
         </SafeAreaProvider>
     );

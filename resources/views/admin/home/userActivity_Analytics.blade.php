@@ -42,6 +42,35 @@
     {{-- ============================================================ --}}
     <div class="p-8">
 
+      {{-- ── GLOBAL DATE FILTER ── --}}
+      <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-8" id="globalDateFilter">
+        <div class="flex items-center gap-4 flex-wrap">
+          <span class="text-sm font-semibold text-gray-700 whitespace-nowrap">
+            <i class="fi fi-sr-calendar" style="font-size:1rem; vertical-align:middle; margin-right:.35rem;"></i>
+            Filter Period:
+          </span>
+          <div class="flex gap-2 flex-wrap" id="presetButtons">
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last3months">Last 3 Months</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last6months">Last 6 Months</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="thisyear">This Year</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="lastyear">Last Year</button>
+            <button class="date-preset-btn active px-3 py-1.5 rounded-full border border-indigo-500 text-sm font-semibold text-white bg-indigo-500 transition-all" data-range="all">All Time</button>
+          </div>
+          <div class="flex items-center gap-2 ml-auto">
+            <label class="text-xs font-medium text-gray-500">From</label>
+            <input type="date" id="globalDateFrom" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <label class="text-xs font-medium text-gray-500">To</label>
+            <input type="date" id="globalDateTo" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <button id="applyGlobalDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+          </div>
+          <div id="filterLoading" class="hidden flex items-center gap-1 ml-2">
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.1s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.2s"></span>
+          </div>
+        </div>
+      </div>
+
       {{-- ── TOP STAT CARDS ── --}}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
@@ -52,7 +81,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Total Users</p>
-                <h3 class="text-4xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+                <h3 id="statTotalUsers" class="text-4xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
                   {{ number_format($userMetrics['total_users']) }}
                 </h3>
               </div>
@@ -81,7 +110,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Property Owners</p>
-                <h3 class="text-4xl font-bold text-gray-800 group-hover:text-emerald-600 transition-colors">
+                <h3 id="statPropertyOwners" class="text-4xl font-bold text-gray-800 group-hover:text-emerald-600 transition-colors">
                   {{ number_format($userMetrics['property_owners']) }}
                 </h3>
               </div>
@@ -103,7 +132,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Contractors</p>
-                <h3 class="text-4xl font-bold text-gray-800 group-hover:text-orange-600 transition-colors">
+                <h3 id="statContractors" class="text-4xl font-bold text-gray-800 group-hover:text-orange-600 transition-colors">
                   {{ number_format($userMetrics['contractors']) }}
                 </h3>
               </div>
@@ -125,7 +154,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Active Projects</p>
-                <h3 class="text-4xl font-bold text-gray-800 group-hover:text-red-600 transition-colors">
+                <h3 id="statActiveProjects" class="text-4xl font-bold text-gray-800 group-hover:text-red-600 transition-colors">
                   {{ number_format($userMetrics['active_projects']) }}
                 </h3>
               </div>
@@ -156,7 +185,7 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Active Accounts</p>
-                <h3 class="text-2xl font-bold text-gray-800 group-hover:text-cyan-600 transition-colors">
+                <h3 id="statActiveUsers" class="text-2xl font-bold text-gray-800 group-hover:text-cyan-600 transition-colors">
                   {{ number_format($userMetrics['active_users']) }}
                 </h3>
               </div>
@@ -185,7 +214,7 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Suspended</p>
-                <h3 class="text-2xl font-bold text-gray-800 group-hover:text-red-600 transition-colors">
+                <h3 id="statSuspended" class="text-2xl font-bold text-gray-800 group-hover:text-red-600 transition-colors">
                   {{ number_format($userMetrics['suspended_users']) }}
                 </h3>
               </div>
@@ -214,7 +243,7 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">New This Month</p>
-                <h3 class="text-2xl font-bold text-gray-800 group-hover:text-green-600 transition-colors">
+                <h3 id="statNewThisMonth" class="text-2xl font-bold text-gray-800 group-hover:text-green-600 transition-colors">
                   {{ number_format($userMetrics['new_this_month']) }}
                 </h3>
               </div>
@@ -302,10 +331,10 @@
         </div>
       </div>
 
-      {{-- ── RECENT ACTIVITY TABLE ── --}}
+      {{-- ── RECENT ACTIVITY TABLE (AJAX-driven) ── --}}
       <div class="group bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 relative overflow-hidden">
         <div class="relative p-8">
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
               <div class="flex items-center gap-3 mb-2">
                 <div class="bg-gradient-to-br from-gray-700 to-gray-800 p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
@@ -317,9 +346,16 @@
               </div>
               <p class="text-sm text-gray-600 ml-14">Latest user actions from bids &amp; project posts</p>
             </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <input type="text" id="activitySearch" placeholder="Search user..." class="px-3 py-2 rounded-lg text-sm border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-44">
+              <input type="date" id="activityDateFrom" class="px-2.5 py-2 rounded-lg text-sm border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+              <input type="date" id="activityDateTo" class="px-2.5 py-2 rounded-lg text-sm border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+              <button id="activityFilterBtn" class="px-3 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Filter</button>
+            </div>
           </div>
 
-          <div class="bg-white rounded-xl shadow-inner overflow-hidden">
+          <div id="activityPanel" class="bg-white rounded-xl shadow-inner overflow-hidden">
+            {{-- Server-rendered initial table --}}
             <table class="w-full">
               <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -392,6 +428,7 @@
               </tbody>
             </table>
           </div>
+          <div id="activityPagination" class="mt-4 flex items-center justify-between"></div>
         </div>
       </div>
 
@@ -412,84 +449,230 @@
   const distLabels = @json(array_keys($userGrowth['distribution']));
   const distValues = @json(array_values($userGrowth['distribution']));
 
-  // -- User Growth Line Chart --
-  new Chart(document.getElementById('userGrowthChart'), {
-    type: 'line',
-    data: {
-      labels: growthMonths,
-      datasets: [
-        {
-          label: 'Property Owners',
-          data: growthOwners,
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(16,185,129,0.1)',
-          tension: 0.4,
-          fill: true,
-          pointBackgroundColor: '#10b981',
-          pointRadius: 4,
-        },
-        {
-          label: 'Contractors',
-          data: growthContractors,
-          borderColor: '#f97316',
-          backgroundColor: 'rgba(249,115,22,0.1)',
-          tension: 0.4,
-          fill: true,
-          pointBackgroundColor: '#f97316',
-          pointRadius: 4,
-        },
-        {
-          label: 'Total',
-          data: growthTotals,
-          borderColor: '#6366f1',
-          backgroundColor: 'rgba(99,102,241,0.07)',
-          tension: 0.4,
-          fill: false,
-          pointBackgroundColor: '#6366f1',
-          pointRadius: 4,
-          borderDash: [5,4],
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
-        tooltip: { mode: 'index' },
+  let userGrowthChart = null;
+  let userDistChart   = null;
+
+  function buildUserGrowthChart(months, owners, contractors, totals) {
+    const el = document.getElementById('userGrowthChart');
+    if (!el) return;
+    if (userGrowthChart) userGrowthChart.destroy();
+    userGrowthChart = new Chart(el, {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: [
+          { label: 'Property Owners', data: owners, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#10b981', pointRadius: 4 },
+          { label: 'Contractors', data: contractors, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#f97316', pointRadius: 4 },
+          { label: 'Total', data: totals, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.07)', tension: 0.4, fill: false, pointBackgroundColor: '#6366f1', pointRadius: 4, borderDash: [5,4] },
+        ],
       },
-      scales: {
-        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-        x: { grid: { display: false } },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, tooltip: { mode: 'index' } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false } } },
       },
-    },
+    });
+  }
+
+  function buildUserDistChart(labels, values) {
+    const el = document.getElementById('userDistributionChart');
+    if (!el) return;
+    if (userDistChart) userDistChart.destroy();
+    userDistChart = new Chart(el, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: values, backgroundColor: ['#6366f1','#f97316','#10b981','#64748b'], borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }] },
+      options: { responsive: true, cutout: '65%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed.toLocaleString() + ' users' } } } },
+    });
+  }
+
+  // Initial render
+  buildUserGrowthChart(growthMonths, growthOwners, growthContractors, growthTotals);
+  buildUserDistChart(distLabels, distValues);
+
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GLOBAL DATE FILTER
+  // ═══════════════════════════════════════════════════════════════════
+  function getDateRange(preset) {
+    const now = new Date();
+    let from = '', to = now.toISOString().split('T')[0];
+    switch (preset) {
+      case 'last3months': { const d = new Date(now); d.setMonth(d.getMonth() - 3); from = d.toISOString().split('T')[0]; break; }
+      case 'last6months': { const d = new Date(now); d.setMonth(d.getMonth() - 6); from = d.toISOString().split('T')[0]; break; }
+      case 'thisyear':    from = now.getFullYear() + '-01-01'; break;
+      case 'lastyear':    from = (now.getFullYear() - 1) + '-01-01'; to = (now.getFullYear() - 1) + '-12-31'; break;
+      case 'all':         from = ''; to = ''; break;
+    }
+    return { from, to };
+  }
+
+  function refreshUserData(dateFrom, dateTo) {
+    const loading = document.getElementById('filterLoading');
+    if (loading) loading.classList.remove('hidden');
+
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo)   params.set('date_to', dateTo);
+
+    fetch('/admin/analytics/user-data?' + params.toString())
+      .then(r => r.json())
+      .then(data => {
+        // Update KPI stat cards
+        const um = data.userMetrics;
+        const el = id => document.getElementById(id);
+        if (el('statTotalUsers'))     el('statTotalUsers').textContent     = Number(um.total_users).toLocaleString();
+        if (el('statPropertyOwners')) el('statPropertyOwners').textContent = Number(um.property_owners).toLocaleString();
+        if (el('statContractors'))    el('statContractors').textContent    = Number(um.contractors).toLocaleString();
+        if (el('statActiveProjects')) el('statActiveProjects').textContent = Number(um.active_projects).toLocaleString();
+
+        // Update account status cards
+        if (el('statActiveUsers'))  el('statActiveUsers').textContent  = Number(um.active_users).toLocaleString();
+        if (el('statSuspended'))    el('statSuspended').textContent    = Number(um.suspended_users).toLocaleString();
+        if (el('statNewThisMonth')) el('statNewThisMonth').textContent = Number(um.new_this_month).toLocaleString();
+
+        // Update charts
+        const ug = data.userGrowth;
+        buildUserGrowthChart(ug.months, ug.owners, ug.contractors, ug.totals);
+        buildUserDistChart(Object.keys(ug.distribution), Object.values(ug.distribution));
+
+        // Update distribution legend
+        const legendItems = document.querySelectorAll('.mt-4.grid.grid-cols-2 > div');
+        const distKeys = Object.keys(ug.distribution);
+        const distVals = Object.values(ug.distribution);
+        legendItems.forEach((item, i) => {
+          if (distKeys[i] !== undefined) {
+            const strong = item.querySelector('strong');
+            if (strong) strong.textContent = Number(distVals[i]).toLocaleString();
+          }
+        });
+
+        if (loading) loading.classList.add('hidden');
+      })
+      .catch(err => { console.error('User data filter error:', err); if (loading) loading.classList.add('hidden'); });
+  }
+
+  document.querySelectorAll('.date-preset-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.date-preset-btn').forEach(b => {
+        b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+        b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+      });
+      this.classList.add('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+      this.classList.remove('border-gray-200', 'text-gray-600', 'font-medium');
+      const range = getDateRange(this.dataset.range);
+      document.getElementById('globalDateFrom').value = range.from;
+      document.getElementById('globalDateTo').value   = range.to;
+      refreshUserData(range.from, range.to);
+    });
   });
 
-  // -- User Distribution Doughnut --
-  new Chart(document.getElementById('userDistributionChart'), {
-    type: 'doughnut',
-    data: {
-      labels: distLabels,
-      datasets: [{
-        data: distValues,
-        backgroundColor: ['#6366f1','#f97316','#10b981','#64748b'],
-        borderWidth: 2,
-        borderColor: '#fff',
-        hoverOffset: 8,
-      }],
-    },
-    options: {
-      responsive: true,
-      cutout: '65%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString()} users`
-          },
-        },
-      },
-    },
+  document.getElementById('applyGlobalDateFilter')?.addEventListener('click', function () {
+    document.querySelectorAll('.date-preset-btn').forEach(b => {
+      b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+      b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+    });
+    refreshUserData(document.getElementById('globalDateFrom').value, document.getElementById('globalDateTo').value);
+  });
+
+
+  // ═══════════════════════════════════════════════════════════════════
+  // RECENT ACTIVITY FEED — AJAX WITH SEARCH, DATE FILTER, PAGINATION
+  // ═══════════════════════════════════════════════════════════════════
+  let activityPage = 1;
+
+  function fetchActivity(page) {
+    page = page || 1;
+    activityPage = page;
+    const params = new URLSearchParams();
+    const search   = document.getElementById('activitySearch')?.value || '';
+    const dateFrom = document.getElementById('activityDateFrom')?.value || '';
+    const dateTo   = document.getElementById('activityDateTo')?.value || '';
+    if (search)   params.set('search', search);
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo)   params.set('date_to', dateTo);
+    params.set('page', page);
+
+    const panel = document.getElementById('activityPanel');
+    if (panel) panel.style.opacity = '0.5';
+
+    fetch('/admin/analytics/user-activity-feed?' + params.toString())
+      .then(r => r.json())
+      .then(data => {
+        renderActivityTable(data);
+        renderActivityPagination(data);
+        if (panel) panel.style.opacity = '1';
+      })
+      .catch(err => { console.error('Activity fetch error:', err); if (panel) panel.style.opacity = '1'; });
+  }
+
+  function renderActivityTable(data) {
+    const panel = document.getElementById('activityPanel');
+    if (!panel) return;
+
+    if (!data.data || data.data.length === 0) {
+      panel.innerHTML = '<div class="px-6 py-10 text-center text-gray-500">No recent activity found.</div>';
+      return;
+    }
+
+    const typeBadge = { property_owner: 'bg-emerald-100 text-emerald-700', contractor: 'bg-orange-100 text-orange-700', both: 'bg-indigo-100 text-indigo-700' };
+    const avatarGrad = { property_owner: 'from-emerald-400 to-emerald-500', contractor: 'from-orange-400 to-orange-500', both: 'from-indigo-400 to-indigo-500' };
+
+    const esc = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+
+    let rows = data.data.map(a => {
+      const tb = typeBadge[a.user_type] || 'bg-gray-100 text-gray-700';
+      const ag = avatarGrad[a.user_type] || 'from-gray-400 to-gray-500';
+      const avatar = a.profile_pic
+        ? '<img src="'+esc(a.profile_pic)+'" class="w-10 h-10 rounded-full object-cover shadow-md">'
+        : '<div class="w-10 h-10 rounded-full bg-gradient-to-br '+ag+' flex items-center justify-center text-white font-bold shadow-md text-sm">'+esc(a.initials)+'</div>';
+      const status = a.is_active
+        ? '<span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold flex items-center gap-1 w-fit"><span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>Active</span>'
+        : '<span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold">Inactive</span>';
+
+      return '<tr class="hover:bg-blue-50 transition-colors cursor-pointer">' +
+        '<td class="px-6 py-4"><div class="flex items-center gap-3">'+avatar+'<div><p class="font-semibold text-gray-800">'+esc(a.full_name)+'</p><p class="text-sm text-gray-500">'+esc(a.email)+'</p></div></div></td>' +
+        '<td class="px-6 py-4"><span class="px-3 py-1 '+tb+' rounded-full text-sm font-semibold">'+esc(a.type_label)+'</span></td>' +
+        '<td class="px-6 py-4 text-gray-700">'+esc(a.action)+'</td>' +
+        '<td class="px-6 py-4 text-gray-600 text-sm">'+esc(a.time_ago)+'</td>' +
+        '<td class="px-6 py-4">'+status+'</td></tr>';
+    }).join('');
+
+    panel.innerHTML = '<table class="w-full"><thead class="bg-gray-50 border-b border-gray-200"><tr>' +
+      '<th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">User</th>' +
+      '<th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>' +
+      '<th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>' +
+      '<th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Time</th>' +
+      '<th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>' +
+      '</tr></thead><tbody class="divide-y divide-gray-200">' + rows + '</tbody></table>';
+  }
+
+  function renderActivityPagination(data) {
+    const wrap = document.getElementById('activityPagination');
+    if (!wrap || data.last_page <= 1) { if (wrap) wrap.innerHTML = ''; return; }
+
+    const cur = data.current_page, last = data.last_page;
+    let html = '<div class="text-sm text-gray-500">Showing <b>'+data.from+'</b>–<b>'+data.to+'</b> of <b>'+data.total+'</b></div><div class="flex items-center gap-1">';
+
+    if (cur > 1) html += '<button onclick="fetchActivity('+(cur-1)+')" class="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-indigo-50">&larr; Prev</button>';
+    for (let p = Math.max(1, cur-2); p <= Math.min(last, cur+2); p++) {
+      html += p === cur
+        ? '<span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white">'+p+'</span>'
+        : '<button onclick="fetchActivity('+p+')" class="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-indigo-50">'+p+'</button>';
+    }
+    if (cur < last) html += '<button onclick="fetchActivity('+(cur+1)+')" class="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-indigo-50">Next &rarr;</button>';
+    html += '</div>';
+    wrap.innerHTML = html;
+  }
+
+  // Wire activity filter button
+  document.getElementById('activityFilterBtn')?.addEventListener('click', () => fetchActivity(1));
+
+  // Debounce search
+  let activitySearchTimer;
+  document.getElementById('activitySearch')?.addEventListener('input', function () {
+    clearTimeout(activitySearchTimer);
+    activitySearchTimer = setTimeout(() => fetchActivity(1), 450);
   });
 </script>
 

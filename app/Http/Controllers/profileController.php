@@ -98,30 +98,58 @@ class profileController extends Controller
             }
 
             // Ensure contractor row exists when company media is uploaded; create minimal row if missing
-            $contractorRowForMedia = DB::table('contractors')->where($contractorUserColumn, $userId)->first();
+            $contractorRowForMedia = null;
+            if (Schema::hasColumn('contractors', 'user_id')) {
+                $contractorRowForMedia = DB::table('contractors')->where('user_id', $userId)->first();
+            } elseif (Schema::hasColumn('contractors', 'owner_id')) {
+                $contractorRowForMedia = DB::table('contractors as c')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->where('po.user_id', $userId)
+                    ->select('c.*')
+                    ->first();
+            } else {
+                $contractorRowForMedia = DB::table('contractors')->where('user_id', $userId)->first();
+            }
+
             $needsContractor = !$contractorRowForMedia && ($request->hasFile('company_logo') || $request->hasFile('company_banner'));
             if ($needsContractor) {
                 try {
-                    $newId = DB::table('contractors')->insertGetId([
-                        // When inserting we still set `user_id` where possible; some schemas may ignore owner_id.
-                        'user_id' => $userId,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
+                    $insertData = ['created_at' => now(), 'updated_at' => now()];
+                    if (Schema::hasColumn('contractors', 'owner_id')) {
+                        $po = DB::table('property_owners')->where('user_id', $userId)->first();
+                        if ($po && isset($po->owner_id)) $insertData['owner_id'] = $po->owner_id;
+                        elseif (Schema::hasColumn('contractors', 'user_id')) $insertData['user_id'] = $userId;
+                    } else {
+                        $insertData['user_id'] = $userId;
+                    }
+
+                    $newId = DB::table('contractors')->insertGetId($insertData);
                     $contractorRowForMedia = DB::table('contractors')->where('contractor_id', $newId)->first();
                     \Log::info('profileController.update created contractor row for media', ['user_id' => $userId, 'contractor_id' => $newId]);
                 } catch (\Exception $e) {
                     \Log::warning('profileController.update failed to create contractor row: ' . $e->getMessage());
-                    $contractorRowForMedia = DB::table('contractors')->where($contractorUserColumn, $userId)->first();
+                    // fallback: attempt to resolve again using same logic
+                    if (Schema::hasColumn('contractors', 'user_id')) {
+                        $contractorRowForMedia = DB::table('contractors')->where('user_id', $userId)->first();
+                    } elseif (Schema::hasColumn('contractors', 'owner_id')) {
+                        $contractorRowForMedia = DB::table('contractors as c')
+                            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                            ->where('po.user_id', $userId)
+                            ->select('c.*')
+                            ->first();
+                    } else {
+                        $contractorRowForMedia = DB::table('contractors')->where('user_id', $userId)->first();
+                    }
                 }
             }
 
             if ($contractorRowForMedia) {
+                $contractorIdToUpdate = $contractorRowForMedia->contractor_id ?? null;
                 if ($request->hasFile('company_logo')) {
                     $file = $request->file('company_logo');
                     $filename = time() . '_company_logo_' . $file->getClientOriginalName();
                     $path = $file->storeAs('profiles', $filename, 'public');
-                    DB::table('contractors')->where($contractorUserColumn, $userId)->update(['company_logo' => $path, 'updated_at' => now()]);
+                    if ($contractorIdToUpdate) DB::table('contractors')->where('contractor_id', $contractorIdToUpdate)->update(['company_logo' => $path, 'updated_at' => now()]);
                     \Log::info('profileController.update stored contractors.company_logo', ['user_id' => $userId, 'path' => $path]);
                 }
 
@@ -129,7 +157,7 @@ class profileController extends Controller
                     $file = $request->file('company_banner');
                     $filename = time() . '_company_banner_' . $file->getClientOriginalName();
                     $path = $file->storeAs('cover_photos', $filename, 'public');
-                    DB::table('contractors')->where($contractorUserColumn, $userId)->update(['company_banner' => $path, 'updated_at' => now()]);
+                    if ($contractorIdToUpdate) DB::table('contractors')->where('contractor_id', $contractorIdToUpdate)->update(['company_banner' => $path, 'updated_at' => now()]);
                     \Log::info('profileController.update stored contractors.company_banner', ['user_id' => $userId, 'path' => $path]);
                 }
             }
@@ -249,7 +277,8 @@ class profileController extends Controller
             }
 
             // If contractor-specific fields present and contractor exists, update contractor row
-            $contractor = DB::table('contractors')->where($contractorUserColumn, $userId)->first();
+            // Resolve contractor in a schema-agnostic way to avoid direct `contractors.user_id` queries
+            $contractor = $this->getContractorForUser($userId);
             $contractorKeys = [
                 'company_name','company_phone','company_email','years_of_experience','type_id','contractor_type_other',
                 'company_description','company_start_date',
@@ -285,13 +314,73 @@ class profileController extends Controller
 
             if ($hasContractorPayload && $contractor) {
                 // Only write bio to contractors when the active role is contractor
-                if ($isContractorRole && $request->exists('bio')) $contractorPayload['bio'] = $request->input('bio');
-                // Apply contractor updates immediately; do not force verification status changes here.
+                if ($isContractorRole && $request->exists('bio')) {
+                    if (Schema::hasColumn('contractors', 'bio')) {
+                        $contractorPayload['bio'] = $request->input('bio');
+                    } elseif (Schema::hasColumn('users', 'bio')) {
+                        // Fallback: some schemas store generic bio on users table
+                        try {
+                            DB::table('users')->where('user_id', $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                        } catch (\Throwable $e) {
+                            Log::warning('profileController.update users.bio fallback failed: ' . $e->getMessage());
+                        }
+                    }
+                }
+                // Apply contractor updates immediately; prefer updating by contractor_id to be schema-agnostic
                 $contractorPayload['updated_at'] = now();
-                DB::table('contractors')->where($contractorUserColumn, $userId)->update($contractorPayload);
+                $contractorIdToUpdate = $contractor->contractor_id ?? null;
+                if ($contractorIdToUpdate) {
+                    DB::table('contractors')->where('contractor_id', $contractorIdToUpdate)->update($contractorPayload);
+                } else {
+                    // Fallback: attempt to update using linking column if present (wrapped in try/catch)
+                    try {
+                        if (Schema::hasColumn('contractors', $contractorUserColumn)) {
+                            DB::table('contractors')->where($contractorUserColumn, $userId)->update($contractorPayload);
+                        } else {
+                            Log::warning('profileController.update: cannot update contractor - no contractor_id and linking column missing for user_id ' . $userId);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('profileController.update contractor update failed; attempting fallback: ' . $e->getMessage());
+                        $c2 = $this->getContractorForUser($userId);
+                        if ($c2 && !empty($c2->contractor_id)) {
+                            DB::table('contractors')->where('contractor_id', $c2->contractor_id)->update($contractorPayload);
+                        }
+                    }
+                }
             } elseif ($isContractorRole && $request->exists('bio') && $contractor) {
                 // bio-only update for contractor (no other contractor fields were sent)
-                DB::table('contractors')->where($contractorUserColumn, $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                $contractorIdToUpdate = $contractor->contractor_id ?? null;
+                if ($contractorIdToUpdate) {
+                    if (Schema::hasColumn('contractors', 'bio')) {
+                        DB::table('contractors')->where('contractor_id', $contractorIdToUpdate)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                    } elseif (Schema::hasColumn('users', 'bio')) {
+                        try {
+                            DB::table('users')->where('user_id', $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                        } catch (\Throwable $e) {
+                            Log::warning('profileController.update users.bio fallback failed: ' . $e->getMessage());
+                        }
+                    }
+                } else {
+                    try {
+                        if (Schema::hasColumn('contractors', $contractorUserColumn) && Schema::hasColumn('contractors', 'bio')) {
+                            DB::table('contractors')->where($contractorUserColumn, $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                        } elseif (Schema::hasColumn('users', 'bio')) {
+                            DB::table('users')->where('user_id', $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('profileController.update contractor bio update failed: ' . $e->getMessage());
+                        $c2 = $this->getContractorForUser($userId);
+                        if ($c2 && !empty($c2->contractor_id) && Schema::hasColumn('contractors', 'bio')) {
+                            DB::table('contractors')->where('contractor_id', $c2->contractor_id)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                        } elseif (Schema::hasColumn('users', 'bio')) {
+                            try {
+                                DB::table('users')->where('user_id', $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
+                            } catch (\Throwable $e2) {
+                                Log::warning('profileController.update users.bio fallback failed: ' . $e2->getMessage());
+                            }
+                        }
+                    }
+                }
             }
 
             DB::commit();
@@ -303,7 +392,8 @@ class profileController extends Controller
 
             // Return refreshed user row and contractor row if any
             $updatedUser = DB::table('users')->where('user_id', $userId)->first();
-            $updatedContractor = DB::table('contractors')->where($contractorUserColumn, $userId)->first();
+            // Refresh contractor via schema-agnostic resolver
+            $updatedContractor = $this->getContractorForUser($userId);
             $responsePayload = ['user' => $updatedUser];
             if ($updatedContractor) $responsePayload['contractor'] = $updatedContractor;
             return response()->json(['success' => true, 'data' => $responsePayload], 200);
@@ -313,6 +403,96 @@ class profileController extends Controller
             Log::error('profileController update error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to update profile', 'errors' => [$e->getMessage()]], 500);
         }
+    }
+
+    /**
+     * Resolve a contractor record for a given user id in a schema-agnostic way.
+     * - Prefer joining contractors -> property_owners (c.owner_id = po.owner_id) and matching po.user_id = $userId
+     * - Fallback to contractor_users mapping for staff accounts
+     * - Finally try resolving by property_owners.owner_id -> contractors.owner_id
+     * This avoids direct queries against `contractors.user_id` which may not exist in some schemas.
+     */
+    protected function getContractorForUser($userId)
+    {
+        try {
+            // Prefer join via owner_id -> property_owners
+            if (Schema::hasColumn('contractors', 'owner_id')) {
+                $c = DB::table('contractors as c')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->where('po.user_id', $userId)
+                    ->select('c.*')
+                    ->first();
+                if ($c) return $c;
+            }
+
+            // Staff users may be linked via contractor_users
+            $staffLink = DB::table('contractor_users')->where('user_id', $userId)->first();
+            if ($staffLink && isset($staffLink->contractor_id)) {
+                $c2 = DB::table('contractors')->where('contractor_id', $staffLink->contractor_id)->first();
+                if ($c2) return $c2;
+            }
+
+            // Last-resort: resolve property_owner by user_id then find contractors by owner_id
+            $po = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($po && isset($po->owner_id)) {
+                $c3 = DB::table('contractors')->where('owner_id', $po->owner_id)->first();
+                if ($c3) return $c3;
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::warning('getContractorForUser error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Fetch base profile objects for a user and determine active role.
+     * Returns array with keys: user, owner, contractor, role
+     */
+    protected function fetchProfileBase($userId, $requestedRole = null)
+    {
+        $user = DB::table('users')->where('user_id', $userId)->first();
+        if (!$user) return null;
+
+        $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+
+        // Resolve contractor without querying contractors.user_id directly
+        $contractor = $this->getContractorForUser($userId);
+
+        // Determine active role: request -> session -> user preferred -> user_type
+        $requestedRole = strtolower(trim((string)($requestedRole ?? '')));
+        $sessionRole = strtolower(trim((string)Session::get('preferred_role', '')));
+        $userPreferred = strtolower(trim((string)($user->preferred_role ?? '')));
+        $userType = strtolower(trim((string)($user->user_type ?? '')));
+
+        if ($userType === 'both') {
+            if (!empty($requestedRole)) {
+                $activeRole = $requestedRole;
+            } elseif (!empty($sessionRole)) {
+                $activeRole = $sessionRole;
+            } elseif (!empty($userPreferred)) {
+                $activeRole = $userPreferred;
+            } else {
+                $activeRole = 'owner';
+            }
+        } else {
+            $activeRole = $userType ?: 'owner';
+        }
+
+        // Normalize staff -> contractor, otherwise normalize to 'owner'|'contractor'
+        if ($userType === 'staff') {
+            $activeRole = 'contractor';
+        } else {
+            $activeRole = strpos($activeRole, 'contractor') !== false ? 'contractor' : 'owner';
+        }
+
+        return [
+            'user' => $user,
+            'owner' => $owner,
+            'contractor' => $contractor,
+            'role' => $activeRole,
+        ];
     }
 
     /**
@@ -361,12 +541,8 @@ class profileController extends Controller
         // can always access both shapes for `user_type = both` users.
         $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
 
-        // Determine which column links contractors -> users on this schema (user_id vs owner_id)
-        $contractorUserColumn = Schema::hasColumn('contractors', 'user_id')
-            ? 'user_id'
-            : (Schema::hasColumn('contractors', 'owner_id') ? 'owner_id' : 'user_id');
-
-        $contractorRow = DB::table('contractors')->where($contractorUserColumn, $userId)->first();
+        // Resolve contractor row in a schema-agnostic way (avoid direct contractors.user_id queries)
+        $contractorRow = $this->getContractorForUser($userId);
 
         // Staff users are linked to a contractor via contractor_users, not directly in contractors.
             if (!$contractorRow && strtolower($user->user_type ?? '') === 'staff') {
@@ -677,9 +853,9 @@ class profileController extends Controller
                 $responseData['owner']->address_verification_pending = $owner->address_verification_pending ?? ($owner->address_requires_verification ?? null);
             }
         } else {
-            // contractor (or staff linked to a contractor)
-            $contractor = DB::table('contractors')->where($contractorUserColumn, $userId)->first();
-            // Staff: look up parent contractor via contractor_users
+            // contractor (or staff linked to a contractor) - resolve without querying contractors.user_id
+            $contractor = $this->getContractorForUser($userId);
+            // Staff fallback already handled by getContractorForUser, keep compatibility if not found
             if (!$contractor && strtolower($user->user_type ?? '') === 'staff') {
                 $staffLink = DB::table('contractor_users')->where('user_id', $userId)->first();
                 if ($staffLink) {
@@ -717,7 +893,8 @@ class profileController extends Controller
                 $ongoing = DB::table('projects as p')
                     ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                     ->join('contractors as c', 'c.contractor_id', '=', 'pr.selected_contractor_id')
-                    ->join('users as u', 'u.user_id', '=', 'c.user_id')
+                    ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('u.user_id', $userId)
                     ->whereIn('p.project_status', ['in_progress', 'open', 'bidding_closed'])
                     ->count();
@@ -750,21 +927,53 @@ class profileController extends Controller
             $representative = null;
             if ($contractor && !empty($contractor->contractor_id)) {
                 $contractor_id = $contractor->contractor_id;
-                $representatives = DB::table('contractor_users as cu')
-                    ->join('users as u', 'cu.user_id', '=', 'u.user_id')
-                    ->leftJoin('property_owners as rep_po', 'u.user_id', '=', 'rep_po.user_id')
-                    ->where('cu.contractor_id', $contractor_id)
-                    ->where('cu.role', 'representative')
-                    ->where('cu.is_deleted', 0)
-                    ->where('cu.is_active', 1)
-                    ->select(
+                if (Schema::hasTable('contractor_staff')) {
+                    // New schema: contractor_staff links to property_owners (owner_id), which links to users
+                    $repQuery = DB::table('contractor_staff as cs')
+                        ->join('property_owners as rep_po', 'cs.owner_id', '=', 'rep_po.owner_id')
+                        ->join('users as u', 'rep_po.user_id', '=', 'u.user_id')
+                        ->where('cs.contractor_id', $contractor_id)
+                        ->where('cs.company_role', 'representative')
+                        ->where('cs.is_active', 1)
+                        ->whereRaw("COALESCE(cs.deletion_reason, '') = ''");
+
+                    $selects = [
                         'rep_po.profile_pic as profile_pic',
                         'u.email',
-                        'cu.phone_number',
-                        DB::raw("CONCAT(cu.authorized_rep_fname, ' ', IFNULL(cu.authorized_rep_mname, ''), ' ', cu.authorized_rep_lname) as full_name"),
-                        'cu.role'
-                    )
-                    ->get();
+                        DB::raw("CONCAT(u.first_name, ' ', IFNULL(u.middle_name, ''), ' ', u.last_name) as full_name"),
+                        DB::raw("cs.company_role as role")
+                    ];
+
+                    // Prefer phone stored on property_owners when available; otherwise fall back to users phone columns or empty string
+                    if (Schema::hasColumn('property_owners', 'phone_number') || Schema::hasColumn('property_owners', 'phone')) {
+                        $selects[] = DB::raw("COALESCE(rep_po.phone_number, rep_po.phone, u.phone_number, u.phone, '') as phone_number");
+                    } elseif (Schema::hasColumn('users', 'phone_number') || Schema::hasColumn('users', 'phone')) {
+                        $selects[] = DB::raw("COALESCE(u.phone_number, u.phone, '') as phone_number");
+                    } else {
+                        $selects[] = DB::raw("'' as phone_number");
+                    }
+
+                    $representatives = $repQuery->select($selects)->get();
+                } elseif (Schema::hasTable('contractor_users')) {
+                    // Legacy schema fallback
+                    $representatives = DB::table('contractor_users as cu')
+                        ->join('users as u', 'cu.user_id', '=', 'u.user_id')
+                        ->leftJoin('property_owners as rep_po', 'u.user_id', '=', 'rep_po.user_id')
+                        ->where('cu.contractor_id', $contractor_id)
+                        ->where('cu.role', 'representative')
+                        ->where('cu.is_deleted', 0)
+                        ->where('cu.is_active', 1)
+                        ->select(
+                            'rep_po.profile_pic as profile_pic',
+                            'u.email',
+                            'cu.phone_number',
+                            DB::raw("CONCAT(cu.authorized_rep_fname, ' ', IFNULL(cu.authorized_rep_mname, ''), ' ', cu.authorized_rep_lname) as full_name"),
+                            'cu.role'
+                        )
+                        ->get();
+                } else {
+                    $representatives = collect();
+                }
 
                 $representative = $representatives->first() ?? null;
             }

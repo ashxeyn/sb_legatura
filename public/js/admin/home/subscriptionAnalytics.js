@@ -602,4 +602,116 @@ document.addEventListener('DOMContentLoaded', () => {
   attachPageBtnListeners();
   initFilterControls();
   initExport();
+
+  // ── Global Date Filter ─────────────────────────────────────────────────
+  function getDateRange(preset) {
+    const now = new Date();
+    let from = '', to = now.toISOString().split('T')[0];
+    switch (preset) {
+      case 'last3months': { const d = new Date(now); d.setMonth(d.getMonth() - 3); from = d.toISOString().split('T')[0]; break; }
+      case 'last6months': { const d = new Date(now); d.setMonth(d.getMonth() - 6); from = d.toISOString().split('T')[0]; break; }
+      case 'thisyear':    from = now.getFullYear() + '-01-01'; break;
+      case 'lastyear':    from = (now.getFullYear() - 1) + '-01-01'; to = (now.getFullYear() - 1) + '-12-31'; break;
+      case 'all':         from = ''; to = ''; break;
+    }
+    return { from, to };
+  }
+
+  function refreshSubscriptionData(dateFrom, dateTo) {
+    const loading = document.getElementById('filterLoading');
+    if (loading) loading.classList.remove('hidden');
+
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo)   params.set('date_to', dateTo);
+
+    fetch('/admin/analytics/subscription-data?' + params.toString())
+      .then(r => r.json())
+      .then(data => {
+        // Update KPI cards (3 stat-counters: Total, Active, Expiring)
+        const sm = data.subscriptionMetrics;
+        const counters = document.querySelectorAll('.stat-counter');
+        const targets = [sm.total, sm.active, sm.expiring];
+        counters.forEach((el, i) => {
+          if (targets[i] !== null && targets[i] !== undefined) {
+            el.dataset.target = targets[i];
+            el.textContent = targets[i];
+          }
+        });
+        // Update revenue text
+        const revVal = document.getElementById('revenueValue');
+        if (revVal) revVal.textContent = '₱' + sm.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        // Update expired count
+        const expText = document.getElementById('expiredCount');
+        if (expText) expText.textContent = sm.expired + ' already expired';
+
+        // Update revenue chart
+        const rv = data.subscriptionRevenue;
+        if (rv) {
+          buildRevenueChart(rv.months, rv.currentYearData, rv.previousYearData, rv.currentYear, rv.previousYear);
+          const sub = document.getElementById('revenueSubtitle');
+          if (sub) sub.textContent = rv.dateRange + ' · Current vs Previous Year';
+        }
+
+        // Update tier bars
+        const st = data.subscriptionTiers;
+        if (st) {
+          const tierStyles = [
+            { text: 'text-yellow-700' },
+            { text: 'text-blue-700' },
+            { text: 'text-orange-700' },
+          ];
+          const tierBoxes = document.querySelectorAll('.tier-bar');
+          st.tiers.forEach((tier, i) => {
+            const w = st.maxCount > 0 ? Math.round((tier.count / st.maxCount) * 100) : 0;
+            const pct = st.total > 0 ? ((tier.count / st.total) * 100).toFixed(1) : '0';
+            if (tierBoxes[i]) {
+              tierBoxes[i].dataset.width = w;
+              tierBoxes[i].style.width = w + '%';
+            }
+            const parent = tierBoxes[i]?.closest('.rounded-xl');
+            if (parent) {
+              const countEl = parent.querySelector('.text-lg');
+              if (countEl) countEl.textContent = tier.count;
+              const pctEl = parent.querySelector('.text-xs');
+              if (pctEl) pctEl.textContent = pct + '% of all';
+            }
+          });
+          const totalEl = document.querySelector('.border-t.border-gray-100 .text-xl');
+          if (totalEl) totalEl.textContent = st.total;
+        }
+
+        if (loading) loading.classList.add('hidden');
+      })
+      .catch(err => {
+        console.error('Subscription filter error:', err);
+        if (loading) loading.classList.add('hidden');
+      });
+  }
+
+  document.querySelectorAll('.date-preset-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.date-preset-btn').forEach(b => {
+        b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+        b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+      });
+      this.classList.add('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+      this.classList.remove('border-gray-200', 'text-gray-600', 'font-medium');
+      const range = getDateRange(this.dataset.range);
+      document.getElementById('globalDateFrom').value = range.from;
+      document.getElementById('globalDateTo').value   = range.to;
+      refreshSubscriptionData(range.from, range.to);
+    });
+  });
+
+  document.getElementById('applyGlobalDateFilter')?.addEventListener('click', function () {
+    document.querySelectorAll('.date-preset-btn').forEach(b => {
+      b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+      b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+    });
+    refreshSubscriptionData(
+      document.getElementById('globalDateFrom').value,
+      document.getElementById('globalDateTo').value
+    );
+  });
 });

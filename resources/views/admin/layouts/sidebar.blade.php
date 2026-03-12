@@ -101,6 +101,9 @@ User card reads from session('user').
         <a href="{{ route('admin.globalManagement.postingManagement') }}"
           class="submenu-link {{ request()->routeIs('admin.globalManagement.postingManagement') ? 'active' : '' }}">Posting
           Management</a>
+        <a href="{{ route('admin.globalManagement.reportManagement') }}"
+          class="submenu-link {{ request()->routeIs('admin.globalManagement.reportManagement') ? 'active' : '' }}">Report
+          Management</a>
       </div>
     </div>
 

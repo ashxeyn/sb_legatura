@@ -61,14 +61,10 @@ class SendDeadlineNotifications implements ShouldQueue
                 // Find all contractors who bid on this project
                 $bidders = DB::table('bids as b')
                     ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
-                    ->join('contractor_users as cu', function ($join) {
-                        $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                            ->where('cu.is_active', 1)
-                            ->where('cu.is_deleted', 0);
-                    })
+                    ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
                     ->where('b.project_id', $project->project_id)
                     ->whereIn('b.bid_status', ['submitted', 'under_review'])
-                    ->select('cu.user_id')
+                    ->select('c_po.user_id')
                     ->distinct()
                     ->pluck('user_id')
                     ->all();
@@ -102,15 +98,11 @@ class SendDeadlineNotifications implements ShouldQueue
             ->join('projects as p', 'm.project_id', '=', 'p.project_id')
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->join('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->join('contractor_users as cu', function ($join) {
-                $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                    ->where('cu.is_active', 1)
-                    ->where('cu.is_deleted', 0);
-            })
+            ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
             ->where('m.milestone_status', 'not_started')
             ->where('m.setup_status', 'approved')
             ->whereBetween('m.start_date', [$from, $to])
-            ->select('m.milestone_id', 'm.milestone_name', 'p.project_id', 'p.project_title', 'cu.user_id')
+            ->select('m.milestone_id', 'm.milestone_name', 'p.project_id', 'p.project_title', 'c_po.user_id')
             ->get();
 
         foreach ($milestones as $ms) {
@@ -148,11 +140,7 @@ class SendDeadlineNotifications implements ShouldQueue
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-                ->leftJoin('contractor_users as cu', function ($join) {
-                    $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                        ->where('cu.is_active', 1)
-                        ->where('cu.is_deleted', 0);
-                })
+                ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
                 ->where('m.setup_status', 'approved')
                 ->whereNotIn('mi.item_status', ['completed', 'cancelled', 'deleted'])
                 ->whereBetween('mi.date_to_finish', [$from, $to])
@@ -160,7 +148,7 @@ class SendDeadlineNotifications implements ShouldQueue
                     'mi.item_id', 'mi.milestone_item_title',
                     'p.project_id', 'p.project_title',
                     'po.user_id as owner_user_id',
-                    'cu.user_id as contractor_user_id'
+                    'c_po.user_id as contractor_user_id'
                 )
                 ->get();
 
@@ -196,11 +184,7 @@ class SendDeadlineNotifications implements ShouldQueue
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
             ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->leftJoin('contractor_users as cu', function ($join) {
-                $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                    ->where('cu.is_active', 1)
-                    ->where('cu.is_deleted', 0);
-            })
+            ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
             ->where('m.setup_status', 'approved')
             ->whereNotIn('mi.item_status', ['completed', 'cancelled', 'deleted'])
             ->where('mi.date_to_finish', '<', now())
@@ -208,7 +192,7 @@ class SendDeadlineNotifications implements ShouldQueue
                 'mi.item_id', 'mi.milestone_item_title',
                 'p.project_id', 'p.project_title',
                 'po.user_id as owner_user_id',
-                'cu.user_id as contractor_user_id'
+                'c_po.user_id as contractor_user_id'
             )
             ->get();
 
@@ -298,11 +282,7 @@ class SendDeadlineNotifications implements ShouldQueue
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-                ->leftJoin('contractor_users as cu', function ($join) {
-                    $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                        ->where('cu.is_active', 1)
-                        ->where('cu.is_deleted', 0);
-                })
+                ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
                 ->where('m.setup_status', 'approved')
                 ->whereNotNull('mi.settlement_due_date')
                 ->whereNotIn('mi.item_status', ['cancelled', 'deleted'])
@@ -314,7 +294,7 @@ class SendDeadlineNotifications implements ShouldQueue
                     'mi.settlement_due_date', 'mi.extension_date',
                     'p.project_id', 'p.project_title',
                     'po.user_id as owner_user_id',
-                    'cu.user_id as contractor_user_id'
+                    'c_po.user_id as contractor_user_id'
                 )
                 ->get();
 
@@ -382,11 +362,7 @@ class SendDeadlineNotifications implements ShouldQueue
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
             ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->leftJoin('contractor_users as cu', function ($join) {
-                $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                    ->where('cu.is_active', 1)
-                    ->where('cu.is_deleted', 0);
-            })
+            ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
             ->where('m.setup_status', 'approved')
             ->whereNotNull('mi.settlement_due_date')
             ->whereNotIn('mi.item_status', ['cancelled', 'deleted'])
@@ -396,7 +372,7 @@ class SendDeadlineNotifications implements ShouldQueue
                 'mi.settlement_due_date', 'mi.extension_date',
                 'p.project_id', 'p.project_title',
                 'po.user_id as owner_user_id',
-                'cu.user_id as contractor_user_id'
+                'c_po.user_id as contractor_user_id'
             )
             ->get();
 

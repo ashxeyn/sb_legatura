@@ -45,6 +45,16 @@
           <option value="deleted">Deleted</option>
         </select>
 
+        {{-- Company / Contractor filter --}}
+        <div class="relative" id="companyFilterWrap">
+          <input type="text" id="companyFilter" autocomplete="off"
+            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-white w-56"
+            placeholder="Filter by company…">
+          <div id="companyDropdown"
+            class="hidden absolute z-30 mt-1 w-full max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+          </div>
+        </div>
+
         {{-- Date range --}}
         <input type="date" id="dateFrom"
           class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-white"

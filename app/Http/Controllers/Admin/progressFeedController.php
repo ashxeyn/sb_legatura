@@ -21,6 +21,7 @@ class progressFeedController extends Controller
         $search   = trim($request->input('search', ''));
         $dateFrom = $request->input('date_from', '');
         $dateTo   = $request->input('date_to', '');
+        $company  = trim($request->input('company', ''));
 
         // Resolve which rejection-reason column exists in this deployment
         $reasonCol = Schema::hasColumn('progress', 'delete_reason')
@@ -41,30 +42,46 @@ class progressFeedController extends Controller
             DB::raw("COALESCE(m.milestone_name, 'Milestone') as milestone_name"),
             'proj.project_id',
             'proj.project_title',
-            'u.user_id  as contractor_user_id',
-            'u.username as contractor_username',
-            'po.profile_pic as contractor_pic',
-            DB::raw("COALESCE(c.company_name, u.username) as contractor_name"),
+            DB::raw("COALESCE(cu.user_id, ou.user_id) as contractor_user_id"),
+            DB::raw("COALESCE(cu.username, ou.username) as contractor_username"),
+            DB::raw("COALESCE(c.company_logo, cpo.profile_pic, opo.profile_pic) as contractor_pic"),
+            DB::raw("COALESCE(
+                NULLIF(TRIM(c.company_name), ''),
+                NULLIF(TRIM(CONCAT(COALESCE(cu.first_name, ''), ' ', COALESCE(cu.last_name, ''))), ''),
+                NULLIF(TRIM(cu.username), ''),
+                NULLIF(TRIM(CONCAT(COALESCE(ou.first_name, ''), ' ', COALESCE(ou.last_name, ''))), ''),
+                NULLIF(TRIM(ou.username), ''),
+                'Unknown'
+            ) as contractor_name"),
         ];
 
         if ($reasonCol) {
             $selectCols[] = DB::raw($reasonCol);
         }
 
+        // Join chain:
+        // 1. progress → milestone_items → milestones → projects
+        // 2. projects → project_relationships (via relationship_id)
+        // 3. Try contractor lookup via project_relationships.selected_contractor_id
+        // 4. Contractor's owner → property_owners → users (contractor user)
+        // 5. Fallback: project_relationships.owner_id → property_owners → users (project owner)
         $query = DB::table('progress as p')
             ->join('milestone_items as mi', 'p.milestone_item_id', '=', 'mi.item_id')
             ->join('milestones as m',        'mi.milestone_id', '=', 'm.milestone_id')
             ->join('projects as proj',       'm.project_id', '=', 'proj.project_id')
-            ->join('contractors as c', 'proj.selected_contractor_id', '=', 'c.contractor_id')
-            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
-            ->join('users as u',       'po.user_id', '=', 'u.user_id')
-            ->select($selectCols)
+            ->leftJoin('project_relationships as pr', 'proj.relationship_id', '=', 'pr.rel_id')
+            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('property_owners as cpo', 'c.owner_id', '=', 'cpo.owner_id')
+            ->leftJoin('users as cu', 'cpo.user_id', '=', 'cu.user_id')
+            ->leftJoin('property_owners as opo', 'pr.owner_id', '=', 'opo.owner_id')
+            ->leftJoin('users as ou', 'opo.user_id', '=', 'ou.user_id');
+
+        $query->select($selectCols)
             ->orderBy('p.submitted_at', 'desc');
 
         if ($status && $status !== 'all') {
             $query->where('p.progress_status', $status);
         } else {
-            // Exclude deleted by default; show them only when explicitly filtered
             $query->where('p.progress_status', '!=', 'deleted');
         }
 
@@ -73,7 +90,8 @@ class progressFeedController extends Controller
                 $q->where('proj.project_title',        'like', "%{$search}%")
                   ->orWhere('mi.milestone_item_title', 'like', "%{$search}%")
                   ->orWhere('p.purpose',               'like', "%{$search}%")
-                  ->orWhere('u.username',     'like', "%{$search}%")
+                  ->orWhere('cu.username',     'like', "%{$search}%")
+                  ->orWhere('ou.username',     'like', "%{$search}%")
                   ->orWhere('c.company_name', 'like', "%{$search}%");
             });
         }
@@ -83,6 +101,10 @@ class progressFeedController extends Controller
         }
         if (!empty($dateTo)) {
             $query->whereDate('p.submitted_at', '<=', $dateTo);
+        }
+
+        if ($company !== '') {
+            $query->where('c.company_name', $company);
         }
 
         $paginated   = $query->paginate($perPage);
@@ -120,5 +142,22 @@ class progressFeedController extends Controller
                 'total'        => $paginated->total(),
             ],
         ]);
+    }
+
+    public function contractors()
+    {
+        $companies = DB::table('contractors as c')
+            ->join('project_relationships as pr', 'pr.selected_contractor_id', '=', 'c.contractor_id')
+            ->join('projects as proj', 'proj.relationship_id', '=', 'pr.rel_id')
+            ->join('milestones as m', 'm.project_id', '=', 'proj.project_id')
+            ->join('milestone_items as mi', 'mi.milestone_id', '=', 'm.milestone_id')
+            ->join('progress as p', 'p.milestone_item_id', '=', 'mi.item_id')
+            ->whereNotNull('c.company_name')
+            ->where('c.company_name', '!=', '')
+            ->distinct()
+            ->orderBy('c.company_name')
+            ->pluck('c.company_name');
+
+        return response()->json($companies);
     }
 }
