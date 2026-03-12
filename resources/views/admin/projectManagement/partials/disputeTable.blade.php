@@ -1,4 +1,17 @@
 @foreach($disputes as $dispute)
+@php
+  $reporterFirst = $dispute->reporter_first_name ?? $dispute->first_name ?? null;
+  $reporterLast = $dispute->reporter_last_name ?? $dispute->last_name ?? null;
+  $reporterPic = $dispute->reporter_profile_pic ?? $dispute->profile_pic ?? null;
+  if (empty($reporterFirst) && !empty($dispute->complainant_id)) {
+      $u = \Illuminate\Support\Facades\DB::table('users')->where('user_id', $dispute->complainant_id)->first();
+      if ($u) {
+          $reporterFirst = $u->first_name ?? $reporterFirst;
+          $reporterLast = $u->last_name ?? $reporterLast;
+          $reporterPic = $u->profile_pic ?? $reporterPic;
+      }
+  }
+@endphp
 <tr class="hover:bg-gray-50 transition-colors duration-150"
   data-id="{{ $dispute->dispute_id }}"
   data-status="{{ $dispute->status }}"
@@ -12,19 +25,6 @@
   <td class="px-6 py-4 whitespace-nowrap text-sm">
     <div class="flex items-center gap-3">
       <div class="w-12 h-12 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow overflow-hidden">
-        @php
-          $reporterFirst = $dispute->reporter_first_name ?? $dispute->first_name ?? null;
-          $reporterLast = $dispute->reporter_last_name ?? $dispute->last_name ?? null;
-          $reporterPic = $dispute->reporter_profile_pic ?? $dispute->profile_pic ?? null;
-          if (empty($reporterFirst) && !empty($dispute->complainant_id)) {
-              $u = \Illuminate\Support\Facades\DB::table('users')->where('user_id', $dispute->complainant_id)->first();
-              if ($u) {
-                  $reporterFirst = $u->first_name ?? $reporterFirst;
-                  $reporterLast = $u->last_name ?? $reporterLast;
-                  $reporterPic = $u->profile_pic ?? $reporterPic;
-              }
-          }
-        @endphp
         @if(!empty($reporterPic))
           <img src="{{ asset('storage/' . $reporterPic) }}" alt="avatar" class="w-full h-full object-cover">
         @else

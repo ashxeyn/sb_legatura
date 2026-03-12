@@ -30,6 +30,37 @@
     <div class="p-6 space-y-8 max-w-[1600px] mx-auto">
 
       {{-- ═══════════════════════════════════════════════════════════
+           GLOBAL DATE FILTER
+      ═══════════════════════════════════════════════════════════ --}}
+      <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm" id="globalDateFilter">
+        <div class="flex items-center gap-4 flex-wrap">
+          <span class="text-sm font-semibold text-gray-700 whitespace-nowrap">
+            <i class="fi fi-sr-calendar" style="font-size:1rem; vertical-align:middle; margin-right:.35rem;"></i>
+            Filter Period:
+          </span>
+          <div class="flex gap-2 flex-wrap" id="presetButtons">
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last3months">Last 3 Months</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last6months">Last 6 Months</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="thisyear">This Year</button>
+            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="lastyear">Last Year</button>
+            <button class="date-preset-btn active px-3 py-1.5 rounded-full border border-indigo-500 text-sm font-semibold text-white bg-indigo-500 transition-all" data-range="all">All Time</button>
+          </div>
+          <div class="flex items-center gap-2 ml-auto">
+            <label class="text-xs font-medium text-gray-500">From</label>
+            <input type="date" id="dateFrom" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <label class="text-xs font-medium text-gray-500">To</label>
+            <input type="date" id="dateTo" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            <button id="applyDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+          </div>
+          <div id="filterLoading" class="hidden flex items-center gap-1 ml-2">
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.1s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.2s"></span>
+          </div>
+        </div>
+      </div>
+
+      {{-- ═══════════════════════════════════════════════════════════
            SECTION 1 — OVERVIEW (donut, success rate, timeline)
       ═══════════════════════════════════════════════════════════ --}}
       <div class="section-divider">
@@ -241,7 +272,7 @@
             </div>
             <div class="text-3xl font-black mb-0.5">₱{{ number_format($projectPerformance['total_value'] / 1000000, 1) }}M</div>
             <div class="text-sm font-medium opacity-80 mb-3">Contracted Value</div>
-            <div class="progress-bar-wrap"><div class="progress-bar-fill" data-width="70" style="width:0%"></div></div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" data-width="{{ min(100, round($projectPerformance['total_value'] / max(1, 10000000) * 100)) }}" style="width:0%"></div></div>
           </div>
         </div>
       </div>
@@ -261,7 +292,7 @@
           <p class="text-gray-500 text-xs font-medium mb-1">Average Project Duration</p>
           <p class="text-3xl font-black text-gray-800"><span class="perf-counter" data-target="{{ $projectPerformance['avg_duration'] }}">0</span> <span class="text-sm font-medium text-gray-500">days</span></p>
           <div class="w-full bg-gray-100 rounded-full h-1.5 mt-3 overflow-hidden">
-            <div class="bg-gradient-to-r from-cyan-400 to-cyan-600 h-1.5 rounded-full progress-bar-fill" data-width="65" style="width:0%"></div>
+            <div class="bg-gradient-to-r from-cyan-400 to-cyan-600 h-1.5 rounded-full progress-bar-fill" data-width="{{ min(100, round($projectPerformance['avg_duration'])) }}" style="width:0%"></div>
           </div>
           <p class="text-xs text-gray-400 mt-1.5">Based on milestone start → end dates</p>
         </div>
@@ -372,21 +403,24 @@
         <h2>Top Performing Contractors</h2><span></span>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-lg overflow-hidden" id="topContractorsCard">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h3 class="text-xl font-bold text-white">Top 5 Contractors</h3>
               <p class="text-indigo-100 text-sm mt-0.5">Ranked by completed projects · live data</p>
             </div>
-            <button onclick="window.print()" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-50 transition-colors shadow-md flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              Export
-            </button>
+            <div class="flex items-center gap-2 flex-wrap">
+              <input type="text" id="contractorSearch" placeholder="Search contractor..." class="px-3 py-2 rounded-lg text-sm border-0 focus:ring-2 focus:ring-indigo-300 outline-none w-44" style="background:rgba(255,255,255,.9);">
+              <input type="date" id="contractorDateFrom" class="px-2.5 py-2 rounded-lg text-sm border-0 focus:ring-2 focus:ring-indigo-300 outline-none" style="background:rgba(255,255,255,.9);">
+              <input type="date" id="contractorDateTo" class="px-2.5 py-2 rounded-lg text-sm border-0 focus:ring-2 focus:ring-indigo-300 outline-none" style="background:rgba(255,255,255,.9);">
+              <button id="contractorFilterBtn" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-50 transition-colors shadow-md">Filter</button>
+            </div>
           </div>
         </div>
 
+        <div id="contractorsTableWrap">
         @if(count($topContractors) > 0)
         <div class="overflow-x-auto">
           <table class="w-full contractors-table">
@@ -466,6 +500,7 @@
           <p class="text-gray-400 font-medium">No contractor data yet</p>
         </div>
         @endif
+        </div>{{-- /contractorsTableWrap --}}
       </div>
 
     </div>{{-- /container --}}

@@ -1357,5 +1357,954 @@ class analyticsController extends authController
     {
         return view('admin.home.reportsAnalytics');
     }
+
+    // =============================================
+    // AJAX ENDPOINTS: DATE-FILTERED PAGE DATA
+    // =============================================
+
+    /**
+     * Project Performance Analytics – return all page data filtered by date range.
+     */
+    public function getProjectAnalyticsData(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        return response()->json([
+            'projectsAnalytics'  => $this->getProjectsAnalyticsFiltered($dateFrom, $dateTo),
+            'projectSuccessRate' => $this->getProjectSuccessRateFiltered($dateFrom, $dateTo),
+            'projectsTimeline'   => $this->getProjectsTimelineFiltered($dateFrom, $dateTo),
+            'projectPerformance' => $this->getProjectPerformanceFiltered($dateFrom, $dateTo),
+            'bidMetrics'         => $this->getBidMetricsFiltered($dateFrom, $dateTo),
+            'topContractors'     => $this->getTopContractorsFiltered($dateFrom, $dateTo),
+        ]);
+    }
+
+    /**
+     * Top Contractors with own search + date filter.
+     */
+    public function getTopContractorsData(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+        $search   = $request->input('search', '');
+
+        return response()->json([
+            'topContractors' => $this->getTopContractorsFiltered($dateFrom, $dateTo, $search),
+        ]);
+    }
+
+    /**
+     * Subscription Analytics – return all page data filtered by date range.
+     */
+    public function getSubscriptionAnalyticsData(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        return response()->json([
+            'subscriptionMetrics' => $this->getSubscriptionMetricsFiltered($dateFrom, $dateTo),
+            'subscriptionTiers'   => $this->getSubscriptionTiersFiltered($dateFrom, $dateTo),
+            'subscriptionRevenue' => $this->getSubscriptionRevenueFiltered($dateFrom, $dateTo),
+        ]);
+    }
+
+    /**
+     * User Activity Analytics – return all page data filtered by date range.
+     */
+    public function getUserAnalyticsData(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        return response()->json([
+            'userMetrics' => $this->getUserMetricsFiltered($dateFrom, $dateTo),
+            'userGrowth'  => $this->getUserGrowthDataFiltered($dateFrom, $dateTo),
+        ]);
+    }
+
+    /**
+     * User Activity Feed with search + date + pagination.
+     */
+    public function getUserActivityFeedData(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+        $search   = $request->input('search', '');
+        $page     = max(1, (int) $request->input('page', 1));
+        $perPage  = 10;
+
+        $data = $this->getRecentUserActivityFiltered($dateFrom, $dateTo, $search, $page, $perPage);
+
+        return response()->json($data);
+    }
+
+    /**
+     * Bid Completion Analytics – return all page data filtered by date range.
+     */
+    public function getBidAnalyticsData(\Illuminate\Http\Request $request)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        return response()->json($this->getBidCompletionDataFiltered($dateFrom, $dateTo));
+    }
+
+    // =============================================
+    // DATE-FILTERED PRIVATE HELPERS
+    // =============================================
+
+    private function getProjectsAnalyticsFiltered($dateFrom, $dateTo)
+    {
+        $statuses    = ['completed' => 'Completed Projects', 'in_progress' => 'Ongoing', 'open' => 'On Hold', 'terminated' => 'Cancelled'];
+        $projectData = [];
+        $total       = 0;
+
+        foreach ($statuses as $status => $label) {
+            $q = DB::table('projects')->where('project_status', $status);
+            if ($dateFrom) $q->where('created_at', '>=', $dateFrom);
+            if ($dateTo)   $q->where('created_at', '<=', $dateTo . ' 23:59:59');
+            $count         = $q->count();
+            $projectData[] = ['status' => $status, 'label' => $label, 'count' => $count];
+            $total        += $count;
+        }
+
+        return ['total' => $total, 'data' => $projectData];
+    }
+
+    private function getProjectSuccessRateFiltered($dateFrom, $dateTo)
+    {
+        $statuses    = [
+            'completed'   => ['label' => 'Completed',   'color' => '#10b981'],
+            'in_progress' => ['label' => 'In progress',  'color' => '#3b82f6'],
+            'open'        => ['label' => 'On Hold',      'color' => '#f59e0b'],
+            'terminated'  => ['label' => 'Cancelled',    'color' => '#ef4444'],
+        ];
+        $successData = [];
+        $total       = 0;
+
+        foreach ($statuses as $status => $info) {
+            $q = DB::table('projects')->where('project_status', $status);
+            if ($dateFrom) $q->where('created_at', '>=', $dateFrom);
+            if ($dateTo)   $q->where('created_at', '<=', $dateTo . ' 23:59:59');
+            $count = $q->count();
+            if ($count > 0) {
+                $successData[] = ['status' => $status, 'label' => $info['label'], 'color' => $info['color'], 'count' => $count];
+            }
+            $total += $count;
+        }
+        foreach ($successData as &$item) {
+            $item['percentage'] = $total > 0 ? round(($item['count'] / $total) * 100, 1) : 0;
+        }
+
+        return ['total' => $total, 'data' => $successData];
+    }
+
+    private function getProjectsTimelineFiltered($dateFrom, $dateTo)
+    {
+        // Determine range from dates or default to 6 months
+        if ($dateFrom && $dateTo) {
+            $start = \Carbon\Carbon::parse($dateFrom)->startOfMonth();
+            $end   = \Carbon\Carbon::parse($dateTo)->startOfMonth();
+        } else {
+            $start = now()->subMonths(5)->startOfMonth();
+            $end   = now()->startOfMonth();
+        }
+
+        $months = $newProjects = $completedProjects = [];
+        $current = $start->copy();
+
+        while ($current <= $end) {
+            $months[] = $current->format('M Y');
+
+            $newCount = DB::table('projects')
+                ->whereYear('created_at', $current->year)
+                ->whereMonth('created_at', $current->month)
+                ->count();
+            $newProjects[] = $newCount;
+
+            $completedCount = DB::table('projects')
+                ->where('project_status', 'completed')
+                ->whereYear('updated_at', $current->year)
+                ->whereMonth('updated_at', $current->month)
+                ->count();
+            $completedProjects[] = $completedCount;
+
+            $current->addMonth();
+        }
+
+        return [
+            'months'            => $months,
+            'newProjects'       => $newProjects,
+            'completedProjects' => $completedProjects,
+            'dateRange'         => ($dateFrom ? $dateFrom : $start->format('Y-m-d')) . ' — ' . ($dateTo ? $dateTo : now()->format('Y-m-d')),
+        ];
+    }
+
+    private function getProjectPerformanceFiltered($dateFrom, $dateTo): array
+    {
+        $dateCondition = function ($q, $col = 'created_at') use ($dateFrom, $dateTo) {
+            if ($dateFrom) $q->where($col, '>=', $dateFrom);
+            if ($dateTo)   $q->where($col, '<=', $dateTo . ' 23:59:59');
+        };
+
+        $totalQ = DB::table('projects')->whereNotIn('project_status', ['deleted', 'deleted_post']);
+        $dateCondition($totalQ);
+        $totalProjects = $totalQ->count();
+
+        $compQ = DB::table('projects')->where('project_status', 'completed');
+        $dateCondition($compQ);
+        $completedProjects = $compQ->count();
+
+        $bidsQ = DB::table('bids');
+        $dateCondition($bidsQ, 'submitted_at');
+        $totalBids = $bidsQ->count();
+
+        $accQ = DB::table('bids')->where('bid_status', 'accepted');
+        $dateCondition($accQ, 'submitted_at');
+        $acceptedBids = $accQ->count();
+
+        $valQ = DB::table('bids')->where('bid_status', 'accepted');
+        $dateCondition($valQ, 'submitted_at');
+        $totalValue = $valQ->sum('proposed_cost');
+
+        $durationQ = DB::table('milestones')->where('setup_status', 'approved')->whereNotNull('start_date')->whereNotNull('end_date');
+        if ($dateFrom) $durationQ->where('start_date', '>=', $dateFrom);
+        if ($dateTo)   $durationQ->where('start_date', '<=', $dateTo . ' 23:59:59');
+        $avgDuration = $durationQ->selectRaw('AVG(DATEDIFF(end_date, start_date)) as avg_days')->value('avg_days') ?? 0;
+
+        $completionRate = $totalProjects > 0 ? round(($completedProjects / $totalProjects) * 100, 1) : 0;
+
+        $totalCompletedMilestones = DB::table('milestones')->where('milestone_status', 'completed');
+        $dateCondition($totalCompletedMilestones, 'updated_at');
+        $totalCompletedMilestones = $totalCompletedMilestones->count();
+
+        $onTimeMilestones = DB::table('milestones')->where('milestone_status', 'completed')->whereRaw('updated_at <= end_date');
+        $dateCondition($onTimeMilestones, 'updated_at');
+        $onTimeMilestones = $onTimeMilestones->count();
+
+        $onTimeRate = $totalCompletedMilestones > 0 ? round(($onTimeMilestones / $totalCompletedMilestones) * 100, 1) : 0;
+
+        // Completion trends within date range
+        if ($dateFrom && $dateTo) {
+            $start = \Carbon\Carbon::parse($dateFrom)->startOfMonth();
+            $end   = \Carbon\Carbon::parse($dateTo)->startOfMonth();
+        } else {
+            $start = now()->subMonths(11)->startOfMonth();
+            $end   = now()->startOfMonth();
+        }
+
+        $completionTrends = [];
+        $trendCurrent = $start->copy();
+        while ($trendCurrent <= $end) {
+            $newCount = DB::table('projects')
+                ->whereYear('created_at', $trendCurrent->year)
+                ->whereMonth('created_at', $trendCurrent->month)
+                ->count();
+            $compCount = DB::table('projects')
+                ->where('project_status', 'completed')
+                ->whereYear('updated_at', $trendCurrent->year)
+                ->whereMonth('updated_at', $trendCurrent->month)
+                ->count();
+            $completionTrends[] = ['month' => $trendCurrent->format('M Y'), 'new' => $newCount, 'completed' => $compCount];
+            $trendCurrent->addMonth();
+        }
+
+        $byPropQ = DB::table('projects')->whereNotIn('project_status', ['deleted', 'deleted_post']);
+        $dateCondition($byPropQ);
+        $byPropertyType = $byPropQ->select('property_type', DB::raw('COUNT(*) as count'))
+            ->groupBy('property_type')->get()->pluck('count', 'property_type')->toArray();
+
+        // Average bids per project
+        $avgBidsQ = DB::table('bids');
+        $dateCondition($avgBidsQ, 'submitted_at');
+        $avgBidsPerProject = $avgBidsQ->selectRaw('AVG(bid_count) as avg')
+            ->from(DB::raw('(SELECT COUNT(*) as bid_count FROM bids' .
+                ($dateFrom ? ' WHERE submitted_at >= \'' . addslashes($dateFrom) . '\'' : '') .
+                ($dateTo ? ($dateFrom ? ' AND' : ' WHERE') . ' submitted_at <= \'' . addslashes($dateTo) . ' 23:59:59\'' : '') .
+                ' GROUP BY project_id) as t'))
+            ->value('avg') ?? 0;
+
+        // MoM project growth
+        $lastMonth = now()->subMonth();
+        $lastMonthProjects = DB::table('project_relationships')
+            ->whereYear('created_at', $lastMonth->year)
+            ->whereMonth('created_at', $lastMonth->month)
+            ->count();
+        $thisMonthProjects = DB::table('project_relationships')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+        $momGrowth = $lastMonthProjects > 0
+            ? round((($thisMonthProjects - $lastMonthProjects) / $lastMonthProjects) * 100, 1)
+            : 0;
+
+        // Value MoM growth
+        $lastMonthValue = DB::table('bids')->where('bid_status', 'accepted')
+            ->whereYear('decision_date', $lastMonth->year)
+            ->whereMonth('decision_date', $lastMonth->month)
+            ->sum('proposed_cost');
+        $thisMonthValue = DB::table('bids')->where('bid_status', 'accepted')
+            ->whereYear('decision_date', now()->year)
+            ->whereMonth('decision_date', now()->month)
+            ->sum('proposed_cost');
+        $valueMomGrowth = $lastMonthValue > 0
+            ? round((($thisMonthValue - $lastMonthValue) / $lastMonthValue) * 100, 1)
+            : 0;
+
+        return [
+            'total_projects'       => $totalProjects,
+            'completed_projects'   => $completedProjects,
+            'total_bids'           => $totalBids,
+            'accepted_bids'        => $acceptedBids,
+            'total_value'          => $totalValue,
+            'avg_bids_per_project' => round($avgBidsPerProject, 1),
+            'avg_duration'         => round($avgDuration),
+            'completion_rate'      => $completionRate,
+            'on_time_rate'         => $onTimeRate,
+            'mom_growth'           => $momGrowth,
+            'value_mom_growth'     => $valueMomGrowth,
+            'completion_trends'    => $completionTrends,
+            'by_property_type'     => $byPropertyType,
+        ];
+    }
+
+    private function getBidMetricsFiltered($dateFrom, $dateTo): array
+    {
+        $dc = function ($q, $col = 'submitted_at') use ($dateFrom, $dateTo) {
+            if ($dateFrom) $q->where($col, '>=', $dateFrom);
+            if ($dateTo)   $q->where($col, '<=', $dateTo . ' 23:59:59');
+        };
+
+        $tQ = DB::table('bids'); $dc($tQ); $total = $tQ->count();
+        $aQ = DB::table('bids')->where('bid_status', 'accepted'); $dc($aQ); $accepted = $aQ->count();
+        $rQ = DB::table('bids')->where('bid_status', 'rejected'); $dc($rQ); $rejected = $rQ->count();
+        $pQ = DB::table('bids')->whereIn('bid_status', ['submitted', 'under_review']); $dc($pQ); $pending = $pQ->count();
+        $cQ = DB::table('bids')->where('bid_status', 'cancelled'); $dc($cQ); $cancelled = $cQ->count();
+
+        // Average bids per project
+        $avgQ = DB::table('bids');
+        $dc($avgQ);
+        $avgPerProject = $avgQ->selectRaw('AVG(bid_count) as avg')
+            ->from(DB::raw('(SELECT COUNT(*) as bid_count FROM bids' .
+                ($dateFrom ? ' WHERE submitted_at >= \'' . addslashes($dateFrom) . '\'' : '') .
+                ($dateTo ? ($dateFrom ? ' AND' : ' WHERE') . ' submitted_at <= \'' . addslashes($dateTo) . ' 23:59:59\'' : '') .
+                ' GROUP BY project_id) as t'))
+            ->value('avg') ?? 0;
+
+        return [
+            'total'           => $total,
+            'accepted'        => $accepted,
+            'rejected'        => $rejected,
+            'pending'         => $pending,
+            'cancelled'       => $cancelled,
+            'avg_per_project' => round($avgPerProject, 1),
+            'acceptance_rate' => $total > 0 ? round(($accepted / $total) * 100, 1) : 0,
+        ];
+    }
+
+    private function getTopContractorsFiltered($dateFrom, $dateTo, $search = ''): array
+    {
+        $assignedSub = DB::table('projects')
+            ->select('selected_contractor_id', DB::raw('COUNT(*) as assigned_count'))
+            ->whereNotNull('selected_contractor_id')
+            ->whereNotIn('project_status', ['deleted', 'deleted_post']);
+        if ($dateFrom) $assignedSub->where('created_at', '>=', $dateFrom);
+        if ($dateTo)   $assignedSub->where('created_at', '<=', $dateTo . ' 23:59:59');
+        $assignedSub = $assignedSub->groupBy('selected_contractor_id');
+
+        $ratingSub = DB::table('reviews as r')
+            ->join('property_owners as rev_po', 'rev_po.user_id', '=', 'r.reviewee_user_id')
+            ->join('contractors as rc', 'rc.owner_id', '=', 'rev_po.owner_id')
+            ->select(
+                'rc.contractor_id',
+                DB::raw('ROUND(AVG(r.rating), 2) as avg_rating'),
+                DB::raw('COUNT(r.review_id) as review_count')
+            );
+        if ($dateFrom) $ratingSub->where('r.created_at', '>=', $dateFrom);
+        if ($dateTo)   $ratingSub->where('r.created_at', '<=', $dateTo . ' 23:59:59');
+        $ratingSub = $ratingSub->groupBy('rc.contractor_id');
+
+        $rows = DB::table('contractors as c')
+            ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+            ->join('users as c_u', 'c_po.user_id', '=', 'c_u.user_id')
+            ->leftJoinSub($assignedSub, 'ap', 'ap.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoinSub($ratingSub,   'rev', 'rev.contractor_id',         '=', 'c.contractor_id')
+            ->where('c.verification_status', 'approved')
+            ->where('c.is_active', 1)
+            ->select(
+                'c.contractor_id',
+                'c.company_name',
+                'c.completed_projects',
+                'c.years_of_experience',
+                'c.company_logo',
+                DB::raw("CONCAT(c_u.first_name, ' ', c_u.last_name) as rep_name"),
+                DB::raw('IFNULL(ap.assigned_count, 0) as assigned_count'),
+                DB::raw('IFNULL(rev.avg_rating, 0) as avg_rating'),
+                DB::raw('IFNULL(rev.review_count, 0) as review_count')
+            );
+
+        if ($search !== '') {
+            $like = "%{$search}%";
+            $rows->where(function ($q) use ($like) {
+                $q->where('c.company_name', 'LIKE', $like)
+                  ->orWhere(DB::raw("CONCAT(c_u.first_name, ' ', c_u.last_name)"), 'LIKE', $like);
+            });
+        }
+
+        $rows = $rows->orderByDesc('c.completed_projects')->limit(5)->get();
+
+        return $rows->map(function ($r, $i) {
+            $baseScore = $r->assigned_count > 0
+                ? min(($r->completed_projects / $r->assigned_count) * 50, 50)
+                : ($r->completed_projects > 0 ? 50 : 0);
+            $ratingBonus = $r->avg_rating > 0 ? round((($r->avg_rating - 1) / 4) * 10, 1) : 0;
+            $finalScore = round(max(0, min(100, $baseScore + $ratingBonus)), 1);
+
+            return [
+                'rank'                => $i + 1,
+                'contractor_id'       => $r->contractor_id,
+                'company_name'        => $r->company_name,
+                'rep_name'            => $r->rep_name,
+                'completed_projects'  => $r->completed_projects,
+                'success_rate'        => $finalScore,
+                'avg_rating'          => $r->avg_rating,
+                'review_count'        => $r->review_count,
+                'years_of_experience' => $r->years_of_experience,
+                'company_logo'        => $r->company_logo ? asset('storage/' . $r->company_logo) : null,
+                'initials'            => strtoupper(substr($r->company_name, 0, 2)),
+            ];
+        })->toArray();
+    }
+
+    private function getSubscriptionMetricsFiltered($dateFrom, $dateTo): array
+    {
+        $base = function () use ($dateFrom, $dateTo) {
+            $q = DB::table('platform_payments as pp')
+                ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
+                ->where('sp.for_contractor', 1)
+                ->where('sp.plan_key', '!=', 'boost')
+                ->where('pp.is_approved', 1)
+                ->where('pp.is_cancelled', 0);
+            if ($dateFrom) $q->where('pp.transaction_date', '>=', $dateFrom);
+            if ($dateTo)   $q->where('pp.transaction_date', '<=', $dateTo . ' 23:59:59');
+            return $q;
+        };
+
+        $total   = $base()->count();
+        $revenue = (float) $base()->sum('pp.amount');
+        $active  = $base()->where(fn($q) => $q->whereNull('pp.expiration_date')->orWhereRaw('pp.expiration_date >= NOW()'))->count();
+        $expiring = $base()->whereNotNull('pp.expiration_date')->whereRaw('pp.expiration_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)')->count();
+        $expired = $base()->whereNotNull('pp.expiration_date')->whereRaw('pp.expiration_date < NOW()')->count();
+
+        // This month's subscriptions
+        $thisMonth = DB::table('platform_payments as pp')
+            ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
+            ->where('sp.for_contractor', 1)->where('sp.plan_key', '!=', 'boost')
+            ->where('pp.is_approved', 1)->where('pp.is_cancelled', 0)
+            ->whereYear('pp.transaction_date', now()->year)
+            ->whereMonth('pp.transaction_date', now()->month)
+            ->count();
+
+        // Last month's subscriptions
+        $lastMonthDate = now()->subMonth();
+        $lastMonth = DB::table('platform_payments as pp')
+            ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
+            ->where('sp.for_contractor', 1)->where('sp.plan_key', '!=', 'boost')
+            ->where('pp.is_approved', 1)->where('pp.is_cancelled', 0)
+            ->whereYear('pp.transaction_date', $lastMonthDate->year)
+            ->whereMonth('pp.transaction_date', $lastMonthDate->month)
+            ->count();
+
+        $momGrowth = $lastMonth > 0
+            ? round((($thisMonth - $lastMonth) / $lastMonth) * 100, 1)
+            : 0;
+
+        return [
+            'total'      => $total,
+            'active'     => $active,
+            'revenue'    => $revenue,
+            'expiring'   => $expiring,
+            'expired'    => $expired,
+            'this_month' => $thisMonth,
+            'mom_growth' => $momGrowth,
+        ];
+    }
+
+    private function getSubscriptionTiersFiltered($dateFrom, $dateTo): array
+    {
+        $q = DB::table('platform_payments as pp')
+            ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
+            ->where('pp.is_approved', 1)
+            ->where('pp.is_cancelled', 0)
+            ->whereIn('sp.plan_key', ['gold', 'silver', 'bronze']);
+        if ($dateFrom) $q->where('pp.transaction_date', '>=', $dateFrom);
+        if ($dateTo)   $q->where('pp.transaction_date', '<=', $dateTo . ' 23:59:59');
+        $counts = $q->select('sp.plan_key', DB::raw('COUNT(*) as cnt'))->groupBy('sp.plan_key')->pluck('cnt', 'plan_key');
+
+        $gold   = (int)($counts['gold']   ?? 0);
+        $silver = (int)($counts['silver'] ?? 0);
+        $bronze = (int)($counts['bronze'] ?? 0);
+
+        return [
+            'tiers' => [
+                ['name' => 'Gold Tier',   'label' => 'Gold',   'count' => $gold,   'color' => 'yellow', 'gradient' => 'from-yellow-400 to-yellow-600'],
+                ['name' => 'Silver Tier', 'label' => 'Silver', 'count' => $silver, 'color' => 'blue',   'gradient' => 'from-gray-300 to-gray-500'],
+                ['name' => 'Bronze Tier', 'label' => 'Bronze', 'count' => $bronze, 'color' => 'orange', 'gradient' => 'from-orange-400 to-orange-600'],
+            ],
+            'total'    => $gold + $silver + $bronze,
+            'maxCount' => max($gold, $silver, $bronze, 1),
+        ];
+    }
+
+    private function getSubscriptionRevenueFiltered($dateFrom, $dateTo): array
+    {
+        $currentYear      = (int) date('Y');
+        $previousYear     = $currentYear - 1;
+        $months           = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        $currentYearData  = array_fill(0, 12, 0.0);
+        $previousYearData = array_fill(0, 12, 0.0);
+
+        $base = fn() => DB::table('platform_payments as pp')
+            ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
+            ->where('sp.for_contractor', 1)
+            ->where('sp.plan_key', '!=', 'boost')
+            ->where('pp.is_approved', 1)
+            ->where('pp.is_cancelled', 0);
+
+        // Current year — only apply date filter, no extra whereYear
+        $cur = $base()->select(
+            DB::raw('MONTH(pp.transaction_date) as m'),
+            DB::raw('IFNULL(SUM(pp.amount), 0) as sum')
+        )->whereYear('pp.transaction_date', $currentYear);
+
+        // Previous year — only apply date filter, no extra whereYear
+        $prev = $base()->select(
+            DB::raw('MONTH(pp.transaction_date) as m'),
+            DB::raw('IFNULL(SUM(pp.amount), 0) as sum')
+        )->whereYear('pp.transaction_date', $previousYear);
+
+        foreach ($cur->groupByRaw('MONTH(pp.transaction_date)')
+                     ->orderByRaw('MONTH(pp.transaction_date)')
+                     ->get() as $r) {
+            $currentYearData[(int)$r->m - 1] = (float) $r->sum;
+        }
+
+        foreach ($prev->groupByRaw('MONTH(pp.transaction_date)')
+                      ->orderByRaw('MONTH(pp.transaction_date)')
+                      ->get() as $r) {
+            $previousYearData[(int)$r->m - 1] = (float) $r->sum;
+        }
+
+        return [
+            'months'           => $months,
+            'currentYearData'  => $currentYearData,
+            'previousYearData' => $previousYearData,
+            'currentYear'      => $currentYear,
+            'previousYear'     => $previousYear,
+            'dateRange'        => ($dateFrom ?? now()->startOfYear()->format('Y-m-d')) . ' — ' . ($dateTo ?? now()->format('Y-m-d')),
+        ];
+    }
+
+    private function getUserMetricsFiltered($dateFrom, $dateTo): array
+    {
+        $dc = function ($q, $col = 'created_at') use ($dateFrom, $dateTo) {
+            if ($dateFrom) $q->where($col, '>=', $dateFrom);
+            if ($dateTo)   $q->where($col, '<=', $dateTo . ' 23:59:59');
+        };
+
+        $totalQ = DB::table('users'); $dc($totalQ); $totalUsers = $totalQ->count();
+        $poQ    = DB::table('property_owners'); $dc($poQ, 'created_at'); $propertyOwners = $poQ->count();
+        $cntQ   = DB::table('contractors'); $dc($cntQ, 'created_at');    $contractors = $cntQ->count();
+
+        $activeProjectsQ = DB::table('projects')->where('project_status', 'in_progress');
+        $dc($activeProjectsQ, 'created_at');
+        $activeProjects = $activeProjectsQ->count();
+
+        $activeUsers = DB::table('users')->where(function ($q) {
+            $q->whereExists(fn($s) => $s->select(DB::raw(1))->from('property_owners')->whereColumn('property_owners.user_id', 'users.user_id')->where('property_owners.is_active', 1))
+              ->orWhereExists(fn($s) => $s->select(DB::raw(1))->from('contractors')->join('property_owners as cp', 'contractors.owner_id', '=', 'cp.owner_id')->whereColumn('cp.user_id', 'users.user_id')->where('contractors.is_active', 1));
+        });
+        $dc($activeUsers);
+        $activeUsers = $activeUsers->count();
+
+        $suspendedUsers = DB::table('users')->where(function ($q) {
+            $q->whereExists(fn($s) => $s->select(DB::raw(1))->from('property_owners')->whereColumn('property_owners.user_id', 'users.user_id')->where('property_owners.is_active', 0))
+              ->orWhereExists(fn($s) => $s->select(DB::raw(1))->from('contractors')->join('property_owners as cp2', 'contractors.owner_id', '=', 'cp2.owner_id')->whereColumn('cp2.user_id', 'users.user_id')->where('contractors.is_active', 0));
+        });
+        $dc($suspendedUsers);
+        $suspendedUsers = $suspendedUsers->count();
+
+        // New users this month and last month
+        $newThisMonth = DB::table('users')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+        $lastMonthDate = now()->subMonth();
+        $newLastMonth = DB::table('users')
+            ->whereYear('created_at', $lastMonthDate->year)
+            ->whereMonth('created_at', $lastMonthDate->month)
+            ->count();
+        $momChange = $newLastMonth > 0
+            ? round((($newThisMonth - $newLastMonth) / $newLastMonth) * 100, 1)
+            : 0;
+
+        return [
+            'total_users'     => $totalUsers,
+            'property_owners' => $propertyOwners,
+            'contractors'     => $contractors,
+            'active_projects' => $activeProjects,
+            'active_users'    => $activeUsers,
+            'suspended_users' => $suspendedUsers,
+            'new_this_month'  => $newThisMonth,
+            'new_last_month'  => $newLastMonth,
+            'mom_change'      => $momChange,
+        ];
+    }
+
+    private function getUserGrowthDataFiltered($dateFrom, $dateTo): array
+    {
+        if ($dateFrom && $dateTo) {
+            $start = \Carbon\Carbon::parse($dateFrom)->startOfMonth();
+            $end   = \Carbon\Carbon::parse($dateTo)->startOfMonth();
+        } else {
+            $start = now()->subMonths(11)->startOfMonth();
+            $end   = now()->startOfMonth();
+        }
+
+        $months = $ownersData = $contractorsData = $totalData = [];
+        $current = $start->copy();
+
+        while ($current <= $end) {
+            $months[] = $current->format('M Y');
+            $owners   = DB::table('users')->whereIn('user_type', ['property_owner', 'both'])->whereYear('created_at', $current->year)->whereMonth('created_at', $current->month)->count();
+            $contrs   = DB::table('users')->whereIn('user_type', ['contractor', 'both'])->whereYear('created_at', $current->year)->whereMonth('created_at', $current->month)->count();
+            $ownersData[]      = $owners;
+            $contractorsData[] = $contrs;
+            $totalData[]       = $owners + $contrs;
+            $current->addMonth();
+        }
+
+        $distBase = function ($type) use ($dateFrom, $dateTo) {
+            $q = DB::table('users')->where('user_type', $type);
+            if ($dateFrom) $q->where('created_at', '>=', $dateFrom);
+            if ($dateTo)   $q->where('created_at', '<=', $dateTo . ' 23:59:59');
+            return $q->count();
+        };
+
+        return [
+            'months'       => $months,
+            'owners'       => $ownersData,
+            'contractors'  => $contractorsData,
+            'totals'       => $totalData,
+            'distribution' => [
+                'Property Owner' => $distBase('property_owner'),
+                'Contractor'     => $distBase('contractor'),
+                'Both'           => $distBase('both'),
+                'Staff'          => $distBase('staff'),
+            ],
+        ];
+    }
+
+    private function getRecentUserActivityFiltered($dateFrom, $dateTo, $search = '', $page = 1, $perPage = 10): array
+    {
+        $like = $search !== '' ? "%{$search}%" : null;
+
+        $recentBids = DB::table('bids')
+            ->join('contractors', 'contractors.contractor_id', '=', 'bids.contractor_id')
+            ->join('property_owners as bid_po', 'contractors.owner_id', '=', 'bid_po.owner_id')
+            ->join('users', 'bid_po.user_id', '=', 'users.user_id')
+            ->select('users.user_id', DB::raw("CONCAT(users.first_name, ' ', users.last_name) as full_name"), 'users.email', 'users.user_type', DB::raw("'Submitted a bid' as action"), 'bids.submitted_at as activity_time', 'bid_po.profile_pic', 'contractors.is_active');
+        if ($dateFrom) $recentBids->where('bids.submitted_at', '>=', $dateFrom);
+        if ($dateTo)   $recentBids->where('bids.submitted_at', '<=', $dateTo . ' 23:59:59');
+        if ($like) $recentBids->where(function ($q) use ($like) {
+            $q->where(DB::raw("CONCAT(users.first_name, ' ', users.last_name)"), 'LIKE', $like)->orWhere('users.email', 'LIKE', $like);
+        });
+
+        $recentProjects = DB::table('project_relationships')
+            ->join('property_owners', 'property_owners.owner_id', '=', 'project_relationships.owner_id')
+            ->join('users', 'users.user_id', '=', 'property_owners.user_id')
+            ->select('users.user_id', DB::raw("CONCAT(users.first_name, ' ', users.last_name) as full_name"), 'users.email', 'users.user_type', DB::raw("'Posted a project' as action"), 'project_relationships.created_at as activity_time', 'property_owners.profile_pic', 'property_owners.is_active');
+        if ($dateFrom) $recentProjects->where('project_relationships.created_at', '>=', $dateFrom);
+        if ($dateTo)   $recentProjects->where('project_relationships.created_at', '<=', $dateTo . ' 23:59:59');
+        if ($like) $recentProjects->where(function ($q) use ($like) {
+            $q->where(DB::raw("CONCAT(users.first_name, ' ', users.last_name)"), 'LIKE', $like)->orWhere('users.email', 'LIKE', $like);
+        });
+
+        $allActivities = collect(
+            DB::query()->fromSub(
+                $recentBids->unionAll($recentProjects),
+                'combined'
+            )->orderByDesc('activity_time')->get()
+        );
+
+        $total   = $allActivities->count();
+        $sliced  = $allActivities->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $items = $sliced->map(function ($a) {
+            $initials = collect(explode(' ', $a->full_name ?? 'U N'))->map(fn($w) => strtoupper(substr($w, 0, 1)))->take(2)->implode('');
+            $timeAgo  = \Carbon\Carbon::parse($a->activity_time)->diffForHumans();
+            $typeLabel = match($a->user_type ?? '') {
+                'property_owner' => 'Property Owner',
+                'contractor'     => 'Contractor',
+                'both'           => 'Both',
+                default          => ucfirst($a->user_type ?? 'User'),
+            };
+            return [
+                'full_name'   => $a->full_name,
+                'email'       => $a->email,
+                'user_type'   => $a->user_type,
+                'type_label'  => $typeLabel,
+                'action'      => $a->action,
+                'time_ago'    => $timeAgo,
+                'is_active'   => (bool) $a->is_active,
+                'initials'    => $initials,
+                'profile_pic' => $a->profile_pic ? asset('storage/' . $a->profile_pic) : null,
+            ];
+        });
+
+        return [
+            'data'         => $items->toArray(),
+            'current_page' => $page,
+            'last_page'    => max(1, (int) ceil($total / $perPage)),
+            'per_page'     => $perPage,
+            'total'        => $total,
+            'from'         => $total > 0 ? (($page - 1) * $perPage) + 1 : 0,
+            'to'           => min($page * $perPage, $total),
+        ];
+    }
+
+    private function getBidCompletionDataFiltered($dateFrom, $dateTo): array
+    {
+        $dc = function ($q, $col = 'submitted_at') use ($dateFrom, $dateTo) {
+            if ($dateFrom) $q->where($col, '>=', $dateFrom);
+            if ($dateTo)   $q->where($col, '<=', $dateTo . ' 23:59:59');
+        };
+
+        $totalProjQ = DB::table('projects')->whereNotIn('project_status', ['deleted', 'deleted_post']);
+        if ($dateFrom) $totalProjQ->where('created_at', '>=', $dateFrom);
+        if ($dateTo)   $totalProjQ->where('created_at', '<=', $dateTo . ' 23:59:59');
+        $totalProjects = $totalProjQ->count();
+
+        // MoM project growth
+        $lastMonth = now()->subMonth();
+        $thisMonthProjects = DB::table('project_relationships')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+        $lastMonthProjects = DB::table('project_relationships')
+            ->whereYear('created_at', $lastMonth->year)
+            ->whereMonth('created_at', $lastMonth->month)
+            ->count();
+        $projectsMoM = $lastMonthProjects > 0
+            ? round((($thisMonthProjects - $lastMonthProjects) / $lastMonthProjects) * 100, 1)
+            : 0;
+
+        // Active contractors — apply date filter
+        $activeContractorsQ = DB::table('contractors')->where('verification_status', 'approved')->where('is_active', 1);
+        if ($dateFrom) $activeContractorsQ->where('created_at', '>=', $dateFrom);
+        if ($dateTo)   $activeContractorsQ->where('created_at', '<=', $dateTo . ' 23:59:59');
+        $activeContractors = $activeContractorsQ->count();
+
+        // Contractor completion rate
+        $totalCompleted = DB::table('contractors')
+            ->where('verification_status', 'approved')
+            ->where('is_active', 1)
+            ->sum('completed_projects');
+        $maxCompleted = DB::table('contractors')->where('is_active', 1)->max('completed_projects') ?: 1;
+        $contractorCompletionRate = $activeContractors > 0
+            ? round(($totalCompleted / ($activeContractors * $maxCompleted)) * 100, 1)
+            : 0;
+
+        $bidsQ = DB::table('bids'); $dc($bidsQ); $totalBids = $bidsQ->count();
+        $accQ  = DB::table('bids')->where('bid_status', 'accepted'); $dc($accQ); $acceptedBids = $accQ->count();
+        $completionRate = $totalBids > 0 ? round(($acceptedBids / $totalBids) * 100, 1) : 0;
+
+        $totalValQ = DB::table('bids')->where('bid_status', 'accepted'); $dc($totalValQ);
+        $totalContractedValue = $totalValQ->sum('proposed_cost');
+        $totalValueM = round($totalContractedValue / 1_000_000, 1);
+
+        // Timeline
+        if ($dateFrom && $dateTo) {
+            $start = \Carbon\Carbon::parse($dateFrom)->startOfMonth();
+            $end   = \Carbon\Carbon::parse($dateTo)->startOfMonth();
+        } else {
+            $start = now()->subMonths(11)->startOfMonth();
+            $end   = now()->startOfMonth();
+        }
+
+        $timelineMonths = $timelineSubmitted = $timelineAccepted = [];
+        $tc = $start->copy();
+        while ($tc <= $end) {
+            $timelineMonths[] = $tc->format('M');
+            $tsQ = DB::table('bids')->whereYear('submitted_at', $tc->year)->whereMonth('submitted_at', $tc->month);
+            $timelineSubmitted[] = $tsQ->count();
+            $taQ = DB::table('bids')->where('bid_status', 'accepted')->whereYear('submitted_at', $tc->year)->whereMonth('submitted_at', $tc->month);
+            $timelineAccepted[] = $taQ->count();
+            $tc->addMonth();
+        }
+
+        // Bid Status Distribution
+        $bidStatusCounts = [];
+        foreach (['accepted' => 'Accepted', 'submitted' => 'Submitted', 'under_review' => 'Under Review', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled'] as $status => $label) {
+            $q = DB::table('bids')->where('bid_status', $status); $dc($q);
+            $cnt = $q->count();
+            if ($cnt > 0) $bidStatusCounts[$label] = $cnt;
+        }
+
+        // Bid metrics
+        $avgBidQ = DB::table('bids'); $dc($avgBidQ);
+        $avgBidValue = $avgBidQ->avg('proposed_cost') ?? 0;
+        $avgBidValueK = round($avgBidValue / 1000, 1);
+
+        $respQ = DB::table('bids')->whereNotNull('decision_date')->whereIn('bid_status', ['accepted', 'rejected']); $dc($respQ);
+        $avgResponseHours = round($respQ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, submitted_at, decision_date)) as avg_hours')->value('avg_hours') ?? 0, 1);
+
+        $bidWinRate = $totalBids > 0 ? round(($acceptedBids / $totalBids) * 100, 1) : 0;
+        $winRateBarWidth = min($bidWinRate, 100);
+        $responseBarWidth = max(0, round(100 - ($avgResponseHours / 72) * 100));
+        $maxBidVal = DB::table('bids')->max('proposed_cost') ?? 1;
+        $avgBidBarWidth = min(round(($avgBidValue / $maxBidVal) * 100), 100);
+
+        // Geographic distribution
+        $districts = ['Tetuan', 'Tumaga', 'Sinunuc', 'Malagutay', 'Baliwasan', 'Upper Calarian'];
+        $geoLabels = $geoCounts = [];
+        foreach ($districts as $district) {
+            $q = DB::table('projects')->whereNotIn('project_status', ['deleted', 'deleted_post'])->where('project_location', 'LIKE', "%{$district}%");
+            if ($dateFrom) $q->where('created_at', '>=', $dateFrom);
+            if ($dateTo)   $q->where('created_at', '<=', $dateTo . ' 23:59:59');
+            $geoLabels[] = $district;
+            $geoCounts[] = $q->count();
+        }
+        $geoLabels[] = 'Others';
+        $geoCounts[] = max(0, $totalProjects - array_sum($geoCounts));
+
+        // Recent bids table
+        $recentBidsQ = DB::table('bids as b')
+            ->join('projects as p', 'p.project_id', '=', 'b.project_id')
+            ->join('contractors as c', 'c.contractor_id', '=', 'b.contractor_id')
+            ->join('property_owners as bid_c_po', 'c.owner_id', '=', 'bid_c_po.owner_id')
+            ->join('users as bid_c_u', 'bid_c_po.user_id', '=', 'bid_c_u.user_id')
+            ->select(
+                'b.bid_id', 'b.proposed_cost', 'b.bid_status', 'b.submitted_at',
+                'p.project_title', 'p.project_location',
+                'c.company_name', 'c.company_logo',
+                DB::raw("CONCAT(bid_c_u.first_name, ' ', bid_c_u.last_name) as rep_name"),
+                DB::raw("UPPER(LEFT(c.company_name, 2)) as initials")
+            );
+        $dc($recentBidsQ, 'b.submitted_at');
+        $recentBids = $recentBidsQ->orderByDesc('b.submitted_at')->limit(10)->get()->map(function ($b) {
+            return [
+                'bid_id'           => $b->bid_id,
+                'proposed_cost'    => $b->proposed_cost,
+                'bid_status'       => $b->bid_status,
+                'submitted_at'     => $b->submitted_at,
+                'submitted_ago'    => \Carbon\Carbon::parse($b->submitted_at)->diffForHumans(),
+                'project_title'    => $b->project_title,
+                'project_location' => $b->project_location,
+                'company_name'     => $b->company_name,
+                'company_logo'     => $b->company_logo ? asset('storage/' . $b->company_logo) : null,
+                'rep_name'         => $b->rep_name,
+                'initials'         => $b->initials,
+            ];
+        });
+
+        // Owner activity
+        $ownerActQ = DB::table('bids as b')
+            ->join('projects as p', 'p.project_id', '=', 'b.project_id')
+            ->join('contractors as c', 'c.contractor_id', '=', 'b.contractor_id')
+            ->select('p.project_title', 'p.project_location', 'c.company_name', 'b.proposed_cost', 'b.bid_status')
+            ->whereIn('b.bid_status', ['accepted', 'submitted', 'under_review']);
+        $dc($ownerActQ, 'b.submitted_at');
+        $ownerActivity = $ownerActQ->orderByDesc('b.submitted_at')->limit(6)->get();
+
+        // Payment analytics
+        $pmQ1 = DB::table('milestone_payments')->where('payment_status', 'approved');
+        if ($dateFrom) $pmQ1->where('transaction_date', '>=', $dateFrom);
+        if ($dateTo)   $pmQ1->where('transaction_date', '<=', $dateTo . ' 23:59:59');
+        $paymentsReleasedM = round($pmQ1->sum('amount') / 1_000_000, 1);
+
+        $pendingPaymentsQ = DB::table('milestone_payments')->where('payment_status', 'submitted');
+        if ($dateFrom) $pendingPaymentsQ->where('transaction_date', '>=', $dateFrom);
+        if ($dateTo)   $pendingPaymentsQ->where('transaction_date', '<=', $dateTo . ' 23:59:59');
+        $pendingPaymentsM = round($pendingPaymentsQ->sum('amount') / 1_000_000, 1);
+
+        $avgPayDaysQ = DB::table('milestone_payments')->where('payment_status', 'approved')->whereNotNull('updated_at');
+        if ($dateFrom) $avgPayDaysQ->where('transaction_date', '>=', $dateFrom);
+        if ($dateTo)   $avgPayDaysQ->where('transaction_date', '<=', $dateTo . ' 23:59:59');
+        $avgPaymentDays = round($avgPayDaysQ->selectRaw('AVG(DATEDIFF(updated_at, transaction_date)) as avg_days')->value('avg_days') ?? 0, 1);
+
+        $approvedPaymentsQ = DB::table('milestone_payments')->where('payment_status', 'approved');
+        if ($dateFrom) $approvedPaymentsQ->where('transaction_date', '>=', $dateFrom);
+        if ($dateTo)   $approvedPaymentsQ->where('transaction_date', '<=', $dateTo . ' 23:59:59');
+        $approvedPayments = $approvedPaymentsQ->count();
+
+        $rejectedPaymentsQ = DB::table('milestone_payments')->where('payment_status', 'rejected');
+        if ($dateFrom) $rejectedPaymentsQ->where('transaction_date', '>=', $dateFrom);
+        if ($dateTo)   $rejectedPaymentsQ->where('transaction_date', '<=', $dateTo . ' 23:59:59');
+        $rejectedPayments = $rejectedPaymentsQ->count();
+
+        $paymentSuccessRate = ($approvedPayments + $rejectedPayments) > 0
+            ? round(($approvedPayments / ($approvedPayments + $rejectedPayments)) * 100, 1) : 0;
+
+        // MoM completion rate change
+        $thisMonthBids     = DB::table('bids')->whereYear('submitted_at', now()->year)->whereMonth('submitted_at', now()->month)->count();
+        $thisMonthAccepted = DB::table('bids')->where('bid_status', 'accepted')->whereYear('submitted_at', now()->year)->whereMonth('submitted_at', now()->month)->count();
+        $lastMonthBids     = DB::table('bids')->whereYear('submitted_at', $lastMonth->year)->whereMonth('submitted_at', $lastMonth->month)->count();
+        $lastMonthAccepted = DB::table('bids')->where('bid_status', 'accepted')->whereYear('submitted_at', $lastMonth->year)->whereMonth('submitted_at', $lastMonth->month)->count();
+        $thisRate = $thisMonthBids > 0 ? ($thisMonthAccepted / $thisMonthBids) * 100 : 0;
+        $lastRate = $lastMonthBids > 0 ? ($lastMonthAccepted / $lastMonthBids) * 100 : 0;
+        $completionRateMoM = $lastRate > 0 ? round($thisRate - $lastRate, 1) : 0;
+
+        // Four districts
+        $fourDistrictNames = ['Tetuan', 'Tumaga', 'Malagutay', 'Others'];
+        $fourDistricts = [];
+        foreach ($fourDistrictNames as $name) {
+            if ($name === 'Others') {
+                $idx = array_search('Others', $geoLabels);
+                $fourDistricts[$name] = ['count' => $idx !== false ? $geoCounts[$idx] : 0, 'value' => 0];
+            } else {
+                $idx = array_search($name, $geoLabels);
+                $count = $idx !== false ? $geoCounts[$idx] : 0;
+                $valQ = DB::table('projects')->whereNotIn('project_status', ['deleted', 'deleted_post'])->where('project_location', 'LIKE', "%{$name}%");
+                if ($dateFrom) $valQ->where('created_at', '>=', $dateFrom);
+                if ($dateTo)   $valQ->where('created_at', '<=', $dateTo . ' 23:59:59');
+                $value = DB::table('bids')->where('bid_status', 'accepted')
+                    ->whereIn('project_id', $valQ->select('project_id'))
+                    ->sum('proposed_cost');
+                $fourDistricts[$name] = ['count' => $count, 'value' => round($value / 1_000_000, 1)];
+            }
+        }
+
+        return [
+            'totalProjects'           => $totalProjects,
+            'projectsMoM'             => $projectsMoM,
+            'activeContractors'       => $activeContractors,
+            'contractorCompletionRate'=> $contractorCompletionRate,
+            'totalBids'               => $totalBids,
+            'totalValueM'             => $totalValueM,
+            'completionRate'          => $completionRate,
+            'completionRateMoM'       => $completionRateMoM,
+            'timelineMonths'          => $timelineMonths,
+            'timelineSubmitted'       => $timelineSubmitted,
+            'timelineAccepted'        => $timelineAccepted,
+            'bidStatusCounts'         => $bidStatusCounts,
+            'avgBidValueK'            => $avgBidValueK,
+            'avgResponseHours'        => $avgResponseHours,
+            'bidWinRate'              => $bidWinRate,
+            'avgBidBarWidth'          => $avgBidBarWidth,
+            'responseBarWidth'        => $responseBarWidth,
+            'winRateBarWidth'         => $winRateBarWidth,
+            'geoLabels'               => $geoLabels,
+            'geoCounts'               => $geoCounts,
+            'fourDistricts'           => $fourDistricts,
+            'recentBids'              => $recentBids,
+            'ownerActivity'           => $ownerActivity,
+            'paymentsReleasedM'       => $paymentsReleasedM,
+            'pendingPaymentsM'        => $pendingPaymentsM,
+            'avgPaymentDays'          => $avgPaymentDays,
+            'paymentSuccessRate'      => $paymentSuccessRate,
+        ];
+    }
 }
 

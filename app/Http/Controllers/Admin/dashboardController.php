@@ -179,12 +179,22 @@ class dashboardController extends authController
     private function mapProjectStatus($status)
     {
         switch ($status) {
-            case 'on_bid':
-                return 'On Bid';
+            case 'open':
+                return 'Open';
+            case 'bidding_closed':
+                return 'Bidding Closed';
             case 'in_progress':
                 return 'In Progress';
             case 'completed':
                 return 'Completed';
+            case 'terminated':
+                return 'Terminated';
+            case 'deleted_post':
+                return 'Deleted Post';
+            case 'halt':
+                return 'Halt';
+            case 'deleted':
+                return 'Deleted';
             default:
                 return ucfirst(str_replace('_', ' ', $status));
         }

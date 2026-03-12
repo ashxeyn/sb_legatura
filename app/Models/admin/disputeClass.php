@@ -333,7 +333,7 @@ class disputeClass
             'content' => [
                 'subject' => $subject,
                 'dispute_desc' => $dispute->dispute_desc ?? null,
-                'requested_action' => $dispute->reason ?? null
+                'requested_action' => $dispute->requested_action ?? null
             ],
             'initial_proofs' => $initialProofs,
             'resubmissions' => $resubmissions,

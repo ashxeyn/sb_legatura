@@ -784,7 +784,18 @@
                         return;
                     }
                     const status = (row.dataset.status || "").toLowerCase();
-                    row.style.display = status === filter ? "" : "none";
+                    // Map filter tab values to actual DB status values
+                    let matches = false;
+                    if (filter === "pending") {
+                        matches = status === "open" || status === "pending";
+                    } else if (filter === "disputes") {
+                        matches = status === "under_review" || status === "escalated";
+                    } else if (filter === "resolved") {
+                        matches = status === "resolved";
+                    } else {
+                        matches = status === filter;
+                    }
+                    row.style.display = matches ? "" : "none";
                 });
             });
         });

@@ -611,6 +611,14 @@ Route::get('/admin/analytics/project-performance', [analyticsController::class, 
 Route::get('/admin/analytics/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('admin.analytics.bidCompletion');
 Route::get('/admin/analytics/reports', [analyticsController::class, 'reportsAnalytics'])->name('admin.analytics.reports');
 
+// Analytics AJAX date-filter endpoints
+Route::get('/admin/analytics/project-data', [analyticsController::class, 'getProjectAnalyticsData'])->name('admin.analytics.projectData');
+Route::get('/admin/analytics/top-contractors-data', [analyticsController::class, 'getTopContractorsData'])->name('admin.analytics.topContractorsData');
+Route::get('/admin/analytics/subscription-data', [analyticsController::class, 'getSubscriptionAnalyticsData'])->name('admin.analytics.subscriptionData');
+Route::get('/admin/analytics/user-data', [analyticsController::class, 'getUserAnalyticsData'])->name('admin.analytics.userData');
+Route::get('/admin/analytics/user-activity-feed', [analyticsController::class, 'getUserActivityFeedData'])->name('admin.analytics.userActivityFeed');
+Route::get('/admin/analytics/bid-data', [analyticsController::class, 'getBidAnalyticsData'])->name('admin.analytics.bidData');
+
 // User Management Routes
 Route::get('/admin/user-management/property-owners', [userManagementController::class, 'propertyOwners'])->name('admin.userManagement.propertyOwner');
 Route::post('/admin/user-management/property-owners/store', [userManagementController::class, 'addPropertyOwner'])->name('admin.userManagement.propertyOwner.store');
@@ -690,6 +698,7 @@ Route::post('/admin/project-management/showcase-management/{id}/delete', [projec
 Route::post('/admin/project-management/showcase-management/{id}/restore', [projectManagementController::class, 'restoreShowcase'])->name('admin.projectManagement.restoreShowcase');
 Route::get('/admin/progress-feed', [\App\Http\Controllers\Admin\progressFeedController::class, 'index'])->name('admin.progressFeed');
 Route::get('/admin/progress-feed/data', [\App\Http\Controllers\Admin\progressFeedController::class, 'fetch'])->name('admin.progressFeed.fetch');
+Route::get('/admin/progress-feed/contractors', [\App\Http\Controllers\Admin\progressFeedController::class, 'contractors'])->name('admin.progressFeed.contractors');
 
 // Admin Messages API (Session-based for web dashboard)
 Route::prefix('admin/messages')->group(function () {

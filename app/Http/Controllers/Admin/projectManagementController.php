@@ -101,7 +101,7 @@ class projectManagementController extends Controller
         // if AJAX request, return partial HTML for the table and pagination
         if ($request->ajax()) {
             $table = view('admin.projectManagement.partials.disputeTable', compact('disputes'))->render();
-            $links = $disputes->links()->render();
+            $links = $disputes->links()->toHtml();
             return response()->json(['table' => $table, 'links' => $links]);
         }
 
@@ -113,7 +113,11 @@ class projectManagementController extends Controller
             'totalReports' => $totalReports,
             'pendingCount' => $pendingCount,
             'activeCount' => $activeCount,
-            'resolvedCount' => $resolvedCount
+            'resolvedCount' => $resolvedCount,
+            'pendingPercent' => $pendingPercent,
+            'activePercent' => $activePercent,
+            'resolvedPercent' => $resolvedPercent,
+            'totalChangePercent' => $totalChangePercent,
         ]);
     }
 
