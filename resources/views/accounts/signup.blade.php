@@ -3,11 +3,11 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>{{ isset($isSwitchMode) && $isSwitchMode ? 'Switch Role' : 'Sign Up' }} - Legatura</title>
+	<title>{{ isset($isSwitchMode) && $isSwitchMode ? 'Add Company' : 'Sign Up' }} - Legatura</title>
 	<meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
-	<h1>{{ isset($isSwitchMode) && $isSwitchMode ? 'Switch Role' : 'Sign Up' }}</h1>
+	<h1>{{ isset($isSwitchMode) && $isSwitchMode ? 'Add Company' : 'Sign Up' }}</h1>
 	@if(isset($isSwitchMode) && $isSwitchMode)
 		<p>Add {{ $currentRole === 'contractor' ? 'Property Owner' : 'Contractor' }} role to your account</p>
 	@endif
@@ -138,7 +138,7 @@
 			<div>
 				<label for="c_first_name">First Name *</label>
 				<input type="text" id="c_first_name" name="first_name"
-					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['property_owner']) ? $existingData['property_owner']->first_name : '' }}"
+					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['property_owner']) ? ($existingData['user']->first_name ?? '') : '' }}"
 					{{ isset($isSwitchMode) && $isSwitchMode ? 'readonly' : '' }}
 					required maxlength="100">
 				@if(isset($isSwitchMode) && $isSwitchMode)
@@ -149,7 +149,7 @@
 			<div>
 				<label for="c_middle_name">Middle Name (Optional)</label>
 				<input type="text" id="c_middle_name" name="middle_name"
-					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['property_owner']) ? $existingData['property_owner']->middle_name : '' }}"
+					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['property_owner']) ? ($existingData['user']->middle_name ?? '') : '' }}"
 					{{ isset($isSwitchMode) && $isSwitchMode ? 'readonly' : '' }}
 					maxlength="100">
 				@if(isset($isSwitchMode) && $isSwitchMode)
@@ -160,7 +160,7 @@
 			<div>
 				<label for="c_last_name">Last Name *</label>
 				<input type="text" id="c_last_name" name="last_name"
-					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['property_owner']) ? $existingData['property_owner']->last_name : '' }}"
+					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['property_owner']) ? ($existingData['user']->last_name ?? '') : '' }}"
 					{{ isset($isSwitchMode) && $isSwitchMode ? 'readonly' : '' }}
 					required maxlength="100">
 				@if(isset($isSwitchMode) && $isSwitchMode)
@@ -312,7 +312,7 @@
 			<div>
 				<label for="o_first_name">First Name *</label>
 				<input type="text" id="o_first_name" name="first_name"
-					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['contractor_user']) ? $existingData['contractor_user']->authorized_rep_fname : '' }}"
+					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['contractor_user']) ? ($existingData['user']->first_name ?? '') : '' }}"
 					{{ isset($isSwitchMode) && $isSwitchMode ? 'readonly' : '' }}
 					required maxlength="100">
 				@if(isset($isSwitchMode) && $isSwitchMode)
@@ -323,7 +323,7 @@
 			<div>
 				<label for="o_middle_name">Middle Name (Optional)</label>
 				<input type="text" id="o_middle_name" name="middle_name"
-					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['contractor_user']) ? $existingData['contractor_user']->authorized_rep_mname : '' }}"
+					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['contractor_user']) ? ($existingData['user']->middle_name ?? '') : '' }}"
 					{{ isset($isSwitchMode) && $isSwitchMode ? 'readonly' : '' }}
 					maxlength="100">
 				@if(isset($isSwitchMode) && $isSwitchMode)
@@ -334,7 +334,7 @@
 			<div>
 				<label for="o_last_name">Last Name *</label>
 				<input type="text" id="o_last_name" name="last_name"
-					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['contractor_user']) ? $existingData['contractor_user']->authorized_rep_lname : '' }}"
+					value="{{ isset($isSwitchMode) && $isSwitchMode && isset($existingData['contractor_user']) ? ($existingData['user']->last_name ?? '') : '' }}"
 					{{ isset($isSwitchMode) && $isSwitchMode ? 'readonly' : '' }}
 					required maxlength="100">
 				@if(isset($isSwitchMode) && $isSwitchMode)

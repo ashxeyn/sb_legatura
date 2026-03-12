@@ -278,6 +278,11 @@ class milestoneController extends Controller
             return response()->json(['success' => false, 'message' => 'User ID is required.'], 400);
         }
 
+        $authError = $this->authService->validateMilestoneAccess((int) $userId);
+        if ($authError) {
+            return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'UNAUTHORIZED_MILESTONE'], 403);
+        }
+
         $contractor = $this->authService->getContractorForUser($userId);
         if (!$contractor) {
             return response()->json(['success' => false, 'message' => 'Contractor not found.'], 404);
@@ -306,6 +311,11 @@ class milestoneController extends Controller
         $userId = $request->input('user_id');
         if (!$userId) {
             return response()->json(['success' => false, 'message' => 'User ID is required.'], 400);
+        }
+
+        $authError = $this->authService->validateMilestoneAccess((int) $userId);
+        if ($authError) {
+            return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'UNAUTHORIZED_MILESTONE'], 403);
         }
 
         $contractor = $this->authService->getContractorForUser($userId);
@@ -435,16 +445,18 @@ class milestoneController extends Controller
         // Notify the contractor about the settlement deadline
         if ($item->selected_contractor_id) {
             $contractorUserId = \DB::table('contractors')
-                ->where('contractor_id', $item->selected_contractor_id)
-                ->value('user_id');
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('contractors.contractor_id', $item->selected_contractor_id)
+                ->value('property_owners.user_id');
 
             if (!$contractorUserId) {
-                // Try contractor_users (staff)
-                $contractorUserId = \DB::table('contractor_users')
-                    ->where('contractor_id', $item->selected_contractor_id)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->value('user_id');
+                // Try contractor_staff (team member)
+                $contractorUserId = \DB::table('contractor_staff')
+                    ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+                    ->where('contractor_staff.contractor_id', $item->selected_contractor_id)
+                    ->where('contractor_staff.is_active', 1)
+                    ->whereNull('contractor_staff.deletion_reason')
+                    ->value('property_owners.user_id');
             }
 
             if ($contractorUserId) {
@@ -489,15 +501,28 @@ class milestoneController extends Controller
             return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
         }
 
-        // Only contractor or both-as-contractor
-        if (!in_array($user->user_type, ['contractor', 'both'])) {
+        $memberContext = $this->authService->getMemberContext((int) $user->user_id);
+        $isContractorUser = in_array($user->user_type, ['contractor', 'both', 'staff']) || $memberContext !== null;
+
+        if (!$isContractorUser) {
             return response()->json(['success' => false, 'message' => 'Access denied. Only contractors can approve payments.'], 403);
         }
-        if ($user->user_type === 'both') {
+
+        $currentRole = Session::get('current_role', $user->preferred_role ?? null);
+        if (($user->user_type === 'both' || ($memberContext && $user->user_type === 'property_owner')) && $currentRole && $currentRole !== 'contractor') {
+            return response()->json(['success' => false, 'message' => 'Please switch to contractor role.'], 403);
+        }
+
+        if ($user->user_type === 'both' && !$currentRole) {
             $currentRole = Session::get('current_role', $user->preferred_role ?? 'contractor');
             if ($currentRole !== 'contractor') {
                 return response()->json(['success' => false, 'message' => 'Please switch to contractor role.'], 403);
             }
+        }
+
+        $authError = $this->authService->validatePaymentApprovalAccess((int) $user->user_id);
+        if ($authError) {
+            return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'UNAUTHORIZED_PAYMENT_APPROVAL'], 403);
         }
 
         $contractor = $this->milestoneService->resolveContractor((int) $user->user_id);
@@ -527,15 +552,28 @@ class milestoneController extends Controller
             return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
         }
 
-        // Only contractor or both-as-contractor
-        if (!in_array($user->user_type, ['contractor', 'both'])) {
+        $memberContext = $this->authService->getMemberContext((int) $user->user_id);
+        $isContractorUser = in_array($user->user_type, ['contractor', 'both', 'staff']) || $memberContext !== null;
+
+        if (!$isContractorUser) {
             return response()->json(['success' => false, 'message' => 'Access denied. Only contractors can reject payments.'], 403);
         }
-        if ($user->user_type === 'both') {
+
+        $currentRole = Session::get('current_role', $user->preferred_role ?? null);
+        if (($user->user_type === 'both' || ($memberContext && $user->user_type === 'property_owner')) && $currentRole && $currentRole !== 'contractor') {
+            return response()->json(['success' => false, 'message' => 'Please switch to contractor role.'], 403);
+        }
+
+        if ($user->user_type === 'both' && !$currentRole) {
             $currentRole = Session::get('current_role', $user->preferred_role ?? 'contractor');
             if ($currentRole !== 'contractor') {
                 return response()->json(['success' => false, 'message' => 'Please switch to contractor role.'], 403);
             }
+        }
+
+        $authError = $this->authService->validatePaymentApprovalAccess((int) $user->user_id);
+        if ($authError) {
+            return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'UNAUTHORIZED_PAYMENT_APPROVAL'], 403);
         }
 
         $request->validate([
@@ -571,6 +609,16 @@ class milestoneController extends Controller
             return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
         }
 
+        if (in_array($user->user_type, ['contractor', 'both'])) {
+            $currentRole = Session::get('current_role', $user->preferred_role ?? 'contractor');
+            if ($user->user_type !== 'both' || $currentRole === 'contractor') {
+                $authError = $this->authService->validateFinancialAccess((int) $user->user_id);
+                if ($authError) {
+                    return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'UNAUTHORIZED_FINANCIAL_ACCESS'], 403);
+                }
+            }
+        }
+
         $summary = $this->milestoneService->getItemPaymentSummary($itemId);
         if (isset($summary['error'])) {
             return response()->json(['success' => false, 'message' => $summary['error']], 404);
@@ -594,8 +642,9 @@ class milestoneController extends Controller
 
         $histories = DB::table('milestone_date_histories as h')
             ->leftJoin('project_updates as pu', 'h.extension_id', '=', 'pu.extension_id')
+            ->leftJoin('users as u_h', 'h.changed_by', '=', 'u_h.user_id')
             ->leftJoin('property_owners as po_h', 'h.changed_by', '=', 'po_h.user_id')
-            ->leftJoin('contractors as c_h', 'h.changed_by', '=', 'c_h.user_id')
+            ->leftJoin('contractors as c_h', 'po_h.owner_id', '=', 'c_h.owner_id')
             ->where('h.item_id', $itemId)
             ->orderBy('h.changed_at', 'asc')
             ->select(
@@ -608,7 +657,7 @@ class milestoneController extends Controller
                 'h.change_reason',
                 'pu.reason as extension_reason',
                 'pu.status as extension_status',
-                DB::raw("COALESCE(CONCAT(po_h.first_name, ' ', po_h.last_name), c_h.company_name) as changed_by_name")
+                DB::raw("COALESCE(CONCAT(u_h.first_name, ' ', u_h.last_name), c_h.company_name) as changed_by_name")
             )
             ->get();
 

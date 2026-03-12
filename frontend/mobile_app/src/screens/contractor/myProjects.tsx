@@ -128,6 +128,7 @@ interface MyProjectsProps {
     user_id?: number;
     username?: string;
   };
+  initialProjects?: Project[];
   onClose: () => void;
   initialAction?: {
     type: 'milestone_setup' | 'project_timeline' | 'project_detail';
@@ -137,10 +138,35 @@ interface MyProjectsProps {
   } | null;
 }
 
-export default function MyProjects({ userData, onClose, initialAction }: MyProjectsProps) {
+const normalizeProjectsForDisplay = (projectsArray: Project[]): Project[] => {
+  return projectsArray.map((project: Project) => {
+    const status = (project.project_status || '').toLowerCase();
+    const hasMilestones = typeof project.milestones_count === 'number'
+      ? project.milestones_count > 0
+      : Array.isArray(project.milestones) && project.milestones.length > 0;
+
+    if (status === 'completed') {
+      project.display_status = 'completed';
+    } else if (status === 'halt' || status === 'halted' || status === 'on_hold') {
+      project.display_status = 'on_hold';
+    } else if (!project.display_status || project.display_status === '') {
+      if (!hasMilestones) {
+        project.display_status = 'waiting_milestone_setup';
+      } else if (status === 'in_progress') {
+        project.display_status = 'in_progress';
+      } else {
+        project.display_status = status || 'pending';
+      }
+    }
+
+    return project;
+  });
+};
+
+export default function MyProjects({ userData, initialProjects = [], onClose, initialAction }: MyProjectsProps) {
   const insets = useSafeAreaInsets();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>(normalizeProjectsForDisplay(initialProjects));
+  const [isLoading, setIsLoading] = useState(initialProjects.length === 0);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
@@ -192,6 +218,14 @@ export default function MyProjects({ userData, onClose, initialAction }: MyProje
     fetchProjects();
   }, [userData?.user_id]);
 
+  // Keep local list in sync when parent dashboard already has fresh projects.
+  useEffect(() => {
+    if (Array.isArray(initialProjects) && initialProjects.length > 0) {
+      setProjects(normalizeProjectsForDisplay(initialProjects));
+      setIsLoading(false);
+    }
+  }, [initialProjects]);
+
   // Process initialAction once projects are loaded
   useEffect(() => {
     if (!initialAction || initialActionProcessed || isLoading || projects.length === 0) return;
@@ -222,7 +256,9 @@ export default function MyProjects({ userData, onClose, initialAction }: MyProje
     }
 
     try {
-      setIsLoading(true);
+      if (projects.length === 0) {
+        setIsLoading(true);
+      }
       setError(null);
 
       const response = await projects_service.get_contractor_projects(userData.user_id);
@@ -232,29 +268,7 @@ export default function MyProjects({ userData, onClose, initialAction }: MyProje
         const projectsData = backendResponse?.data || backendResponse || [];
         const projectsArray = Array.isArray(projectsData) ? projectsData : [];
 
-        // Normalize display_status for each project based on true backend status.
-        // project_status (completed / halt) always wins regardless of what the backend set.
-        const normalizedProjects = projectsArray.map((project: Project) => {
-          const status = (project.project_status || '').toLowerCase();
-          const hasMilestones = typeof project.milestones_count === 'number' ? project.milestones_count > 0 : Array.isArray(project.milestones) && project.milestones.length > 0;
-
-          // Hard overrides — these always take priority
-          if (status === 'completed') {
-            project.display_status = 'completed';
-          } else if (status === 'halt' || status === 'halted' || status === 'on_hold') {
-            project.display_status = 'on_hold';
-          } else if (!project.display_status || project.display_status === '') {
-            // Only fill in display_status when the backend didn't provide one
-            if (!hasMilestones) {
-              project.display_status = 'waiting_milestone_setup';
-            } else if (status === 'in_progress') {
-              project.display_status = 'in_progress';
-            } else {
-              project.display_status = status || 'pending';
-            }
-          }
-          return project;
-        });
+        const normalizedProjects = normalizeProjectsForDisplay(projectsArray);
 
         setProjects(normalizedProjects);
       } else {

@@ -189,15 +189,19 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
     ? Math.round((overview.completed_milestones / overview.total_milestones) * 100)
     : 0;
 
-  const effectiveTotalPaid =
-    overview.total_paid +
-    (overview.payment_mode === 'downpayment' && overview.downpayment_cleared
-      ? overview.downpayment
-      : 0);
-
   const budgetUtilization = overview.current_budget > 0
-    ? Math.round((effectiveTotalPaid / overview.current_budget) * 100)
+    ? Math.round((overview.total_paid / overview.current_budget) * 100)
     : 0;
+
+    const formatUploaderRole = (role?: string | null) => {
+      if (!role) return '';
+      return role
+        .replace(/_/g, ' ')
+        .split(' ')
+        .filter(Boolean)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+    };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -531,6 +535,11 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
                     <View style={{ flex: 1 }}>
                       <Text style={styles.reportTitle}>{pr.report_title || 'Progress Report'}</Text>
                       <Text style={styles.reportMilestone}>{pr.milestone}</Text>
+                      {!!pr.uploader_name && (
+                        <Text style={styles.reportUploaderText}>
+                          {`Uploaded by: ${pr.uploader_name}${pr.uploader_role ? ` (${formatUploaderRole(pr.uploader_role)})` : ''}`}
+                        </Text>
+                      )}
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <View style={[styles.statusBadge, { backgroundColor: statusColor(pr.status).bg }]}>
@@ -710,6 +719,7 @@ const styles = StyleSheet.create({
   reportRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.borderLight, paddingVertical: 8, alignItems: 'center' },
   reportTitle: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   reportMilestone: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
+  reportUploaderText: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
   reportDate: { fontSize: 10, color: COLORS.textMuted, marginTop: 4 },
 
   // Footer

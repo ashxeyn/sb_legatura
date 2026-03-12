@@ -20,6 +20,9 @@ interface Progress {
   purpose: string;
   progress_status: 'submitted' | 'approved' | 'rejected' | 'deleted';
   submitted_at: string;
+  uploader_user_id?: number;
+  uploader_name?: string;
+  uploaded_by_staff?: number;
   files?: ProgressFile[];
 }
 

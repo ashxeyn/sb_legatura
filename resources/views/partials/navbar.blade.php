@@ -173,8 +173,8 @@
                             <i class="fi fi-rr-refresh"></i>
                         </div>
                         <div class="account-settings-item-content">
-                            <span class="account-settings-item-title">Switch to Contractor Account</span>
-                            <span class="account-settings-item-subtitle">Change your account type</span>
+                            <span class="account-settings-item-title">Add Company</span>
+                            <span class="account-settings-item-subtitle">Register or manage your company</span>
                         </div>
                     </div>
                     <i class="fi fi-rr-angle-right account-settings-arrow"></i>

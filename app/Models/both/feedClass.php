@@ -24,7 +24,7 @@ class feedClass
      *
      * Rules
      * ─────
-     *  • contractor_users.is_active = 1
+     *  • contractor_staff.is_active = 1
      *  • contractors.verification_status = 'approved'
      *  • Optionally exclude a user_id (so "both" users don't see themselves)
      *  • Ordered newest-first
@@ -468,7 +468,7 @@ class feedClass
                 'project_relationships.project_post_status',
                 'project_relationships.bidding_due as bidding_deadline',
                 'project_relationships.created_at',
-                DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
+                DB::raw("CONCAT(users.first_name, ' ', COALESCE(users.middle_name, ''), ' ', users.last_name) as owner_name"),
                 'property_owners.profile_pic as owner_profile_pic',
                 'property_owners.user_id as owner_user_id'
             )

@@ -40,6 +40,49 @@ class profileController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid user context'], 400);
         }
 
+        $activeRole = strtolower(trim((string)(
+            $request->query('role') ??
+            $request->input('active_role') ??
+            session('preferred_role') ??
+            ''
+        )));
+        $isContractorRole = str_contains($activeRole, 'contractor');
+        $isOwnerRole = !$isContractorRole;
+
+        $contractorProfileKeys = [
+            'company_name','company_email','years_of_experience','type_id','contractor_type_other',
+            'company_description','company_start_date','services_offered','business_address','company_website',
+            'company_social_media','picab_number','picab_category','picab_expiration_date','business_permit_number',
+            'business_permit_city','business_permit_expiration','tin_business_reg_number'
+        ];
+
+        $isCompanyProfileMutation = $request->hasFile('company_logo')
+            || $request->hasFile('company_banner')
+            || ($isContractorRole && $request->exists('bio'));
+        foreach ($contractorProfileKeys as $key) {
+            if ($request->exists($key)) {
+                $isCompanyProfileMutation = true;
+                break;
+            }
+        }
+
+        $canManageCompanyProfile = true;
+        if ($isContractorRole) {
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateCompanyProfileAccess((int) $userId);
+            if ($authError) {
+                $canManageCompanyProfile = false;
+            }
+        }
+
+        if (!$canManageCompanyProfile && $isCompanyProfileMutation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only the owner or representative can manage company profile data.',
+                'error_code' => 'UNAUTHORIZED_COMPANY_PROFILE'
+            ], 403);
+        }
+
         // After successful profile update, call:
         // UserActivityLogger::profileUpdated($userId, 'profile');
         // For email change: UserActivityLogger::profileUpdated($userId, 'email');
@@ -65,17 +108,9 @@ class profileController extends Controller
                 $file = $request->file('profile_pic');
                 $filename = time() . '_profile_' . $file->getClientOriginalName();
                 $path = $file->storeAs('profiles', $filename, 'public');
-                try {
-                    if (Schema::hasColumn('users', 'profile_pic')) {
-                        DB::table('users')->where('user_id', $userId)->update(['profile_pic' => $path]);
-                    } elseif (Schema::hasColumn('property_owners', 'profile_pic')) {
-                        DB::table('property_owners')->where('user_id', $userId)->update(['profile_pic' => $path]);
-                    } else {
-                        Log::warning('profileController.update: no profile_pic column found to update for user_id ' . $userId);
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('profileController.update profile_pic update failed: ' . $e->getMessage());
-                }
+                DB::table('users')->where('user_id', $userId)->update(['profile_pic' => $path]);
+                // Keep property_owners in sync
+                DB::table('property_owners')->where('user_id', $userId)->update(['profile_pic' => $path]);
                 \Log::info('profileController.update stored profile_pic', ['user_id' => $userId, 'path' => $path]);
             }
             // Handle cover photo upload if present
@@ -83,17 +118,9 @@ class profileController extends Controller
                 $file = $request->file('cover_photo');
                 $filename = time() . '_cover_' . $file->getClientOriginalName();
                 $path = $file->storeAs('cover_photos', $filename, 'public');
-                try {
-                    if (Schema::hasColumn('users', 'cover_photo')) {
-                        DB::table('users')->where('user_id', $userId)->update(['cover_photo' => $path]);
-                    } elseif (Schema::hasColumn('property_owners', 'cover_photo')) {
-                        DB::table('property_owners')->where('user_id', $userId)->update(['cover_photo' => $path]);
-                    } else {
-                        Log::warning('profileController.update: no cover_photo column found to update for user_id ' . $userId);
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('profileController.update cover_photo update failed: ' . $e->getMessage());
-                }
+                DB::table('users')->where('user_id', $userId)->update(['cover_photo' => $path]);
+                // Keep property_owners in sync
+                DB::table('property_owners')->where('user_id', $userId)->update(['cover_photo' => $path]);
                 \Log::info('profileController.update stored cover_photo', ['user_id' => $userId, 'path' => $path]);
             }
 
@@ -183,16 +210,7 @@ class profileController extends Controller
                 DB::table('users')->where('user_id', $userId)->update($userPayload + ['updated_at' => now()]);
             }
 
-            // Resolve active role from request so bio (and future role-specific fields) only go to the right table.
-            // The frontend always sends active_role (e.g. 'owner' or 'contractor') via query param or request body.
-            $activeRole = strtolower(trim((string)(
-                $request->query('role') ??
-                $request->input('active_role') ??
-                session('preferred_role') ??
-                ''
-            )));
-            $isContractorRole = str_contains($activeRole, 'contractor');
-            $isOwnerRole = !$isContractorRole; // default to owner when role is unknown
+            // Active role is resolved once at the top of this method and reused below.
 
             // If the frontend submitted a bio and the schema stores bio on `users`,
             // prefer saving property owner bio to `users` table (owner-specific behavior).
@@ -280,7 +298,7 @@ class profileController extends Controller
             // Resolve contractor in a schema-agnostic way to avoid direct `contractors.user_id` queries
             $contractor = $this->getContractorForUser($userId);
             $contractorKeys = [
-                'company_name','company_phone','company_email','years_of_experience','type_id','contractor_type_other',
+                'company_name','company_email','years_of_experience','type_id','contractor_type_other',
                 'company_description','company_start_date',
                 'services_offered','business_address','company_website','company_social_media',
                 'picab_number','picab_category','picab_expiration_date','business_permit_number',
@@ -312,7 +330,7 @@ class profileController extends Controller
                 }
             }
 
-            if ($hasContractorPayload && $contractor) {
+            if ($hasContractorPayload && $contractor && $canManageCompanyProfile) {
                 // Only write bio to contractors when the active role is contractor
                 if ($isContractorRole && $request->exists('bio')) {
                     if (Schema::hasColumn('contractors', 'bio')) {
@@ -544,46 +562,14 @@ class profileController extends Controller
         // Resolve contractor row in a schema-agnostic way (avoid direct contractors.user_id queries)
         $contractorRow = $this->getContractorForUser($userId);
 
-        // Staff users are linked to a contractor via contractor_users, not directly in contractors.
-            if (!$contractorRow && strtolower($user->user_type ?? '') === 'staff') {
-            $staffLink = DB::table('contractor_users')->where('user_id', $userId)->first();
+        // Staff users are linked to a contractor via contractor_staff, not directly in contractors.
+        if (!$contractorRow && strtolower($user->user_type ?? '') === 'staff') {
+            $staffLink = $ownerRow
+                ? DB::table('contractor_staff')->where('owner_id', $ownerRow->owner_id)->whereNull('deletion_reason')->first()
+                : null;
             if ($staffLink) {
                 $contractorRow = DB::table('contractors')->where('contractor_id', $staffLink->contractor_id)->first();
-                // Populate name fields on the user object from contractor_users
-                if (empty($user->first_name)) $user->first_name = $staffLink->authorized_rep_fname ?? null;
-                if (empty($user->middle_name)) $user->middle_name = $staffLink->authorized_rep_mname ?? null;
-                if (empty($user->last_name)) $user->last_name = $staffLink->authorized_rep_lname ?? null;
             }
-        }
-
-        // Safely read user image properties (avoid undefined property notices)
-        $userProfilePic = $user->profile_pic ?? null;
-        $userCoverPhoto = $user->cover_photo ?? null;
-
-        // If the users.profile_pic is empty but property_owners has a profile_pic, prefer that
-        if (($userProfilePic === null || $userProfilePic === '') && $ownerRow && !empty($ownerRow->profile_pic)) {
-            $user->profile_pic = $ownerRow->profile_pic;
-            \Log::debug('profileController.apiGetProfile: populated user.profile_pic from property_owners', ['user_id' => $userId, 'profile_pic' => $user->profile_pic]);
-            // keep the local var in sync
-            $userProfilePic = $user->profile_pic;
-        }
-        // Similarly populate cover_photo from owner row if missing on users
-        if ((empty($userCoverPhoto) || $userCoverPhoto === null) && $ownerRow && !empty($ownerRow->cover_photo)) {
-            $user->cover_photo = $ownerRow->cover_photo;
-            \Log::debug('profileController.apiGetProfile: populated user.cover_photo from property_owners', ['user_id' => $userId, 'cover_photo' => $user->cover_photo]);
-            $userCoverPhoto = $user->cover_photo;
-        }
-
-        // If user images are still missing and contractor row exists, prefer contractor media
-        // Skip this for staff — they have their own profile/cover, not the company logo.
-        $isStaff = strtolower($user->user_type ?? '') === 'staff';
-        if (!$isStaff && (($user->profile_pic ?? null) === null || ($user->profile_pic ?? '') === '') && $contractorRow && !empty($contractorRow->company_logo)) {
-            $user->profile_pic = $contractorRow->company_logo;
-            \Log::debug('profileController.apiGetProfile: populated user.profile_pic from contractors.company_logo', ['user_id' => $userId, 'company_logo' => $user->profile_pic]);
-        }
-        if (!$isStaff && (empty($user->cover_photo ?? null) || ($user->cover_photo ?? null) === null) && $contractorRow && !empty($contractorRow->company_banner)) {
-            $user->cover_photo = $contractorRow->company_banner;
-            \Log::debug('profileController.apiGetProfile: populated user.cover_photo from contractors.company_banner', ['user_id' => $userId, 'company_banner' => $user->cover_photo]);
         }
 
         $ownerKeys = [
@@ -592,7 +578,7 @@ class profileController extends Controller
         ];
 
         $contractorKeys = [
-            'contractor_id','company_name','company_description','bio','company_website','company_email','company_phone',
+            'contractor_id','company_name','company_description','bio','company_website','company_email',
             'company_social_media','services_offered','business_address','picab_number','dti_sec_registration_photo','tin_business_reg_number',
             'company_start_date','years_of_experience','type_id','contractor_type_other','completed_projects',
             'verification_status','verification_date','rejection_reason','picab_category','business_permit_number',
@@ -637,11 +623,24 @@ class profileController extends Controller
             $activeRole = $userType ?: 'owner';
         }
 
-        // Normalize — staff users belong to a contractor account
+        // Normalize â€” staff users belong to a contractor account
         if ($userType === 'staff') {
             $activeRole = 'contractor';
         } else {
             $activeRole = strpos($activeRole, 'contractor') !== false ? 'contractor' : 'owner';
+        }
+
+        // Role-aware image assignment â€” strict separation, no cross-contamination.
+        // Contractor â†’ company_logo / company_banner only (from contractors table).
+        //   If absent, return null so frontend shows the default contractor image.
+        // Owner â†’ personal profile_pic / cover_photo only (from property_owners).
+        //   If absent, return null so frontend shows the default owner image.
+        if ($activeRole === 'contractor' && $contractorRow) {
+            $user->profile_pic = $contractorRow->company_logo ?? null;
+            $user->cover_photo = $contractorRow->company_banner ?? null;
+        } else {
+            $user->profile_pic = $ownerRow->profile_pic ?? null;
+            $user->cover_photo = $ownerRow->cover_photo ?? null;
         }
 
         // Role-aware rating and review count
@@ -1158,7 +1157,26 @@ class profileController extends Controller
                 ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->leftJoin('users as u', 'po.user_id', '=', 'u.user_id')
                 ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
-                ->select($selectCols)
+                ->select(
+                    'p.project_id',
+                    'p.project_title',
+                    'p.project_description',
+                    'p.project_location',
+                    'p.budget_range_min',
+                    'p.budget_range_max',
+                    'p.lot_size',
+                    'p.floor_area',
+                    'p.property_type',
+                    'p.type_id',
+                    'ct.type_name',
+                    DB::raw('pr.created_at as post_created_at'),
+                    'pr.owner_id',
+                    'u.first_name',
+                    'u.middle_name',
+                    'u.last_name',
+                    'u.user_id as owner_user_id',
+                    'po.profile_pic as owner_profile_pic'
+                )
                 ->where('p.project_id', $projectId)
                 ->first();
 

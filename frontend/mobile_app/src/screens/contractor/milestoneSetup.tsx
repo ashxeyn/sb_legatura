@@ -11,6 +11,7 @@ import {
   Alert,
   Platform,
   StatusBar,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -887,11 +888,13 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
       {renderStepIndicator()}
 
       {/* Content */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Footer Buttons */}
       <View style={styles.footer}>

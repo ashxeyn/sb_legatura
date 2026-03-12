@@ -508,10 +508,25 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
   const calculateTotals = () => {
     const approvedPayments = paymentHistory.filter(p => p.payment_status === 'approved');
-    const totalPaid = approvedPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const isDownpaymentRecord = (payment: any) => {
+      const title = String(payment?.milestone_item_title || payment?.milestone_name || '').toLowerCase();
+      return payment?.item_id == null || title.includes('downpayment');
+    };
+
+    const downpaymentPaid = approvedPayments
+      .filter(isDownpaymentRecord)
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+    const milestonePaid = approvedPayments
+      .filter((p) => !isDownpaymentRecord(p))
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
     const totalEstimated = totalCost || 0;
     const downpayment = isDownpaymentMode ? downpaymentAmount : 0;
-    const remaining = totalEstimated - downpayment - totalPaid;
+    const milestoneBudgetBase = isDownpaymentMode ? Math.max(0, totalEstimated - downpayment) : totalEstimated;
+    const remaining = milestoneBudgetBase - milestonePaid;
+    const totalPaid = downpaymentPaid + milestonePaid;
+
     return { totalEstimated, totalPaid, remaining, downpayment };
   };
 

@@ -236,43 +236,56 @@
               </div>
               <div class="p-6 md:p-8">
                 @if($contractor->representative)
-                              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Representative Photo -->
-                                <div
-                                  class="md:col-span-2 flex items-center gap-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200">
-                                  <div
-                                    class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-blue-200">
-                                    @if($contractor->representative->rep_profile_pic)
-                                      <img id="repPhotoImg" src="{{ asset('storage/' . $contractor->representative->rep_profile_pic) }}"
-                                        alt="Representative Photo" class="w-full h-full object-cover">
-                                    @else
-                                      <i id="repPhotoIcon" class="fi fi-rr-user text-white text-3xl"></i>
-                                    @endif
-                                  </div>
-                                  <div class="flex-1">
-                                    <h3 class="text-xl font-bold text-gray-800">
-                                      {{ ($contractor->representative->first_name ?? '') . ' ' .
-                  ($contractor->representative->middle_name ?? '') . ' ' .
-                  ($contractor->representative->last_name ?? '') }}
-                                    </h3>
-                                    <p class="text-sm text-gray-600 mt-1">Company Representative</p>
-                                  </div>
-                                </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Representative Photo -->
+                    <div class="md:col-span-2 flex items-center gap-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200">
+                      <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-blue-200">
+                        @if($contractor->representative->rep_profile_pic)
+                          <img id="repPhotoImg" src="{{ asset('storage/' . $contractor->representative->rep_profile_pic) }}" alt="Representative Photo" class="w-full h-full object-cover">
+                        @else
+                          <i id="repPhotoIcon" class="fi fi-rr-user text-white text-3xl"></i>
+                        @endif
+                      </div>
+                      <div class="flex-1">
+                        <h3 class="text-xl font-bold text-gray-800">
+                          {{ ($contractor->representative->authorized_rep_fname ?? '') . ' ' .
+                             ($contractor->representative->authorized_rep_mname ?? '') . ' ' .
+                             ($contractor->representative->authorized_rep_lname ?? '') }}
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-1">{{ ucfirst($contractor->representative->company_role ?? 'N/A') }}</p>
+                      </div>
+                    </div>
 
-                                <!-- Representative Information Fields -->
-                                <div>
-                                  <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Email
-                                    Address</label>
-                                  <p class="text-base font-medium text-gray-800">{{ $contractor->representative->rep_email ?? 'N/A' }}
-                                  </p>
-                                </div>
-                                <div>
-                                  <label
-                                    class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Username</label>
-                                  <p class="text-base font-medium text-gray-800">
-                                    {{ $contractor->representative->rep_username ?? 'N/A' }}</p>
-                                </div>
-                              </div>
+                    <!-- Representative Information Fields -->
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">First Name</label>
+                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->authorized_rep_fname ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Middle Name</label>
+                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->authorized_rep_mname ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Last Name</label>
+                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->authorized_rep_lname ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Position / Role</label>
+                      <p class="text-base font-medium text-gray-800">{{ ucfirst($contractor->representative->company_role ?? 'N/A') }}</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Email Address</label>
+                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->rep_email ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Contact Number</label>
+                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->phone_number ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Username</label>
+                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->rep_username ?? 'N/A' }}</p>
+                    </div>
+                  </div>
                 @else
                   <div class="text-center py-12">
                     <div
@@ -1429,21 +1442,19 @@
             <h3 class="font-bold text-gray-800">Current Representative</h3>
           </div>
           @if($contractor->representative)
-                  <div class="flex items-center gap-4 p-3 bg-white rounded-lg border border-blue-200">
-                    <div
-                      class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-md">
-                      {{ strtoupper(substr($contractor->representative->first_name ?? '', 0, 1) . substr($contractor->representative->last_name ?? '', 0, 1)) }}
-                    </div>
-                    <div>
-                      <p class="font-semibold text-gray-800">
-                        {{ ($contractor->representative->first_name ?? '') . ' ' .
-            ($contractor->representative->middle_name ?? '') . ' ' .
-            ($contractor->representative->last_name ?? '') }}
-                      </p>
-                      <p class="text-sm text-gray-600">
-                        {{ ucfirst($contractor->representative->company_role ?? 'Representative') }}</p>
-                    </div>
-                  </div>
+          <div class="flex items-center gap-4 p-3 bg-white rounded-lg border border-blue-200">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-md">
+              {{ strtoupper(substr($contractor->representative->authorized_rep_fname ?? '', 0, 1) . substr($contractor->representative->authorized_rep_lname ?? '', 0, 1)) }}
+            </div>
+            <div>
+              <p class="font-semibold text-gray-800">
+                {{ ($contractor->representative->authorized_rep_fname ?? '') . ' ' .
+                   ($contractor->representative->authorized_rep_mname ?? '') . ' ' .
+                   ($contractor->representative->authorized_rep_lname ?? '') }}
+              </p>
+              <p class="text-sm text-gray-600">{{ ucfirst($contractor->representative->company_role ?? 'Representative') }} • {{ $contractor->representative->phone_number ?? 'N/A' }}</p>
+            </div>
+          </div>
           @else
             <div class="p-3 bg-white rounded-lg border border-blue-200">
               <p class="text-sm text-gray-600 text-center">No representative assigned</p>
@@ -1464,24 +1475,25 @@
           </h3>
           <div class="space-y-2 max-h-96 overflow-y-auto" id="teamMembersList">
             @php
-              $teamMembers = collect($contractor->team_members ?? [])->filter(function ($member) {
-                return $member->company_role !== 'representative' && $member->is_active == 1;
+              $teamMembers = collect($contractor->team_members ?? [])->filter(function($member) {
+                return $member->company_role !== 'representative' && !$member->deletion_reason && $member->is_active == 1;
               });
             @endphp
 
             @if($teamMembers->count() > 0)
               @foreach($teamMembers as $member)
                 @php
-                  $initials = strtoupper(substr($member->first_name ?? '', 0, 1) . substr($member->last_name ?? '', 0, 1));
-                  $fullName = trim(($member->first_name ?? '') . ' ' . ($member->middle_name ?? '') . ' ' . ($member->last_name ?? ''));
-                  $role = $member->company_role === 'others' ? ($member->role_if_others ?? 'Staff') : ucfirst($member->company_role ?? 'Staff');
+                  $initials = strtoupper(substr($member->authorized_rep_fname ?? '', 0, 1) . substr($member->authorized_rep_lname ?? '', 0, 1));
+                  $fullName = trim(($member->authorized_rep_fname ?? '') . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . ($member->authorized_rep_lname ?? ''));
+                  $role = $member->company_role === 'others' ? ($member->if_others ?? 'Staff') : ucfirst($member->company_role ?? 'Staff');
                   $colors = ['from-purple-500 to-purple-600', 'from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-red-500 to-red-600', 'from-yellow-500 to-yellow-600'];
                   $colorIndex = ord($initials[0]) % count($colors);
                 @endphp
-                <div
-                  class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
-                  data-member-id="{{ $member->staff_id }}" data-member-name="{{ $fullName }}"
-                  data-member-position="{{ $role }}">
+                <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
+                     data-member-id="{{ $member->staff_id }}"
+                     data-member-name="{{ $fullName }}"
+                     data-member-position="{{ $role }}"
+                     data-member-phone="{{ $member->phone_number ?? 'N/A' }}">
                   <div class="flex items-center gap-4">
                     <div
                       class="w-12 h-12 rounded-full bg-gradient-to-br {{ $colors[$colorIndex] }} flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">

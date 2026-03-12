@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { api_config, api_request } from '../../config/api';
 
@@ -88,7 +89,7 @@ export default function ChangePasswordScreen({ userData, onPasswordChanged, onLo
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header icon */}
         <View style={styles.iconContainer}>
           <View style={styles.iconCircle}>
@@ -191,7 +192,7 @@ export default function ChangePasswordScreen({ userData, onPasswordChanged, onLo
         <TouchableOpacity style={styles.logoutLink} onPress={onLogout}>
           <Text style={styles.logoutText}>Logout instead</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

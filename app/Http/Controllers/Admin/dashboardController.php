@@ -143,13 +143,13 @@ class dashboardController extends authController
                 'projects.project_title',
                 DB::raw('NULL as project_image'),
                 'projects.project_status',
-                DB::raw("COALESCE(users.first_name, '') as first_name"),
-                DB::raw("COALESCE(users.last_name, '') as last_name"),
+                DB::raw("COALESCE(po_user.first_name, '') as first_name"),
+                DB::raw("COALESCE(po_user.last_name, '') as last_name"),
                 DB::raw('COUNT(bids.bid_id) as bid_count')
             )
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+            ->leftJoin('users as po_user', 'property_owners.user_id', '=', 'po_user.user_id')
             ->leftJoin('bids', 'projects.project_id', '=', 'bids.project_id');
 
         if ($start !== null && $end !== null) {
@@ -160,8 +160,8 @@ class dashboardController extends authController
                 'projects.project_id',
                 'projects.project_title',
                 'projects.project_status',
-                'users.first_name',
-                'users.last_name'
+                'po_user.first_name',
+                'po_user.last_name'
             )
             ->orderByDesc('bid_count')
             ->limit($limit)
@@ -370,7 +370,7 @@ class dashboardController extends authController
         }
         $newUsers = $newUsersQb->count();
 
-        // Active users: account is_active = 1, cumulative up to the period end date.
+        // Active users: has a contractor or property_owner record, cumulative up to the period end date.
         // Answers: "how many accounts have the Active status as of the end of this window?"
         $activeUsersQb = DB::table('users')
             ->where(function ($query) {
@@ -378,14 +378,12 @@ class dashboardController extends authController
                     $sub->select(DB::raw(1))
                         ->from('contractors')
                         ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                        ->whereColumn('property_owners.user_id', 'users.user_id')
-                        ->where('contractors.is_active', 1);
+                        ->whereColumn('property_owners.user_id', 'users.user_id');
                 })
                 ->orWhereExists(function ($sub) {
                     $sub->select(DB::raw(1))
                         ->from('property_owners')
-                        ->whereColumn('property_owners.user_id', 'users.user_id')
-                        ->where('property_owners.is_active', 1);
+                        ->whereColumn('property_owners.user_id', 'users.user_id');
                 });
             });
         if ($hasPeriod) {
@@ -426,8 +424,8 @@ class dashboardController extends authController
                     'contractor_types.type_name',
                     DB::raw('contractors.completed_projects as period_count')
                 )
-                ->join('property_owners as owner_po', 'contractors.owner_id', '=', 'owner_po.owner_id')
-                ->join('users', 'owner_po.user_id', '=', 'users.user_id')
+                ->join('property_owners as cpo', 'contractors.owner_id', '=', 'cpo.owner_id')
+                ->join('users', 'cpo.user_id', '=', 'users.user_id')
                 ->join('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
                 ->orderByDesc('contractors.completed_projects')
                 ->limit($limit)
@@ -454,8 +452,8 @@ class dashboardController extends authController
                 'contractor_types.type_name',
                 DB::raw('IFNULL(pc.period_count, 0) as period_count')
             )
-            ->join('property_owners as owner_po', 'contractors.owner_id', '=', 'owner_po.owner_id')
-            ->join('users', 'owner_po.user_id', '=', 'users.user_id')
+            ->join('property_owners as cpo', 'contractors.owner_id', '=', 'cpo.owner_id')
+            ->join('users', 'cpo.user_id', '=', 'users.user_id')
             ->join('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
             ->leftJoinSub($periodCounts, 'pc', 'pc.selected_contractor_id', '=', 'contractors.contractor_id')
             ->orderByDesc('pc.period_count')
@@ -516,14 +514,12 @@ class dashboardController extends authController
                     $sub->select(DB::raw(1))
                         ->from('contractors')
                         ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                        ->whereColumn('property_owners.user_id', 'users.user_id')
-                        ->where('contractors.is_active', 1);
+                        ->whereColumn('property_owners.user_id', 'users.user_id');
                 })
                 ->orWhereExists(function ($sub) {
                     $sub->select(DB::raw(1))
                         ->from('property_owners')
-                        ->whereColumn('property_owners.user_id', 'users.user_id')
-                        ->where('property_owners.is_active', 1);
+                        ->whereColumn('property_owners.user_id', 'users.user_id');
                 });
             })
             ->count();
@@ -538,8 +534,7 @@ class dashboardController extends authController
                 $sub->select(DB::raw(1))
                     ->from('contractors')
                     ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                    ->whereColumn('property_owners.user_id', 'users.user_id')
-                    ->where('contractors.is_active', 1);
+                    ->whereColumn('property_owners.user_id', 'users.user_id');
             })
             ->count();
 
@@ -668,14 +663,12 @@ class dashboardController extends authController
                     $sub->select(DB::raw(1))
                         ->from('contractors')
                         ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                        ->whereColumn('property_owners.user_id', 'users.user_id')
-                        ->where('contractors.is_active', 1);
+                        ->whereColumn('property_owners.user_id', 'users.user_id');
                 })
                 ->orWhereExists(function ($sub) {
                     $sub->select(DB::raw(1))
                         ->from('property_owners')
-                        ->whereColumn('property_owners.user_id', 'users.user_id')
-                        ->where('property_owners.is_active', 1);
+                        ->whereColumn('property_owners.user_id', 'users.user_id');
                 });
             })
             ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
@@ -805,14 +798,14 @@ class dashboardController extends authController
 
     /**
      * Get active users breakdown (by type), scoped to the selected period.
-     * Active = registered in period AND currently has is_active = 1 in contractor_users / property_owners.
+     * Active = registered in period AND has a contractor or property_owner record.
      */
     private function getActiveUsersBreakdownData(?string $start = null, ?string $end = null)
     {
         $hasPeriod = $start && $end;
         $endTime   = $hasPeriod ? $end . ' 23:59:59' : null;
 
-        // Cumulative: all accounts with is_active=1 that existed by the end of the period
+        // Cumulative: all accounts that existed by the end of the period with contractor or owner records
         $baseQuery = function () use ($hasPeriod, $endTime) {
             $qb = DB::table('users')
                 ->where(function ($q) {
@@ -820,14 +813,12 @@ class dashboardController extends authController
                         $sub->select(DB::raw(1))
                             ->from('contractors')
                             ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                            ->whereColumn('property_owners.user_id', 'users.user_id')
-                            ->where('contractors.is_active', 1);
+                            ->whereColumn('property_owners.user_id', 'users.user_id');
                     })
                     ->orWhereExists(function ($sub) {
                         $sub->select(DB::raw(1))
                             ->from('property_owners')
-                            ->whereColumn('property_owners.user_id', 'users.user_id')
-                            ->where('property_owners.is_active', 1);
+                            ->whereColumn('property_owners.user_id', 'users.user_id');
                     });
                 });
             if ($hasPeriod) {
@@ -846,8 +837,7 @@ class dashboardController extends authController
                 $sub->select(DB::raw(1))
                     ->from('contractors')
                     ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-                    ->whereColumn('property_owners.user_id', 'users.user_id')
-                    ->where('contractors.is_active', 1);
+                    ->whereColumn('property_owners.user_id', 'users.user_id');
             })
             ->count();
 
@@ -858,8 +848,7 @@ class dashboardController extends authController
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
                     ->from('property_owners')
-                    ->whereColumn('property_owners.user_id', 'users.user_id')
-                    ->where('property_owners.is_active', 1);
+                    ->whereColumn('property_owners.user_id', 'users.user_id');
             })
             ->count();
 
@@ -937,13 +926,13 @@ class dashboardController extends authController
         $current    = clone $startDt;
         while ($current <= $endDt) {
             $dateStr      = $current->format('Y-m-d');
-            // Same month → plain day number; cross-month → "M d" string
+            // Same month â†’ plain day number; cross-month â†’ "M d" string
             $days[]       = $spanMonths ? $current->format('M d') : (int) $current->format('j');
             $dailyArray[] = floatval($earningsByDate[$dateStr] ?? 0);
             $current->modify('+1 day');
         }
 
-        $dateRange = date('M d, Y', strtotime($startDate)) . ' – ' . date('M d, Y', strtotime($endDate));
+        $dateRange = date('M d, Y', strtotime($startDate)) . ' - ' . date('M d, Y', strtotime($endDate));
 
         return [
             'total'     => floatval($totalEarnings),
@@ -1024,7 +1013,7 @@ class dashboardController extends authController
     }
 
     /**
-     * AJAX endpoint — return all dashboard chart data for the requested date range.
+     * AJAX endpoint â€” return all dashboard chart data for the requested date range.
      * Route: GET /admin/dashboard/data?range=thisyear|lastyear|last6months|last3months
      */
     public function getDashboardData(Request $request)
@@ -1038,7 +1027,7 @@ class dashboardController extends authController
                 || $start > $end) {
                 return response()->json(['error' => 'Invalid date range'], 422);
             }
-            $label = date('M d, Y', strtotime($start)) . ' – ' . date('M d, Y', strtotime($end));
+            $label = date('M d, Y', strtotime($start)) . ' - ' . date('M d, Y', strtotime($end));
         } else {
             $range   = $request->input('range', 'thisyear');
             $allowed = ['thisyear', 'lastyear', 'last6months', 'last3months'];
@@ -1075,7 +1064,7 @@ class dashboardController extends authController
 
     /**
      * Earnings aggregated for the global date filter range.
-     * ≤ 31-day spans use daily grouping; longer spans use monthly grouping.
+     * â‰¤ 31-day spans use daily grouping; longer spans use monthly grouping.
      */
     private function getEarningsForGlobalRange(string $start, string $end): array
     {
@@ -1111,7 +1100,7 @@ class dashboardController extends authController
             $data[]   = floatval($monthlyEarnings[$ym] ?? 0);
         }
 
-        $dateRange = date('M d', strtotime($start)) . ' – ' . date('d Y', strtotime($end));
+        $dateRange = date('M d', strtotime($start)) . ' - ' . date('d Y', strtotime($end));
 
         return [
             'total'     => floatval($totalEarnings),

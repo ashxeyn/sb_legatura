@@ -23,16 +23,16 @@ function switchRole(role) {
 		if (data.success) {
 			window.location.reload();
 		} else {
-			alert('Failed to switch role: ' + data.message);
+			alert('Failed to switch dashboard: ' + data.message);
 			event.target.disabled = false;
-			event.target.textContent = role === 'contractor' ? 'Switch to Contractor' : 'Switch to Property Owner';
+			event.target.textContent = role === 'contractor' ? 'Switch to Contractor Dashboard' : 'Switch to Owner Dashboard';
 		}
 	})
 	.catch(error => {
 		console.error('Error:', error);
-		alert('An error occurred while switching roles');
+		alert('An error occurred while switching dashboards');
 		event.target.disabled = false;
-		event.target.textContent = role === 'contractor' ? 'Switch to Contractor' : 'Switch to Property Owner';
+		event.target.textContent = role === 'contractor' ? 'Switch to Contractor Dashboard' : 'Switch to Owner Dashboard';
 	});
 }
 

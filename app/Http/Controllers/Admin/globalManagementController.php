@@ -287,7 +287,7 @@ class globalManagementController extends Controller
             ->paginate(15, ['*'], 'page', $page);
     }
     // ----------------------------------------------------------------
-// 2. NEW: getBidFiles() — AJAX endpoint to load files for a bid
+// 2. NEW: getBidFiles() â€” AJAX endpoint to load files for a bid
 //    Route: GET /admin/global-management/bid-management/files/{id}
 // ----------------------------------------------------------------
 
@@ -306,7 +306,7 @@ class globalManagementController extends Controller
     }
 
     // ----------------------------------------------------------------
-// 3. NEW: updateBid() — AJAX PUT to update status/cost/notes
+// 3. NEW: updateBid() â€” AJAX PUT to update status/cost/notes
 //    Route: PUT /admin/global-management/bid-management/{id}
 // ----------------------------------------------------------------
 
@@ -340,7 +340,7 @@ class globalManagementController extends Controller
     }
 
     // ----------------------------------------------------------------
-// 4. NEW: deleteBid() — AJAX DELETE
+// 4. NEW: deleteBid() â€” AJAX DELETE
 //    Route: DELETE /admin/global-management/bid-management/{id}
 // ----------------------------------------------------------------
 
@@ -359,16 +359,16 @@ class globalManagementController extends Controller
         return response()->json(['success' => false, 'message' => 'Failed to delete bid.'], 400);
     }
     /**
-     * Get all payment proofs — joined correctly using milestone_payments schema.
+     * Get all payment proofs â€” joined correctly using milestone_payments schema.
      *
      * milestone_payments columns used:
      *   payment_id, item_id, project_id, owner_id, contractor_user_id,
      *   amount, payment_type, transaction_number, receipt_photo,
      *   transaction_date, payment_status, reason, updated_at
      *
-     * owner_id  → property_owners.owner_id
-     * contractor_user_id → users.user_id → property_owners → contractors (company_name)
-     * item_id   → milestone_items.item_id (milestone_item_title)
+     * owner_id  â†’ property_owners.owner_id
+     * contractor_user_id â†’ users.user_id â†’ property_owners â†’ contractors (company_name)
+     * item_id   â†’ milestone_items.item_id (milestone_item_title)
      */
     private function getAllPaymentProofs($search = null, $status = null, $page = 1)
     {
@@ -377,11 +377,10 @@ class globalManagementController extends Controller
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
             // owner info
             ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
-            ->leftJoin('users as owner_u', 'po.user_id', '=', 'owner_u.user_id')
-            // contractor info via users → property_owners → contractors
-            ->leftJoin('users as cu', 'mp.contractor_user_id', '=', 'cu.user_id')
-            ->leftJoin('property_owners as cpo', 'cu.user_id', '=', 'cpo.user_id')
-            ->leftJoin('contractors as c', 'cpo.owner_id', '=', 'c.owner_id')
+            ->leftJoin('users as owner_u', 'owner_u.user_id', '=', 'po.user_id')
+            // contractor info via contractor_staff
+            ->leftJoin('contractor_staff as cs', 'mp.contractor_user_id', '=', 'cs.staff_id')
+            ->leftJoin('contractors as c', 'cs.contractor_id', '=', 'c.contractor_id')
             // milestone item title
             ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->select(
@@ -405,8 +404,8 @@ class globalManagementController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('p.project_title', 'like', "%{$search}%")
                     ->orWhere('c.company_name', 'like', "%{$search}%")
-                    ->orWhere('owner_u.first_name', 'like', "%{$search}%")
-                    ->orWhere('owner_u.last_name', 'like', "%{$search}%");
+                    ->orWhere('u.first_name', 'like', "%{$search}%")
+                    ->orWhere('u.last_name', 'like', "%{$search}%");
             });
         }
 
@@ -421,7 +420,7 @@ class globalManagementController extends Controller
 
     /**
      * Get AI usage statistics by connecting to Python Service
-     * (single, authoritative definition — no duplicate)
+     * (single, authoritative definition â€” no duplicate)
      */
     private function getAIUsageStats()
     {
@@ -456,14 +455,14 @@ class globalManagementController extends Controller
         $query = DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('users as owner_u', 'property_owners.user_id', '=', 'owner_u.user_id')
+            ->leftJoin('users as po_user', 'property_owners.user_id', '=', 'po_user.user_id')
             ->leftJoin('bids', 'projects.project_id', '=', 'bids.project_id')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
                 'projects.project_status',
                 'project_relationships.created_at as posted_at',
-                DB::raw("CONCAT(owner_u.first_name, ' ', owner_u.last_name) as owner_name"),
+                DB::raw("CONCAT(po_user.first_name, ' ', po_user.last_name) as owner_name"),
                 DB::raw('COUNT(DISTINCT bids.bid_id) as bid_count')
             )
             ->groupBy(
@@ -471,8 +470,8 @@ class globalManagementController extends Controller
                 'projects.project_title',
                 'projects.project_status',
                 'project_relationships.created_at',
-                'owner_u.first_name',
-                'owner_u.last_name'
+                'po_user.first_name',
+                'po_user.last_name'
             );
 
         if ($search) {
@@ -552,11 +551,10 @@ class globalManagementController extends Controller
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
             ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
-            ->leftJoin('users as owner_u', 'po.user_id', '=', 'owner_u.user_id')
-            // contractor info via users → property_owners → contractors
-            ->leftJoin('users as cu', 'mp.contractor_user_id', '=', 'cu.user_id')
-            ->leftJoin('property_owners as cpo', 'cu.user_id', '=', 'cpo.user_id')
-            ->leftJoin('contractors as c', 'cpo.owner_id', '=', 'c.owner_id')
+            ->leftJoin('users as owner_u', 'owner_u.user_id', '=', 'po.user_id')
+            // contractor info via contractor_staff
+            ->leftJoin('contractor_staff as cs', 'mp.contractor_user_id', '=', 'cs.staff_id')
+            ->leftJoin('contractors as c', 'cs.contractor_id', '=', 'c.contractor_id')
             ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->select(
                 'mp.*',
@@ -596,7 +594,7 @@ class globalManagementController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid payment method.'], 422);
         }
 
-        // Build update payload — only include fields that were actually sent
+        // Build update payload â€” only include fields that were actually sent
         $data = [];
 
         if (!is_null($status)) {
@@ -674,11 +672,11 @@ class globalManagementController extends Controller
             // Build response message based on allocation status
             $message = 'Payment approved.';
             if ($allocation['status'] === 'overpaid') {
-                $message .= ' Overpayment of ₱' . number_format($allocation['over_amount'], 2) . ' recorded.';
+                $message .= ' Overpayment of PHP ' . number_format($allocation['over_amount'], 2) . ' recorded.';
             } elseif ($allocation['status'] === 'underpaid' && isset($allocation['carried_to_title'])) {
-                $message .= ' Shortfall of ₱' . number_format($allocation['shortfall'], 2) . ' carried forward to "' . $allocation['carried_to_title'] . '".';
+                $message .= ' Shortfall of PHP ' . number_format($allocation['shortfall'], 2) . ' carried forward to "' . $allocation['carried_to_title'] . '".';
             } elseif ($allocation['status'] === 'underpaid') {
-                $message .= ' Shortfall of ₱' . number_format($allocation['shortfall'], 2) . ' recorded (last milestone).';
+                $message .= ' Shortfall of PHP ' . number_format($allocation['shortfall'], 2) . ' recorded (last milestone).';
             }
 
             return response()->json([

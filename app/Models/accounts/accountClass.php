@@ -160,10 +160,16 @@ class accountClass
 
     public function createContractor($data)
     {
-        // Support databases that use either `user_id` or `owner_id` on the contractors table.
-        $userIdColumn = Schema::hasColumn('contractors', 'user_id') ? 'user_id' : (Schema::hasColumn('contractors', 'owner_id') ? 'owner_id' : 'user_id');
+        // Resolve owner_id from property_owners for this user
+        $userId = $data['user_id'] ?? null;
+        $ownerId = null;
+        if ($userId) {
+            $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($ownerRow) $ownerId = $ownerRow->owner_id ?? null;
+        }
 
         $payload = [
+            'owner_id' => $ownerId,
             'company_logo' => $data['company_logo'] ?? null,
             'company_banner' => $data['company_banner'] ?? null,
             'company_name' => $data['company_name'],
@@ -189,30 +195,6 @@ class accountClass
             'updated_at' => now()
         ];
 
-        // Attach identifier column depending on schema
-        try {
-            if ($userIdColumn === 'user_id') {
-                $payload['user_id'] = $data['user_id'] ?? null;
-            } else {
-                // owner_id expected — try to resolve a property_owners.owner_id for this user
-                $userId = $data['user_id'] ?? null;
-                $ownerId = null;
-                if ($userId) {
-                    try {
-                        $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
-                        if ($ownerRow) $ownerId = $ownerRow->owner_id ?? null;
-                    } catch (\Throwable $e) {
-                        Log::warning('Failed to resolve owner_id for contractor payload: ' . $e->getMessage());
-                    }
-                }
-                // If owner_id couldn't be resolved, fallback to user id to avoid immediate DB exception.
-                $payload['owner_id'] = $ownerId ?? ($data['user_id'] ?? null);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Error resolving contractor identifier column: ' . $e->getMessage());
-            $payload['user_id'] = $data['user_id'] ?? null;
-        }
-
         $contractorId = DB::table('contractors')->insertGetId($payload);
 
         return $contractorId;
@@ -221,39 +203,28 @@ class accountClass
     public function createContractorUser($data)
     {
         try {
-            // Prefer the new contractor_staff table when available. It links to property_owners
-            // via owner_id so we resolve owner_id from the provided user_id when possible.
-            if (Schema::hasTable('contractor_staff')) {
-                $ownerId = null;
-                try {
-                    if (!empty($data['user_id'])) {
-                        $ownerRow = DB::table('property_owners')->where('user_id', $data['user_id'])->first();
-                        if ($ownerRow) $ownerId = $ownerRow->owner_id ?? null;
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to resolve owner_id in createContractorUser: ' . $e->getMessage());
-                }
-
-                $insertData = [
-                    'contractor_id' => $data['contractor_id'],
-                    'owner_id' => $ownerId ?? null,
-                    'company_role' => 'representative',
-                    'role_if_others' => null,
-                    'is_active' => 0,
-                    'created_at' => now()
-                ];
-
-                try {
-                    // Try to return an id when possible; if not supported, fall back to plain insert
-                    $id = DB::table('contractor_staff')->insertGetId($insertData);
-                    return $id;
-                } catch (\Throwable $e) {
-                    DB::table('contractor_staff')->insert($insertData);
-                    return null;
-                }
+            if (!Schema::hasTable('contractor_staff')) {
+                Log::warning('createContractorUser skipped: contractor_staff table does not exist');
+                return null;
             }
 
-            return null;
+            // Get owner_id from property_owners via user_id
+            $ownerId = DB::table('property_owners')->where('user_id', $data['user_id'])->value('owner_id');
+            if (!$ownerId) {
+                Log::warning('createContractorUser skipped: no property_owners record for user_id ' . $data['user_id']);
+                return null;
+            }
+
+            $staffId = DB::table('contractor_staff')->insertGetId([
+                'contractor_id' => $data['contractor_id'],
+                'owner_id' => $ownerId,
+                'phone_number' => $data['phone_number'] ?? '',
+                'company_role' => 'owner',
+                'is_active' => 0,
+                'created_at' => now()
+            ]);
+
+            return $staffId;
         } catch (\Throwable $e) {
             Log::warning('createContractorUser failed: ' . $e->getMessage());
             return null;

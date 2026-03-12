@@ -12,6 +12,8 @@ import {
   Alert,
   Modal,
   TextInput,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -20,6 +22,7 @@ import { milestones_service } from '../../services/milestones_service';
 import { projects_service } from '../../services/projects_service';
 import MilestoneApproval from './milestoneApproval';
 import MilestoneSetup from '../contractor/milestoneSetup';
+const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
 
 // Color palette
 const COLORS = {
@@ -455,6 +458,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -538,14 +542,12 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
                     <View style={styles.contractorInfoInline}>
                       <View style={styles.contractorHeaderInline}>
                         <View style={styles.contractorAvatarInline}>
-                          {currentProject.contractor_info.profile_pic ? (
-                            <Image
-                              source={{ uri: currentProject.contractor_info.profile_pic }}
-                              style={styles.contractorAvatarImage}
-                            />
-                          ) : (
-                            <Feather name="user" size={20} color="rgba(255,255,255,0.7)" />
-                          )}
+                          <Image
+                            source={currentProject.contractor_info.profile_pic
+                              ? { uri: currentProject.contractor_info.profile_pic }
+                              : defaultContractorAvatar}
+                            style={styles.contractorAvatarImage}
+                          />
                         </View>
                         <View style={styles.contractorDetailsInline}>
                           <Text style={styles.contractorNameInline}>{currentProject.contractor_info.company_name}</Text>
@@ -753,6 +755,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Milestone Approval Screen - Full Screen Modal */}
       <Modal

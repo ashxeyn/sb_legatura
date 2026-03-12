@@ -17,8 +17,9 @@ class platformPaymentClass
             return null;
 
         try {
-            // Get contractor ID for the user (schema-agnostic)
-            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($userId);
+            // Get contractor ID for the user
+            $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
 
             if ($contractor) {
                 // Check for active subscription in platform_payments
@@ -400,24 +401,21 @@ class platformPaymentClass
     {
         try {
             // Get contractor info via property_owners
-            $po = DB::table('property_owners')->where('user_id', $userId)->first();
-            $contractor = null;
+            $ppOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $ppOwnerId ? DB::table('contractors')->where('owner_id', $ppOwnerId)->first() : null;
 
-            if ($po) {
-                $contractor = DB::table('contractors')->where('owner_id', $po->owner_id)->first();
+            // Also check staff membership (representatives)
+            if (!$contractor && $ppOwnerId) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $ppOwnerId)
+                    ->where('is_active', 1)
+                    ->whereNull('deletion_reason')
+                    ->first();
 
-                // Also check staff membership
-                if (!$contractor) {
-                    $staff = DB::table('contractor_staff')
-                        ->where('owner_id', $po->owner_id)
-                        ->where('is_active', 1)
+                if ($staffRecord) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $staffRecord->contractor_id)
                         ->first();
-
-                    if ($staff) {
-                        $contractor = DB::table('contractors')
-                            ->where('contractor_id', $staff->contractor_id)
-                            ->first();
-                    }
                 }
             }
 

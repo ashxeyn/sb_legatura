@@ -10,6 +10,7 @@ import { auth_service } from '../../services/auth_service';
 import * as ImagePicker from 'expo-image-picker';
 import PlatformDatePicker from '../../components/platformDatePicker';
 import { Platform } from 'react-native';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 import { computeYears, formatDate, formatDateForDisplay, formatExperience } from '../../utils/roleFormUtils';
 
 interface RoleAddScreenProps {
@@ -84,6 +85,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
     };
   }, []);
   const [blockedDueToPending, setBlockedDueToPending] = useState<boolean>(false);
+  const [blockedDueToCompanyLink, setBlockedDueToCompanyLink] = useState<boolean>(false);
   const [pendingInfo, setPendingInfo] = useState<any>(null);
   const [dropdowns, setDropdowns] = useState<any>({
     contractor_types: [],
@@ -93,6 +95,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
     picab_categories: [],
   });
   const [existingData, setExistingData] = useState<any>(null);
+  const [ownerName, setOwnerName] = useState<{ first_name: string; middle_name: string; last_name: string }>({ first_name: '', middle_name: '', last_name: '' });
   const [provinces, setProvinces] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [barangays, setBarangays] = useState<any[]>([]);
@@ -146,32 +149,21 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           if (targetRole === 'contractor') {
             const phone = existing?.property_owner?.phone_number || existing?.user?.phone_number;
             // no longer prefilling company_phone (DB no longer stores this column)
-            // Prefill authorized representative fields if available from existing contractor_user
-            const cu = existing?.contractor_user || existing?.contractor_user_for_this_user || existing?.contractor_user_for_current;
-            const repPrefill: any = {};
-            if (cu?.authorized_rep_fname) repPrefill.authorized_rep_fname = cu.authorized_rep_fname;
-            if (cu?.authorized_rep_mname) repPrefill.authorized_rep_mname = cu.authorized_rep_mname;
-            if (cu?.authorized_rep_lname) repPrefill.authorized_rep_lname = cu.authorized_rep_lname;
-            // Fallback: if no contractor_user authorized rep info, use property_owner name (owner becomes authorized rep)
-            if (!repPrefill.authorized_rep_fname && existing?.property_owner?.first_name) {
-              repPrefill.authorized_rep_fname = existing.property_owner.first_name;
-            }
-            if (!repPrefill.authorized_rep_mname && existing?.property_owner?.middle_name) {
-              repPrefill.authorized_rep_mname = existing.property_owner.middle_name;
-            }
-            if (!repPrefill.authorized_rep_lname && existing?.property_owner?.last_name) {
-              repPrefill.authorized_rep_lname = existing.property_owner.last_name;
-            }
-            if (Object.keys(repPrefill).length) updatePrefilled(repPrefill);
+            // Authorized representative fields removed — owner info from users table is used automatically
+            // Populate owner name for display (read-only)
+            const u = existing?.user || {};
+            const po = existing?.property_owner || {};
+            setOwnerName({
+              first_name: u.first_name || po.first_name || '',
+              middle_name: u.middle_name || po.middle_name || '',
+              last_name: u.last_name || po.last_name || '',
+            });
           } else if (targetRole === 'owner') {
             const user = existing?.user || {};
             const cu = existing?.contractor_user || {};
             const prefill: any = {};
             // Username is not required for switch/role reapplication form; omit prefilling username.
             // Email removed from owner switch form; do not prefill
-            if (cu?.authorized_rep_fname) prefill.first_name = cu.authorized_rep_fname;
-            if (cu?.authorized_rep_mname) prefill.middle_name = cu.authorized_rep_mname;
-            if (cu?.authorized_rep_lname) prefill.last_name = cu.authorized_rep_lname;
             if (cu?.phone_number) prefill.phone_number = cu.phone_number;
             if (Object.keys(prefill).length) updatePrefilled(prefill);
           }
@@ -198,6 +190,11 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             const isPendingForTarget = (targetRole === 'owner' && isOwnerPending) || (targetRole === 'contractor' && isContractorPending);
             setBlockedDueToPending(!!isPendingForTarget);
             setPendingInfo(isPendingForTarget ? (targetRole === 'owner' ? data.owner : data.contractor) : null);
+
+            const hasActiveStaffMembership = !!data?.has_active_staff_membership;
+            const staffRole = String(data?.staff_record?.company_role || '').toLowerCase();
+            const contractorLinkBlocked = targetRole === 'contractor' && hasActiveStaffMembership && staffRole !== 'owner';
+            setBlockedDueToCompanyLink(contractorLinkBlocked);
           }
         }
       } finally {
@@ -590,7 +587,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
     updatePrefilled(updates);
   };
 
-  const pickImage = async (field: string) => {
+  const pickImage = async (field: string, aspect?: [number, number]) => {
     try {
       // Web fallback: prompt for an image URL if running on web
       if (Platform.OS === 'web') {
@@ -607,7 +604,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
         Alert.alert('Permission required', 'Please allow photo library access.');
         return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'Images', quality: 0.8 });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'Images', quality: 0.8, allowsEditing: !!aspect, aspect });
       console.log('ImagePicker result:', result);
       if (!result.canceled && result.assets?.length) {
         const asset = result.assets[0];
@@ -661,9 +658,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           const res = await role_service.add_contractor_step2(fd);
           if (res?.success) {
             const saved = res?.data?.saved;
-            if (saved && saved.dti_sec_registration_photo) {
-              updateForm({ dti_sec_registration_photo_server: saved.dti_sec_registration_photo });
-            }
+            if (saved?.dti_sec_registration_photo) updateForm({ dti_sec_registration_photo_server: saved.dti_sec_registration_photo });
+            if (saved?.company_logo) updateForm({ company_logo_server: saved.company_logo });
+            if (saved?.company_banner) updateForm({ company_banner_server: saved.company_banner });
             setFormStep(3); // Only advance to step 3, do not submit finalization here
           } else {
             Alert.alert('Error', res?.message || 'Upload failed');
@@ -846,6 +843,10 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
   const handlePrimaryPress = () => {
     if (hasBoth) return switchToTargetRole();
+    if (blockedDueToCompanyLink) {
+      Alert.alert('Access Restricted', 'You are already linked to a contractor company. Creating another contractor company profile is not allowed.');
+      return;
+    }
     if (blockedDueToPending) {
       Alert.alert('Application Pending', 'You have already submitted an application for this role. Please wait for administrative review or resubmit after a rejection.');
       return;
@@ -877,7 +878,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.logoContainer}>
           <Image
             source={require('../../../assets/images/logos/legatura-logo.png')}
@@ -890,21 +891,21 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
         <View style={styles.progressContainer}>
           <View style={styles.progressStep}>
             <View style={[styles.progressBar, formStep >= 1 && styles.progressBarActive]} />
-            <Text style={[styles.progressText, formStep >= 1 && styles.progressTextActive]}>Step 1</Text>
+            <Text style={[styles.progressText, formStep >= 1 && styles.progressTextActive]}>Company Details</Text>
           </View>
           <View style={styles.progressStep}>
             <View style={[styles.progressBar, formStep >= 2 && styles.progressBarActive]} />
-            <Text style={[styles.progressText, formStep >= 2 && styles.progressTextActive]}>Step 2</Text>
+            <Text style={[styles.progressText, formStep >= 2 && styles.progressTextActive]}>Documents</Text>
           </View>
           <View style={styles.progressStep}>
             <View style={[styles.progressBar, formStep >= 3 && styles.progressBarActive]} />
-            <Text style={[styles.progressText, formStep >= 3 && styles.progressTextActive]}>Finalize</Text>
+            <Text style={[styles.progressText, formStep >= 3 && styles.progressTextActive]}>Review & Confirm</Text>
           </View>
         </View>
 
         <View style={styles.formContainer}>
           {/* Section Title */}
-          <Text style={styles.sectionTitle}>Add {targetRole === 'contractor' ? 'Contractor' : 'Property Owner'} Role</Text>
+
             {hasBoth ? (
               <View>
                 <Text style={styles.inputLabel}>You already have both roles.</Text>
@@ -922,12 +923,61 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
               </View>
             ) : null}
 
+            {blockedDueToCompanyLink ? (
+              <View>
+                <Text style={styles.inputLabel}>You are already linked to an existing contractor company account.</Text>
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>Adding another contractor company profile is not allowed for staff-linked accounts.</Text>
+              </View>
+            ) : null}
+
             {!hasBoth && targetRole === 'contractor' && formStep === 1 && (
               <View>
                 <Text style={styles.sectionTitle}>Company Information</Text>
+                <Text style={styles.inputLabel}>Company Logo (Optional)</Text>
+                <View style={{ alignSelf: 'flex-start' }}>
+                  <TouchableOpacity style={[styles.uploadButton, { width: 100, height: 100 }]} onPress={() => pickImage('company_logo', [1, 1])}>
+                    {formData.company_logo || formData.company_logo_server ? (
+                      <Image source={{ uri: getDocImageUrl(formData.company_logo || formData.company_logo_server) }} style={{ width: '100%', height: '100%', borderRadius: 6 }} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.uploadPlaceholder}>
+                        <Ionicons name="cloud-upload" size={28} color="#EC7E00" />
+                        <Text style={[styles.uploadHint, { textAlign: 'center' }]}>Logo{`\n`}1:1</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {(formData.company_logo || formData.company_logo_server) ? (
+                    <TouchableOpacity
+                      onPress={() => updateForm({ company_logo: null, company_logo_server: null, company_logo_name: null })}
+                      style={{ position: 'absolute', top: -8, right: -8 }}
+                    >
+                      <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                <Text style={styles.inputLabel}>Company Banner (Optional)</Text>
+                <View>
+                  <TouchableOpacity style={[styles.uploadButton, { aspectRatio: 16 / 9, height: undefined }]} onPress={() => pickImage('company_banner', [16, 9])}>
+                    {formData.company_banner || formData.company_banner_server ? (
+                      <Image source={{ uri: getDocImageUrl(formData.company_banner || formData.company_banner_server) }} style={{ width: '100%', height: '100%', borderRadius: 6 }} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.uploadPlaceholder}>
+                        <Ionicons name="cloud-upload" size={32} color="#EC7E00" />
+                        <Text style={styles.uploadText}>Tap to upload company banner</Text>
+                        <Text style={styles.uploadHint}>JPG, JPEG, PNG — 16:9</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {(formData.company_banner || formData.company_banner_server) ? (
+                    <TouchableOpacity
+                      onPress={() => updateForm({ company_banner: null, company_banner_server: null, company_banner_name: null })}
+                      style={{ position: 'absolute', top: 6, right: 6 }}
+                    >
+                      <Ionicons name="close-circle" size={26} color="#E74C3C" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
                 <Text style={styles.inputLabel}>Company Name *</Text>
                 <TextInput style={styles.input} value={formData.company_name || ''} onChangeText={(t) => updateForm({ company_name: t })} placeholder="Company Name *" placeholderTextColor="#999" />
-                {/* Company phone removed: DB no longer stores this field */}
                 <Text style={styles.inputLabel}>Years of Experience *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowExperienceDateModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
@@ -1003,18 +1053,21 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                 </TouchableOpacity>
                 <Text style={styles.inputLabel}>Postal Code *</Text>
                 <TextInput style={[styles.input, prefilledFields.business_address_postal && styles.prefilledInput]} value={formData.business_address_postal || ''} onChangeText={(t) => updateForm({ business_address_postal: t })} keyboardType="number-pad" placeholder="Postal Code" placeholderTextColor="#999" />
-                <Text style={styles.sectionTitle}>Authorized Representative</Text>
-                <Text style={styles.inputLabel}>First Name *</Text>
-                <TextInput style={[styles.input, prefilledFields.authorized_rep_fname ? styles.prefilledInput : null]} value={formData.authorized_rep_fname || ''} onChangeText={(t) => updateForm({ authorized_rep_fname: t })} placeholder="First name" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Middle Name (Optional)</Text>
-                <TextInput style={[styles.input, prefilledFields.authorized_rep_mname ? styles.prefilledInput : null]} value={formData.authorized_rep_mname || ''} onChangeText={(t) => updateForm({ authorized_rep_mname: t })} placeholder="Middle name (Optional)" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Last Name *</Text>
-                <TextInput style={[styles.input, prefilledFields.authorized_rep_lname ? styles.prefilledInput : null]} value={formData.authorized_rep_lname || ''} onChangeText={(t) => updateForm({ authorized_rep_lname: t })} placeholder="Last name" placeholderTextColor="#999" />
+                <Text style={styles.sectionTitle}>Owner Information</Text>
+                <Text style={styles.inputLabel}>First Name</Text>
+                <TextInput style={[styles.input, styles.readOnlyInput]} value={ownerName.first_name || 'Not set'} editable={false} />
+                <Text style={styles.inputLabel}>Middle Name</Text>
+                <TextInput style={[styles.input, styles.readOnlyInput]} value={ownerName.middle_name || '—'} editable={false} />
+                <Text style={styles.inputLabel}>Last Name</Text>
+                <TextInput style={[styles.input, styles.readOnlyInput]} value={ownerName.last_name || 'Not set'} editable={false} />
+                <Text style={[styles.inputLabel, { fontSize: 11, color: '#999', marginTop: -4 }]}>This information is linked from your account and cannot be edited here.</Text>
                 <Text style={styles.sectionTitle}>Optional Information</Text>
                 <Text style={styles.inputLabel}>Website</Text>
                 <TextInput style={styles.input} value={formData.company_website || ''} onChangeText={(t) => updateForm({ company_website: t })} placeholder="Website (Optional)" placeholderTextColor="#999" />
                 <Text style={styles.inputLabel}>Social Media</Text>
                 <TextInput style={styles.input} value={formData.company_social_media || ''} onChangeText={(t) => updateForm({ company_social_media: t })} placeholder="Social Media (Optional)" placeholderTextColor="#999" />
+                <Text style={styles.inputLabel}>Company Description</Text>
+                <TextInput style={[styles.input, { height: 100, textAlignVertical: 'top' }]} value={formData.company_description || ''} onChangeText={(t) => updateForm({ company_description: t })} placeholder="Brief description of your company (Optional)" placeholderTextColor="#999" multiline />
               </View>
             )}
 
@@ -1089,13 +1142,29 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                   <>
                     <View style={styles.previewCard}>
                       <Text style={styles.previewHeader}>Company Information</Text>
+                      {/* Company Logo */}
+                      {(formData.company_logo || formData.company_logo_server) ? (
+                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
+                          <Text style={styles.previewLabel}>Company Logo</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.company_logo || formData.company_logo_server) }} style={[styles.previewImage, { width: 60, height: 60, borderRadius: 30 }]} resizeMode="cover" />
+                        </View>
+                      ) : null}
+                      {/* Company Banner */}
+                      {(formData.company_banner || formData.company_banner_server) ? (
+                        <View style={{ marginBottom: 8 }}>
+                          <Text style={styles.previewLabel}>Company Banner</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.company_banner || formData.company_banner_server) }} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 8, borderWidth: 1, borderColor: '#E5E5E5' }} resizeMode="cover" />
+                        </View>
+                      ) : null}
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Name</Text><Text style={styles.previewValue}>{formData.company_name || '—'}</Text></View>
-                      {/* Company Phone removed from preview (no longer stored in DB) */}
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Experience</Text><Text style={styles.previewValue}>{formData.experience_start_date ? formatExperience(formData.experience_start_date) : '—'}</Text></View>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Contractor Type</Text><Text style={styles.previewValue}>{(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); return sel?.name || '—'; })()}</Text></View>
                       {(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); const isOther = (sel?.name || '').toLowerCase().includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Other Type</Text><Text style={styles.previewValue}>{formData.contractor_type_other_text || '—'}</Text></View>) : null; })()}
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Services Offered</Text><Text style={styles.previewValue}>{formData.services_offered || '—'}</Text></View>
-                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Authorized Representative</Text><Text style={styles.previewValue}>{(formData.authorized_rep_fname || '') + (formData.authorized_rep_mname ? ' ' + formData.authorized_rep_mname : '') + (formData.authorized_rep_lname ? ' ' + formData.authorized_rep_lname : '') || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Owner Name</Text><Text style={styles.previewValue}>{[ownerName.first_name, ownerName.middle_name, ownerName.last_name].filter(Boolean).join(' ') || '—'}</Text></View>
+                      {formData.company_description ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Description</Text><Text style={[styles.previewValue, { flexShrink: 1 }]}>{formData.company_description}</Text></View>) : null}
+                      {formData.company_website ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Website</Text><Text style={styles.previewValue}>{formData.company_website}</Text></View>) : null}
+                      {formData.company_social_media ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Social Media</Text><Text style={styles.previewValue}>{formData.company_social_media}</Text></View>) : null}
                     </View>
 
                     <View style={styles.previewCard}>
@@ -1128,9 +1197,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Permit Expiration</Text><Text style={styles.previewValue}>{formData.business_permit_expiration ? formatDateForDisplay(formData.business_permit_expiration) : '—'}</Text></View>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>TIN Reg Number</Text><Text style={styles.previewValue}>{formData.tin_business_reg_number || '—'}</Text></View>
                       {(formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server) && (
-                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
-                          <Text style={styles.previewLabel}>DTI/SEC Photo</Text>
-                          <Image source={{ uri: getDocImageUrl(formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server) }} style={styles.previewImage} />
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={styles.previewLabel}>DTI/SEC Registration Photo</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server) }} style={{ width: '100%', height: 180, borderRadius: 10, borderWidth: 1, borderColor: '#E5E5E5', marginTop: 6, backgroundColor: '#F5F5F5' }} resizeMode="contain" />
                         </View>
                       )}
                     </View>
@@ -1171,21 +1240,21 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                       <Text style={styles.previewHeader}>Documents</Text>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Valid ID</Text><Text style={styles.previewValue}>{(() => { const v = (dropdowns.valid_ids || []).find((vi: any) => `${vi.id}` === `${formData.valid_id_id}`); return v?.name || '—'; })()}</Text></View>
                       {(formData.valid_id_photo || formData.owner_valid_id_photo_server) && (
-                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
-                          <Text style={styles.previewLabel}>ID Front</Text>
-                          <Image source={{ uri: getDocImageUrl(formData.valid_id_photo || formData.owner_valid_id_photo_server) }} style={styles.previewImage} />
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={styles.previewLabel}>Valid ID — Front</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.valid_id_photo || formData.owner_valid_id_photo_server) }} style={{ width: '100%', height: 180, borderRadius: 10, borderWidth: 1, borderColor: '#E5E5E5', marginTop: 6, backgroundColor: '#F5F5F5' }} resizeMode="contain" />
                         </View>
                       )}
                       {(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) && (
-                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
-                          <Text style={styles.previewLabel}>ID Back</Text>
-                          <Image source={{ uri: getDocImageUrl(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) }} style={styles.previewImage} />
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={styles.previewLabel}>Valid ID — Back</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) }} style={{ width: '100%', height: 180, borderRadius: 10, borderWidth: 1, borderColor: '#E5E5E5', marginTop: 6, backgroundColor: '#F5F5F5' }} resizeMode="contain" />
                         </View>
                       )}
-                      {formData.police_clearance && (
-                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
+                      {(formData.police_clearance || formData.owner_police_clearance_server) && (
+                        <View style={{ marginTop: 8 }}>
                           <Text style={styles.previewLabel}>Police Clearance</Text>
-                          <Image source={{ uri: getDocImageUrl(formData.police_clearance) }} style={styles.previewImage} />
+                          <Image source={{ uri: getDocImageUrl(formData.police_clearance || formData.owner_police_clearance_server) }} style={{ width: '100%', height: 180, borderRadius: 10, borderWidth: 1, borderColor: '#E5E5E5', marginTop: 6, backgroundColor: '#F5F5F5' }} resizeMode="contain" />
                         </View>
                       )}
                     </View>
@@ -1360,21 +1429,25 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.nextButton, (submitting || blockedDueToPending) && styles.nextButtonDisabled]}
+              style={[styles.nextButton, (submitting || blockedDueToPending || blockedDueToCompanyLink) && styles.nextButtonDisabled]}
               onPress={handlePrimaryPress}
-              disabled={submitting || blockedDueToPending}
+              disabled={submitting || blockedDueToPending || blockedDueToCompanyLink}
             >
               {submitting ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={[styles.nextButtonText, (submitting || blockedDueToPending) && styles.nextButtonTextDisabled]}>
-                  {blockedDueToPending ? 'Pending' : (hasBoth ? `Switch to ${targetRole === 'contractor' ? 'Contractor' : 'Owner'}` : (formStep < 3 ? 'Next' : 'Submit'))}
+                <Text style={[styles.nextButtonText, (submitting || blockedDueToPending || blockedDueToCompanyLink) && styles.nextButtonTextDisabled]}>
+                  {blockedDueToCompanyLink
+                    ? 'Restricted'
+                    : blockedDueToPending
+                      ? 'Pending'
+                      : (hasBoth ? `Switch to ${targetRole === 'contractor' ? 'Contractor' : 'Owner'}` : (formStep < 3 ? 'Next' : 'Submit'))}
                 </Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Contractor Type Selector */}
       <Modal visible={showContractorTypeModal} animationType="slide" transparent onRequestClose={() => setShowContractorTypeModal(false)}>
@@ -1781,6 +1854,7 @@ const styles = StyleSheet.create({
   inputLabel: { fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 8 },
   input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, fontSize: 16, color: '#333333', marginBottom: 8 },
   inputDisabled: { backgroundColor: '#F5F5F5', borderColor: '#DDDDDD' },
+  readOnlyInput: { backgroundColor: '#F5F5F5', borderColor: '#E0E0E0', color: '#666666' },
   inputSelector: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   selectorText: { fontSize: 16, color: '#333333', flex: 1 },
   selectorPlaceholder: { color: '#999999' },

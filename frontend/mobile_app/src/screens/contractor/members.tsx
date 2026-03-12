@@ -12,14 +12,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
-  Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
 import { useContractorAuth } from '../../hooks/useContractorAuth';
-import * as ImagePicker from 'expo-image-picker';
 
 const COLORS = {
   primary: '#FB8C00',
@@ -39,30 +37,71 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any | null>(null);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
+  const [ownerSearchResults, setOwnerSearchResults] = useState([]);
+  const [searchingOwners, setSearchingOwners] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
 
-  // Authorization hook - check if user can manage members
-  const { canManageMembers, isLoading: authLoading, role } = useContractorAuth();
+  // Authorization hook - member management is owner-only; all active members can view
+  const { canManageMembers, canViewMembers, isLoading: authLoading, role } = useContractorAuth();
+  const isOwnerRole = role === 'owner';
+  // Representatives are view-only on the members page (same as other staff)
+  const canManageMemberActions = canManageMembers && isOwnerRole;
+  const canAddMembers = canManageMemberActions;
+
+  const canManageTargetMember = (member: any): boolean => {
+    // Only owner can edit members.
+    return isOwnerRole && !!member;
+  };
+
+  const canDeleteTargetMember = (member: any): boolean => {
+    return isOwnerRole && !!member;
+  };
 
   const [form, setForm] = useState({
-    first_name: '',
-    middle_name: '',
-    last_name: '',
-    email: '',
-    phone_number: '',
     role: 'others',
-    username: '',
-    password: '',
-    password_confirm: '',
     role_other: '',
-    profile_pic: null,
-    _pickedFile: null,
   });
+
+  const isMemberActive = (value: any) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === '1' || normalized === 'true' || normalized === 'active' || normalized === 'yes';
+    }
+    return false;
+  };
+
+  const resolveMemberActive = (member: any) => {
+    const rawStatus =
+      member?.is_active ??
+      member?.isActive ??
+      member?.active ??
+      member?.member_active ??
+      member?.status;
+
+    // Handle text status values like "Active" / "Inactive"
+    if (typeof rawStatus === 'string') {
+      const v = rawStatus.trim().toLowerCase();
+      if (v === 'inactive' || v === 'disabled' || v === '0' || v === 'false' || v === 'no') {
+        return false;
+      }
+      if (v === 'active' || v === 'enabled' || v === '1' || v === 'true' || v === 'yes') {
+        return true;
+      }
+    }
+
+    return isMemberActive(rawStatus);
+  };
 
   // Define functions before any early returns
   const fetchMembers = async () => {
@@ -80,13 +119,24 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       const endpoint = `${api_config.endpoints.contractor_members.list}?user_id=${userId}`;
       const res = await api_request(endpoint, { method: 'GET' });
       if (res.success && res.data) {
-        const membersData = res.data.data || res.data;
-        console.log('Fetched members:', membersData.map(m => ({ 
-          id: m.id, 
-          name: m.first_name, 
-          profile_pic: m.profile_pic,
-          updated_at: m.updated_at 
+        const rawMembers = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+
+        const membersData = rawMembers.map((m: any) => ({
+          ...m,
+          is_active: resolveMemberActive(m),
+        }));
+
+        console.log('Fetched members:', membersData.map(m => ({
+          id: m.id,
+          name: m.first_name,
+          is_active_raw: m.isActive ?? m.active ?? m.status,
+          is_active_normalized: m.is_active,
         })));
+
         setMembers(membersData);
         setFilteredMembers(membersData);
       }
@@ -124,7 +174,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     // Apply status filter
     if (statusFilter !== 'all') {
       const isActive = statusFilter === 'active';
-      filtered = filtered.filter(member => !!member.is_active === isActive);
+      filtered = filtered.filter(member => isMemberActive(member.is_active) === isActive);
     }
 
     setFilteredMembers(filtered);
@@ -132,10 +182,10 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
   useEffect(() => {
     // Only fetch members if authorized
-    if (!authLoading && canManageMembers) {
+    if (!authLoading && canViewMembers) {
       fetchMembers();
     }
-  }, [authLoading, canManageMembers]);
+  }, [authLoading, canViewMembers]);
 
   // Apply filters whenever search query, role filter, or status filter changes
   useEffect(() => {
@@ -154,7 +204,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     );
   }
 
-  if (!canManageMembers) {
+  if (!canViewMembers) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Header */}
@@ -173,9 +223,9 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
           </View>
           <Text style={styles.unauthorizedTitle}>Access Restricted</Text>
           <Text style={styles.unauthorizedMessage}>
-            You don't have permission to manage contractor members.
+            You don't have permission to view contractor members.
             {'\n\n'}
-            Only owners and representatives can access this feature.
+            Please contact your company owner.
           </Text>
           {role && (
             <Text style={styles.unauthorizedRole}>
@@ -216,107 +266,120 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
       <View style={styles.memberInfo}>
         <Text style={styles.memberName}>{`${item.first_name || ''}${item.middle_name ? ' ' + item.middle_name : ''}${item.last_name ? ' ' + item.last_name : ''}`.trim()}</Text>
+        <View style={styles.memberMetaRow}>
+          <Text style={styles.memberUsername}>{`@${item.username || 'unknown'}`}</Text>
+
+          <View style={styles.memberInlineActions}>
+            <View style={[styles.statusBadge, { backgroundColor: isMemberActive(item.is_active) ? '#DCFCE7' : '#F3F4F6' }]}> 
+              <Text style={[styles.statusText, { color: isMemberActive(item.is_active) ? '#16A34A' : '#6B7280' }]}>
+                {isMemberActive(item.is_active) ? 'Active' : 'Inactive'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.inlineActionBtn}
+              accessibilityLabel="view"
+              onPress={() => openView(item)}
+            >
+              <Ionicons name="eye-outline" size={17} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            {/* Owner/representative actions are further restricted per target role. */}
+            {canManageTargetMember(item) && (
+              <>
+                <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="edit" onPress={() => openEdit(item)}>
+                  <Ionicons name="pencil" size={16} color={COLORS.primary} />
+                </TouchableOpacity>
+                {canDeleteTargetMember(item) && (
+                  <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="remove" onPress={() => confirmDelete(item)}>
+                    <Ionicons name="trash" size={16} color="#E53935" />
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+        </View>
         <Text style={styles.memberRole}>{item.role ? (item.role.charAt(0).toUpperCase() + item.role.slice(1)) : item.role}</Text>
-
-        <View style={styles.metaCompact}>
-          <MaterialIcons name="chat-bubble-outline" size={13} color={COLORS.primary} />
-          <Text style={styles.metaValueCompact}>{item.phone}</Text>
-        </View>
-      </View>
-
-      <View style={styles.actionsRight}>
-        <View style={[styles.statusBadge, { backgroundColor: item.is_active ? '#DCFCE7' : '#F3F4F6' }]}>
-          <Text style={[styles.statusText, { color: item.is_active ? '#16A34A' : '#6B7280' }]}>
-            {item.is_active ? 'Active' : 'Inactive'}
-          </Text>
-        </View>
-        {/* Representatives cannot edit or delete owners */}
-        {!(role === 'representative' && item.role === 'owner') && (
-          <>
-            <TouchableOpacity style={styles.iconBtn} accessibilityLabel="edit" onPress={() => openEdit(item)}>
-              <Ionicons name="pencil" size={18} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} accessibilityLabel="remove" onPress={() => confirmDelete(item)}>
-              <Ionicons name="trash" size={18} color="#E53935" />
-            </TouchableOpacity>
-          </>
-        )}
       </View>
     </View>
   );
 
-  const toggleMemberActive = async (memberId: any, newActiveStatus: boolean) => {
-    try {
-      const storedUser = await storage_service.get_user_data();
-      const userId = storedUser?.user_id || storedUser?.id;
-      
-      const endpoint = `${api_config.endpoints.contractor_members.toggle_active(memberId)}?user_id=${userId}`;
-      const res = await api_request(endpoint, { method: 'PATCH' });
-      
-      if (res.success) {
-        // Update local state immediately for better UX
-        setMembers(prev => prev.map(m => 
-          (m.id || m.contractor_user_id) === memberId 
-            ? { ...m, is_active: res.data?.is_active ?? newActiveStatus }
-            : m
-        ));
-        return true;
-      } else {
-        Alert.alert('Error', res.message || 'Failed to update status');
-        return false;
-      }
-    } catch (e) {
-      console.warn('Toggle active failed', e);
-      Alert.alert('Error', 'Network error updating status');
-      return false;
-    }
-  };
   const openCreate = () => {
+    if (!canAddMembers) {
+      Alert.alert('Access Restricted', 'Only the company owner can invite new members.');
+      return;
+    }
+
     setForm({
-      first_name: '',
-      middle_name: '',
-      last_name: '',
-      email: '',
-      phone_number: '',
       role: 'others',
       role_other: '',
-      profile_pic: null,
-      _pickedFile: null,
     });
+    setOwnerSearchQuery('');
+    setOwnerSearchResults([]);
+    setSelectedOwner(null);
     setEditingId(null);
     setModalVisible(true);
   };
 
+  const openView = (item) => {
+    setSelectedMember(item);
+    setViewModalVisible(true);
+  };
+
+  const closeView = () => {
+    setViewModalVisible(false);
+    setSelectedMember(null);
+  };
+
   const openEdit = (item) => {
+    if (!canManageTargetMember(item)) {
+      Alert.alert('Access Restricted', 'You cannot edit this member.');
+      return;
+    }
+
     setEditingId(item.id || item.contractor_user_id || null);
     
-    // Add cache buster to profile_pic URL for latest image
-    let profilePicUri = item.profile_pic || item.avatar || null;
-    if (profilePicUri && item.updated_at && !String(profilePicUri).startsWith('http') && !String(profilePicUri).startsWith('data:') && !String(profilePicUri).startsWith('file:') && !String(profilePicUri).startsWith('content:')) {
-      const ts = new Date(item.updated_at).getTime();
-      profilePicUri = `${profilePicUri}?t=${ts}`;
-    }
-    
     setForm({
-      first_name: item.first_name || item.name?.split(' ')[0] || '',
-      middle_name: item.middle_name || '',
-      last_name: item.last_name || item.name?.split(' ').slice(1).join(' ') || '',
-      email: item.email || '',
-      phone_number: item.phone || item.phone_number || '',
       role: item.role || 'others',
       role_other: item.role_other || '',
-      profile_pic: profilePicUri,
-      _pickedFile: null,
-      username: item.username || '',
-      password: '',
-      password_confirm: '',
-      is_active: !!item.is_active,
-      _originalItem: item
+      _originalItem: item,
     });
     setModalVisible(true);
   };
 
+  const searchVerifiedOwners = async (query: string) => {
+    setOwnerSearchQuery(query);
+    if (query.trim().length < 2) {
+      setOwnerSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchingOwners(true);
+      const storedUser = await storage_service.get_user_data();
+      const userId = storedUser?.user_id || storedUser?.id;
+      const endpoint = `${api_config.endpoints.contractor_members.search_owners}?user_id=${userId}&q=${encodeURIComponent(query.trim())}`;
+      const res = await api_request(endpoint, { method: 'GET' });
+
+      if (res.success) {
+        setOwnerSearchResults(Array.isArray(res.data?.data) ? res.data.data : []);
+      } else {
+        setOwnerSearchResults([]);
+      }
+    } catch (e) {
+      console.warn('Search verified owners failed', e);
+      setOwnerSearchResults([]);
+    } finally {
+      setSearchingOwners(false);
+    }
+  };
+
   const confirmDelete = (item) => {
+    if (!canDeleteTargetMember(item)) {
+      Alert.alert('Access Restricted', 'You cannot remove this member.');
+      return;
+    }
+
     const id = item.id || item.contractor_user_id;
     Alert.alert('Delete member', 'Are you sure you want to delete this member?', [
       { text: 'Cancel', style: 'cancel' },
@@ -349,8 +412,17 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
   const submitForm = async () => {
     const isEditing = !!editingId;
-    if (!form.first_name || !form.last_name || !form.email) {
-      Alert.alert('Validation', 'Please fill in first name, last name and email.');
+
+    if (!form.role) {
+      Alert.alert('Validation', 'Please select a role.');
+      return;
+    }
+    if (form.role === 'others' && !String(form.role_other || '').trim()) {
+      Alert.alert('Validation', 'Please provide the custom role name.');
+      return;
+    }
+    if (!isEditing && !selectedOwner) {
+      Alert.alert('Validation', 'Please search and select a verified property owner to invite.');
       return;
     }
 
@@ -366,173 +438,50 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         return;
       }
 
-      // Check if user picked a NEW local file (not just an existing URL)
-      const hasNewImageFile = form._pickedFile && 
-        typeof form._pickedFile === 'object' && 
-        form._pickedFile.uri && 
-        (form._pickedFile.uri.startsWith('file:') || 
-         form._pickedFile.uri.startsWith('content:') || 
-         form._pickedFile.uri.includes('/cache/') ||
-         form._pickedFile.uri.includes('/tmp/'));
-
-      // Build payload - only include profile_pic if we're uploading a new file
-      const payload = {
-        first_name: form.first_name,
-        middle_name: form.middle_name,
-        last_name: form.last_name,
-        email: form.email,
-        phone_number: form.phone_number,
+      const payload: any = {
         role: form.role,
-        role_other: form.role_other,
       };
-
-      // Only include profile_pic in JSON payload if not uploading a file
-      // (if uploading via FormData, it's handled separately)
-      if (!hasNewImageFile && !editingId) {
-        // Only for new members without a picked file
-        payload.profile_pic = null;
+      if (form.role === 'others') {
+        payload.role_other = String(form.role_other || '').trim();
       }
 
-      let res;
-
-      console.log('Submit form state:', {
-        hasNewImageFile,
-        _pickedFile: form._pickedFile,
-        profile_pic: form.profile_pic,
-        editingId,
-      });
-
-      // If user picked a local file, send multipart/form-data
-      if (hasNewImageFile) {
-        const fd = new FormData();
-        fd.append('first_name', payload.first_name);
-        fd.append('middle_name', payload.middle_name || '');
-        fd.append('last_name', payload.last_name);
-        fd.append('email', payload.email);
-        fd.append('phone_number', payload.phone_number || '');
-        fd.append('role', payload.role);
-        fd.append('role_other', payload.role_other || '');
-        fd.append('user_id', String(userId));
-
-        const uri = form._pickedFile.uri;
-        const split = uri.split('/');
-        const name = form._pickedFile.name || split[split.length - 1];
-        const type = form._pickedFile.type || 'image/jpeg';
-
-        // @ts-ignore
-        fd.append('profile_pic', { uri, name, type });
-
-        if (editingId) {
-          // Use POST with _method override for better Laravel compatibility
-          fd.append('_method', 'PUT');
-          res = await api_request(`${api_config.endpoints.contractor_members.update(editingId)}?user_id=${userId}`, {
-            method: 'POST',
-            body: fd,
-          });
-        } else {
-          res = await api_request(`${api_config.endpoints.contractor_members.create}?user_id=${userId}`, {
-            method: 'POST',
-            body: fd,
-          });
-        }
-      } else {
-        // Send as JSON (no file upload)
-        console.log('Sending JSON payload:', JSON.stringify(payload));
-        if (editingId) {
-          res = await api_request(`${api_config.endpoints.contractor_members.update(editingId)}?user_id=${userId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-        } else {
-          res = await api_request(`${api_config.endpoints.contractor_members.create}?user_id=${userId}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-        }
+      if (!isEditing) {
+        payload.owner_id = selectedOwner.owner_id;
       }
+
+      const res = await api_request(
+        `${isEditing ? api_config.endpoints.contractor_members.update(editingId) : api_config.endpoints.contractor_members.create}?user_id=${userId}`,
+        {
+          method: isEditing ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (res.success) {
-        // If editing and activation status changed, update it
-        if (isEditing && form._originalItem && form.is_active !== !!form._originalItem.is_active) {
-          await toggleMemberActive(editingId, form.is_active);
-        }
-        
-        // Update local state immediately with returned data to show new profile pic
-        if (isEditing && res.data) {
-          setMembers(prev => prev.map(m => 
-            (m.id || m.contractor_user_id) === editingId 
-              ? { ...m, ...res.data, contractor_user_id: editingId }
-              : m
-          ));
-        }
-        
         setModalVisible(false);
         setEditingId(null);
+        setSelectedOwner(null);
+        setOwnerSearchQuery('');
+        setOwnerSearchResults([]);
         
-        // Refetch to ensure consistency
         fetchMembers();
-        
-        const username = res.data && (res.data.username || res.data.user && res.data.user.username) ? (res.data.username || res.data.user.username) : null;
+
         if (isEditing) {
-          // Edited
-          Alert.alert('Changes Saved', 'Member updated successfully.');
+          Alert.alert('Changes Saved', res.message || 'Member role updated successfully.');
         } else {
-          // Created
-          Alert.alert('Success', username ? `Member created. Username: ${username}` : 'Member created successfully.');
+          Alert.alert('Invitation Sent', res.message || 'Invitation sent successfully.');
         }
       } else {
-        Alert.alert('Error', res.message || (isEditing ? 'Failed to save changes' : 'Failed to create member'));
+        Alert.alert('Error', res.message || (isEditing ? 'Failed to update member' : 'Failed to send invitation'));
       }
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Network error');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const pickImage = async () => {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permission required', 'Permission to access photos is required.');
-        return;
-      }
-
-      const mediaTypes = ImagePicker.MediaTypeOptions?.Images ?? ImagePicker.MediaType?.Images ?? ImagePicker.MediaTypeOptions?.All;
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes,
-        allowsEditing: true,
-        quality: 0.7,
-      });
-
-      // Support both legacy API (result.cancelled, result.uri)
-      // and new API (result.canceled, result.assets)
-      let uri = null;
-      if (result && typeof result.canceled !== 'undefined') {
-        // new API: result.canceled (boolean) and result.assets (array)
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-          uri = result.assets[0].uri;
-        }
-      } else if (result && typeof result.cancelled !== 'undefined') {
-        // legacy API
-        if (!result.cancelled && result.uri) {
-          uri = result.uri;
-        }
-      }
-
-      if (uri) {
-        const name = uri.split('/').pop();
-        setForm({ ...form, profile_pic: uri, _pickedFile: { uri, name, type: 'image/jpeg' } });
-      }
-    } catch (e) {
-      console.warn('Image pick failed', e);
     }
   };
 
@@ -564,15 +513,28 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         >
           <Feather name="filter" size={18} color={(roleFilter !== 'all' || statusFilter !== 'all') ? '#fff' : COLORS.text} />
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.newUserBtn, styles.newUserBtnWithIcon]} 
-          accessibilityLabel="new-member" 
-          onPress={openCreate}
-        >
-          <Feather name="plus" size={16} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.newUserText}>Add</Text>
-        </TouchableOpacity>
+        {canAddMembers && (
+          <TouchableOpacity 
+            style={[styles.newUserBtn, styles.newUserBtnWithIcon]} 
+            accessibilityLabel="new-member" 
+            onPress={openCreate}
+          >
+            <Feather name="plus" size={16} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.newUserText}>Add</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {!canManageMemberActions && (
+        <View style={styles.readOnlyBanner}>
+          <Ionicons name="information-circle-outline" size={16} color={COLORS.info} />
+          <Text style={styles.readOnlyBannerText}>
+            View-only access. Only owner/representative can manage members, and only owner can add new members.
+          </Text>
+        </View>
+      )}
+
+
 
       {/* Filter Panel */}
       {showFilters && (
@@ -589,16 +551,12 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
             <View style={styles.filterChips}>
               {[
                 { label: 'All', value: 'all' },
-                { label: 'Owner', value: 'owner' },
                 { label: 'Representative', value: 'representative' },
+                { label: 'Owner', value: 'owner' },
                 { label: 'Engineer', value: 'engineer' },
                 { label: 'Architect', value: 'architect' },
                 { label: 'Others', value: 'others' },
-              ].filter(({ value }) => {
-                // Representatives cannot see/filter by owner
-                if (role === 'representative' && value === 'owner') return false;
-                return true;
-              }).map(({ label, value }) => (
+              ].map(({ label, value }) => (
                 <TouchableOpacity
                   key={value}
                   style={[
@@ -661,7 +619,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         <View style={styles.emptyState}>
           <Feather name="users" size={48} color={COLORS.border} />
           <Text style={styles.emptyStateText}>
-            {members.length === 0 ? 'No members yet' : 'No members match your filters'}
+            {members.length === 0 ? 'No members yet. Start by inviting verified property owners.' : 'No members match your filters'}
           </Text>
           {members.length > 0 && (
             <TouchableOpacity onPress={clearFilters} style={styles.clearFiltersButton}>
@@ -683,26 +641,53 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center' }}>
           <View style={{ margin: 20, backgroundColor: '#fff', borderRadius: 8, padding: 16 }}>
             <ScrollView>
-              <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>{editingId ? 'Edit Member' : 'New Member'}</Text>
+              <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>{editingId ? 'Edit Member' : 'Invite Member'}</Text>
 
-              <View style={{ alignItems: 'center', marginBottom: 12 }}>
-                <TouchableOpacity onPress={pickImage} style={styles.avatarLargeWrap} accessibilityLabel="edit-photo">
-                  <MemberImage key={form.profile_pic} uri={form.profile_pic} style={styles.avatarLarge} fallback={require('../../../assets/images/pictures/members_default.png')} />
-                  <View style={styles.avatarEditWrap} pointerEvents="none">
-                    <View style={styles.avatarEditBtn}>
-                      <Ionicons name="pencil" size={14} color="#fff" />
+              {!editingId && (
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={styles.sectionHeader}>Invite Verified Property Owner</Text>
+                  <TextInput
+                    placeholder="Search by name, email, or username"
+                    value={ownerSearchQuery}
+                    onChangeText={searchVerifiedOwners}
+                    style={styles.input}
+                  />
+                  {searchingOwners && <ActivityIndicator style={{ marginTop: 8 }} />}
+                  {!searchingOwners && ownerSearchQuery.trim().length >= 2 && ownerSearchResults.length === 0 && (
+                    <Text style={styles.noteSecondary}>No verified owners found.</Text>
+                  )}
+                  {ownerSearchResults.length > 0 && (
+                    <View style={styles.ownerResultList}>
+                      {ownerSearchResults.map((owner: any) => {
+                        const isSelected = selectedOwner?.owner_id === owner.owner_id;
+                        return (
+                          <TouchableOpacity
+                            key={owner.owner_id}
+                            style={[styles.ownerResultItem, isSelected && styles.ownerResultItemSelected]}
+                            onPress={() => setSelectedOwner(owner)}
+                          >
+                            <Text style={styles.ownerResultName}>
+                              {`${owner.first_name || ''} ${owner.middle_name || ''} ${owner.last_name || ''}`.replace(/\s+/g, ' ').trim()}
+                            </Text>
+                            <Text style={styles.ownerResultSub}>{owner.email || owner.username}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
-                  </View>
-                </TouchableOpacity>
-                <Text style={{ marginTop: 8, color: COLORS.textSecondary }}>Add profile picture (optional)</Text>
-              </View>
+                  )}
+                </View>
+              )}
 
-              <Text style={styles.sectionHeader}>Personal Information</Text>
-              <TextInput placeholder="First name" value={form.first_name} onChangeText={(t) => setForm({ ...form, first_name: t })} style={styles.input} />
-              <TextInput placeholder="Middle name (Optional)" value={form.middle_name} onChangeText={(t) => setForm({ ...form, middle_name: t })} style={styles.input} />
-              <TextInput placeholder="Last name" value={form.last_name} onChangeText={(t) => setForm({ ...form, last_name: t })} style={styles.input} />
-              <TextInput placeholder="Email" keyboardType="email-address" value={form.email} onChangeText={(t) => setForm({ ...form, email: t })} style={styles.input} />
-              <TextInput placeholder="Phone" keyboardType="phone-pad" value={form.phone_number} onChangeText={(t) => setForm({ ...form, phone_number: t })} style={styles.input} />
+              {selectedOwner && !editingId && (
+                <View style={styles.selectedOwnerBox}>
+                  <Text style={styles.selectedOwnerTitle}>Selected Invitee</Text>
+                  <Text style={styles.selectedOwnerText}>
+                    {`${selectedOwner.first_name || ''} ${selectedOwner.middle_name || ''} ${selectedOwner.last_name || ''}`.replace(/\s+/g, ' ').trim()}
+                  </Text>
+                  <Text style={styles.selectedOwnerSub}>{selectedOwner.email || selectedOwner.username}</Text>
+                </View>
+              )}
+
               {/* Role picker implemented as simple inline options to avoid extra deps */}
               <View style={{ marginBottom: 8 }}>
                 <Text style={styles.sectionHeader}>Role</Text>
@@ -712,12 +697,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
                 </TouchableOpacity>
                 {form.showRoleOptions && (
                   <View style={{ marginTop: 6, borderWidth: 1, borderColor: COLORS.border, borderRadius: 6, overflow: 'hidden' }}>
-                    {['owner','representative','engineer','architect','others']
-                      .filter(r => {
-                        // Representatives cannot assign owner role
-                        if (role === 'representative' && r === 'owner') return false;
-                        return true;
-                      })
+                    {['representative', 'manager', 'engineer', 'architect', 'others']
                       .map((r) => (
                       <TouchableOpacity key={r} onPress={() => setForm({ ...form, role: r, showRoleOptions: false })} style={{ padding: 10, backgroundColor: form.role === r ? '#F5F7FA' : '#FFF' }}>
                         <Text style={{ color: COLORS.text }}>{r.charAt(0).toUpperCase() + r.slice(1)}</Text>
@@ -732,36 +712,12 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
                 <TextInput placeholder="Role (other)" value={form.role_other} onChangeText={(t) => setForm({ ...form, role_other: t })} style={styles.input} />
               )}
 
-              {/* Activation Status Toggle - only show when editing */}
-              {editingId && form._originalItem?.role !== 'owner' && (
-                <View style={styles.activationSection}>
-                  <Text style={styles.sectionHeader}>Member Status</Text>
-                  <View style={styles.activationRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.text }}>
-                        {form.is_active ? 'Active' : 'Inactive'}
-                      </Text>
-                      <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
-                        {form.is_active ? 'Member can access the system' : 'Member cannot access the system'}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={form.is_active}
-                      onValueChange={(value) => setForm({ ...form, is_active: value })}
-                      trackColor={{ false: '#E5E7EB', true: '#BBF7D0' }}
-                      thumbColor={form.is_active ? '#22C55E' : '#9CA3AF'}
-                    />
-                  </View>
-                </View>
-              )}
-
               <View style={styles.noteBox}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                   <Ionicons name="information-circle-outline" size={20} color="#1E90FF" style={{ marginRight: 8 }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.notePrimary}>Note: Username and Password are automatically generated.</Text>
-                    <Text style={styles.noteSecondary}>Default Password: <Text style={{ fontWeight: '700' }}>teammember123@!</Text></Text>
-                    <Text style={styles.noteSecondary}>The username will be <Text style={{ fontWeight: '700' }}>staff_</Text> followed by a random 4-digit number.</Text>
+                    <Text style={styles.notePrimary}>Invitations are sent only to verified property owners.</Text>
+                    <Text style={styles.noteSecondary}>They will appear as pending members until they accept the invitation.</Text>
                   </View>
                 </View>
               </View>
@@ -776,11 +732,61 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
                   {submitting ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.newUserText}>{editingId ? 'Save Changes' : 'Create'}</Text>
+                    <Text style={styles.newUserText}>{editingId ? 'Save Changes' : 'Send Invitation'}</Text>
                   )}
                 </TouchableOpacity>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={viewModalVisible} animationType="fade" transparent>
+        <View style={styles.viewModalOverlay}>
+          <View style={styles.viewModalCard}>
+            <Text style={styles.viewModalTitle}>Member Details</Text>
+
+            <View style={styles.viewAvatarWrap}>
+              <MemberImage
+                key={selectedMember?.profile_pic || selectedMember?.member_profile_pic || selectedMember?.avatar}
+                uri={selectedMember?.member_profile_pic || selectedMember?.profile_pic || selectedMember?.avatar}
+                style={styles.viewAvatar}
+                fallback={require('../../../assets/images/pictures/members_default.png')}
+              />
+            </View>
+
+            <View style={styles.viewFieldRow}>
+              <Text style={styles.viewFieldLabel}>Name</Text>
+              <Text style={styles.viewFieldValue}>
+                {`${selectedMember?.first_name || ''} ${selectedMember?.middle_name || ''} ${selectedMember?.last_name || ''}`.replace(/\s+/g, ' ').trim() || 'N/A'}
+              </Text>
+            </View>
+
+            <View style={styles.viewFieldRow}>
+              <Text style={styles.viewFieldLabel}>Username</Text>
+              <Text style={styles.viewFieldValue}>@{selectedMember?.username || 'unknown'}</Text>
+            </View>
+
+            <View style={styles.viewFieldRow}>
+              <Text style={styles.viewFieldLabel}>Email</Text>
+              <Text style={styles.viewFieldValue}>{selectedMember?.email || 'N/A'}</Text>
+            </View>
+
+            <View style={styles.viewFieldRow}>
+              <Text style={styles.viewFieldLabel}>Role</Text>
+              <Text style={styles.viewFieldValue}>
+                {selectedMember?.role ? (selectedMember.role.charAt(0).toUpperCase() + selectedMember.role.slice(1)) : 'N/A'}
+              </Text>
+            </View>
+
+            <View style={styles.viewFieldRow}>
+              <Text style={styles.viewFieldLabel}>Status</Text>
+              <Text style={styles.viewFieldValue}>{isMemberActive(selectedMember?.is_active) ? 'Active' : 'Inactive'}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.viewCloseBtn} onPress={closeView}>
+              <Text style={styles.viewCloseBtnText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1011,6 +1017,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  readOnlyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#EFF6FF',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  readOnlyBannerText: {
+    marginLeft: 8,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    flex: 1,
+  },
   newUserBtnWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1084,6 +1105,57 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff'
   },
+  ownerResultList: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    maxHeight: 180,
+    overflow: 'hidden',
+  },
+  ownerResultItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: '#FFFFFF',
+  },
+  ownerResultItemSelected: {
+    backgroundColor: '#FFF7ED',
+  },
+  ownerResultName: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  ownerResultSub: {
+    marginTop: 2,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+  },
+  selectedOwnerBox: {
+    marginBottom: 10,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 10,
+  },
+  selectedOwnerTitle: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  selectedOwnerText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  selectedOwnerSub: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
   noteBox: {
     backgroundColor: '#EFF8FF',
     padding: 10,
@@ -1117,8 +1189,28 @@ const styles = StyleSheet.create({
   },
   memberRole: {
     color: COLORS.textSecondary,
-    marginBottom: 6,
+    marginTop: 6,
     fontSize: 12,
+  },
+  memberMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  memberUsername: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  memberInlineActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inlineActionBtn: {
+    marginLeft: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 3,
   },
   metaRow: {
     flexDirection: 'row',
@@ -1148,10 +1240,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   actionsRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginLeft: 12,
+    display: 'none',
   },
   toggleContainer: {
     flexDirection: 'row',
@@ -1252,5 +1341,58 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  viewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  viewModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+  },
+  viewModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 12,
+  },
+  viewAvatarWrap: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  viewAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  viewFieldRow: {
+    marginBottom: 8,
+  },
+  viewFieldLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: 2,
+  },
+  viewFieldValue: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  viewCloseBtn: {
+    marginTop: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  viewCloseBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

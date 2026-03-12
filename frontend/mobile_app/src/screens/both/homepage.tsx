@@ -251,12 +251,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
-  // Staff/contractor-member users must always operate in contractor context.
+  // Staff-only sessions must always operate in contractor context.
+  // Do not infer this from cached contractor_member because dual-role users can
+  // retain that cache even while switching back to owner.
   const isStaffContext = useMemo(() => {
     const rawType = String(userData?.user_type || '').toLowerCase();
-    const determinedRole = String(userData?.determinedRole || '').toLowerCase();
-    return rawType === 'staff' || determinedRole === 'contractor' || !!userData?.contractor_member;
-  }, [userData?.user_type, userData?.determinedRole, userData?.contractor_member]);
+    return rawType === 'staff';
+  }, [userData?.user_type]);
 
   // Resolve effective user type: prefer explicit userData.user_type when available
   // IMPORTANT: Staff users should be treated as contractors
@@ -265,13 +266,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     if (currentRole === 'owner') return 'property_owner';
     if (currentRole === 'contractor') return 'contractor';
 
+    // When API role refresh is delayed, prefer the last explicit role switch intent.
+    const preferredRole = String(userData?.preferred_role || '').toLowerCase();
+    if (preferredRole === 'owner' || preferredRole === 'property_owner') return 'property_owner';
+    if (preferredRole === 'contractor') return 'contractor';
+
     const rawType = userData?.user_type || userType;
     // Staff users operate in contractor context
     if (rawType === 'staff' || rawType === 'contractor') {
       return 'contractor';
     }
     return rawType === 'property_owner' || rawType === 'both' ? 'property_owner' : userType;
-  }, [isStaffContext, currentRole, userData?.user_type, userType]);
+  }, [isStaffContext, currentRole, userData?.preferred_role, userData?.user_type, userType]);
 
   // Refresh current role from API on mount and when app comes to foreground
   useEffect(() => {
@@ -297,12 +303,15 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           try {
             if (role === 'contractor') {
               const stored = await storage_service.get_user_data();
-              // prefer contractor payload from response
+              // Owner payload exists for contractor owners; staff/representative sessions use staff_record.
               const contractorPayload = (res as any).contractor || (res as any).data?.contractor || null;
-              if (stored && contractorPayload) {
-                // Only write if we don't already have contractor_member
-                if (!stored.contractor_member) {
-                  const ctx = {
+              const staffPayload = (res as any).staff_record || (res as any).data?.staff_record || null;
+
+              if (stored && !stored.contractor_member) {
+                let ctx: any = null;
+
+                if (contractorPayload) {
+                  ctx = {
                     contractor_member_id: contractorPayload.contractor_member_id || null,
                     contractor_id: contractorPayload.contractor_id || contractorPayload.contractorId || 0,
                     contractor_name: contractorPayload.company_name || contractorPayload.contractor_name || null,
@@ -320,6 +329,32 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                       can_view_property_owners: true,
                     }
                   };
+                } else if (staffPayload) {
+                  const roleName = String(staffPayload.company_role || staffPayload.role || 'others').toLowerCase();
+                  const isActive = Number(staffPayload.is_active ?? 0) === 1 && Number(staffPayload.is_suspended ?? 0) !== 1;
+                  const hasFullAccess = roleName === 'owner' || roleName === 'representative';
+
+                  ctx = {
+                    contractor_member_id: staffPayload.staff_id || null,
+                    contractor_id: staffPayload.contractor_id || 0,
+                    contractor_name: staffPayload.contractor_name || null,
+                    role: roleName,
+                    is_active: isActive,
+                    is_contractor_owner: false,
+                    has_full_access: hasFullAccess,
+                    permissions: {
+                      can_manage_members: false,
+                      can_view_members: isActive,
+                      can_bid: hasFullAccess,
+                      can_manage_milestones: hasFullAccess,
+                      can_upload_progress: isActive,
+                      can_approve_payments: hasFullAccess,
+                      can_view_property_owners: isActive,
+                    }
+                  };
+                }
+
+                if (ctx) {
                   stored.contractor_member = ctx;
                   stored.determinedRole = 'contractor';
                   await storage_service.save_user_data(stored);
@@ -338,7 +373,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     fetchCurrentRole();
 
     // Listen for global roleChanged events to refresh immediately
-    const roleChangedSub = DeviceEventEmitter.addListener('roleChanged', () => {
+    const roleChangedSub = DeviceEventEmitter.addListener('roleChanged', (payload?: any) => {
+      const switched = String(payload?.role || '').toLowerCase();
+      if (switched === 'owner' || switched === 'property_owner') {
+        setCurrentRole('owner');
+      } else if (switched === 'contractor') {
+        setCurrentRole('contractor');
+      }
       fetchCurrentRole();
     });
 
@@ -359,6 +400,21 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       onLogout();
     }
   };
+
+  // Trigger child dashboard refresh whenever dashboard tab becomes active
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      try {
+        DeviceEventEmitter.emit('dashboardRefresh', {
+          role: currentRole,
+          effectiveUserType,
+          ts: Date.now(),
+        });
+      } catch (e) {
+        // no-op
+      }
+    }
+  }, [activeTab, currentRole, effectiveUserType]);
 
   // Fetch contractor types for project creation form
   useEffect(() => {
@@ -391,7 +447,6 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   useEffect(() => {
     let isMounted = true;
     const fetchMyContractor = async () => {
-      if (effectiveUserType !== 'contractor') return;
       try {
         const res = await contractors_service.get_my_contractor_profile();
         console.log('[homepage] get_my_contractor_profile response:', res);
@@ -819,34 +874,19 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
    * Render a single contractor card (matching project card style)
    */
   const renderContractorCard = ({ item }: { item: ContractorType }) => {
-      // Determine which source to use for images depending on the viewer's role.
-      // If the current viewer role is 'contractor', prefer `company_logo`/`company_banner` from `contractors` table.
-      // If the viewer is an owner (or default), prefer `profile_pic`/`cover_photo` from `users` table.
-      // Determine viewer role: prefer explicit `currentRole`; for users with `both` type
-      // respect their `preferred_role` when available, otherwise fall back to `effectiveUserType`.
-      const viewerRole = (currentRole
-        || (userData?.user_type === 'both'
-        ? ((userData?.preferred_role || '').toString().toLowerCase() === 'contractor' ? 'contractor' : 'owner')
-        : (effectiveUserType === 'contractor' ? 'contractor' : 'owner'))
-      ) as string;
-
-      // Resolve logo/profile image path according to viewer role with sensible fallbacks
-      let logoPath: string | null = null;
-      if (viewerRole === 'contractor') {
-        logoPath = (item as any).company_logo || item.logo_url || item.profile_pic || null;
-      } else {
-        logoPath = item.profile_pic || item.logo_url || (item as any).company_logo || null;
-      }
+      // Contractor cards must always show contractor company media.
+      // Never fall back to owner profile/cover photos on these cards.
+      const logoPath: string | null = (item as any).company_logo || item.logo_url || null;
 
       const logoUri = logoPath ? getStorageUrl(logoPath, 'profiles') : undefined;
 
-      // Resolve cover/banner similarly
-      let coverPath: string | null = null;
-      if (viewerRole === 'contractor') {
-        coverPath = (item as any).company_banner || item.cover_photo || null;
-      } else {
-        coverPath = item.cover_photo || (item as any).company_banner || null;
-      }
+    // Same rule for cover: contractor company banner only.
+    // For raw feed items, `company_banner` exists (can be null) and must be authoritative.
+    // For transformed contractor-service items, fall back to `cover_photo` (already mapped from company_banner).
+    const hasCompanyBannerField = Object.prototype.hasOwnProperty.call(item as any, 'company_banner');
+    const coverPath: string | null = hasCompanyBannerField
+      ? ((item as any).company_banner || null)
+      : (item.cover_photo || null);
 
       const hasCoverPhoto = !!coverPath && !String(coverPath).includes('placeholder');
       const coverPhotoUri = hasCoverPhoto ? getStorageUrl(coverPath, 'cover_photos') : undefined;
@@ -1329,7 +1369,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       years_of_experience: c.years_of_experience,
       completed_projects: c.completed_projects,
       user_id: c.user_id,
-      profile_pic: c.logo_url?.replace(`${api_config.base_url}/storage/`, ''),
+      company_logo: c.logo_url?.replace(`${api_config.base_url}/storage/`, ''),
       services_offered: c.services_offered,
     }));
   }, [popularContractors]);
@@ -1359,7 +1399,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       years_of_experience: contractor.years_of_experience,
       completed_projects: contractor.completed_projects,
       user_id: contractor.user_id,
-      logo_url: contractor.profile_pic ? `${api_config.base_url}/storage/${contractor.profile_pic}` : undefined,
+      logo_url: contractor.company_logo ? `${api_config.base_url}/storage/${contractor.company_logo}` : undefined,
       services_offered: contractor.services_offered,
     });
   }, []);
@@ -1904,6 +1944,7 @@ const renderProfileContent = () => {
         onOpenSubscription={() => setProfileSubScreen('subscription')}
         onOpenChangeOtp={() => setProfileSubScreen('change_otp')}
         onEditProfile={() => setProfileSubScreen('edit_profile')}
+        contractorVerified={myContractorProfile?.verification_status === 'approved'}
         userData={{
           username: userData?.username,
           email: userData?.email,
@@ -1933,6 +1974,7 @@ const renderProfileContent = () => {
         onOpenSwitchRole={onOpenSwitchRole}
         onOpenBoosts={() => setShowBoosts(true)}
         onOpenChangeOtp={() => setProfileSubScreen('change_otp')}
+        contractorVerified={myContractorProfile?.verification_status === 'approved'}
         userData={{
           username: userData?.username,
           email: userData?.email,

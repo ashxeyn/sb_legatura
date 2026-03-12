@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use App\Models\contractor\contractorClass;
 use App\Models\contractor\progressUploadClass;
 use App\Services\NotificationService;
@@ -38,6 +39,7 @@ class cprocessController extends Controller
                 ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
                 ->join('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
                 ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->join('users as po_user', 'property_owners.user_id', '=', 'po_user.user_id')
                 ->where('projects.project_status', 'open')
                 ->where('project_relationships.project_post_status', 'approved')
                 ->select(
@@ -57,7 +59,7 @@ class cprocessController extends Controller
                     'project_relationships.bidding_due as bidding_due',
                     'project_relationships.created_at',
                     'property_owners.owner_id as owner_id',
-                    DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name")
+                    DB::raw("CONCAT(po_user.first_name, ' ', COALESCE(po_user.middle_name, ''), ' ', po_user.last_name) as owner_name")
                 )
                 ->orderBy('project_relationships.created_at', 'desc')
                 ->get();
@@ -199,18 +201,27 @@ class cprocessController extends Controller
         $bids = collect([]);
 
         if ($userId) {
-            // Resolve contractor — same logic as apiGetMyBids
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateFinancialAccess((int) $userId);
+            if ($authError) {
+                return redirect('/dashboard')->with('error', $authError);
+            }
+        }
 
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $userId)
+        if ($userId) {
+            // Resolve contractor — same logic as apiGetMyBids
+            $cpOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $cpOwnerId ? DB::table('contractors')->where('owner_id', $cpOwnerId)->first() : null;
+
+            if (!$contractor && $cpOwnerId) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $cpOwnerId)
                     ->where('is_active', 1)
-                    ->where('is_deleted', 0)
+                    ->whereNull('deletion_reason')
                     ->first();
-                if ($contractorUser) {
+                if ($staffRecord) {
                     $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->where('contractor_id', $staffRecord->contractor_id)
                         ->first();
                 }
             }
@@ -500,16 +511,50 @@ class cprocessController extends Controller
             if ($targetRole === 'contractor' && in_array($userType, ['contractor'])) {
                 $canSwitch = true;
             }
+            // If switching to contractor and the user has an approved contractor profile (property_owner with added company)
+            if ($targetRole === 'contractor' && $userId && !$canSwitch) {
+                try {
+                    $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+                    if ($ownerId) {
+                        $contractorCheck = DB::table('contractors')->where('owner_id', $ownerId)->first();
+                        if ($contractorCheck && strtolower($contractorCheck->verification_status) === 'approved') {
+                            $canSwitch = true;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('switchRole contractor-check failed: ' . $e->getMessage());
+                }
+            }
+
+            // If switching to contractor and user is an active staff member, allow switch
+            if ($targetRole === 'contractor' && $userId && !$canSwitch) {
+                try {
+                    $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+                    if ($ownerId) {
+                        $staffRecord = DB::table('contractor_staff')
+                            ->where('owner_id', $ownerId)
+                            ->where('is_active', 1)
+                            ->where('is_suspended', 0)
+                            ->whereNull('deletion_reason')
+                            ->first();
+                        if ($staffRecord) {
+                            $canSwitch = true;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('switchRole staff-check failed: ' . $e->getMessage());
+                }
+            }
         }
 
         if (!$canSwitch) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Role switching not available for your account type.'
+                    'message' => 'Dashboard switching not available for your account type.'
                 ], 403);
             } else {
-                return redirect('/dashboard')->with('error', 'Role switching not available for your account type.');
+                return redirect('/dashboard')->with('error', 'Dashboard switching not available for your account type.');
             }
         }
 
@@ -526,15 +571,15 @@ class cprocessController extends Controller
             }
         }
 
-        // If switching to owner, check if the profile is approved
+        // If switching to owner, only require an owner profile record.
+        // Owner is the primary/base role and should not be gated by verification_status.
         if ($targetRole === 'owner') {
             $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
 
-            if (!$owner || strtolower($owner->verification_status) !== 'approved' || intval($owner->is_active) !== 1) {
-                $statusMsg = ($owner && strtolower($owner->verification_status) === 'pending')
-                    ? 'Your property owner profile is still pending admin approval.'
-                    : 'A property owner profile is required to access this role.';
+            $ownerIsActive = !$owner ? false : (!isset($owner->is_active) || intval($owner->is_active) === 1);
+            if (!$owner || !$ownerIsActive) {
+                $statusMsg = 'A property owner profile is required to access this role.';
 
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -571,7 +616,7 @@ class cprocessController extends Controller
             Log::warning('switchRole persist preferred_role failed: ' . $e->getMessage());
         }
 
-        // If switching to owner and an approved owner profile exists, redirect to owner homepage
+        // If switching to owner and an owner profile exists, redirect to owner homepage
         if ($targetRole === 'owner') {
             $ownerRecord = null;
             try {
@@ -583,8 +628,9 @@ class cprocessController extends Controller
                 Log::warning('switchRole: failed to fetch owner record: ' . $e->getMessage());
             }
 
-            // If owner exists and is approved, send them to the owner homepage (primary owner landing)
-            if ($ownerRecord && strtolower($ownerRecord->verification_status) === 'approved') {
+            $ownerIsActive = $ownerRecord && (!isset($ownerRecord->is_active) || intval($ownerRecord->is_active) === 1);
+            // If owner exists and is active, send them to the owner homepage (primary owner landing)
+            if ($ownerIsActive) {
                 $redirectUrl = route('owner.homepage');
             } else {
                 $redirectUrl = route('owner.dashboard');
@@ -596,13 +642,13 @@ class cprocessController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Successfully switched to {$targetRole} role",
+                'message' => "Successfully switched to {$targetRole} dashboard",
                 'current_role' => $targetRole,
                 'active_role' => $targetRole,
                 'redirect_url' => $redirectUrl
             ]);
         } else {
-            return redirect($redirectUrl)->with('success', "Successfully switched to {$targetRole} role");
+            return redirect($redirectUrl)->with('success', "Successfully switched to {$targetRole} dashboard");
         }
     }
 
@@ -659,7 +705,8 @@ class cprocessController extends Controller
                     if ($userType === 'both') {
                         // Pick the role that was approved first (i.e. the user's original role)
                         try {
-                            $cDate = DB::table('contractors')->where('user_id', $userId)->value('verification_date');
+                            $cpOwnerIdForDate = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+                            $cDate = $cpOwnerIdForDate ? DB::table('contractors')->where('owner_id', $cpOwnerIdForDate)->value('verification_date') : null;
                             $oDate = DB::table('property_owners')->where('user_id', $userId)->value('verification_date');
                             if ($cDate && $oDate) {
                                 $currentRole = (strtotime($cDate) <= strtotime($oDate)) ? 'contractor' : 'owner';
@@ -695,16 +742,19 @@ class cprocessController extends Controller
             $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
             $contractor = null;
             $owner = null;
+            $staffRecord = null;
             $contractor_pending = false;
             $owner_pending = false;
             $contractor_approved = false;
             $owner_approved = false;
             $contractor_rejected = false;
             $owner_rejected = false;
+            $hasActiveStaffMembership = false;
 
             try {
                 if ($userId) {
-                    $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+                    $cpOwnerIdForStatus = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+                    $contractor = $cpOwnerIdForStatus ? DB::table('contractors')->where('owner_id', $cpOwnerIdForStatus)->first() : null;
                     $owner = DB::table('property_owners')->where('user_id', $userId)->first();
 
                     if ($contractor && isset($contractor->verification_status)) {
@@ -720,6 +770,22 @@ class cprocessController extends Controller
                         $owner_rejected = $vs2 === 'rejected';
                         $owner_pending = !$owner_approved && !$owner_rejected;
                     }
+
+                    if ($cpOwnerIdForStatus) {
+                        $staffRecord = DB::table('contractor_staff')
+                            ->leftJoin('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
+                            ->where('contractor_staff.owner_id', $cpOwnerIdForStatus)
+                            ->whereNull('contractor_staff.deletion_reason')
+                            ->select(
+                                'contractor_staff.*',
+                                'contractors.company_name as contractor_name'
+                            )
+                            ->first();
+
+                        $hasActiveStaffMembership = $staffRecord
+                            && (int) ($staffRecord->is_active ?? 0) === 1
+                            && (int) ($staffRecord->is_suspended ?? 0) === 0;
+                    }
                 }
             } catch (\Throwable $e) {
                 Log::warning('getCurrentRole: failed to load contractor/owner records: ' . $e->getMessage());
@@ -731,10 +797,12 @@ class cprocessController extends Controller
                 'success' => true,
                 'user_type' => $userType,
                 'current_role' => $normalizedRole,
-                'can_switch_roles' => $userType === 'both',
+                'can_switch_roles' => ($userType === 'both') || $hasActiveStaffMembership,
                 'pending_role_request' => $pending_role_request,
                 'contractor' => $contractor,
                 'owner' => $owner,
+                'staff_record' => $staffRecord,
+                'has_active_staff_membership' => $hasActiveStaffMembership,
                 'contractor_role_approved' => $contractor_approved,
                 'owner_role_approved' => $owner_approved,
             ]);
@@ -796,6 +864,7 @@ class cprocessController extends Controller
                     'cover_photo' => $contractor->cover_photo ?? null,
                     'company_logo' => $contractor->company_logo ?? null,
                     'company_banner' => $contractor->company_banner ?? null,
+                    'verification_status' => $contractor->verification_status ?? null,
                 ],
             ], 200);
         } catch (\Throwable $e) {
@@ -1256,22 +1325,21 @@ class cprocessController extends Controller
             }
 
             // Get contractor info - check both direct contractor ownership and staff membership
-            $contractor = DB::table('contractors')
-                ->where('user_id', $userId)
-                ->first();
+            $cpOwnerId2 = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $cpOwnerId2 ? DB::table('contractors')->where('owner_id', $cpOwnerId2)->first() : null;
 
             // If not a direct contractor owner, check if user is a staff member
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $userId)
+            if (!$contractor && $cpOwnerId2) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $cpOwnerId2)
                     ->where('is_active', 1)
-                    ->where('is_deleted', 0)
+                    ->whereNull('deletion_reason')
                     ->first();
 
-                if ($contractorUser) {
+                if ($staffRecord) {
                     // Get the contractor this staff member belongs to
                     $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->where('contractor_id', $staffRecord->contractor_id)
                         ->first();
                 }
             }
@@ -1310,7 +1378,7 @@ class cprocessController extends Controller
                     'p.project_status',
                     'pr.project_post_status',
                     DB::raw('DATE(pr.created_at) as created_at'),
-                    DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                    DB::raw("CONCAT(u.first_name, ' ', u.last_name) as owner_name"),
                     'po.profile_pic as owner_profile_pic',
                     'u.user_id as owner_user_id',
                     'b.bid_id',
@@ -1401,6 +1469,21 @@ class cprocessController extends Controller
                 $project->milestones_count = count($milestones);
 
                 // Add owner_info for contractor view
+                $ownerInfoSelect = [
+                    'po.owner_id',
+                    'u.first_name',
+                    'u.last_name',
+                    'u.username',
+                    'u.email',
+                    'po.profile_pic as profile_pic'
+                ];
+
+                if (Schema::hasColumn('users', 'phone_number')) {
+                    $ownerInfoSelect[] = 'u.phone_number';
+                } elseif (Schema::hasColumn('property_owners', 'phone_number')) {
+                    $ownerInfoSelect[] = 'po.phone_number';
+                }
+
                 $ownerInfo = DB::table('property_owners as po')
                     ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('po.owner_id', function ($query) use ($project) {
@@ -1410,16 +1493,12 @@ class cprocessController extends Controller
                             ->where('projects.project_id', $project->project_id)
                             ->limit(1);
                     })
-                    ->select(
-                        'po.owner_id',
-                        'po.first_name',
-                        'po.last_name',
-                        'po.phone_number',
-                        'u.username',
-                        'u.email',
-                        'po.profile_pic as profile_pic'
-                    )
+                    ->select($ownerInfoSelect)
                     ->first();
+
+                if ($ownerInfo && !property_exists($ownerInfo, 'phone_number')) {
+                    $ownerInfo->phone_number = null;
+                }
 
                 $project->owner_info = $ownerInfo;
 

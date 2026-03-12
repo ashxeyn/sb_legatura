@@ -150,7 +150,8 @@ class DashboardService
 
             // Get contractor projects for milestone setup
             if (in_array($userType, ['contractor', 'both'])) {
-                $contractor = (new \App\Services\ProfileService())->getContractorByUserId($user->user_id);
+                $ownerId = DB::table('property_owners')->where('user_id', $user->user_id)->value('owner_id');
+                $contractor = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
                 if ($contractor) {
                     $contractorClass = new \App\Models\contractor\contractorClass();
                     $contractorProjectsForMilestone = $contractorClass->getContractorProjects($contractor->contractor_id);

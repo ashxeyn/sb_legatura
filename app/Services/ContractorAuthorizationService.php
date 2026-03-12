@@ -8,70 +8,87 @@ use Illuminate\Support\Facades\Log;
 /**
  * Service for contractor member authorization.
  *
- * ROLE PERMISSIONS (based on contractor_staff.company_role):
+ * 3-TIER ROLE SYSTEM:
  *
- * FULL ACCESS ROLES (can do everything):
- * - owner: contractor primary account - full privileges
- * - representative: can manage members, bid, milestones
+ * TIER 1 â€” OWNER (defined by contractors.owner_id, virtual role 'owner'):
+ *   - Add / remove company members
+ *   - Switch or remove the representative
+ *   - ALL other contractor functions
  *
- * LIMITED ACCESS ROLES:
- * - manager, engineer, architect, others:
- *   - CAN: View projects, upload progress, approve payment validations, view property owners
- *   - CANNOT: Bid, create/edit/add milestones, manage members
+ * TIER 2 â€” REPRESENTATIVE (contractor_staff.company_role = 'representative'):
+ *   - CANNOT add/remove members
+ *   - CANNOT switch/remove representative
+ *   - CAN do all other functions (bid, milestones, financials, payments, company profile, etc.)
+ *
+ * TIER 3 â€” STAFF (manager / engineer / architect / others):
+ *   - CANNOT: bid, view financials/bid history, manage milestones, manage company profile, approve payments
+ *   - CAN: upload progress reports, track project progress, browse
+ *
+ * SUSPENSION: The company owner can suspend any staff member with a reason.
+ *   A suspended member (is_suspended = 1) cannot switch to the contractor view.
+ *   Suspension does NOT affect their property-owner account.
  */
 class ContractorAuthorizationService
 {
-    /**
-     * Roles that have full contractor access (bid, milestones, manage members).
-     */
+    /** Tier 1 â€” full control including member/representative management. */
+    public const OWNER_ROLE = 'owner';
+
+    /** Tier 1 + 2 â€” bidding, milestones, financials, company profile, payments. */
     public const FULL_ACCESS_ROLES = ['owner', 'representative'];
 
-    /**
-     * Roles that are allowed to manage contractor members (same as FULL_ACCESS_ROLES).
-     */
-    public const MEMBER_MANAGEMENT_ROLES = ['owner', 'representative'];
-
-    /**
-     * Roles with limited access (view, upload progress, approve payments only).
-     */
+    /** Tier 3 â€” upload progress & browse only. */
     public const LIMITED_ACCESS_ROLES = ['manager', 'engineer', 'architect', 'others'];
 
-    /**
-     * All valid contractor member roles.
-     */
-    public const ALL_ROLES = ['owner', 'representative', 'manager', 'engineer', 'architect', 'others'];
+    /** All valid contractor_staff.company_role enum values (owner is a virtual role). */
+    public const STAFF_ROLES = ['representative', 'manager', 'engineer', 'architect', 'others'];
+
+    // -------------------------------------------------------------------------
+    // INTERNAL HELPERS
+    // -------------------------------------------------------------------------
 
     /**
-     * Get the contractor record for a user (either direct owner or via staff membership).
-     * This is useful for API endpoints that need to get the contractor_id for data lookups.
-     *
-     * @param int $userId The user ID
-     * @return object|null The contractor record or null if not found
+     * Resolve property_owners.owner_id for a given users.user_id.
+     */
+    private function getOwnerId(int $userId): ?int
+    {
+        $ownerId = DB::table('property_owners')
+            ->where('user_id', $userId)
+            ->value('owner_id');
+
+        return $ownerId ? (int) $ownerId : null;
+    }
+
+    // -------------------------------------------------------------------------
+    // CORE CONTEXT METHODS
+    // -------------------------------------------------------------------------
+
+    /**
+     * Get the contractor record for a user (either the company owner or active staff).
+     * Only active, non-suspended staff are considered for contractor-view access.
      */
     public function getContractorForUser(int $userId): ?object
     {
-        // First check if user is a direct contractor owner
+        $ownerId = $this->getOwnerId($userId);
+        if (!$ownerId) return null;
+
+        // Company owner check
         $contractor = DB::table('contractors')
-            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-            ->where('property_owners.user_id', $userId)
-            ->select('contractors.*')
+            ->where('owner_id', $ownerId)
             ->first();
 
-        if ($contractor) {
-            return $contractor;
-        }
+        if ($contractor) return $contractor;
 
-        // Check if user is a staff member
-        $contractorUser = DB::table('contractor_staff')
-            ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
-            ->where('property_owners.user_id', $userId)
-            ->where('contractor_staff.is_active', 1)
+        // Active, non-suspended staff member
+        $staffRecord = DB::table('contractor_staff')
+            ->where('owner_id', $ownerId)
+            ->where('is_active', 1)
+            ->where('is_suspended', 0)
+            ->whereNull('deletion_reason')
             ->first();
 
-        if ($contractorUser) {
-            // Get the contractor this staff member belongs to
+        if ($staffRecord) {
             return DB::table('contractors')
-                ->where('contractor_id', $contractorUser->contractor_id)
+                ->where('contractor_id', $staffRecord->contractor_id)
                 ->first();
         }
 
@@ -79,234 +96,293 @@ class ContractorAuthorizationService
     }
 
     /**
-     * Get the contractor member context for a user.
-     * Returns member record with role, is_active, contractor info.
+     * Get the member context for a user.
+     *
+     * Returns an object with:
+     *   company_role        â€” actual role ('owner' for company owners, enum value for staff)
+     *   role                â€” backward-compat alias of company_role
+     *   is_active           â€” 1 = accepted/active, 0 = pending invitation
+     *   is_suspended        â€” 1 = suspended by owner (blocks contractor-view access)
+     *   suspension_reason   â€” reason given by owner on suspension
+     *   contractor_id       â€” contractor this person belongs to
+     *   is_contractor_owner â€” true if they own the contractor (via contractors.owner_id)
      */
     public function getMemberContext(int $userId): ?object
     {
-        // First, check if user is a contractor owner (main account)
+        $ownerId = $this->getOwnerId($userId);
+        if (!$ownerId) return null;
+
+        // Is this owner the company owner?
         $contractor = DB::table('contractors')
-            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
-            ->where('property_owners.user_id', $userId)
-            ->select('contractors.*')
+            ->where('owner_id', $ownerId)
             ->first();
 
         if ($contractor) {
-            // User is the primary contractor account owner
-            $memberRecord = DB::table('contractor_staff')
-                ->where('contractor_id', $contractor->contractor_id)
-                ->where('owner_id', $contractor->owner_id)
-                ->first();
-
-            if ($memberRecord) {
-                // If the parent contractor is approved, ensure owner is treated as active
-                if (isset($contractor->verification_status) && $contractor->verification_status === 'approved' && ($memberRecord->company_role ?? null) === 'owner') {
-                    $memberRecord->is_active = 1;
-                }
-                $memberRecord->role = $memberRecord->company_role;
-                $memberRecord->contractor_user_id = $memberRecord->staff_id;
-                $memberRecord->contractor_name = $contractor->company_name ?? null;
-                $memberRecord->is_contractor_owner = true;
-                return $memberRecord;
-            }
-
-            // Virtual owner context if no member record exists
             return (object) [
-                'contractor_user_id' => 0,
-                'staff_id' => 0,
-                'contractor_id' => $contractor->contractor_id,
-                'role' => 'owner',
-                'company_role' => 'owner',
-                'is_active' => 1,
-                'contractor_name' => $contractor->company_name ?? null,
+                'staff_id'            => null,
+                'contractor_id'       => $contractor->contractor_id,
+                'owner_id'            => $ownerId,
+                'user_id'             => $userId,
+                'company_role'        => 'owner',
+                'role'                => 'owner', // backward-compat alias
+                'role_if_others'      => null,
+                'is_active'           => 1,
+                'is_suspended'        => 0,
+                'suspension_reason'   => null,
+                'deletion_reason'     => null,
+                'contractor_name'     => $contractor->company_name ?? null,
                 'is_contractor_owner' => true,
             ];
         }
 
-        // Check if user is a team member
-        $memberRecord = DB::table('contractor_staff')
+        // Is this owner a listed staff member?
+        $staffRecord = DB::table('contractor_staff')
             ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
-            ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
-            ->where('property_owners.user_id', $userId)
+            ->where('contractor_staff.owner_id', $ownerId)
+            ->whereNull('contractor_staff.deletion_reason')
             ->select(
                 'contractor_staff.*',
-                'contractor_staff.company_role as role',
-                'contractor_staff.staff_id as contractor_user_id',
                 'contractors.company_name as contractor_name',
                 'contractors.owner_id as contractor_owner_id'
             )
             ->first();
 
-        if ($memberRecord) {
-            $memberRecord->is_contractor_owner = false;
+        if ($staffRecord) {
+            $staffRecord->role               = $staffRecord->company_role; // backward-compat alias
+            $staffRecord->is_contractor_owner = false;
+            $staffRecord->user_id            = $userId;
         }
 
-        return $memberRecord;
+        return $staffRecord ?: null;
     }
 
-    /**
-     * Check if a user is an active contractor member.
-     */
+    // -------------------------------------------------------------------------
+    // STATUS CHECKS
+    // -------------------------------------------------------------------------
+
+    /** True if user is an active, non-suspended contractor member. */
     public function isActiveMember(int $userId): bool
     {
-        $context = $this->getMemberContext($userId);
-        return $context && $context->is_active;
+        $ctx = $this->getMemberContext($userId);
+        return $ctx && (bool) $ctx->is_active && !(bool) ($ctx->is_suspended ?? 0);
     }
 
-    /**
-     * Check if a user can manage contractor members (add/remove/edit).
-     */
-    public function canManageMembers(int $userId): bool
+    /** True if user is currently suspended from their contractor role. */
+    public function isSuspended(int $userId): bool
     {
-        $context = $this->getMemberContext($userId);
-
-        if (!$context || !$context->is_active) {
-            return false;
-        }
-
-        return in_array($context->role, self::MEMBER_MANAGEMENT_ROLES);
+        $ctx = $this->getMemberContext($userId);
+        return $ctx && (bool) ($ctx->is_suspended ?? 0);
     }
 
-    /**
-     * Get the user's role within their contractor organization.
-     */
+    /** Get user's role within their contractor organisation. */
     public function getUserRole(int $userId): ?string
     {
-        $context = $this->getMemberContext($userId);
-        return $context ? $context->role : null;
+        $ctx = $this->getMemberContext($userId);
+        return $ctx ? $ctx->company_role : null;
     }
 
-    /**
-     * Get contractor member context formatted for API response.
-     * Used to extend login response with member authorization info.
-     */
-    public function getAuthorizationContext(int $userId): ?array
-    {
-        $context = $this->getMemberContext($userId);
+    // -------------------------------------------------------------------------
+    // PERMISSION CHECKS
+    // -------------------------------------------------------------------------
 
-        if (!$context) {
-            return null;
+    /** True if user can add/remove members. OWNER ONLY (Tier 1). */
+    public function canManageMembers(int $userId): bool
+    {
+        $ctx = $this->getMemberContext($userId);
+        return $ctx
+            && (bool) $ctx->is_active
+            && !(bool) ($ctx->is_suspended ?? 0)
+            && $ctx->company_role === self::OWNER_ROLE;
+    }
+
+    /** True if user can switch/remove the representative. OWNER ONLY (Tier 1). */
+    public function canManageRepresentative(int $userId): bool
+    {
+        return $this->canManageMembers($userId);
+    }
+
+    /** True if user can bid. Tier 1 + 2. */
+    public function canBid(int $userId): bool
+    {
+        $ctx = $this->getMemberContext($userId);
+        return $ctx
+            && (bool) $ctx->is_active
+            && !(bool) ($ctx->is_suspended ?? 0)
+            && in_array($ctx->company_role, self::FULL_ACCESS_ROLES);
+    }
+
+    /** True if user can manage milestones (create/edit/add). Tier 1 + 2. */
+    public function canManageMilestones(int $userId): bool    { return $this->canBid($userId); }
+
+    /** True if user can view financials / bid history. Tier 1 + 2. */
+    public function canViewFinancials(int $userId): bool     { return $this->canBid($userId); }
+
+    /** True if user can manage the company profile. Tier 1 + 2. */
+    public function canManageCompanyProfile(int $userId): bool { return $this->canBid($userId); }
+
+    /** True if user can approve payments. Tier 1 + 2. */
+    public function canApprovePayments(int $userId): bool    { return $this->canBid($userId); }
+
+    // -------------------------------------------------------------------------
+    // VALIDATION HELPERS (return error message string, or null if OK)
+    // -------------------------------------------------------------------------
+
+    private function baseContextCheck(int $userId): array
+    {
+        $ctx = $this->getMemberContext($userId);
+        if (!$ctx)                       return ['Contractor member record not found', null];
+        if (!$ctx->is_active)            return ['Your contractor member account is inactive', $ctx];
+        if ($ctx->is_suspended ?? 0)     return ['Your contractor account is currently suspended', $ctx];
+        return [null, $ctx];
+    }
+
+    /** Validate add/remove member access. OWNER ONLY. */
+    public function validateMemberManagementAccess(int $userId): ?string
+    {
+        [$error, $ctx] = $this->baseContextCheck($userId);
+        if ($error) return $error;
+
+        if ($ctx->company_role !== self::OWNER_ROLE) {
+            return 'Only the company owner can manage members.';
         }
 
-        $isActive = (bool) $context->is_active;
-        $hasFullAccess = $isActive && in_array($context->role, self::FULL_ACCESS_ROLES);
+        return null;
+    }
+
+    /** Validate switch/remove representative access. OWNER ONLY. */
+    public function validateRepresentativeManagementAccess(int $userId): ?string
+    {
+        return $this->validateMemberManagementAccess($userId);
+    }
+
+    /** Validate bidding access. Owner + Representative. */
+    public function validateBiddingAccess(int $userId): ?string
+    {
+        [$error, $ctx] = $this->baseContextCheck($userId);
+        if ($error) return $error;
+
+        if (!in_array($ctx->company_role, self::FULL_ACCESS_ROLES)) {
+            return 'Only the owner or representative can place bids.';
+        }
+
+        return null;
+    }
+
+    /** Validate milestone management access. Owner + Representative. */
+    public function validateMilestoneAccess(int $userId): ?string
+    {
+        [$error, $ctx] = $this->baseContextCheck($userId);
+        if ($error) return $error;
+
+        if (!in_array($ctx->company_role, self::FULL_ACCESS_ROLES)) {
+            return 'Only the owner or representative can manage milestones.';
+        }
+
+        return null;
+    }
+
+    /** Validate access to financial/bid history views. Owner + Representative. */
+    public function validateFinancialAccess(int $userId): ?string
+    {
+        [$error, $ctx] = $this->baseContextCheck($userId);
+        if ($error) return $error;
+
+        if (!in_array($ctx->company_role, self::FULL_ACCESS_ROLES)) {
+            return 'Only the owner or representative can view financial and bid history.';
+        }
+
+        return null;
+    }
+
+    /** Validate company profile management access. Owner + Representative. */
+    public function validateCompanyProfileAccess(int $userId): ?string
+    {
+        [$error, $ctx] = $this->baseContextCheck($userId);
+        if ($error) return $error;
+
+        if (!in_array($ctx->company_role, self::FULL_ACCESS_ROLES)) {
+            return 'Only the owner or representative can manage company profile data.';
+        }
+
+        return null;
+    }
+
+    /** Validate payment approval/rejection access. Owner + Representative. */
+    public function validatePaymentApprovalAccess(int $userId): ?string
+    {
+        [$error, $ctx] = $this->baseContextCheck($userId);
+        if ($error) return $error;
+
+        if (!in_array($ctx->company_role, self::FULL_ACCESS_ROLES)) {
+            return 'Only the owner or representative can approve or reject payments.';
+        }
+
+        return null;
+    }
+
+    /** Validate progress upload access. Any active, non-suspended contractor member. */
+    public function validateProgressUploadAccess(int $userId): ?string
+    {
+        [$error, $ctx] = $this->baseContextCheck($userId);
+        if ($error) return $error;
+
+        if (!($ctx->is_active ?? false)) {
+            return 'Your contractor member account is inactive.';
+        }
+
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // API RESPONSE HELPERS
+    // -------------------------------------------------------------------------
+
+    /** Full authorization context for API response (e.g. login payload). */
+    public function getAuthorizationContext(int $userId): ?array
+    {
+        $ctx = $this->getMemberContext($userId);
+        if (!$ctx) return null;
+
+        $isActive    = (bool) $ctx->is_active;
+        $isSuspended = (bool) ($ctx->is_suspended ?? 0);
+        $role        = $ctx->company_role;
+        $canAccess   = $isActive && !$isSuspended;
+        $isOwner     = $role === self::OWNER_ROLE;
+        $hasFullAccess = $canAccess && in_array($role, self::FULL_ACCESS_ROLES);
 
         return [
-            'contractor_member_id' => $context->contractor_user_id ?? null,
-            'contractor_id' => $context->contractor_id,
-            'contractor_name' => $context->contractor_name ?? null,
-            'role' => $context->role,
-            'is_active' => $isActive,
-            'is_contractor_owner' => $context->is_contractor_owner ?? false,
-            'has_full_access' => $hasFullAccess,
+            'staff_id'            => $ctx->staff_id ?? null,
+            'contractor_id'       => $ctx->contractor_id,
+            'contractor_name'     => $ctx->contractor_name ?? null,
+            'role'                => $role,
+            'is_active'           => $isActive,
+            'is_suspended'        => $isSuspended,
+            'suspension_reason'   => $ctx->suspension_reason ?? null,
+            'is_contractor_owner' => $ctx->is_contractor_owner ?? false,
+            'has_full_access'     => $hasFullAccess,
             'permissions' => [
-                // Member management - owner/representative only
-                'can_manage_members' => $hasFullAccess,
-                'can_view_members' => $isActive,
+                // Tier 1 â€” Owner only
+                'can_manage_members'        => $canAccess && $isOwner,
+                'can_manage_representative' => $canAccess && $isOwner,
 
-                // Bidding & Milestones - owner/representative only
-                'can_bid' => $hasFullAccess,
-                'can_manage_milestones' => $hasFullAccess, // create, edit, add milestones
+                // Tier 1 + 2 â€” Owner + Representative
+                'can_bid'                    => $hasFullAccess,
+                'can_manage_milestones'      => $hasFullAccess,
+                'can_view_financials'        => $hasFullAccess,
+                'can_manage_company_profile' => $hasFullAccess,
+                'can_approve_payments'       => $hasFullAccess,
 
-                // All active members can do these
-                'can_upload_progress' => $isActive,
-                'can_approve_payments' => $isActive,
-                'can_view_property_owners' => $isActive,
+                // Tier 3 â€” All active non-suspended members
+                'can_upload_progress' => $canAccess,
+                'can_view_members'    => $canAccess,
+                'can_view_projects'   => $canAccess,
             ],
         ];
     }
 
     /**
-     * Validate that requesting user can perform member management action.
-     * Returns error message if not authorized, null if authorized.
-     */
-    public function validateMemberManagementAccess(int $userId): ?string
-    {
-        $context = $this->getMemberContext($userId);
-
-        if (!$context) {
-            return 'Contractor member record not found';
-        }
-
-        if (!$context->is_active) {
-            return 'Your contractor member account is inactive';
-        }
-
-        if (!in_array($context->role, self::MEMBER_MANAGEMENT_ROLES)) {
-            return 'You do not have permission to manage contractor members. Only owners and representatives can perform this action.';
-        }
-
-        return null; // Authorized
-    }
-
-    /**
-     * Check if user can bid on projects.
-     * Only owner and representative can bid.
-     */
-    public function canBid(int $userId): bool
-    {
-        $context = $this->getMemberContext($userId);
-        return $context && $context->is_active && in_array($context->role, self::FULL_ACCESS_ROLES);
-    }
-
-    /**
-     * Check if user can manage milestones (create, edit, add).
-     * Only owner and representative can manage milestones.
-     */
-    public function canManageMilestones(int $userId): bool
-    {
-        $context = $this->getMemberContext($userId);
-        return $context && $context->is_active && in_array($context->role, self::FULL_ACCESS_ROLES);
-    }
-
-    /**
-     * Validate that requesting user can place bids.
-     * Returns error message if not authorized, null if authorized.
-     */
-    public function validateBiddingAccess(int $userId): ?string
-    {
-        $context = $this->getMemberContext($userId);
-
-        if (!$context) {
-            return 'Contractor member record not found';
-        }
-
-        if (!$context->is_active) {
-            return 'Your contractor member account is inactive';
-        }
-
-        if (!in_array($context->role, self::FULL_ACCESS_ROLES)) {
-            return 'You do not have permission to place bids. Only owners and representatives can bid on projects.';
-        }
-
-        return null; // Authorized
-    }
-
-    /**
-     * Validate that requesting user can manage milestones.
-     * Returns error message if not authorized, null if authorized.
-     */
-    public function validateMilestoneAccess(int $userId): ?string
-    {
-        $context = $this->getMemberContext($userId);
-
-        if (!$context) {
-            return 'Contractor member record not found';
-        }
-
-        if (!$context->is_active) {
-            return 'Your contractor member account is inactive';
-        }
-
-        if (!in_array($context->role, self::FULL_ACCESS_ROLES)) {
-            return 'You do not have permission to manage milestones. Only owners and representatives can create, edit, or add milestones.';
-        }
-
-        return null; // Authorized
-    }
-
-    /**
-     * Get all members for a contractor (used for listing).
+     * Get all staff members for a contractor (for listing).
+     * Joins contractor_staff with property_owners and users for identity data.
      */
     public function getContractorMembers(int $contractorId): array
     {
@@ -314,22 +390,25 @@ class ContractorAuthorizationService
             ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
             ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->where('contractor_staff.contractor_id', $contractorId)
+            ->whereNull('contractor_staff.deletion_reason')
             ->select(
                 'contractor_staff.staff_id as id',
-                'property_owners.owner_id',
+                'contractor_staff.owner_id',
+                'users.user_id',
                 'users.first_name',
                 'users.middle_name',
                 'users.last_name',
-                'contractor_staff.company_role as role',
-                'contractor_staff.role_if_others as role_other',
-                'contractor_staff.is_active',
-                'contractor_staff.created_at',
                 'users.email',
                 'users.username',
                 'property_owners.profile_pic',
-                'users.updated_at'
+                'contractor_staff.company_role as role',
+                'contractor_staff.role_if_others',
+                'contractor_staff.is_active',
+                'contractor_staff.is_suspended',
+                'contractor_staff.suspension_reason',
+                'contractor_staff.created_at'
             )
-            ->orderByRaw("FIELD(contractor_staff.company_role, 'owner', 'representative', 'manager', 'engineer', 'architect', 'others')")
+            ->orderByRaw("FIELD(contractor_staff.company_role, 'representative', 'manager', 'engineer', 'architect', 'others')")
             ->get()
             ->toArray();
     }

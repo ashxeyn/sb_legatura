@@ -764,20 +764,20 @@ class MilestoneService
      */
     public function resolveContractor(int $userId): ?object
     {
-        $po = DB::table('property_owners')->where('user_id', $userId)->first();
-        if (!$po) {
+        $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        if (!$ownerId) {
             return null;
         }
-        // Check if owner of a contractor company
-        $contractor = DB::table('contractors')->where('owner_id', $po->owner_id)->first();
+
+        $contractor = DB::table('contractors')->where('owner_id', $ownerId)->first();
         if (!$contractor) {
-            // Check if staff member
-            $staff = DB::table('contractor_staff')
-                ->where('owner_id', $po->owner_id)
+            $staffRecord = DB::table('contractor_staff')
+                ->where('owner_id', $ownerId)
                 ->where('is_active', 1)
+                ->whereNull('deletion_reason')
                 ->first();
-            if ($staff) {
-                $contractor = DB::table('contractors')->where('contractor_id', $staff->contractor_id)->first();
+            if ($staffRecord) {
+                $contractor = DB::table('contractors')->where('contractor_id', $staffRecord->contractor_id)->first();
             }
         }
         return $contractor;
@@ -805,7 +805,6 @@ class MilestoneService
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractor_staff as cu', 'mp.contractor_user_id', '=', 'cu.staff_id')
             ->where('mp.payment_id', $paymentId)
             ->select('mp.*', 'pr.selected_contractor_id', 'p.project_title', 'p.project_id as proj_id')
             ->first();
@@ -814,13 +813,10 @@ class MilestoneService
             return ['success' => false, 'message' => 'Payment not found.', 'status' => 404];
         }
 
-        // Access check: contractor_user_id match OR selected_contractor_id match
+        // Access check: payment contractor_id match OR selected_contractor_id match
         $hasAccess = false;
-        if ($payment->contractor_user_id) {
-            $cu = DB::table('contractor_staff')->where('staff_id', $payment->contractor_user_id)->first();
-            if ($cu && $cu->contractor_id == $contractorId) {
-                $hasAccess = true;
-            }
+        if (!empty($payment->contractor_id) && (int) $payment->contractor_id === (int) $contractorId) {
+            $hasAccess = true;
         }
         if (!$hasAccess && $payment->selected_contractor_id && $payment->selected_contractor_id == $contractorId) {
             $hasAccess = true;
@@ -895,11 +891,8 @@ class MilestoneService
 
         // Access check
         $hasAccess = false;
-        if ($payment->contractor_user_id) {
-            $cu = DB::table('contractor_staff')->where('staff_id', $payment->contractor_user_id)->first();
-            if ($cu && $cu->contractor_id == $contractorId) {
-                $hasAccess = true;
-            }
+        if (!empty($payment->contractor_id) && (int) $payment->contractor_id === (int) $contractorId) {
+            $hasAccess = true;
         }
         if (!$hasAccess && $payment->selected_contractor_id && $payment->selected_contractor_id == $contractorId) {
             $hasAccess = true;

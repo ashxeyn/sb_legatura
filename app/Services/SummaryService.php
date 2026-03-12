@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SummaryService
 {
@@ -128,11 +129,12 @@ class SummaryService
         // ── Date History ──
         $dateHistory = DB::table('milestone_date_histories as h')
             ->leftJoin('project_updates as pu', 'h.extension_id', '=', 'pu.extension_id')
+            ->leftJoin('users as u_h', 'h.changed_by', '=', 'u_h.user_id')
             ->leftJoin('property_owners as po_h', function ($join) {
                 $join->on('h.changed_by', '=', 'po_h.user_id');
             })
             ->leftJoin('contractors as c_h', function ($join) {
-                $join->on('h.changed_by', '=', 'c_h.user_id');
+                $join->on('po_h.owner_id', '=', 'c_h.owner_id');
             })
             ->where('h.item_id', $milestoneItemId)
             ->orderBy('h.changed_at', 'asc')
@@ -144,7 +146,7 @@ class SummaryService
                 'h.changed_at',
                 'h.change_reason',
                 'pu.reason as extension_reason',
-                DB::raw("COALESCE(CONCAT(po_h.first_name, ' ', po_h.last_name), c_h.company_name) as changed_by_name")
+                DB::raw("COALESCE(CONCAT(u_h.first_name, ' ', u_h.last_name), c_h.company_name) as changed_by_name")
             )
             ->get();
 
@@ -196,33 +198,65 @@ class SummaryService
 
     private function buildProjectHeader(int $projectId): ?array
     {
+        $headerSelect = [
+            'p.project_id',
+            'p.project_title',
+            'p.project_description',
+            'p.project_location',
+            'p.project_status',
+            'p.property_type',
+            'p.budget_range_min',
+            'p.budget_range_max',
+            'pr.created_at as project_created_at',
+            DB::raw("CONCAT(ou.first_name, ' ', ou.last_name) as owner_name"),
+            'ou.email as owner_email',
+            'c.company_name as contractor_company',
+            'c.company_name as contractor_name',
+            'cu.email as contractor_email'
+        ];
+
+        if (Schema::hasColumn('users', 'phone_number')) {
+            $headerSelect[] = 'ou.phone_number as owner_phone';
+        } elseif (Schema::hasColumn('property_owners', 'phone_number')) {
+            $headerSelect[] = 'po.phone_number as owner_phone';
+        }
+
         $project = DB::table('projects as p')
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
             ->leftJoin('users as ou', 'po.user_id', '=', 'ou.user_id')
             ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->leftJoin('users as cu', 'c.user_id', '=', 'cu.user_id')
+            ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+            ->leftJoin('users as cu', 'c_po.user_id', '=', 'cu.user_id')
             ->where('p.project_id', $projectId)
-            ->select(
-                'p.project_id',
-                'p.project_title',
-                'p.project_description',
-                'p.project_location',
-                'p.project_status',
-                'p.property_type',
-                'p.budget_range_min',
-                'p.budget_range_max',
-                'pr.created_at as project_created_at',
-                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
-                'po.phone_number as owner_phone',
-                'ou.email as owner_email',
-                'c.company_name as contractor_company',
-                'c.company_name as contractor_name',
-                'cu.email as contractor_email'
-            )
+            ->select($headerSelect)
             ->first();
 
         if (!$project) return null;
+
+        if (!property_exists($project, 'owner_phone')) {
+            $project->owner_phone = null;
+        }
+
+        $preferredSetup = DB::table('milestones')
+            ->where('project_id', $projectId)
+            ->where(function ($query) {
+                $query->whereNull('is_deleted')
+                    ->orWhere('is_deleted', 0);
+            })
+            ->orderByRaw("CASE WHEN setup_status = 'approved' THEN 0 WHEN setup_status = 'submitted' THEN 1 ELSE 2 END")
+            ->orderByRaw('COALESCE(updated_at, created_at) DESC')
+            ->orderByDesc('milestone_id')
+            ->select('milestone_name', 'milestone_description')
+            ->first();
+
+        $summaryTitle = !empty($preferredSetup?->milestone_name)
+            ? $preferredSetup->milestone_name
+            : $project->project_title;
+
+        $summaryDescription = !empty($preferredSetup?->milestone_description)
+            ? $preferredSetup->milestone_description
+            : $project->project_description;
 
         // Get earliest start and latest end from milestones
         $timeline = DB::table('milestones')
@@ -247,8 +281,8 @@ class SummaryService
 
         return [
             'project_id'        => $project->project_id,
-            'project_title'     => $project->project_title,
-            'project_description' => $project->project_description,
+            'project_title'     => $summaryTitle,
+            'project_description' => $summaryDescription,
             'project_location'  => $project->project_location,
             'status'            => $project->project_status,
             'property_type'     => $project->property_type,
@@ -303,10 +337,17 @@ class SummaryService
         $completedMilestones = $milestoneItems->where('item_status', 'completed')->count();
 
         // Financial totals
-        $totalPaid = (float) DB::table('milestone_payments')
+        $approvedMilestonePayments = (float) DB::table('milestone_payments')
             ->where('project_id', $projectId)
             ->where('payment_status', 'approved')
             ->sum('amount');
+
+        $approvedDownpayment = (float) DB::table('downpayment_payments')
+            ->where('project_id', $projectId)
+            ->where('payment_status', 'approved')
+            ->sum('amount');
+
+        $totalPaid = $approvedMilestonePayments + $approvedDownpayment;
 
         $totalSubmitted = (float) DB::table('milestone_payments')
             ->where('project_id', $projectId)
@@ -411,8 +452,9 @@ class SummaryService
 
         // 1. Project update records (extensions, budget changes)
         $updates = DB::table('project_updates as pu')
-            ->leftJoin('contractors as c_pu', 'pu.contractor_user_id', '=', 'c_pu.user_id')
-            ->leftJoin('property_owners as po_pu', 'pu.owner_user_id', '=', 'po_pu.user_id')
+            ->leftJoin('property_owners as po_cpu', 'pu.contractor_user_id', '=', 'po_cpu.user_id')
+            ->leftJoin('contractors as c_pu', 'po_cpu.owner_id', '=', 'c_pu.owner_id')
+            ->leftJoin('users as u_pu', 'pu.owner_user_id', '=', 'u_pu.user_id')
             ->where('pu.project_id', $projectId)
             ->orderBy('pu.created_at', 'asc')
             ->select(
@@ -429,7 +471,7 @@ class SummaryService
                 'pu.created_at',
                 'pu.applied_at',
                 'c_pu.company_name as submitted_by',
-                DB::raw("CONCAT(po_pu.first_name, ' ', po_pu.last_name) as reviewed_by")
+                DB::raw("CONCAT(u_pu.first_name, ' ', u_pu.last_name) as reviewed_by")
             )
             ->get();
 
@@ -487,8 +529,9 @@ class SummaryService
         // 2. Milestone date change history
         $dateChanges = DB::table('milestone_date_histories as h')
             ->join('milestone_items as mi', 'h.item_id', '=', 'mi.item_id')
+            ->leftJoin('users as u_dc', 'h.changed_by', '=', 'u_dc.user_id')
             ->leftJoin('property_owners as po_dc', 'h.changed_by', '=', 'po_dc.user_id')
-            ->leftJoin('contractors as c_dc', 'h.changed_by', '=', 'c_dc.user_id')
+            ->leftJoin('contractors as c_dc', 'po_dc.owner_id', '=', 'c_dc.owner_id')
             ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
             ->where('m.project_id', $projectId)
             ->orderBy('h.changed_at', 'asc')
@@ -498,7 +541,7 @@ class SummaryService
                 'h.previous_date',
                 'h.new_date',
                 'mi.milestone_item_title',
-                DB::raw("COALESCE(CONCAT(po_dc.first_name, ' ', po_dc.last_name), c_dc.company_name) as changed_by_name")
+                DB::raw("COALESCE(CONCAT(u_dc.first_name, ' ', u_dc.last_name), c_dc.company_name) as changed_by_name")
             )
             ->get();
 
@@ -579,6 +622,13 @@ class SummaryService
         return DB::table('progress as p')
             ->join('milestone_items as mi', 'p.milestone_item_id', '=', 'mi.item_id')
             ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+            ->leftJoin('users as u', 'p.submitted_by_owner_id', '=', 'u.user_id')
+            ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('contractor_staff as cs', function ($join) {
+                $join->on('cs.owner_id', '=', 'po.owner_id')
+                    ->on('cs.contractor_id', '=', 'm.contractor_id')
+                    ->whereNull('cs.deletion_reason');
+            })
             ->where('m.project_id', $projectId)
             ->whereNotIn('p.progress_status', ['deleted'])
             ->orderBy('p.submitted_at', 'desc')
@@ -588,7 +638,11 @@ class SummaryService
                 'mi.milestone_item_title as milestone',
                 'p.progress_status as status',
                 'p.submitted_at',
-                'p.updated_at'
+                'p.updated_at',
+                'p.submitted_by_owner_id',
+                DB::raw("CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as uploader_name"),
+                'cs.company_role as uploader_role',
+                DB::raw("CASE WHEN cs.company_role IN ('manager','engineer','architect','others') THEN 1 ELSE 0 END as uploaded_by_staff")
             )
             ->get()
             ->toArray();

@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   Alert,
+  AppState,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, DeviceEventEmitter } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -97,6 +98,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
   const [projectInitialItemTab, setProjectInitialItemTab] = useState<'payments' | null>(null);
   const [pendingNavigate, setPendingNavigate] = useState<Record<string, any> | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const hasInitialized = useRef(false);
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -108,8 +110,38 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     setAvatarError(false); // Reset avatar error when userData changes
     fetchProjects();
     fetchContractorTypes();
+    hasInitialized.current = true;
     // pinned project loading removed
   }, [userData?.user_id]);
+
+  // Auto-refresh owner dashboard data on relevant app events
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (!showProjectList && !selectedProject && !showCreateProject && !showSearchScreen) {
+        fetchProjects();
+      }
+    };
+
+    const roleChangedSub = DeviceEventEmitter.addListener('roleChanged', handleRefresh);
+    const dashboardRefreshSub = DeviceEventEmitter.addListener('dashboardRefresh', handleRefresh);
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') handleRefresh();
+    });
+
+    return () => {
+      try { roleChangedSub.remove(); } catch (e) {}
+      try { dashboardRefreshSub.remove(); } catch (e) {}
+      try { appStateSub.remove(); } catch (e) {}
+    };
+  }, [showProjectList, selectedProject, showCreateProject, showSearchScreen, userData?.user_id]);
+
+  // Refresh parent dashboard when coming back from sub-screens
+  useEffect(() => {
+    if (!hasInitialized.current) return;
+    if (!showProjectList && !selectedProject && !showCreateProject && !showSearchScreen) {
+      fetchProjects();
+    }
+  }, [showProjectList, selectedProject, showCreateProject, showSearchScreen]);
 
   // Listen for navigation events from notifications — just store the intent, don't look up projects here
   // because projects may not be loaded yet when the event fires (fresh tab mount race condition).
@@ -393,7 +425,10 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
   if (showCreateProject) {
     return (
       <CreateProject
-        onBackPress={() => setShowCreateProject(false)}
+        onBackPress={() => {
+          setShowCreateProject(false);
+          fetchProjects();
+        }}
         onSubmit={handleProjectSubmit}
         contractorTypes={contractorTypes}
       />
@@ -404,7 +439,10 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
   if (showSearchScreen) {
     return (
       <SearchScreen
-        onClose={() => setShowSearchScreen(false)}
+        onClose={() => {
+          setShowSearchScreen(false);
+          fetchProjects();
+        }}
         contractors={[]}
       />
     );
@@ -418,6 +456,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
         onClose={() => {
           setShowProjectList(false);
           setActiveFilter('all');
+          fetchProjects();
         }}
         initialFilter={activeFilter}
       />
@@ -435,6 +474,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
           setProjectInitialSection(null);
           setProjectInitialItemId(null);
           setProjectInitialItemTab(null);
+          fetchProjects();
         }}
         initialSection={projectInitialSection}
         initialItemId={projectInitialItemId}

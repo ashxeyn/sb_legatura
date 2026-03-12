@@ -3,7 +3,6 @@ import { computeYears } from './roleFormUtils';
 export function validateContractorStep1(formData: any, dropdowns: any): string[] {
   const errors: string[] = [];
   if (!formData.company_name?.trim()) errors.push('Company name is required');
-
   if (!formData.experience_start_date) errors.push('Years of experience (start date) is required');
   if (!formData.contractor_type_id) errors.push('Contractor type is required');
   const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`);
@@ -15,8 +14,6 @@ export function validateContractorStep1(formData: any, dropdowns: any): string[]
   if (!formData.business_address_city) errors.push('Business address city is required');
   if (!formData.business_address_province) errors.push('Business address province is required');
   if (!formData.business_address_postal?.trim()) errors.push('Business address postal code is required');
-  if (!formData.authorized_rep_fname?.trim()) errors.push('Authorized representative first name is required');
-  if (!formData.authorized_rep_lname?.trim()) errors.push('Authorized representative last name is required');
   return errors;
 }
 
@@ -32,34 +29,34 @@ export function buildContractorStep1Payload(formData: any) {
     business_address_city: formData.business_address_city,
     business_address_province: formData.business_address_province,
     business_address_postal: formData.business_address_postal,
-    authorized_rep_fname: formData.authorized_rep_fname,
-    authorized_rep_mname: formData.authorized_rep_mname,
-    authorized_rep_lname: formData.authorized_rep_lname,
     company_website: formData.company_website,
     company_social_media: formData.company_social_media,
+    company_description: formData.company_description,
   };
 }
 
 export function buildContractorStep2FormData(formData: any): FormData {
   const fd = new FormData();
+  const imageKeys = ['dti_sec_registration_photo', 'company_logo', 'company_banner'];
   const docKeys = [
     'picab_number', 'picab_category', 'picab_expiration_date',
     'business_permit_number', 'business_permit_city', 'business_permit_expiration',
     'tin_business_reg_number', 'dti_sec_registration_photo',
+    'company_logo', 'company_banner',
   ];
   docKeys.forEach((k) => {
     const v = formData[k];
     if (v === undefined || v === null) return;
-    if (k === 'dti_sec_registration_photo' && typeof v === 'string' && v.startsWith('file://')) {
-      fd.append(k, { uri: v, name: 'dti_sec_registration.jpg', type: 'image/jpeg' } as any);
-    } else {
+    if (imageKeys.includes(k) && typeof v === 'string' && (v.startsWith('file://') || v.startsWith('content://'))) {
+      fd.append(k, { uri: v, name: `${k}.jpg`, type: 'image/jpeg' } as any);
+    } else if (typeof v !== 'object') {
       fd.append(k, v as any);
     }
   });
   return fd;
 }
 
-export function buildContractorFinalBody(formData: any, provinces: any[] = [], cities: any[] = [], barangays: any[] = {}) {
+export function buildContractorFinalBody(formData: any, provinces: any[] = [], cities: any[] = [], barangays: any[] = []) {
   const provinceName = provinces.find(p => `${p.code}` === `${formData.business_address_province}`)?.name || '';
   const cityName = cities.find(c => `${c.code}` === `${formData.business_address_city}`)?.name || '';
   const barangayName = (barangays || []).find((b: any) => `${b.code}` === `${formData.business_address_barangay}`)?.name || '';
@@ -72,6 +69,7 @@ export function buildContractorFinalBody(formData: any, provinces: any[] = [], c
 
   const step1_data = {
     company_name: formData.company_name,
+    company_description: formData.company_description,
     years_of_experience: computeYears(formData.experience_start_date),
     type_id: formData.contractor_type_id,
     contractor_type_other: formData.contractor_type_other_text,
@@ -79,9 +77,8 @@ export function buildContractorFinalBody(formData: any, provinces: any[] = [], c
     business_address,
     company_website: formData.company_website,
     company_social_media: formData.company_social_media,
-    authorized_rep_fname: formData.authorized_rep_fname,
-    authorized_rep_mname: formData.authorized_rep_mname,
-    authorized_rep_lname: formData.authorized_rep_lname,
+    company_logo: formData.company_logo_server || undefined,
+    company_banner: formData.company_banner_server || undefined,
   };
 
   const step2_data = {
@@ -93,9 +90,6 @@ export function buildContractorFinalBody(formData: any, provinces: any[] = [], c
     business_permit_expiration: formData.business_permit_expiration,
     tin_business_reg_number: formData.tin_business_reg_number,
     dti_sec_registration_photo: formData.dti_sec_registration_photo_server || undefined,
-    first_name: formData.authorized_rep_fname,
-    middle_name: formData.authorized_rep_mname,
-    last_name: formData.authorized_rep_lname,
   };
 
   return { step1_data, step2_data };

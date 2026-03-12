@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { auth_service, login_data } from '../services/auth_service';
 import { storage_service } from '../utils/storage';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 
 interface LoginScreenProps {
   on_back: () => void;
@@ -117,7 +118,7 @@ export default function LoginScreen({ on_back, on_login_success, on_signup, on_f
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll_content} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scroll_content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={on_back} style={styles.back_button}>
@@ -208,7 +209,7 @@ export default function LoginScreen({ on_back, on_login_success, on_signup, on_f
             <Text style={styles.link_text} onPress={on_signup}>Sign up here</Text>
           </Text>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

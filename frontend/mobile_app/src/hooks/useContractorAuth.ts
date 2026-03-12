@@ -6,9 +6,9 @@
  * 
  * ROLE PERMISSIONS (based on contractor_users.role):
  * - owner: Full access (bid, milestones, manage members, everything)
- * - representative: Full contractor access (bid, milestones, manage members)
+ * - representative: Full contractor access (bid, milestones), but not member/representative management
  * - manager, engineer, architect, others: Limited access
- *   - CAN: View projects, upload progress, approve payment validations, view property owners
+ *   - CAN: View projects, upload progress, view property owners
  *   - CANNOT: Bid, create/edit/add milestones
  * 
  * Usage:
@@ -52,6 +52,8 @@ export interface UseContractorAuthResult {
   // Permission checks - Bidding & Milestones (owner/representative only)
   canBid: boolean;
   canManageMilestones: boolean; // create, edit, add milestones
+  canViewFinancials: boolean;
+  canManageCompanyProfile: boolean;
   
   // Permission checks - All roles can do these
   canUploadProgress: boolean;
@@ -102,18 +104,21 @@ export function useContractorAuth(): UseContractorAuthResult {
   const hasFullAccess = isActive && role !== null && FULL_ACCESS_ROLES.includes(role);
   
   // Member management - owner/representative only
-  const canManageMembers = memberContext?.permissions?.can_manage_members ?? 
-    (isActive && role !== null && MEMBER_MANAGEMENT_ROLES.includes(role));
+  const canManageMembers = hasFullAccess ||
+    (memberContext?.permissions?.can_manage_members ??
+      (isActive && role !== null && MEMBER_MANAGEMENT_ROLES.includes(role)));
   
-  const canViewMembers = memberContext?.permissions?.can_view_members ?? isActive;
+  const canViewMembers = isActive || (memberContext?.permissions?.can_view_members ?? false);
   
   // Bidding & Milestones - owner/representative only
   const canBid = hasFullAccess;
   const canManageMilestones = hasFullAccess; // create, edit, add milestones
+  const canViewFinancials = hasFullAccess || (memberContext?.permissions?.can_view_financials ?? false);
+  const canManageCompanyProfile = hasFullAccess || (memberContext?.permissions?.can_manage_company_profile ?? false);
   
-  // All active contractor members can do these
+  // All active contractor members can upload/browse
   const canUploadProgress = isActive;
-  const canApprovePayments = isActive;
+  const canApprovePayments = hasFullAccess || (memberContext?.permissions?.can_approve_payments ?? false);
   const canViewPropertyOwners = isActive;
   
   const isOwner = role === 'owner';
@@ -140,6 +145,8 @@ export function useContractorAuth(): UseContractorAuthResult {
     canViewMembers,
     canBid,
     canManageMilestones,
+    canViewFinancials,
+    canManageCompanyProfile,
     canUploadProgress,
     canApprovePayments,
     canViewPropertyOwners,

@@ -77,7 +77,7 @@
 
                             // Downpayment gate: when payment_mode is 'downpayment' and not yet cleared, lock ALL items
                             $downpaymentPending = (($milestonePlan->payment_mode ?? 'full_payment') === 'downpayment')
-                                && !\App\Services\milestoneService::isDownpaymentCleared($project->project_id);
+                                && !\App\Services\MilestoneService::isDownpaymentCleared($project->project_id);
 
                             foreach ($milestonePlan->items as $item) {
                                 $seqIndex++;

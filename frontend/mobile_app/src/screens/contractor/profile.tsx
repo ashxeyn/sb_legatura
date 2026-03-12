@@ -18,6 +18,7 @@ import ImageFallback from '../../components/imageFallback';
 import { contractors_service } from '../../services/contractors_service';
 import { api_config } from '../../config/api';
 import { role_service } from '../../services/role_service';
+import { useContractorAuth } from '../../hooks/useContractorAuth';
 
 // Default images
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
@@ -31,6 +32,7 @@ interface ContractorProfileScreenProps {
   onOpenSubscription?: () => void;
   onOpenChangeOtp?: () => void;
   onEditProfile?: () => void;
+  contractorVerified?: boolean;
   userData?: {
     username?: string;
     email?: string;
@@ -56,17 +58,21 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpenHelp, onOpenSwitchRole, onOpenSubscription, onEditProfile, userData }: ContractorProfileScreenProps) {
+export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpenHelp, onOpenSwitchRole, onOpenSubscription, onEditProfile, contractorVerified: contractorVerifiedProp, userData }: ContractorProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [roleLabel, setRoleLabel] = useState<string>('Contractor');
   const [companyName, setCompanyName] = useState<string | undefined>(userData?.company_name);
   const [companyLogo, setCompanyLogo] = useState<string | undefined>(userData?.profile_pic);
   const [companyBanner, setCompanyBanner] = useState<string | undefined>(userData?.cover_photo);
+  const [contractorVerified, setContractorVerified] = useState(contractorVerifiedProp ?? false);
+  const [canSwitchRoles, setCanSwitchRoles] = useState(userData?.user_type === 'both');
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
   const getInitials = (name: string) => (name ? name.substring(0, 2).toUpperCase() : 'CO');
+
+  const { isOwner, hasFullAccess } = useContractorAuth();
 
   let navigation: any = null;
   try {
@@ -102,10 +108,20 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
       try {
         const res = await role_service.get_current_role();
         if (res?.success) {
-          const roleVal = (res as any).current_role || (res as any).data?.current_role || (res as any).user_type;
+          const data = (res as any).data || (res as any);
+          const roleVal = data.current_role || data.user_type;
           const v = String(roleVal || '').toLowerCase();
           const label = v.includes('owner') ? 'Property Owner' : v.includes('contractor') ? 'Contractor' : 'Contractor';
-          if (isMounted) setRoleLabel(label);
+          const roleSwitchCapable = Boolean(
+            data.can_switch_roles ||
+            data.user_type === 'both' ||
+            (data.owner_role_approved && data.contractor_role_approved) ||
+            data.has_active_staff_membership
+          );
+          if (isMounted) {
+            setRoleLabel(label);
+            setCanSwitchRoles(roleSwitchCapable);
+          }
         }
       } catch (e) {
         // ignore
@@ -130,9 +146,14 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           const logo = contractorPayload.company_logo ?? contractorPayload.profile_pic ?? contractorPayload.logo ?? null;
           const banner = contractorPayload.company_banner ?? contractorPayload.cover_photo ?? contractorPayload.banner ?? null;
           if (isMounted) {
-            if (name) setCompanyName(name);
-            if (logo) setCompanyLogo(logo);
-            if (banner) setCompanyBanner(banner);
+            setCompanyName(name || userData?.company_name);
+            if (isOwner) {
+              if (logo) setCompanyLogo(logo);
+              if (banner) setCompanyBanner(banner);
+            }
+            const status = dataRoot?.verification_status ?? payload?.verification_status ?? null;
+            if (status === 'approved') setContractorVerified(true);
+            else if (contractorVerifiedProp) setContractorVerified(true);
           }
         }
       } catch (e) {
@@ -185,11 +206,11 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           }
         },
         {id: 'switch_role',
-          icon: 'swap-horizontal-outline',
-          label: 'Switch Role',
-          subtitle: 'Manage your role settings',
+          icon: 'home-outline',
+          label: 'Switch to Property Owner',
+          subtitle: 'Switch back to your property owner account',
           showArrow: true,
-          hidden: userData?.user_type === 'staff',
+          hidden: !canSwitchRoles,
           onPress: onOpenSwitchRole || (() => Alert.alert('Coming Soon', 'This feature is under development.'))
         }
       ],
@@ -217,7 +238,7 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           icon: 'card-outline',
           label: 'Subscription',
           subtitle: 'Manage your subscription plan',
-          hidden: userData?.user_type === 'staff',
+          hidden: !hasFullAccess,
           showArrow: true,
           onPress: () => {
             if (typeof onOpenSubscription === 'function') { onOpenSubscription(); return; }
@@ -279,9 +300,9 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
               <ImageFallback uri={getStorageUrl(companyLogo || userData?.profile_pic || undefined)} defaultImage={defaultContractorAvatar} style={styles.avatar} resizeMode="cover" />
              </View>
 
-            <Text style={styles.companyName}>
-              {userData?.user_type === 'staff'
-                ? `${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Staff'
+            <Text style={styles.companyName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {!isOwner
+                ? `${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Member'
                 : companyName || userData?.company_name || 'Company Name'}
             </Text>
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>
@@ -339,7 +360,7 @@ const styles = StyleSheet.create({
   avatarContainer: { position: 'relative' },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4, borderColor: '#FFFFFF' },
   editAvatarButton: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#333333', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFFFFF' },
-  companyName: { fontSize: 22, fontWeight: 'bold', color: '#333333', marginTop: 12 },
+  companyName: { fontSize: 22, fontWeight: 'bold', color: '#333333', marginTop: 12, textAlign: 'center', paddingHorizontal: 20 },
   userName: { fontSize: 14, color: '#1877F2', marginTop: 2 },
   userEmail: { fontSize: 14, color: '#666666', marginTop: 4 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 },

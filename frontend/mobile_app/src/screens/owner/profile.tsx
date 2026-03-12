@@ -30,6 +30,7 @@ interface ProfileScreenProps {
   onOpenSwitchRole?: () => void; // ✅ Navigate to switch role screen
   onOpenBoosts?: () => void; // Navigate to Boosts screen
   onOpenChangeOtp?: () => void;
+  contractorVerified?: boolean;
   userData?: {
     username?: string;
     email?: string;
@@ -51,10 +52,13 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, onOpenBoosts, onOpenChangeOtp, userData }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, onOpenBoosts, onOpenChangeOtp, contractorVerified: contractorVerifiedProp, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [roleLabel, setRoleLabel] = useState<string>('Property Owner');
+  const [contractorVerified, setContractorVerified] = useState(contractorVerifiedProp ?? false);
+  // Company name when user is a staff/representative member of a contractor company via invitation
+  const [staffCompanyName, setStaffCompanyName] = useState<string | null>(null);
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -85,9 +89,12 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           const user = payload?.user ?? payload;
           const pic = user?.profile_pic ?? null;
           const cover = user?.cover_photo ?? null;
+          const contractorStatus = payload?.contractor?.verification_status ?? null;
           if (isMounted) {
             if (pic) setOwnerProfilePicPath(pic);
             if (cover) setOwnerCoverPhotoPath(cover);
+            if (contractorStatus === 'approved') setContractorVerified(true);
+            else if (contractorVerifiedProp) setContractorVerified(true);
           }
         }
       } catch (e) {}
@@ -136,10 +143,24 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
       try {
         const res = await role_service.get_current_role();
         if (res?.success) {
-          const roleVal = (res as any).current_role || (res as any).data?.current_role || (res as any).user_type;
+          const data = (res as any).data || res;
+          const roleVal = data.current_role || data.user_type;
           const v = String(roleVal || '').toLowerCase();
           const label = v.includes('contractor') ? 'Contractor' : v.includes('owner') ? 'Property Owner' : 'Property Owner';
           if (isMounted) setRoleLabel(label);
+
+          // Check for active staff membership (accepted invitation)
+          const staffRecord = data.staff_record || null;
+          const isActiveMember = !!(data.has_active_staff_membership);
+          if (isMounted) {
+            if (isActiveMember && staffRecord) {
+              setStaffCompanyName(
+                staffRecord.contractor_name || staffRecord.company_name || 'Contractor Company'
+              );
+            } else {
+              setStaffCompanyName(null);
+            }
+          }
         }
       } catch {}
     };
@@ -177,9 +198,17 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         },
         {
           id: 'switch_role',
-          icon: 'swap-horizontal-outline',
-          label: 'Switch Role',
-          subtitle: 'Manage your role settings',
+          icon: 'business-outline',
+          label: contractorVerified
+            ? 'Switch to Contractor Company'
+            : staffCompanyName
+              ? `Switch to ${staffCompanyName}`
+              : 'Add Company',
+          subtitle: contractorVerified
+            ? 'Switch to your verified contractor company'
+            : staffCompanyName
+              ? `Switch to ${staffCompanyName} profile`
+              : 'Register or manage your company',
           showArrow: true,
           onPress: onOpenSwitchRole || (() => Alert.alert('Coming Soon', 'This feature is under development.')),
         },

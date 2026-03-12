@@ -11,10 +11,13 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { notifications_service, Notification as ApiNotification } from '../../services/notifications_service';
+import { api_config, api_request } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -316,10 +319,16 @@ const getNotificationStyle = (type: NotificationType) => {
 
     // ── Team / Members ── primary ──
     case 'team_invite':
+      return {
+        icon: 'person-add-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.primaryLight,
+        iconColor: COLORS.primary,
+      };
     case 'team_role_changed':
     case 'team_access_changed':
       return {
-        icon: 'people-outline' as const,
+        icon: 'person-outline' as const,
         iconComponent: 'ionicons',
         bgColor: COLORS.primaryLight,
         iconColor: COLORS.primary,
@@ -427,6 +436,11 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeRole, setActiveRole] = useState<'contractor' | 'owner' | null>(null);
+  const [invitationModalVisible, setInvitationModalVisible] = useState(false);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [selectedInvitation, setSelectedInvitation] = useState<Notification | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [processingInvitationAction, setProcessingInvitationAction] = useState(false);
 
   const categories: { id: NotificationCategory; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -540,7 +554,76 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
     }
   };
 
+  const handleStaffInvitationAction = async (
+    notification: Notification,
+    action: 'accept' | 'decline',
+    reason?: string
+  ) => {
+    if (!notification.reference_id) {
+      Alert.alert('Error', 'Invitation reference is missing.');
+      return;
+    }
+
+    const endpoint =
+      action === 'accept'
+        ? api_config.endpoints.contractor_members.accept_invitation(String(notification.reference_id))
+        : api_config.endpoints.contractor_members.decline_invitation(String(notification.reference_id));
+
+    try {
+      setProcessingInvitationAction(true);
+      const response = await api_request(`${endpoint}?user_id=${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: action === 'decline' ? JSON.stringify({ reason: reason || '' }) : undefined,
+      });
+
+      if (response.success) {
+        await markAsRead(notification.id);
+        setInvitationModalVisible(false);
+        setRejectModalVisible(false);
+        setSelectedInvitation(null);
+        setRejectReason('');
+        Alert.alert(
+          action === 'accept' ? 'Invitation Accepted' : 'Invitation Declined',
+          response.message || (action === 'accept' ? 'You are now part of the team.' : 'You declined the invitation.')
+        );
+        await loadNotifications();
+      } else {
+        Alert.alert('Error', response.message || 'Failed to process invitation.');
+      }
+    } catch (error) {
+      console.error('Error processing staff invitation action:', error);
+      Alert.alert('Error', 'Failed to process invitation. Please try again.');
+    } finally {
+      setProcessingInvitationAction(false);
+    }
+  };
+
+  const isContractorStaffInvitation = (notification: Notification): boolean => {
+    if (notification.reference_type !== 'contractor_staff' || !notification.reference_id) {
+      return false;
+    }
+
+    const haystack = `${notification.type} ${notification.title || ''} ${notification.message || ''}`.toLowerCase();
+    return (
+      notification.type === 'team_invite' ||
+      notification.type === 'team_role_changed' ||
+      haystack.includes('invitation') ||
+      haystack.includes('invited to join')
+    );
+  };
+
   const handleNotificationPress = async (notification: Notification) => {
+    const isStaffInvitation = isContractorStaffInvitation(notification);
+
+    if (isStaffInvitation) {
+      setSelectedInvitation(notification);
+      setInvitationModalVisible(true);
+      return;
+    }
+
     // Optimistic UI update: mark as read immediately
     setNotifications((prev) =>
       prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
@@ -610,7 +693,15 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   };
 
   const renderNotificationItem = (notification: Notification) => {
-    const style = getNotificationStyle(notification.type);
+    const defaultStyle = getNotificationStyle(notification.type);
+    const style = isContractorStaffInvitation(notification)
+      ? {
+          icon: 'person-add-outline' as const,
+          iconComponent: 'ionicons',
+          bgColor: COLORS.primaryLight,
+          iconColor: COLORS.primary,
+        }
+      : defaultStyle;
     const typeLabel = getTypeLabel(notification.type);
 
     return (
@@ -780,6 +871,118 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
           </>
         )}
       </ScrollView>
+
+      <Modal
+        visible={invitationModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInvitationModalVisible(false)}
+      >
+        <View style={styles.inviteModalOverlay}>
+          <View style={styles.inviteModalCard}>
+            <Text style={styles.inviteModalTitle}>Contractor Team Invitation</Text>
+            <Text style={styles.inviteModalMessage}>
+              {selectedInvitation?.message || 'You have been invited to join a contractor team.'}
+            </Text>
+
+            <View style={styles.inviteModalActions}>
+              <TouchableOpacity
+                style={[styles.inviteModalBtn, styles.inviteLaterBtn]}
+                onPress={() => setInvitationModalVisible(false)}
+                disabled={processingInvitationAction}
+              >
+                <Text style={styles.inviteLaterText}>Later</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.inviteModalBtn, styles.inviteDeclineBtn]}
+                onPress={() => {
+                  setInvitationModalVisible(false);
+                  setRejectModalVisible(true);
+                }}
+                disabled={processingInvitationAction}
+              >
+                <Text style={styles.inviteDeclineText}>Reject</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.inviteModalBtn, styles.inviteAcceptBtn]}
+                onPress={() => {
+                  if (selectedInvitation) {
+                    void handleStaffInvitationAction(selectedInvitation, 'accept');
+                  }
+                }}
+                disabled={processingInvitationAction}
+              >
+                {processingInvitationAction ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.inviteAcceptText}>Accept</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={rejectModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRejectModalVisible(false)}
+      >
+        <View style={styles.inviteModalOverlay}>
+          <View style={styles.inviteModalCard}>
+            <Text style={styles.inviteModalTitle}>Reject Invitation</Text>
+            <Text style={styles.inviteModalMessage}>Please provide a reason for rejecting this invitation.</Text>
+
+            <TextInput
+              style={styles.rejectReasonInput}
+              placeholder="Type your reason"
+              placeholderTextColor={COLORS.textMuted}
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              maxLength={500}
+            />
+
+            <View style={styles.inviteModalActions}>
+              <TouchableOpacity
+                style={[styles.inviteModalBtn, styles.inviteLaterBtn]}
+                onPress={() => {
+                  setRejectModalVisible(false);
+                  setRejectReason('');
+                }}
+                disabled={processingInvitationAction}
+              >
+                <Text style={styles.inviteLaterText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.inviteModalBtn, styles.inviteDeclineBtn]}
+                onPress={() => {
+                  if (!rejectReason.trim()) {
+                    Alert.alert('Reason Required', 'Please enter a reason before rejecting.');
+                    return;
+                  }
+                  if (selectedInvitation) {
+                    void handleStaffInvitationAction(selectedInvitation, 'decline', rejectReason.trim());
+                  }
+                }}
+                disabled={processingInvitationAction}
+              >
+                {processingInvitationAction ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.inviteDeclineText}>Submit Rejection</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1011,5 +1214,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  inviteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  inviteModalCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 16,
+  },
+  inviteModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  inviteModalMessage: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  inviteModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  inviteModalBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginLeft: 8,
+    minWidth: 78,
+    alignItems: 'center',
+  },
+  inviteLaterBtn: {
+    backgroundColor: COLORS.borderLight,
+  },
+  inviteAcceptBtn: {
+    backgroundColor: COLORS.success,
+  },
+  inviteDeclineBtn: {
+    backgroundColor: COLORS.error,
+  },
+  inviteLaterText: {
+    color: COLORS.text,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  inviteAcceptText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  inviteDeclineText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  rejectReasonInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    minHeight: 96,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    color: COLORS.text,
+    marginBottom: 12,
+    backgroundColor: COLORS.background,
   },
 });

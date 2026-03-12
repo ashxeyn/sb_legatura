@@ -350,11 +350,12 @@ class BidRankingService
         // Map contractor_id → user_id
         $contractors = DB::table('contractors')
             ->whereIn('contractor_id', $contractorIds)
-            ->select('contractor_id', 'user_id')
+            ->select('contractor_id', 'owner_id')
             ->get()
             ->keyBy('contractor_id');
 
-        $userIds = $contractors->pluck('user_id')->unique()->values()->all();
+        $ownerIds = $contractors->pluck('owner_id')->unique()->values()->all();
+        $userIds = DB::table('property_owners')->whereIn('owner_id', $ownerIds)->pluck('user_id')->unique()->values()->all();
         if (empty($userIds)) {
             return [];
         }
@@ -368,9 +369,15 @@ class BidRankingService
             ->get()
             ->keyBy('reviewee_user_id');
 
+        // Build owner_id → user_id map for review lookup
+        $ownerToUser = DB::table('property_owners')
+            ->whereIn('owner_id', $ownerIds)
+            ->pluck('user_id', 'owner_id');
+
         $result = [];
         foreach ($contractors as $cid => $c) {
-            $r = $reviews[$c->user_id] ?? null;
+            $uid = $ownerToUser[$c->owner_id] ?? null;
+            $r = $uid ? ($reviews[$uid] ?? null) : null;
             $result[$cid] = [
                 'avg_rating'   => $r ? round((float) $r->avg_rating, 2) : 0,
                 'review_count' => $r ? (int) $r->review_count : 0,

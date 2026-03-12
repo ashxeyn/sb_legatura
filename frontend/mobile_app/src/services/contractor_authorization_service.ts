@@ -5,9 +5,9 @@
  * 
  * ROLE PERMISSIONS (based on contractor_users.role):
  * 
- * FULL ACCESS ROLES (can do everything):
+ * FULL ACCESS ROLES (can do most contractor operations):
  * - owner: contractor primary account - full privileges
- * - representative: can manage members, bid, milestones
+ * - representative: can bid, milestones, and core operations
  * 
  * LIMITED ACCESS ROLES:
  * - manager, engineer, architect, others:
@@ -16,14 +16,15 @@
  */
 
 import { storage_service } from '../utils/storage';
+import { role_service } from './role_service';
 
 // Contractor member roles
 export type ContractorRole = 'owner' | 'representative' | 'manager' | 'engineer' | 'architect' | 'others';
 
-// Roles with full access (bid, milestones, manage members)
+// Roles with full access for core contractor operations (bid, milestones)
 export const FULL_ACCESS_ROLES: ContractorRole[] = ['owner', 'representative'];
 
-// Roles allowed to manage members (add/remove/edit) - same as full access
+// Roles allowed to manage members (add/remove/edit)
 export const MEMBER_MANAGEMENT_ROLES: ContractorRole[] = ['owner', 'representative'];
 
 // Roles with limited access (view, upload progress, approve payments only)
@@ -49,6 +50,8 @@ export interface ContractorMemberContext {
     // Bidding & Milestones - owner/representative only
     can_bid: boolean;
     can_manage_milestones: boolean;
+    can_view_financials: boolean;
+    can_manage_company_profile: boolean;
     
     // All active members can do these
     can_upload_progress: boolean;
@@ -58,6 +61,24 @@ export interface ContractorMemberContext {
 }
 
 export class contractor_authorization_service {
+  private static resolveIsActive(value: any): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === '1' || normalized === 'true' || normalized === 'active' || normalized === 'yes';
+    }
+    return false;
+  }
+
+  private static resolveRole(value: any): ContractorRole {
+    const normalized = String(value || 'others').trim().toLowerCase();
+    if ((ALL_CONTRACTOR_ROLES as string[]).includes(normalized)) {
+      return normalized as ContractorRole;
+    }
+    return 'others';
+  }
+
   /**
    * Get contractor member context from stored user data
    */
@@ -69,8 +90,35 @@ export class contractor_authorization_service {
       }
 
       // Check if contractor_member context is present (set during login)
+      // Normalize permissions so role updates (e.g., representative member management)
+      // are applied even when older cached payloads exist in local storage.
       if (userData.contractor_member) {
-        return userData.contractor_member as ContractorMemberContext;
+        const cached = userData.contractor_member as ContractorMemberContext;
+        const isActive = this.resolveIsActive(cached?.is_active);
+        const role = this.resolveRole(cached?.role);
+        const hasFullAccess = cached?.has_full_access ?? (isActive && FULL_ACCESS_ROLES.includes(role));
+
+        const normalized: ContractorMemberContext = {
+          ...cached,
+          role,
+          is_active: isActive,
+          has_full_access: hasFullAccess,
+          permissions: {
+            can_manage_members: isActive && MEMBER_MANAGEMENT_ROLES.includes(role),
+            can_view_members: isActive,
+            can_bid: hasFullAccess,
+            can_manage_milestones: hasFullAccess,
+            can_view_financials: hasFullAccess,
+            can_manage_company_profile: hasFullAccess,
+            can_upload_progress: isActive,
+            can_approve_payments: hasFullAccess,
+            can_view_property_owners: isActive,
+          },
+        };
+
+        userData.contractor_member = normalized;
+        await storage_service.save_user_data(userData);
+        return normalized;
       }
 
       // Fallback for legacy contractor owner accounts that may not have
@@ -92,11 +140,78 @@ export class contractor_authorization_service {
             can_view_members: true,
             can_bid: true,
             can_manage_milestones: true,
+            can_view_financials: true,
+            can_manage_company_profile: true,
             can_upload_progress: true,
             can_approve_payments: true,
             can_view_property_owners: true,
           },
         };
+      }
+
+      const roleResponse: any = await role_service.get_current_role();
+      const currentRole = String(roleResponse?.current_role || roleResponse?.data?.current_role || '').toLowerCase();
+      const contractorPayload = roleResponse?.contractor || roleResponse?.data?.contractor || null;
+      const staffPayload = roleResponse?.staff_record || roleResponse?.data?.staff_record || null;
+
+      if (currentRole === 'contractor') {
+        let context: ContractorMemberContext | null = null;
+
+        if (contractorPayload) {
+          context = {
+            contractor_member_id: contractorPayload.contractor_member_id || null,
+            contractor_id: contractorPayload.contractor_id || contractorPayload.contractorId || 0,
+            contractor_name: contractorPayload.company_name || contractorPayload.contractor_name || null,
+            role: 'owner',
+            is_active: contractorPayload.is_active !== undefined
+              ? Boolean(contractorPayload.is_active)
+              : contractorPayload.verification_status === 'approved',
+            is_contractor_owner: true,
+            has_full_access: true,
+            permissions: {
+              can_manage_members: true,
+              can_view_members: true,
+              can_bid: true,
+              can_manage_milestones: true,
+              can_view_financials: true,
+              can_manage_company_profile: true,
+              can_upload_progress: true,
+              can_approve_payments: true,
+              can_view_property_owners: true,
+            },
+          };
+        } else if (staffPayload) {
+          const roleName = this.resolveRole(staffPayload.company_role || staffPayload.role || 'others');
+          const isActive = this.resolveIsActive(staffPayload.is_active) && !this.resolveIsActive(staffPayload.is_suspended);
+          const hasFullAccess = roleName === 'owner' || roleName === 'representative';
+
+          context = {
+            contractor_member_id: staffPayload.staff_id || null,
+            contractor_id: staffPayload.contractor_id || 0,
+            contractor_name: staffPayload.contractor_name || null,
+            role: roleName,
+            is_active: isActive,
+            is_contractor_owner: false,
+            has_full_access: hasFullAccess,
+            permissions: {
+              can_manage_members: isActive && MEMBER_MANAGEMENT_ROLES.includes(roleName),
+              can_view_members: isActive,
+              can_bid: hasFullAccess,
+              can_manage_milestones: hasFullAccess,
+              can_view_financials: hasFullAccess,
+              can_manage_company_profile: hasFullAccess,
+              can_upload_progress: isActive,
+              can_approve_payments: hasFullAccess,
+              can_view_property_owners: isActive,
+            },
+          };
+        }
+
+        if (context) {
+          userData.contractor_member = context;
+          await storage_service.save_user_data(userData);
+          return context;
+        }
       }
 
       return null;

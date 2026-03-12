@@ -240,19 +240,32 @@ export default function ProjectUpdateModal({
     .filter(it => !deletedItemIds.includes(it.item_id));
 
   /** The effective proposed budget or current budget */
-  const effectiveBudget = proposedBudget ? parseFloat(proposedBudget) : (ctx?.total_cost ?? 0);
+  const proposedTotalBudget = proposedBudget ? parseFloat(proposedBudget) : (ctx?.total_cost ?? 0);
+  const downpaymentOffset = (ctx?.payment_mode === 'downpayment') ? (ctx?.downpayment_amount ?? 0) : 0;
+  const effectiveBudget = Math.max(0, proposedTotalBudget - downpaymentOffset);
 
-  /** Total cost of visible existing items (with edits applied) */
-  const existingItemsTotal = visibleItems.reduce((sum, it) => {
+  /** Total planned cost of existing items (with edits applied). */
+  const existingItemsPlannedTotal = visibleItems.reduce((sum, it) => {
     const edited = editedItems[it.item_id];
-    return sum + (edited?.cost ?? it.effective_cost);
+    return sum + Number(edited?.cost ?? it.effective_cost ?? 0);
   }, 0);
 
   /** Total cost of new items */
   const newItemsTotal = newItems.reduce((sum, it) => sum + it.cost, 0);
 
+  /** Paid amount beyond planned item costs (already consumed). */
+  const existingOverBudgetCarry = visibleItems.reduce((sum, it) => {
+    const edited = editedItems[it.item_id];
+    const proposedCost = Number(edited?.cost ?? it.effective_cost ?? 0);
+    const paidAmount = Number(it.total_paid ?? 0);
+    return sum + Math.max(0, paidAmount - proposedCost);
+  }, 0);
+
+  /** Total consumed by existing items after including paid over-budget carry. */
+  const existingItemsConsumedTotal = existingItemsPlannedTotal + existingOverBudgetCarry;
+
   /** Grand total allocated */
-  const grandAllocated = existingItemsTotal + newItemsTotal;
+  const grandAllocated = existingItemsConsumedTotal + newItemsTotal;
 
   /** Remaining from proposed budget */
   const remainingBudget = effectiveBudget - grandAllocated;
@@ -798,7 +811,7 @@ export default function ProjectUpdateModal({
             <Text style={styles.overviewKey}>Total Allocated</Text>
           </View>
           <View style={styles.overviewItem}>
-            <Text style={[styles.overviewValue, { color: ctx.remaining_allocatable > 0 ? C.success : C.textMuted }]}>
+            <Text style={[styles.overviewValue, { color: ctx.remaining_allocatable >= 0 ? C.success : C.error }]}> 
               {fmtCurrency(ctx.remaining_allocatable)}
             </Text>
             <Text style={styles.overviewKey}>Remaining</Text>
@@ -1136,10 +1149,11 @@ export default function ProjectUpdateModal({
   // ─────────────────────────────────────────────────────────────────────────
   const renderBudgetSection = () => {
     if (!ctx) return null;
-    const currentBudget = ctx.total_cost;
+    const currentContractBudget = ctx.total_cost;
+    const currentMilestoneBudget = ctx.milestone_budget_base ?? Math.max(0, currentContractBudget - ((ctx.payment_mode === 'downpayment') ? (ctx.downpayment_amount ?? 0) : 0));
     const pBudget = proposedBudget ? parseFloat(proposedBudget) : null;
-    const changeType: BudgetChangeType = pBudget == null || Math.abs(pBudget - currentBudget) < 0.01
-      ? 'none' : pBudget > currentBudget ? 'increase' : 'decrease';
+    const changeType: BudgetChangeType = pBudget == null || Math.abs(pBudget - currentContractBudget) < 0.01
+      ? 'none' : pBudget > currentContractBudget ? 'increase' : 'decrease';
     const bc = budgetChangeLabel(changeType);
 
     return (
@@ -1157,11 +1171,11 @@ export default function ProjectUpdateModal({
           Proposed New Total Budget (₱)
         </Text>
         <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 6 }}>
-          Leave empty to keep current budget ({fmtCurrency(currentBudget)})
+          Leave empty to keep current contract budget ({fmtCurrency(currentContractBudget)})
         </Text>
         <TextInput
           style={styles.amountInput}
-          placeholder={fmtInputNum(String(Math.round(currentBudget)))}
+          placeholder={fmtInputNum(String(Math.round(currentContractBudget)))}
           placeholderTextColor={C.textMuted}
           keyboardType="decimal-pad"
           value={fmtInputNum(proposedBudget)}
@@ -1180,8 +1194,12 @@ export default function ProjectUpdateModal({
         {/* Read-only breakdown */}
         <View style={[styles.overviewGrid, { marginTop: 12 }]}>
           <View style={styles.overviewItem}>
-            <Text style={styles.overviewValue}>{fmtCurrency(currentBudget)}</Text>
-            <Text style={styles.overviewKey}>Current Budget</Text>
+            <Text style={styles.overviewValue}>{fmtCurrency(currentContractBudget)}</Text>
+            <Text style={styles.overviewKey}>Contract Budget</Text>
+          </View>
+          <View style={styles.overviewItem}>
+            <Text style={[styles.overviewValue, { color: C.primary }]}>{fmtCurrency(currentMilestoneBudget)}</Text>
+            <Text style={styles.overviewKey}>Milestone Budget Base</Text>
           </View>
           <View style={styles.overviewItem}>
             <Text style={[styles.overviewValue, { color: C.success }]}>{fmtCurrency(ctx.total_paid)}</Text>
@@ -1203,7 +1221,7 @@ export default function ProjectUpdateModal({
           <View style={[styles.warningBanner, { marginTop: 8 }]}>
             <Feather name="alert-triangle" size={14} color={C.error} />
             <Text style={styles.warningText}>
-              Allocation exceeds proposed budget by {fmtCurrency(Math.abs(remainingBudget))}
+              Allocation exceeds available milestone budget by {fmtCurrency(Math.abs(remainingBudget))}
             </Text>
           </View>
         )}
@@ -1216,6 +1234,8 @@ export default function ProjectUpdateModal({
   // ─────────────────────────────────────────────────────────────────────────
   const renderMilestoneSection = () => {
     if (!ctx) return null;
+
+    const footerGrandTotal = existingItemsPlannedTotal + newItemsTotal + existingOverBudgetCarry;
 
     return (
       <View style={styles.sectionCard}>
@@ -1725,8 +1745,8 @@ export default function ProjectUpdateModal({
         {/* Footer totals */}
         <View style={styles.milestoneFooter}>
           <View style={styles.footerRow}>
-            <Text style={styles.footerLabel}>Existing Items ({visibleItems.length})</Text>
-            <Text style={styles.footerValue}>{fmtCurrency(existingItemsTotal)}</Text>
+            <Text style={styles.footerLabel}>Existing Items (Planned) ({visibleItems.length})</Text>
+            <Text style={styles.footerValue}>{fmtCurrency(existingItemsPlannedTotal)}</Text>
           </View>
           {newItems.length > 0 && (
             <View style={styles.footerRow}>
@@ -1746,10 +1766,16 @@ export default function ProjectUpdateModal({
               </Text>
             </View>
           )}
+          <View style={styles.footerRow}>
+            <Text style={styles.footerLabel}>Paid Over-budget Carry</Text>
+            <Text style={[styles.footerValue, { color: existingOverBudgetCarry > 0 ? C.error : C.textMuted }]}>
+              {fmtCurrency(existingOverBudgetCarry)}
+            </Text>
+          </View>
           <View style={[styles.footerRow, { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 8, marginTop: 4 }]}>
-            <Text style={[styles.footerLabel, { fontWeight: '700' }]}>Grand Total</Text>
+            <Text style={[styles.footerLabel, { fontWeight: '700' }]}>Grand Total (Consumed)</Text>
             <Text style={[styles.footerValue, { fontWeight: '700', color: remainingBudget >= 0 ? C.primary : C.error }]}>
-              {fmtCurrency(grandAllocated)}
+              {fmtCurrency(footerGrandTotal)}
             </Text>
           </View>
         </View>

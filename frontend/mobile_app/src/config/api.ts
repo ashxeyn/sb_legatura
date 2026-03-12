@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.100.27:8000'; //'https://legaturaph.com'
+const API_BASE_URL = 'http://192.168.254.111:8086'; //'https://legaturaph.com'
 
 import { storage_service } from '../utils/storage';
 
@@ -59,9 +59,16 @@ export const api_config = {
         ,
         contractor_members: {
             list: '/api/contractor/members',
+            search_owners: '/api/contractor/members/search-owners',
             create: '/api/contractor/members',
             update: (id: string) => `/api/contractor/members/${id}`,
             delete: (id: string) => `/api/contractor/members/${id}`,
+            suspend: (id: string) => `/api/contractor/members/${id}/suspend`,
+            unsuspend: (id: string) => `/api/contractor/members/${id}/unsuspend`,
+            accept_invitation: (id: string) => `/api/contractor/members/${id}/accept`,
+            decline_invitation: (id: string) => `/api/contractor/members/${id}/decline`,
+            cancel_invitation: (id: string) => `/api/contractor/members/${id}/cancel-invitation`,
+            change_representative: '/api/contractor/members/change-representative',
             toggle_active: (id: string) => `/api/contractor/members/${id}/toggle-active`
         }
     }

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { api_request } from '../../config/api';
 import { useNavigation } from '@react-navigation/native';
@@ -325,7 +326,7 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.iconContainer}>
           <View style={styles.iconCircle}>
             <Feather name="lock" size={40} color={COLORS.primary} />
@@ -479,7 +480,7 @@ export default function ChangeOtpScreen({ token, purpose = 'change_email', onSuc
         ) : null}
 
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

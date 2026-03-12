@@ -38,6 +38,9 @@ export interface ExtensionContext {
   start_date: string | null;
   end_date: string | null;
   total_cost: number;
+  payment_mode?: string;
+  downpayment_amount?: number;
+  milestone_budget_base?: number;
   total_paid: number;
   total_allocated: number;
   remaining_balance: number;

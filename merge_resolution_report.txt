@@ -1,0 +1,53 @@
+Merge Resolution Report (March 12, 2026)
+Legend:
+- merged-both: both sides were reconciled in the final code
+- incoming-preferred: stashed/incoming side was kept for most conflict hunks
+- current-preferred: current/upstream side was kept for most conflict hunks
+- syntax-fix: post-merge structural/encoding fix only
+
+MANUAL MERGE (targeted)
+app/Services/ProfileService.php | merged-both | Kept robust helper lookups + strict role image separation logic.
+app/Services/MilestoneService.php | merged-both | Kept active-contractor checks in notifications + improved resolveContractor flow.
+frontend/mobile_app/src/screens/both/editProfile.tsx | merged-both | Kept contractor media/phone setters + robust bio fallback + style blocks.
+resources/views/admin/userManagement/partials/teamMembersTable.blade.php | merged-both | Kept role_if_others display + full dataStatus actions.
+resources/views/admin/userManagement/partials/representativeModalList.blade.php | incoming-preferred | Kept company_role/if_others naming and deletion_reason filter.
+resources/views/admin/userManagement/contractor_Views.blade.php | merged-both | Kept owner identity source + representative section improvements + status/action consistency.
+app/Http/Controllers/Admin/projectAdminController.php | incoming-preferred | Standardized owner user alias po_user.
+app/Http/Controllers/Admin/progressFeedController.php | current-preferred | Kept po alias used by contractor_pic select.
+app/Models/owner/projectsClass.php | current-preferred | Retained is_active contractor filter.
+app/Models/admin/subscriptionClass.php | incoming-preferred | Standardized owner alias to po_user.
+app/Http/Requests/admin/updateContractorTeamMemberRequest.php | incoming-preferred | Kept expanded admin validation for editable member fields.
+app/Models/subs/platformPaymentClass.php | incoming-preferred | Kept ownerId/staffRecord lookup with deletion_reason guard.
+app/Services/AiService.php | incoming-preferred | Kept cleaner ownerId/staffRecord contractor resolver.
+public/js/admin/userManagement/contractor_Views.js | current-preferred | Kept role-only edit/suspend flow and corresponding validation mapping.
+
+BULK RESOLUTION PASS (policy-based)
+Policy applied: incoming-preferred on unresolved PHP conflict hunks for files below.
+app/Http/Controllers/authController.php | incoming-preferred
+app/Http/Controllers/profileController.php | incoming-preferred
+app/Http/Controllers/Admin/analyticsController.php | incoming-preferred
+app/Http/Controllers/Admin/dashboardController.php | incoming-preferred
+app/Http/Controllers/Admin/globalManagementController.php | incoming-preferred
+app/Http/Controllers/Admin/userManagementController.php | incoming-preferred
+app/Jobs/sendDeadlineNotifications.php | incoming-preferred
+app/Models/accounts/accountClass.php | incoming-preferred
+app/Models/admin/bothReactivateClass.php | incoming-preferred
+app/Models/admin/contractorClass.php | incoming-preferred
+app/Models/admin/postingManagementClass.php | incoming-preferred
+app/Models/admin/projectClass.php | incoming-preferred
+app/Models/admin/propertyOwnerClass.php | incoming-preferred
+app/Models/admin/userVerificationClass.php | incoming-preferred
+app/Services/AuthService.php | incoming-preferred
+app/Services/ContractorAuthorizationService.php | incoming-preferred
+
+POST-MERGE FIXES
+app/Models/admin/contractorClass.php | syntax-fix | Fixed mismatched array closing delimiter.
+(16 PHP files from bulk pass) | syntax-fix | Removed UTF-8 BOM introduced by bulk rewrite to restore namespace parsing.
+
+VALIDATION SUMMARY
+- All listed red-triangle PHP files pass php -l.
+- public/js/admin/userManagement/contractor_Views.js has no editor errors.
+- Note: app/Jobs/sendDeadlineNotifications.php still shows a deprecation warning (${expr} interpolation), but no parse error.
+
+KNOWN REMAINING CONFLICT MARKERS OUTSIDE RED-TRIANGLE SCOPE
+public/js/modal.js | unresolved markers remain (not part of red-triangle list handled above).

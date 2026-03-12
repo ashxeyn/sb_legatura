@@ -17,6 +17,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { auth_service } from '../../services/auth_service';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 
 // Business Documents interface for contractor step 4
 export interface BusinessDocuments {
@@ -411,7 +412,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.logoContainer}>
                     <Image
                         source={require('../../../assets/images/logos/legatura-logo.png')}
@@ -581,7 +582,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                         )}
                     </TouchableOpacity>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* PICAB Category Selector Modal */}
             <Modal

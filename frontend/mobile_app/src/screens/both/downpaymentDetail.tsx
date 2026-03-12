@@ -13,6 +13,8 @@ import {
   Modal,
   TextInput,
   RefreshControl,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -348,6 +350,7 @@ export default function DownpaymentDetail({
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -588,6 +591,7 @@ export default function DownpaymentDetail({
 
         <View style={{ height: 120 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Bottom Bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>

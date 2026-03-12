@@ -42,18 +42,16 @@
                     $userId = is_object($userObj) ? ($userObj->user_id ?? $userObj->id ?? null) : ($userObj['user_id'] ?? null);
                     if ($userId) {
                         $existingOwner = DB::table('property_owners')->where('user_id', $userId)->first();
-                        // Also fetch contractor_user authorized rep fields for contractor accounts
-                        $contractorUser = DB::table('contractor_users')->where('user_id', $userId)->first();
                     }
                 }
 
                 $pref = [];
-                // Basic name/phone fallbacks: prefer session -> existing owner -> contractor authorized rep -> user
-                $pref['first_name'] = old('first_name', $sessionStep['first_name'] ?? data_get($existingOwner, 'first_name') ?? data_get($contractorUser, 'authorized_rep_fname') ?? data_get($userObj, 'first_name') ?? '');
-                $pref['middle_name'] = old('middle_name', $sessionStep['middle_name'] ?? data_get($existingOwner, 'middle_name') ?? data_get($contractorUser, 'authorized_rep_mname') ?? data_get($userObj, 'middle_name') ?? '');
-                $pref['last_name'] = old('last_name', $sessionStep['last_name'] ?? data_get($existingOwner, 'last_name') ?? data_get($contractorUser, 'authorized_rep_lname') ?? data_get($userObj, 'last_name') ?? '');
+                // Basic name/phone fallbacks: prefer session -> user (names are on users table) -> existing owner for phone
+                $pref['first_name'] = old('first_name', $sessionStep['first_name'] ?? data_get($userObj, 'first_name') ?? '');
+                $pref['middle_name'] = old('middle_name', $sessionStep['middle_name'] ?? data_get($userObj, 'middle_name') ?? '');
+                $pref['last_name'] = old('last_name', $sessionStep['last_name'] ?? data_get($userObj, 'last_name') ?? '');
                 $pref['date_of_birth'] = old('date_of_birth', $sessionStep['date_of_birth'] ?? data_get($existingOwner, 'date_of_birth') ?? '');
-                $pref['phone_number'] = old('phone_number', $sessionStep['phone_number'] ?? data_get($existingOwner, 'phone_number') ?? data_get($contractorUser, 'phone_number') ?? data_get($userObj, 'phone_number') ?? '');
+                $pref['phone_number'] = old('phone_number', $sessionStep['phone_number'] ?? data_get($existingOwner, 'phone_number') ?? data_get($userObj, 'phone_number') ?? '');
                 $pref['occupation_id'] = old('occupation_id', $sessionStep['occupation_id'] ?? data_get($existingOwner, 'occupation_id') ?? null);
                 $pref['occupation_other'] = old('occupation_other', $sessionStep['occupation_other'] ?? data_get($existingOwner, 'occupation_other') ?? null);
 
@@ -171,7 +169,7 @@
                             <select id="ownerProvince" name="owner_address_province" class="form-select" required>
                                 <option value="" disabled {{ data_get($pref, 'province') ? '' : 'selected' }}>Select
                                     Province</option>
-                                @php $psgc = new \App\Services\psgcApiService();
+                                @php $psgc = new \App\Services\PsgcApiService();
                                 $provinces = $psgc->getProvinces(); @endphp
                                 @foreach($provinces as $p)
                                     @php $pcode = data_get($p, 'code');
@@ -444,14 +442,14 @@
                 <i class="fi fi-rr-interrogation"></i>
             </div>
         </div>
-        <h2 class="confirmation-title">Switch to Property Owner?</h2>
+        <h2 class="confirmation-title">Switch to Owner Dashboard?</h2>
 
         <!-- Role Switch Summary Container -->
         <div id="ownerSwitchSummary" class="role-switch-summary">
             <!-- Populated via JavaScript -->
         </div>
 
-        <p class="confirmation-message">You are about to add the Property Owner role. You can switch roles anytime from
+        <p class="confirmation-message">You are about to switch to the Property Owner dashboard. You can switch dashboards anytime from
             settings.</p>
         <div class="confirmation-actions">
             <button type="button" class="confirmation-cancel-btn" id="ownerConfirmCancelBtn">

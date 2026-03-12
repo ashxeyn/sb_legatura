@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (trySwitch.ok && switchJson && switchJson.success) {
                     // Successful switch — redirect to provided URL or fallback
-                    showToast(switchJson.message || 'Switching to Property Owner...', 'success');
+                    showToast(switchJson.message || 'Switching to Owner Dashboard...', 'success');
                     setTimeout(() => {
                         window.location.href = switchJson.redirect_url || '/owner/homepage';
                     }, 600);
@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                         let switchJson = {};
                         try { switchJson = await switchResp.json(); } catch (e) { /* ignore parse issues */ }
-                        showToast((switchJson && switchJson.message) || json.message || 'Switching to Property Owner...', 'success');
+                        showToast((switchJson && switchJson.message) || json.message || 'Switching to Owner Dashboard...', 'success');
                         setTimeout(() => {
                             // priority: switchJson.redirect_url > json.redirect_url > fallback
                             window.location.href = (switchJson && switchJson.redirect_url) || json.redirect_url || '/owner/homepage';

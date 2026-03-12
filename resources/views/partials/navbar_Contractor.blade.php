@@ -177,8 +177,8 @@
                             <i class="fi fi-rr-refresh"></i>
                         </div>
                         <div class="account-settings-item-content">
-                            <span class="account-settings-item-title">Switch to Property Owner Account</span>
-                            <span class="account-settings-item-subtitle">Change your account type</span>
+                            <span class="account-settings-item-title">Switch to Owner Dashboard</span>
+                            <span class="account-settings-item-subtitle">Switch your active dashboard</span>
                         </div>
                     </div>
                     <i class="fi fi-rr-angle-right account-settings-arrow"></i>

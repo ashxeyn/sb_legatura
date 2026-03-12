@@ -99,7 +99,16 @@ export default function SubscriptionScreen({ onBack }: Props) {
     const selectedPlanData = plans.find(p => p.plan_key === selectedPlan);
     const isAlreadySubscribed = subscription && subscription.plan_key === selectedPlan;
     const currentTierRank = subscription ? getTierRank(subscription.plan_key) : 0;
-    const availablePlans = plans.filter(plan => getTierRank(plan.plan_key) > currentTierRank);
+    // Selectable plans for checkout (upgrades only when already subscribed).
+    const selectablePlans = subscription
+        ? plans.filter(plan => getTierRank(plan.plan_key) > currentTierRank)
+        : plans;
+    // Visible plans in UI should always include all plans.
+    const visiblePlans = plans;
+
+    const isSelectedPlanSelectable = !!selectedPlanData && (
+        !subscription || getTierRank(selectedPlanData.plan_key) > currentTierRank
+    );
 
     useEffect(() => {
         fetchSubscriptionData();
@@ -117,17 +126,22 @@ export default function SubscriptionScreen({ onBack }: Props) {
                 const fetchedPlans: SubscriptionPlan[] = response.data.plans || [];
                 setPlans(fetchedPlans);
 
-                // Filter to only show upgrade options based on current subscription
+                // Filter selectable checkout options based on current subscription
                 const currentTierRank = currentSubscription ? getTierRank(currentSubscription.plan_key) : 0;
-                const availablePlans = fetchedPlans.filter(p => getTierRank(p.plan_key) > currentTierRank);
+                const selectablePlans = currentSubscription
+                    ? fetchedPlans.filter(p => getTierRank(p.plan_key) > currentTierRank)
+                    : fetchedPlans;
 
-                // Set default selection to best available plan (always update if plans exist)
-                if (availablePlans.length > 0) {
-                    // Prefer gold tier as default, otherwise first available
-                    const goldPlan = availablePlans.find(p => isGoldTier(p.plan_key));
-                    const defaultPlan = goldPlan || availablePlans[0];
+                // Set default selection to best selectable plan.
+                // If no selectable plan remains, keep current plan selected so it is still visible.
+                if (selectablePlans.length > 0) {
+                    const goldPlan = selectablePlans.find(p => isGoldTier(p.plan_key));
+                    const defaultPlan = goldPlan || selectablePlans[0];
                     setSelectedPlan(defaultPlan.plan_key);
                     setExpandedPlan(defaultPlan.plan_key);
+                } else if (currentSubscription?.plan_key) {
+                    setSelectedPlan(currentSubscription.plan_key);
+                    setExpandedPlan(currentSubscription.plan_key);
                 }
             }
         } catch (error) {
@@ -378,26 +392,32 @@ export default function SubscriptionScreen({ onBack }: Props) {
             </View>
 
             <View style={styles.plansList}>
-                {availablePlans.length === 0 ? (
+                {visiblePlans.length === 0 ? (
                     <View style={styles.noPlansContainer}>
-                        <Ionicons name="trophy" size={48} color="#F59E0B" />
-                        <Text style={styles.noPlansText}>You're already on the highest plan!</Text>
-                        <Text style={styles.noPlansSubtext}>Enjoy unlimited bids with Gold subscription.</Text>
+                        <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
+                        <Text style={styles.noPlansText}>No plans available</Text>
+                        <Text style={styles.noPlansSubtext}>Pull down to refresh or try again later.</Text>
                     </View>
-                ) : availablePlans.map((plan) => {
+                ) : visiblePlans.map((plan) => {
                     const planStyle = getPlanStyle(plan.plan_key);
                     const isSelected = selectedPlan === plan.plan_key;
+                    const isSelectable = !subscription || getTierRank(plan.plan_key) > currentTierRank;
+                    const isCurrentPlan = !!subscription && subscription.plan_key === plan.plan_key;
 
                     return (
                         <TouchableOpacity
                             key={plan.plan_key}
                             style={[
                                 styles.planCard,
+                                !isSelectable && !isCurrentPlan && { opacity: 0.65 },
                                 isSelected && [styles.selectedPlanCard, { borderColor: planStyle.color, backgroundColor: planStyle.color }],
                             ]}
                             onPress={() => {
                                 setSelectedPlan(plan.plan_key);
                                 setExpandedPlan(prev => (prev === plan.plan_key ? null : plan.plan_key));
+                                if (!isSelectable && !isCurrentPlan) {
+                                    Alert.alert('Upgrade only', 'You can only select higher-tier plans for checkout.');
+                                }
                             }}
                             activeOpacity={0.8}
                         >
@@ -423,6 +443,11 @@ export default function SubscriptionScreen({ onBack }: Props) {
                                 <Text style={[styles.planCardPrice, isSelected && styles.planCardPriceSelected]}>
                                     ₱{(plan.amount / 100).toLocaleString()}
                                 </Text>
+                                {isCurrentPlan && !isSelected && (
+                                    <View style={[styles.starBadge, { backgroundColor: '#10B981' }]}> 
+                                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                    </View>
+                                )}
                                 {isSelected && (
                                     <View style={styles.planCheckBadge}>
                                         <Ionicons name="checkmark" size={14} color="#FFFFFF" />
@@ -547,15 +572,15 @@ export default function SubscriptionScreen({ onBack }: Props) {
                 </Animated.View>
             </View>
 
-            {activeTab === 'plans' && availablePlans.length > 0 && (
+            {activeTab === 'plans' && selectablePlans.length > 0 && (
                 <View style={styles.footerWrapper}>
                     <TouchableOpacity
                         style={[
                             styles.subscribeFooterBtn,
-                            (loading || isAlreadySubscribed) && styles.subscribeButtonDisabled,
+                            (loading || isAlreadySubscribed || !isSelectedPlanSelectable) && styles.subscribeButtonDisabled,
                         ]}
                         onPress={() => setShowConfirmSubscribe(true)}
-                        disabled={loading || isAlreadySubscribed}
+                        disabled={loading || isAlreadySubscribed || !isSelectedPlanSelectable}
                     >
                         {loading ? (
                             <ActivityIndicator color="#FFFFFF" />

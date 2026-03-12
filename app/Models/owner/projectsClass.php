@@ -120,7 +120,7 @@ class projectsClass
             'project_relationships.project_post_status',
             'project_relationships.bidding_due as bidding_deadline',
             'project_relationships.created_at',
-            DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
+            DB::raw("CONCAT(users.first_name, ' ', COALESCE(users.middle_name, ''), ' ', users.last_name) as owner_name"),
             'property_owners.profile_pic as owner_profile_pic',
             'property_owners.user_id as owner_user_id',
             DB::raw('(SELECT COUNT(*) FROM platform_payments
@@ -141,13 +141,14 @@ class projectsClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->join('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
             ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->where('projects.project_id', $projectId)
             ->select(
             'projects.*',
             'contractor_types.type_name',
             'project_relationships.project_post_status',
             'project_relationships.bidding_due as bidding_deadline',
-            DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name")
+            DB::raw("CONCAT(users.first_name, ' ', COALESCE(users.middle_name, ''), ' ', users.last_name) as owner_name")
         )
             ->first();
     }
@@ -300,17 +301,16 @@ class projectsClass
             'c.company_name',
             'c.years_of_experience',
             'c.company_email',
-            'c.company_phone',
             'c.company_website',
             'c.completed_projects',
             'u.username',
-            'po.profile_pic as profile_pic',
+            'c.company_logo as profile_pic',
             DB::raw('COUNT(DISTINCT bf.file_id) as file_count')
         )
             ->groupBy('b.bid_id', 'b.proposed_cost', 'b.estimated_timeline', 'b.contractor_notes',
             'b.bid_status', 'b.submitted_at', 'b.decision_date', 'c.contractor_id',
-            'c.company_name', 'c.years_of_experience', 'c.company_email', 'c.company_phone',
-            'c.company_website', 'c.completed_projects', 'u.username', 'u.profile_pic')
+            'c.company_name', 'c.years_of_experience', 'c.company_email',
+            'c.company_website', 'c.completed_projects', 'u.username', 'c.company_logo')
             ->get();
 
         // Get bid files for each bid
@@ -373,11 +373,10 @@ class projectsClass
                 'decision_date' => now()
             ]);
 
-            // Update project: set selected contractor and close bidding
+            // Update project: close bidding (selected_contractor_id lives in project_relationships, not projects)
             DB::table('projects')
                 ->where('project_id', $projectId)
                 ->update([
-                'selected_contractor_id' => $bid->contractor_id,
                 'project_status' => 'bidding_closed'
             ]);
 

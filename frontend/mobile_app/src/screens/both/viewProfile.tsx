@@ -27,6 +27,7 @@ import { auth_service } from '../../services/auth_service';
 import { profile_service } from '../../services/profile_service';
 import { highlightService } from '../../services/highlightService';
 import { post_service } from '../../services/post_service';
+import { useContractorAuth } from '../../hooks/useContractorAuth';
 import ShowcasePostDetail from './showcasePostDetail';
 import ReportPostModal from '../../components/reportPostModal';
 
@@ -498,6 +499,7 @@ const ProjectCardSkeleton = () => (
 // Main Component
 export default function ViewProfileScreen({ onBack, userData, userToken, initialTab }) {
   const insets = useSafeAreaInsets();
+  const { hasFullAccess: hasFullContractorAccess } = useContractorAuth();
   const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'Posts');
   const [isUploading, setIsUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -610,6 +612,12 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   }, [activeRoleState, contractorInfo?.bio, ownerInfo?.bio, userState?.bio]);
 
   const filteredProjects = useMemo(() => projects.filter(p => (p.project_status || '').toLowerCase() !== 'pending'), [projects]);
+
+  const canManageContractorShowcase = useMemo(() => {
+    if (activeRoleState !== 'contractor') return false;
+    if (userState?.user_type !== 'staff') return true;
+    return hasFullContractorAccess;
+  }, [activeRoleState, userState?.user_type, hasFullContractorAccess]);
 
   const projectStats = useMemo(() => ({
     total: filteredProjects.length,
@@ -1520,7 +1528,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   );
 
   const renderPostsTab = () => {
-    const postInputBar = activeRoleState === 'contractor' && userState?.user_type !== 'staff' ? (
+    const postInputBar = canManageContractorShowcase ? (
       <TouchableOpacity
         style={styles.postInputRow}
         activeOpacity={0.7}
@@ -1991,7 +1999,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                   <Feather name="eye" size={14} color={COLORS.textSecondary} />
                   <Text style={styles.footerActionText}>View post</Text>
                 </TouchableOpacity>
-                {userState?.user_type !== 'staff' && (
+                {canManageContractorShowcase && (
                 <TouchableOpacity
                   style={[styles.footerActionBtn, { marginLeft: 8 }]}
                   onPress={() => handleToggleHighlight(post.post_id, true)}
@@ -2118,7 +2126,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     }
 
     // Contractors: show own showcase posts only
-    const postInputBar = userState?.user_type !== 'staff' ? (
+    const postInputBar = canManageContractorShowcase ? (
       <TouchableOpacity
         style={styles.postInputRow}
         activeOpacity={0.7}
@@ -2190,7 +2198,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                   <Text style={styles.fbCardAuthor}>{authorName}</Text>
                   {postDate ? <Text style={styles.fbCardDate}>{postDate}</Text> : null}
                 </View>
-                {userState?.user_type !== 'staff' && (
+                {canManageContractorShowcase && (
                 <View style={styles.cardMenuWrap}>
                   <TouchableOpacity
                     onPress={(e) => {

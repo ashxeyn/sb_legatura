@@ -150,7 +150,7 @@ class SwitchAccountModal {
                 ownerBtn.innerHTML = '<i class="fi fi-rr-check"></i><span>Current Account</span>';
             } else {
                 ownerBtn.disabled = false;
-                ownerBtn.innerHTML = '<i class="fi fi-rr-arrow-right"></i><span>Switch to Property Owner</span>';
+                ownerBtn.innerHTML = '<i class="fi fi-rr-arrow-right"></i><span>Switch to Owner Dashboard</span>';
             }
         }
 
@@ -160,7 +160,7 @@ class SwitchAccountModal {
                 contractorBtn.innerHTML = '<i class="fi fi-rr-check"></i><span>Current Account</span>';
             } else {
                 contractorBtn.disabled = false;
-                contractorBtn.innerHTML = '<i class="fi fi-rr-arrow-right"></i><span>Switch to Contractor</span>';
+                contractorBtn.innerHTML = '<i class="fi fi-rr-arrow-right"></i><span>Switch to Contractor Dashboard</span>';
             }
         }
     }
@@ -189,18 +189,18 @@ class SwitchAccountModal {
             const json = await response.json();
 
             if (json.success) {
-                this.showNotification(json.message || `Switching to ${targetAccountType} account...`, 'success');
+                this.showNotification(json.message || `Switching to ${targetAccountType} dashboard...`, 'success');
                 setTimeout(() => {
                     window.location.href = json.redirect_url || (targetAccountType === 'owner' ? '/owner/homepage' : '/contractor/homepage');
                 }, 1000);
             } else {
                 this.hideLoading();
-                this.showNotification(json.message || 'Failed to switch role', 'error');
+                this.showNotification(json.message || 'Failed to switch dashboard', 'error');
             }
         } catch (err) {
             this.hideLoading();
             console.error('Role switch error:', err);
-            this.showNotification('An error occurred during role switch', 'error');
+            this.showNotification('An error occurred during dashboard switch', 'error');
         }
     }
 

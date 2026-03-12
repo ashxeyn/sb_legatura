@@ -22,6 +22,7 @@ import { projects_service } from '../../services/projects_service';
 import MilestoneSetup from './milestoneSetup';
 import PlaceBid from './placeBid';
 import { api_config } from '../../config/api';
+import useContractorAuth from '../../hooks/useContractorAuth';
 
 interface Bid {
   bid_id: number;
@@ -66,6 +67,7 @@ interface MyBidsProps {
     profile_pic?: string;
     company_name?: string;
   };
+  initialBids?: Bid[];
   onClose?: () => void;
 }
 
@@ -90,10 +92,11 @@ const COLORS = {
   border: '#E2E8F0',
 };
 
-export default function MyBids({ userData, onClose }: MyBidsProps) {
+export default function MyBids({ userData, initialBids = [], onClose }: MyBidsProps) {
+  const { canViewFinancials, isLoading: authLoading } = useContractorAuth();
   const insets = useSafeAreaInsets();
-  const [bids, setBids] = useState<Bid[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [bids, setBids] = useState<Bid[]>(initialBids);
+  const [isLoading, setIsLoading] = useState(initialBids.length === 0);
   const [refreshing, setRefreshing] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
@@ -121,14 +124,30 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     fetchBids();
   }, [userData?.user_id]);
 
+  // Keep local list in sync when parent dashboard already has fresh data.
+  useEffect(() => {
+    if (Array.isArray(initialBids) && initialBids.length > 0) {
+      setBids(initialBids);
+      setIsLoading(false);
+    }
+  }, [initialBids]);
+
   const fetchBids = async () => {
     if (!userData?.user_id) {
       setIsLoading(false);
       return;
     }
 
+    if (!canViewFinancials) {
+      setBids([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      setIsLoading(true);
+      if (bids.length === 0) {
+        setIsLoading(true);
+      }
       const response = await projects_service.get_my_bids(userData.user_id);
       console.log('MyBids response:', JSON.stringify(response, null, 2));
 
@@ -153,10 +172,31 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
   };
 
   const onRefresh = async () => {
+    if (!canViewFinancials) return;
     setRefreshing(true);
     await fetchBids();
     setRefreshing(false);
   };
+
+  if (!authLoading && !canViewFinancials) {
+    return (
+      <View style={[styles.container, { paddingTop: statusBarHeight }]}> 
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={onClose}>
+            <Feather name="arrow-left" size={22} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Bids</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <MaterialIcons name="lock" size={48} color={COLORS.textMuted} />
+          <Text style={styles.emptyTitle}>Access Restricted</Text>
+          <Text style={styles.noDataText}>Only the owner or representative can view bid history.</Text>
+        </View>
+      </View>
+    );
+  }
 
   const handleAcceptedBidClick = async (bid: Bid) => {
     try {
@@ -681,12 +721,6 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                       <Text style={styles.modalInfoText}>
                         Budget: {formatBudget(selectedBid.budget_range_min, selectedBid.budget_range_max)}
                       </Text>
-                    </View>
-                  )}
-                  {selectedBid.owner_name && (
-                    <View style={styles.modalInfoRow}>
-                      <Feather name="user" size={16} color={COLORS.textSecondary} />
-                      <Text style={styles.modalInfoText}>Owner: {selectedBid.owner_name}</Text>
                     </View>
                   )}
                 </View>

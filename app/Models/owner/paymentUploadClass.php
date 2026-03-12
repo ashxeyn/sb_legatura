@@ -3,6 +3,7 @@
 namespace App\Models\owner;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class paymentUploadClass
@@ -14,7 +15,6 @@ class paymentUploadClass
             'item_id' => $data['item_id'],
             'project_id' => $data['project_id'],
             'owner_id' => $data['owner_id'],
-            'contractor_user_id' => $data['contractor_user_id'] ?? null,
             'amount' => $data['amount'],
             'payment_type' => $data['payment_type'],
             'transaction_number' => $data['transaction_number'] ?? null,
@@ -23,6 +23,14 @@ class paymentUploadClass
             'payment_status' => $data['payment_status'] ?? 'submitted',
             'updated_at' => $data['updated_at'] ?? null,
         ];
+
+        if (Schema::hasColumn('milestone_payments', 'contractor_user_id')) {
+            $insert['contractor_user_id'] = $data['contractor_user_id'] ?? null;
+        }
+
+        if (Schema::hasColumn('milestone_payments', 'contractor_id')) {
+            $insert['contractor_id'] = $data['contractor_id'] ?? null;
+        }
 
         return DB::table('milestone_payments')->insertGetId($insert);
     }

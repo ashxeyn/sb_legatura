@@ -245,24 +245,22 @@ class AiService
     /**
      * Get contractor record by user ID.
      *
-     * Handles both direct contractors and contractor_staff (team members).
+     * Handles both direct contractors (owner) and contractor_staff (team members).
      *
      * @param int $userId
      * @return object|null
      */
     public function getContractorByUserId(int $userId)
     {
-        $po = DB::table('property_owners')
-            ->where('user_id', $userId)
-            ->first();
-
-        if (!$po) {
+        // Resolve owner_id from property_owners
+        $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        if (!$ownerId) {
             return null;
         }
 
-        // Direct contractor lookup via owner_id
+        // Direct contractor owner lookup
         $contractor = DB::table('contractors')
-            ->where('owner_id', $po->owner_id)
+            ->where('owner_id', $ownerId)
             ->first();
 
         if ($contractor) {
@@ -270,14 +268,15 @@ class AiService
         }
 
         // Fallback: Check contractor_staff (team member)
-        $staff = DB::table('contractor_staff')
-            ->where('owner_id', $po->owner_id)
+        $staffRecord = DB::table('contractor_staff')
+            ->where('owner_id', $ownerId)
             ->where('is_active', 1)
+            ->whereNull('deletion_reason')
             ->first();
 
-        if ($staff) {
+        if ($staffRecord) {
             return DB::table('contractors')
-                ->where('contractor_id', $staff->contractor_id)
+                ->where('contractor_id', $staffRecord->contractor_id)
                 ->first();
         }
 

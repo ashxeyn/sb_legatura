@@ -13,12 +13,12 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PersonalInfo } from './personal_info';
+import { PropertyOwnerPersonalInfo } from './personalInfo';
 
 interface AccountSetupScreenProps {
   onBackPress: () => void;
   onNext: (accountInfo: AccountInfo) => Promise<Record<string, string[]> | void>;
-  personalInfo: PersonalInfo;
+  personalInfo: PropertyOwnerPersonalInfo;
   initialData?: AccountInfo | null;
 }
 

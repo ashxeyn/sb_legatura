@@ -7,6 +7,7 @@ import { auth_service } from '../../services/auth_service';
 import { api_config } from '../../config/api';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 
 interface RoleReapplyScreenProps {
   targetRole: 'contractor' | 'owner';
@@ -23,6 +24,7 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
+  const [ownerName, setOwnerName] = useState<{ first_name: string; middle_name: string; last_name: string }>({ first_name: '', middle_name: '', last_name: '' });
 
   // Dropdown data states
   const [dropdowns, setDropdowns] = useState<any>({
@@ -273,6 +275,16 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
     const ownerData = existingData.property_owner || existingData.owner || (existingData.user_type === 'property_owner' ? existingData : null);
     const contractorUserData = existingData.contractor_user || {};
 
+    // Populate owner name for read-only display (from users table via join)
+    if (targetRole === 'contractor') {
+      const u = existingData.user || contractorUserData;
+      setOwnerName({
+        first_name: u.first_name || u.authorized_rep_fname || '',
+        middle_name: u.middle_name || u.authorized_rep_mname || '',
+        last_name: u.last_name || u.authorized_rep_lname || '',
+      });
+    }
+
     console.log('[Reapply] Extracted data:', {
       hasContractor: !!contractorData,
       hasOwner: !!ownerData,
@@ -283,7 +295,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
     if (targetRole === 'contractor' && contractorData) {
       // Company Information
       prefill.company_name = contractorData.company_name || '';
-      prefill.company_phone = contractorData.company_phone || '';
       prefill.experience_start_date = contractorData.company_start_date || '';
       prefill.years_of_experience = contractorData.years_of_experience?.toString() || '';
 
@@ -323,20 +334,9 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
       // Optional info
       prefill.company_website = contractorData.company_website || '';
       prefill.company_social_media = contractorData.company_social_media || '';
-
-      // === CRITICAL: Authorized Representative Fields ===
-      prefill.authorized_rep_fname = contractorUserData.authorized_rep_fname ||
-                                     existingData.authorized_rep_fname || '';
-      prefill.authorized_rep_mname = contractorUserData.authorized_rep_mname ||
-                                     existingData.authorized_rep_mname || '';
-      prefill.authorized_rep_lname = contractorUserData.authorized_rep_lname ||
-                                     existingData.authorized_rep_lname || '';
-
-      console.log('[Reapply] Authorized rep fields:', {
-        fname: prefill.authorized_rep_fname,
-        mname: prefill.authorized_rep_mname,
-        lname: prefill.authorized_rep_lname
-      });
+      prefill.company_description = contractorData.company_description || '';
+      prefill.company_logo_server = contractorData.company_logo || '';
+      prefill.company_banner_server = contractorData.company_banner || '';
     }
 
     // === OWNER FIELDS ===
@@ -379,10 +379,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
       console.log('[Reapply] No structured data found, using incoming directly');
       if (targetRole === 'contractor') {
         prefill.company_name = existingData.company_name || '';
-        prefill.company_phone = existingData.company_phone || '';
-        prefill.authorized_rep_fname = existingData.authorized_rep_fname || '';
-        prefill.authorized_rep_mname = existingData.authorized_rep_mname || '';
-        prefill.authorized_rep_lname = existingData.authorized_rep_lname || '';
       } else if (targetRole === 'owner') {
         prefill.first_name = existingData.first_name || '';
         prefill.middle_name = existingData.middle_name || '';
@@ -447,7 +443,7 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
 
   // ============== IMAGE PICKER ==============
 
-  const pickImage = async (field: string) => {
+  const pickImage = async (field: string, aspect?: [number, number]) => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -458,7 +454,7 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
         mediaTypes: 'Images',
         quality: 0.8,
         allowsEditing: true,
-        aspect: [4, 3]
+        aspect: aspect ?? [4, 3]
       });
 
       if (!result.canceled && result.assets?.length) {
@@ -610,11 +606,8 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
         if (formStep === 1) {
           // Validate contractor step 1
           const errors: string[] = [];
-          const phone = (formData.company_phone || '').trim();
 
           if (!formData.company_name?.trim()) errors.push('Company name is required');
-          if (!phone) errors.push('Company phone is required');
-          if (phone && !/^09\d{9}$/.test(phone)) errors.push('Company phone must be 11 digits starting with 09');
           if (!formData.experience_start_date) errors.push('Years of experience (start date) is required');
           if (!formData.contractor_type_id) errors.push('Contractor type is required');
 
@@ -628,8 +621,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
           if (!formData.business_address_city) errors.push('Business address city is required');
           if (!formData.business_address_province) errors.push('Business address province is required');
           if (!formData.business_address_postal?.trim()) errors.push('Business address postal code is required');
-          if (!formData.authorized_rep_fname?.trim()) errors.push('Authorized representative first name is required');
-          if (!formData.authorized_rep_lname?.trim()) errors.push('Authorized representative last name is required');
 
           if (errors.length) {
             Alert.alert('Please fix the following', errors.join('\n'));
@@ -663,9 +654,9 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
           const res = await role_service.add_contractor_step2(fd);
           if (res?.success) {
             const saved = res?.data?.saved;
-            if (saved && saved.dti_sec_registration_photo) {
-              updateForm({ dti_sec_registration_photo_server: saved.dti_sec_registration_photo });
-            }
+            if (saved?.dti_sec_registration_photo) updateForm({ dti_sec_registration_photo_server: saved.dti_sec_registration_photo });
+            if (saved?.company_logo) updateForm({ company_logo_server: saved.company_logo });
+            if (saved?.company_banner) updateForm({ company_banner_server: saved.company_banner });
             setFormStep(3);
           } else {
             Alert.alert('Error', res?.message || 'Upload failed');
@@ -842,7 +833,7 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.logoContainer}>
           <Image
             source={require('../../../assets/images/logos/legatura-logo.png')}
@@ -886,22 +877,57 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
             <View>
               <Text style={styles.sectionTitle}>Company Information</Text>
 
+              <Text style={styles.inputLabel}>Company Logo (Optional)</Text>
+              <View style={{ alignSelf: 'flex-start' }}>
+                <TouchableOpacity style={[styles.uploadButton, { width: 100, height: 100 }]} onPress={() => pickImage('company_logo', [1, 1])}>
+                  {(formData.company_logo || formData.company_logo_server) ? (
+                    <Image source={{ uri: getDocImageUrl(formData.company_logo || formData.company_logo_server) }} style={{ width: '100%', height: '100%', borderRadius: 6 }} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Ionicons name="cloud-upload" size={28} color="#EC7E00" />
+                      <Text style={[styles.uploadHint, { textAlign: 'center' }]}>Logo{`\n`}1:1</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                {(formData.company_logo || formData.company_logo_server) ? (
+                  <TouchableOpacity
+                    onPress={() => updateForm({ company_logo: null, company_logo_server: null, company_logo_name: null })}
+                    style={{ position: 'absolute', top: -8, right: -8 }}
+                  >
+                    <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              <Text style={styles.inputLabel}>Company Banner (Optional)</Text>
+              <View>
+                <TouchableOpacity style={[styles.uploadButton, { aspectRatio: 16 / 9, height: undefined }]} onPress={() => pickImage('company_banner', [16, 9])}>
+                  {(formData.company_banner || formData.company_banner_server) ? (
+                    <Image source={{ uri: getDocImageUrl(formData.company_banner || formData.company_banner_server) }} style={{ width: '100%', height: '100%', borderRadius: 6 }} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Ionicons name="cloud-upload" size={32} color="#EC7E00" />
+                      <Text style={styles.uploadText}>Tap to upload company banner</Text>
+                      <Text style={styles.uploadHint}>JPG, JPEG, PNG — 16:9</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                {(formData.company_banner || formData.company_banner_server) ? (
+                  <TouchableOpacity
+                    onPress={() => updateForm({ company_banner: null, company_banner_server: null, company_banner_name: null })}
+                    style={{ position: 'absolute', top: 6, right: 6 }}
+                  >
+                    <Ionicons name="close-circle" size={26} color="#E74C3C" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
               <Text style={styles.inputLabel}>Company Name *</Text>
               <TextInput
                 style={[styles.input, prefilledFields.company_name && styles.prefilledInput]}
                 value={formData.company_name || ''}
                 onChangeText={(t) => updateForm({ company_name: t })}
                 placeholder="Company Name *"
-                placeholderTextColor="#999"
-              />
-
-              <Text style={styles.inputLabel}>Company Phone *</Text>
-              <TextInput
-                style={[styles.input, prefilledFields.company_phone && styles.prefilledInput]}
-                value={formData.company_phone || ''}
-                onChangeText={(t) => updateForm({ company_phone: t })}
-                keyboardType="phone-pad"
-                placeholder="Company Phone *"
                 placeholderTextColor="#999"
               />
 
@@ -1033,31 +1059,14 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
                 placeholderTextColor="#999"
               />
 
-              <Text style={styles.sectionTitle}>Authorized Representative</Text>
-              <Text style={styles.inputLabel}>First Name *</Text>
-              <TextInput
-                style={[styles.input, prefilledFields.authorized_rep_fname && styles.prefilledInput]}
-                value={formData.authorized_rep_fname || ''}
-                onChangeText={(t) => updateForm({ authorized_rep_fname: t })}
-                placeholder="First name"
-                placeholderTextColor="#999"
-              />
-              <Text style={styles.inputLabel}>Middle Name (Optional)</Text>
-              <TextInput
-                style={[styles.input, prefilledFields.authorized_rep_mname && styles.prefilledInput]}
-                value={formData.authorized_rep_mname || ''}
-                onChangeText={(t) => updateForm({ authorized_rep_mname: t })}
-                placeholder="Middle name"
-                placeholderTextColor="#999"
-              />
-              <Text style={styles.inputLabel}>Last Name *</Text>
-              <TextInput
-                style={[styles.input, prefilledFields.authorized_rep_lname && styles.prefilledInput]}
-                value={formData.authorized_rep_lname || ''}
-                onChangeText={(t) => updateForm({ authorized_rep_lname: t })}
-                placeholder="Last name"
-                placeholderTextColor="#999"
-              />
+              <Text style={styles.sectionTitle}>Owner Information</Text>
+              <Text style={styles.inputLabel}>First Name</Text>
+              <TextInput style={[styles.input, styles.readOnlyInput]} value={ownerName.first_name || 'Not set'} editable={false} />
+              <Text style={styles.inputLabel}>Middle Name</Text>
+              <TextInput style={[styles.input, styles.readOnlyInput]} value={ownerName.middle_name || '\u2014'} editable={false} />
+              <Text style={styles.inputLabel}>Last Name</Text>
+              <TextInput style={[styles.input, styles.readOnlyInput]} value={ownerName.last_name || 'Not set'} editable={false} />
+              <Text style={[styles.inputLabel, { fontSize: 11, color: '#999', marginTop: -4 }]}>This information is linked from your account and cannot be edited here.</Text>
 
               <Text style={styles.sectionTitle}>Optional Information</Text>
               <Text style={styles.inputLabel}>Website</Text>
@@ -1075,6 +1084,15 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
                 onChangeText={(t) => updateForm({ company_social_media: t })}
                 placeholder="Social Media (Optional)"
                 placeholderTextColor="#999"
+              />
+              <Text style={styles.inputLabel}>Company Description</Text>
+              <TextInput
+                style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                value={formData.company_description || ''}
+                onChangeText={(t) => updateForm({ company_description: t })}
+                placeholder="Brief description of your company (Optional)"
+                placeholderTextColor="#999"
+                multiline
               />
             </View>
           )}
@@ -1177,12 +1195,11 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
                   <View style={styles.previewCard}>
                     <Text style={styles.previewHeader}>Company Information</Text>
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Name</Text><Text style={styles.previewValue}>{formData.company_name || '—'}</Text></View>
-                    <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Phone</Text><Text style={styles.previewValue}>{formData.company_phone || '—'}</Text></View>
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Experience</Text><Text style={styles.previewValue}>{formData.experience_start_date ? formatExperience(formData.experience_start_date) : '—'}</Text></View>
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Contractor Type</Text><Text style={styles.previewValue}>{(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); return sel?.name || '—'; })()}</Text></View>
                     {(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); const isOther = (sel?.name || '').toLowerCase().includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Other Type</Text><Text style={styles.previewValue}>{formData.contractor_type_other_text || '—'}</Text></View>) : null; })()}
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Services Offered</Text><Text style={styles.previewValue}>{formData.services_offered || '—'}</Text></View>
-                    <View style={styles.previewRow}><Text style={styles.previewLabel}>Authorized Representative</Text><Text style={styles.previewValue}>{(formData.authorized_rep_fname || '') + (formData.authorized_rep_mname ? ' ' + formData.authorized_rep_mname : '') + (formData.authorized_rep_lname ? ' ' + formData.authorized_rep_lname : '') || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Owner Name</Text><Text style={styles.previewValue}>{[ownerName.first_name, ownerName.middle_name, ownerName.last_name].filter(Boolean).join(' ') || '—'}</Text></View>
                   </View>
 
                   <View style={styles.previewCard}>
@@ -1526,7 +1543,7 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Modals */}
       <Modal visible={showContractorTypeModal} animationType="slide" transparent onRequestClose={() => setShowContractorTypeModal(false)}>
@@ -2023,6 +2040,7 @@ const styles = StyleSheet.create({
   inputLabel: { fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 8 },
   input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, fontSize: 16, color: '#333333', marginBottom: 8 },
   inputDisabled: { backgroundColor: '#F5F5F5', borderColor: '#DDDDDD' },
+  readOnlyInput: { backgroundColor: '#F5F5F5', borderColor: '#E0E0E0', color: '#666666' },
   inputSelector: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   selectorText: { fontSize: 16, color: '#333333', flex: 1 },
   selectorPlaceholder: { color: '#999999' },

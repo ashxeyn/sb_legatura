@@ -16,6 +16,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth_service } from '../../services/auth_service';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 
 // Company Info interface for contractor step 1
 export interface CompanyInfo {
@@ -257,8 +258,9 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                 console.log('Contractor types API response:', response);
 
                 if (response.success) {
-                        // Handle nested or unwrapped data structure
-                        const types = response.data?.contractor_types || response.data?.data?.contractor_types;
+                    // Handle nested or unwrapped data structure
+                    const responseAny: any = response;
+                    const types = responseAny?.data?.contractor_types || responseAny?.data?.data?.contractor_types || responseAny?.contractor_types;
                         if (Array.isArray(types) && types.length > 0) {
                             console.log('Setting contractor types:', types);
                             setContractorTypesList(types);
@@ -276,7 +278,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.logoContainer}>
                     <Image
                         source={require('../../../assets/images/logos/legatura-logo.png')}
@@ -517,7 +519,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                         )}
                     </TouchableOpacity>
                 </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Contractor Type Selector Modal */}
             <Modal

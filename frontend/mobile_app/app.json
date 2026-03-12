@@ -17,7 +17,8 @@
     ],
     "android": {
       "package": "com.legatura.mobile",
-      "icon": "./assets/images/icons/app-icon.png"
+      "icon": "./assets/images/icons/app-icon.png",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "ios": {
       "icon": "./assets/images/icons/app-icon.png"

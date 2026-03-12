@@ -167,8 +167,8 @@ class PostService
                 $post->display_name = $post->username;
             }
 
-            // Avatar
-            $post->avatar = $post->company_logo ?? $post->profile_pic ?? null;
+            // Avatar — strict role separation: company_logo for contractors, profile_pic for owners.
+            $post->avatar = !empty($post->company_name) ? ($post->company_logo ?? null) : ($post->profile_pic ?? null);
 
 
         }
@@ -249,27 +249,20 @@ class PostService
         $contractorId = null;
 
         if ($isContractor) {
-            // Use schema-agnostic resolver to find contractor_id when possible
-            try {
-                $profileSvc = new ProfileService();
-                $cRow = $profileSvc->getContractorByUserId($userId);
-                if ($cRow && isset($cRow->contractor_id)) {
-                    $contractorId = $cRow->contractor_id;
-                }
-            } catch (\Throwable $e) {
-                Log::warning('PostService: profile-based contractor lookup failed: ' . $e->getMessage());
-            }
+            $psOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            if ($psOwnerId) {
+                $contractorId = DB::table('contractors')
+                    ->where('owner_id', $psOwnerId)
+                    ->value('contractor_id');
 
-            // Fallback to contractor_users lookup when present
-            if (empty($contractorId) && Schema::hasTable('contractor_users')) {
-                try {
-                    $contractorId = DB::table('contractor_users')
-                        ->where('user_id', $userId)
+                // Staff/representative users do not own the contractor account directly;
+                // resolve their parent contractor_id from contractor_staff.
+                if (!$contractorId) {
+                    $contractorId = DB::table('contractor_staff')
+                        ->where('owner_id', $psOwnerId)
                         ->where('is_active', 1)
-                        ->where('is_deleted', 0)
+                        ->whereNull('deletion_reason')
                         ->value('contractor_id');
-                } catch (\Throwable $e) {
-                    Log::warning('PostService contractor_users lookup failed: ' . $e->getMessage());
                 }
             }
         }
@@ -367,9 +360,9 @@ class PostService
                     'pr.bidding_due as bidding_deadline',
                     'pr.owner_id',
                     'u.user_id as owner_user_id',
-                    'pr.created_at',
-                    $ownerProfilePicSelect,
-                    $ownerNameSelect
+                    'po.profile_pic as owner_profile_pic',
+                    DB::raw("CONCAT(u.first_name, ' ', u.last_name) as owner_name"),
+                    'pr.created_at'
                 )
                 ->orderByDesc('pr.created_at')
                 ->limit($fetchLimit)
@@ -438,6 +431,11 @@ class PostService
                      ->where('ms.setup_status', '=', 'approved');
             })
             ->where('pp.status', 'approved')
+            // Only show showcases from verified users (approved contractor OR approved property owner)
+            ->where(function ($q) {
+                $q->where('c.verification_status', 'approved')
+                  ->orWhere('po.verification_status', 'approved');
+            })
             ->select(
                 'pp.*',
                 'u.username', 'po.profile_pic as profile_pic', 'u.user_type',
@@ -458,7 +456,7 @@ class PostService
                 } else {
                     $p->display_name = $p->username;
                 }
-                $p->avatar = $p->company_logo ?? $p->profile_pic ?? null;
+                $p->avatar = !empty($p->company_name) ? ($p->company_logo ?? null) : ($p->profile_pic ?? null);
 
                 return (object) [
                     'feed_type'  => 'showcase',
@@ -553,16 +551,19 @@ class PostService
         $contractorId = null;
 
         if ($isContractor) {
-            $contractorId = DB::table('contractors')
-                ->where('user_id', $userId)
-                ->value('contractor_id');
-
-            if (!$contractorId) {
-                $contractorId = DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
+            $psOwnerId2 = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            if ($psOwnerId2) {
+                $contractorId = DB::table('contractors')
+                    ->where('owner_id', $psOwnerId2)
                     ->value('contractor_id');
+
+                if (!$contractorId) {
+                    $contractorId = DB::table('contractor_staff')
+                        ->where('owner_id', $psOwnerId2)
+                        ->where('is_active', 1)
+                        ->whereNull('deletion_reason')
+                        ->value('contractor_id');
+                }
             }
         }
 
@@ -578,10 +579,10 @@ class PostService
                     ->where('u.user_id', '!=', $userId)
                     ->where(function ($q) use ($like) {
                         $q->where('u.username', 'LIKE', $like)
-                          ->orWhere('po.first_name', 'LIKE', $like)
-                          ->orWhere('po.last_name', 'LIKE', $like)
+                          ->orWhere('u.first_name', 'LIKE', $like)
+                          ->orWhere('u.last_name', 'LIKE', $like)
                           ->orWhere('po.address', 'LIKE', $like)
-                          ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                          ->orWhereRaw("CONCAT(u.first_name, ' ', u.last_name) LIKE ?", [$like]);
                     })
                     ->select(
                         'po.owner_id',
@@ -591,7 +592,7 @@ class PostService
                         'po.cover_photo as cover_photo',
                         'po.address',
                         'po.created_at',
-                        DB::raw("CONCAT(po.first_name, ' ', po.last_name) as display_name")
+                        DB::raw("CONCAT(u.first_name, ' ', u.last_name) as display_name")
                     )
                     ->orderByDesc('po.created_at')
                     ->get()
@@ -673,7 +674,7 @@ class PostService
                           ->orWhere('p.project_description', 'LIKE', $like)
                           ->orWhere('p.project_location', 'LIKE', $like)
                           ->orWhere('ct.type_name', 'LIKE', $like)
-                          ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                          ->orWhereRaw("CONCAT(u.first_name, ' ', u.last_name) LIKE ?", [$like]);
                     })
                     ->select(
                         'p.project_id', 'p.project_title', 'p.project_description',
@@ -685,7 +686,7 @@ class PostService
                         'pr.owner_id',
                         'u.user_id as owner_user_id',
                         'po.profile_pic as owner_profile_pic',
-                        DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                        DB::raw("CONCAT(u.first_name, ' ', u.last_name) as owner_name"),
                         'pr.created_at'
                     )
                     ->orderByDesc('pr.created_at')
@@ -710,13 +711,10 @@ class PostService
                         ->where('ms.setup_status', '=', 'approved');
                 })
                 ->where('pp.status', 'approved')
-                ->where(function ($q) use ($isContractor, $isOwner) {
-                    if ($isContractor) {
-                        $q->whereNotNull('po.owner_id');
-                    }
-                    if ($isOwner) {
-                        $q->whereNotNull('c.contractor_id');
-                    }
+                // Only show showcases from verified users
+                ->where(function ($q) {
+                    $q->where('c.verification_status', 'approved')
+                      ->orWhere('po.verification_status', 'approved');
                 })
                 ->where(function ($q) use ($like) {
                     $q->where('pp.title', 'LIKE', $like)
@@ -724,7 +722,7 @@ class PostService
                       ->orWhere('pp.location', 'LIKE', $like)
                       ->orWhere('u.username', 'LIKE', $like)
                       ->orWhere('c.company_name', 'LIKE', $like)
-                      ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                      ->orWhereRaw("CONCAT(u.first_name, ' ', u.last_name) LIKE ?", [$like]);
                 })
                 ->select(
                     'pp.*',
@@ -745,7 +743,7 @@ class PostService
                     } else {
                         $p->display_name = $p->username;
                     }
-                    $p->avatar = $p->company_logo ?? $p->profile_pic ?? null;
+                    $p->avatar = !empty($p->company_name) ? ($p->company_logo ?? null) : ($p->profile_pic ?? null);
 
                     return (object) [
                         'feed_type' => 'showcase',

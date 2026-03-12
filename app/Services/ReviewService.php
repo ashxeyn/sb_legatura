@@ -18,6 +18,25 @@ use App\Services\NotificationService;
  */
 class ReviewService
 {
+    /** Prefer full name, then username. */
+    private function resolvePersonName(?object $user): ?string
+    {
+        if (!$user) {
+            return null;
+        }
+
+        $first = trim((string) ($user->first_name ?? ''));
+        $last = trim((string) ($user->last_name ?? ''));
+        $full = trim($first . ' ' . $last);
+
+        if ($full !== '') {
+            return $full;
+        }
+
+        $username = trim((string) ($user->username ?? ''));
+        return $username !== '' ? $username : null;
+    }
+
     /**
      * Submit a review for a completed project.
      *
@@ -132,6 +151,14 @@ class ReviewService
      */
     public function getReviewsForUser(int $revieweeUserId, ?string $role = null, int $page = 1, int $perPage = 15): array
     {
+        $roleNormalized = strtolower(trim((string) $role));
+
+        // If profile is contractor, reviewers are owners -> show person names.
+        // If profile is owner, reviewers are contractors -> show company names.
+        $reviewerNameExpr = str_contains($roleNormalized, 'contractor')
+            ? "COALESCE(NULLIF(TRIM(CONCAT(ru.first_name, ' ', ru.last_name)), ''), ru.username)"
+            : "COALESCE(NULLIF(c.company_name, ''), NULLIF(TRIM(CONCAT(ru.first_name, ' ', ru.last_name)), ''), ru.username)";
+
         $query = DB::table('reviews as r')
             ->join('users as ru', 'r.reviewer_user_id', '=', 'ru.user_id')
             ->leftJoin('property_owners as rpo', 'ru.user_id', '=', 'rpo.user_id')
@@ -141,11 +168,8 @@ class ReviewService
 
         // Scope by role
         if ($role === 'contractor') {
-            // Get contractor through property_owners
-            $contractor = DB::table('contractors as c')
-                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
-                ->where('po.user_id', $revieweeUserId)
-                ->first();
+            $ownerId = DB::table('property_owners')->where('user_id', $revieweeUserId)->value('owner_id');
+            $contractor = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
             if ($contractor) {
                 // Join with project_relationships to get selected_contractor_id
                 $query->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
@@ -188,7 +212,7 @@ class ReviewService
             'rpo.profile_pic as reviewer_profile_pic',
             'c.company_name as reviewer_company_name',
             'p.project_title',
-            DB::raw("COALESCE(c.company_name, ru.username) as reviewer_name")
+            DB::raw("{$reviewerNameExpr} as reviewer_name")
         )
         ->orderBy('r.created_at', 'desc')
         ->offset($offset)
@@ -227,6 +251,11 @@ class ReviewService
             ->join('users as ru', 'r.reviewer_user_id', '=', 'ru.user_id')
             ->leftJoin('property_owners as rpo', 'ru.user_id', '=', 'rpo.user_id')
             ->leftJoin('contractors as c', 'rpo.owner_id', '=', 'c.owner_id')
+            ->join('projects as p', 'r.project_id', '=', 'p.project_id')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->leftJoin('property_owners as op', 'pr.owner_id', '=', 'op.owner_id')
+            ->leftJoin('contractors as sc', 'p.selected_contractor_id', '=', 'sc.contractor_id')
+            ->leftJoin('property_owners as cp', 'sc.owner_id', '=', 'cp.owner_id')
             ->where('r.project_id', $projectId)
             ->where('r.is_deleted', 0)
             ->select(
@@ -234,7 +263,13 @@ class ReviewService
                 'r.rating', 'r.comment', 'r.created_at',
                 'ru.username as reviewer_username', 'rpo.profile_pic as reviewer_profile_pic',
                 'c.company_name as reviewer_company_name',
-                DB::raw("COALESCE(c.company_name, ru.username) as reviewer_name")
+                DB::raw("CASE
+                    WHEN r.reviewer_user_id = op.user_id
+                        THEN COALESCE(NULLIF(TRIM(CONCAT(ru.first_name, ' ', ru.last_name)), ''), ru.username)
+                    WHEN r.reviewer_user_id = cp.user_id
+                        THEN COALESCE(NULLIF(c.company_name, ''), NULLIF(TRIM(CONCAT(ru.first_name, ' ', ru.last_name)), ''), ru.username)
+                    ELSE COALESCE(NULLIF(TRIM(CONCAT(ru.first_name, ' ', ru.last_name)), ''), NULLIF(c.company_name, ''), ru.username)
+                END as reviewer_name")
             )
             ->orderBy('r.created_at', 'desc')
             ->get();
@@ -272,17 +307,26 @@ class ReviewService
         // Resolve a display name for the reviewee
         $revieweeName = null;
         if ($revieweeId) {
-            // Get contractor through property_owners
-            $contractor = DB::table('contractors as c')
-                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
-                ->where('po.user_id', $revieweeId)
+            // Determine review direction for correct display identity.
+            $projectLink = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->leftJoin('property_owners as op', 'pr.owner_id', '=', 'op.owner_id')
+                ->leftJoin('contractors as sc', 'p.selected_contractor_id', '=', 'sc.contractor_id')
+                ->leftJoin('property_owners as cp', 'sc.owner_id', '=', 'cp.owner_id')
+                ->where('p.project_id', $projectId)
+                ->select('op.user_id as owner_user_id', 'cp.user_id as contractor_user_id')
                 ->first();
-            if ($contractor) {
-                $revieweeName = $contractor->company_name;
-            }
-            if (!$revieweeName) {
-                $user = DB::table('users')->where('user_id', $revieweeId)->first();
-                $revieweeName = $user->username ?? null;
+
+            $revieweeUser = DB::table('users')->where('user_id', $revieweeId)->first();
+
+            if ($projectLink && (int) ($projectLink->contractor_user_id ?? 0) === (int) $revieweeId) {
+                $revieweeOwnerId = DB::table('property_owners')->where('user_id', $revieweeId)->value('owner_id');
+                $contractor = $revieweeOwnerId
+                    ? DB::table('contractors')->where('owner_id', $revieweeOwnerId)->first()
+                    : null;
+                $revieweeName = $contractor->company_name ?? $this->resolvePersonName($revieweeUser);
+            } else {
+                $revieweeName = $this->resolvePersonName($revieweeUser);
             }
         }
 

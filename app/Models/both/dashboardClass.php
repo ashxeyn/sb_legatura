@@ -39,9 +39,11 @@ class dashboardClass
             if ($contractor) return $contractor;
         }
 
-        // Staff member — get parent contractor via contractor_users table
-        $staffMember = DB::table('contractor_users')
-            ->where('user_id', $userId)
+        // Staff member — get parent contractor via contractor_staff table
+        $staffMember = DB::table('contractor_staff')
+            ->where('owner_id', $owner ? $owner->owner_id : null)
+            ->where('is_active', 1)
+            ->whereNull('deletion_reason')
             ->first();
 
         if ($staffMember) {
@@ -216,8 +218,8 @@ class dashboardClass
                     ->where('po.owner_id', $project->owner_id)
                     ->select(
                         'po.owner_id',
-                        'po.first_name',
-                        'po.last_name',
+                        'u.first_name',
+                        'u.last_name',
                         'po.profile_pic as profile_pic'
                     )
                     ->first();
@@ -307,7 +309,7 @@ class dashboardClass
                 // Attach computed downpayment-cleared flag so front-ends can lock items
                 if ($milestone->payment_plan) {
                     $milestone->payment_plan->downpayment_cleared =
-                        \App\Services\milestoneService::isDownpaymentCleared($project->project_id);
+                        \App\Services\MilestoneService::isDownpaymentCleared($project->project_id);
                 }
             } else {
                 $milestone->payment_plan = null;

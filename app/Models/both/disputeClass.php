@@ -136,16 +136,16 @@ class disputeClass
 
         $query = DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->leftJoin('property_owners as po_c', 'c.owner_id', '=', 'po_c.owner_id');
+            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id');
 
         if ($currentRole === 'owner' && $ownerId) {
             $query->where('pr.owner_id', $ownerId);
         } else if ($currentRole === 'contractor') {
-            $query->where('po_c.user_id', $userId);
+            $query->where('c_po.user_id', $userId);
         } else {
             $query->where(function ($q) use ($userId, $ownerId) {
-                $q->where('po_c.user_id', $userId);
+                $q->where('c_po.user_id', $userId);
                 if ($ownerId) {
                     $q->orWhere('pr.owner_id', $ownerId);
                 }
@@ -156,8 +156,8 @@ class disputeClass
             'p.project_id',
             'p.project_title',
             'p.project_description',
-            'po_c.user_id as contractor_user_id',
-            'pr.selected_contractor_id',
+            'c_po.user_id as contractor_user_id',
+            'p.selected_contractor_id',
             'pr.owner_id',
             'p.project_status',
             'pr.created_at'
@@ -204,14 +204,14 @@ class disputeClass
     {
         return DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->leftJoin('property_owners as po_c', 'c.owner_id', '=', 'po_c.owner_id')
+            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
             ->where('p.project_id', $projectId)
             ->select(
                 'p.project_id',
                 'pr.owner_id',
                 'p.project_title',
-                'po_c.user_id as contractor_id'
+                'c_po.user_id as contractor_id'
             )
             ->first();
     }
@@ -220,17 +220,18 @@ class disputeClass
     {
         return DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-            ->leftJoin('users as owner_user', 'po.user_id', '=', 'owner_user.user_id')
-            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->leftJoin('property_owners as po_c', 'c.owner_id', '=', 'po_c.owner_id')
+            ->leftJoin('property_owners as owner_user', 'pr.owner_id', '=', 'owner_user.owner_id')
+            ->leftJoin('users as owner_u', 'owner_user.user_id', '=', 'owner_u.user_id')
+            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+            ->leftJoin('users as contractor_user', 'c_po.user_id', '=', 'contractor_user.user_id')
             ->where('p.project_id', $projectId)
             ->select(
                 'p.*',
                 'pr.owner_id',
-                DB::raw("CONCAT(owner_user.first_name, ' ', COALESCE(owner_user.middle_name, ''), ' ', owner_user.last_name) as owner_name"),
+                DB::raw("CONCAT(owner_u.first_name, ' ', COALESCE(owner_u.middle_name, ''), ' ', owner_u.last_name) as owner_name"),
                 'c.company_name as contractor_username',
-                'po_c.user_id as contractor_user_id',
+                'c_po.user_id as contractor_user_id',
                 'c.company_name as contractor_company_name'
             )
             ->first();
@@ -392,17 +393,20 @@ class disputeClass
         $project = DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-            // Join contractor based on project_relationships table
-            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->leftJoin('property_owners as po_c', 'c.owner_id', '=', 'po_c.owner_id')
+            // Join contractor based on projects table first
+            ->leftJoin('contractors as c1', 'p.selected_contractor_id', '=', 'c1.contractor_id')
+            // Join contractor based on project_relationships table as fallback
+            ->leftJoin('contractors as c2', 'pr.selected_contractor_id', '=', 'c2.contractor_id')
+            ->leftJoin('property_owners as c1_po', 'c1.owner_id', '=', 'c1_po.owner_id')
+            ->leftJoin('property_owners as c2_po', 'c2.owner_id', '=', 'c2_po.owner_id')
             ->where('p.project_id', $projectId)
             ->select(
                 'p.project_id',
                 'pr.owner_id',
                 'po.user_id as owner_user_id',
                 'p.project_title',
-                'po_c.user_id as contractor_user_id',
-                'pr.selected_contractor_id'
+                DB::raw('COALESCE(c1_po.user_id, c2_po.user_id) as contractor_user_id'),
+                DB::raw('COALESCE(p.selected_contractor_id, pr.selected_contractor_id) as selected_contractor_id')
             )
             ->first();
 
@@ -414,10 +418,10 @@ class disputeClass
         if (empty($project->contractor_user_id)) {
             $acceptedBid = DB::table('bids as b')
                 ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
-                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
                 ->where('b.project_id', $projectId)
                 ->where('b.bid_status', 'accepted')
-                ->select('po.user_id', 'b.contractor_id')
+                ->select('c_po.user_id', 'b.contractor_id')
                 ->first();
 
             if ($acceptedBid) {

@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { PropertyOwnerPersonalInfo as PersonalInfo } from './personalInfo';
 import { AccountInfo } from './accountSetup';
 import { valid_id, auth_service } from '../../services/auth_service';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 
 interface VerificationScreenProps {
   onBackPress: () => void;
@@ -164,9 +165,7 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
       return;
     }
 
-    const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
-      || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
-      || 'Images';
+    const MEDIA_IMAGES = ImagePicker.MediaTypeOptions.Images;
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: MEDIA_IMAGES,
@@ -181,9 +180,7 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
   };
 
   const openGallery = async (imageType: 'front' | 'back' | 'police') => {
-    const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
-      || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
-      || 'Images';
+    const MEDIA_IMAGES = ImagePicker.MediaTypeOptions.Images;
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: MEDIA_IMAGES,
@@ -244,7 +241,7 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.logoContainer}>
           <Image
             source={require('../../../assets/images/logos/legatura-logo.png')}
@@ -387,7 +384,7 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
             By submitting you agree to our Terms & Privacy. We'll contact you after verification.
           </Text>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* ID Type Selector Modal */}
       <Modal

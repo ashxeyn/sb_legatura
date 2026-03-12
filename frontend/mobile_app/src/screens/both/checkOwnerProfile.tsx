@@ -171,7 +171,7 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
   const ongoingProjects   = header?.ongoing_projects ?? 0;
   const totalProjects     = header?.total_projects ?? 0;
   const coverPhotoUrl = resolveImageUrl(header?.cover_photo);
-  const avatarUrl     = resolveImageUrl(header?.profile_pic) || resolveImageUrl(owner.profile_pic);
+  const avatarUrl     = resolveImageUrl(header?.profile_pic);
   const ownerAbout    = profile?.about?.owner;
   const reviewsData   = profile?.reviews;
   const reviews       = reviewsData?.reviews ?? [];

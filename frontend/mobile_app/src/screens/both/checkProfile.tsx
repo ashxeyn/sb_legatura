@@ -20,6 +20,7 @@ import ImageFallback from '../../components/imageFallback';
 import { storage_service } from '../../utils/storage';
 import CreateShowcase from './createShowcase';
 import ShowcasePostDetail from './showcasePostDetail';
+import { useContractorAuth } from '../../hooks/useContractorAuth';
 import { highlightService } from '../../services/highlightService';
 import { post_service } from '../../services/post_service';
 import ReportPostModal from '../../components/reportPostModal';
@@ -117,6 +118,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
 
 export default function CheckProfile({ contractor, onClose, onSendMessage }: CheckProfileProps) {
   const insets = useSafeAreaInsets();
+  const { contractorId: activeContractorId, hasFullAccess: hasFullContractorAccess } = useContractorAuth();
   const [activeTab, setActiveTab] = useState<TabType>('portfolio');
 
   // ── State ──
@@ -138,16 +140,27 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const [reportType, setReportType] = useState<'showcase' | 'review'>('showcase');
   const [reviewMenuOpenId, setReviewMenuOpenId] = useState<number | null>(null);
   const [initialShowcaseImageIndex, setInitialShowcaseImageIndex] = useState<number>(0);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   // ── Check if viewing own profile ──
   useEffect(() => {
     (async () => {
       const user = await storage_service.get_user_data();
-      if (user && contractor.user_id && user.user_id === contractor.user_id) {
+      const matchesDirectUser = !!(user && contractor.user_id && user.user_id === contractor.user_id);
+      const matchesActiveContractor = !!(
+        hasFullContractorAccess
+        && activeContractorId
+        && contractor.contractor_id
+        && Number(activeContractorId) === Number(contractor.contractor_id)
+      );
+
+      if (matchesDirectUser || matchesActiveContractor) {
         setIsOwnProfile(true);
+      } else {
+        setIsOwnProfile(false);
       }
     })();
-  }, [contractor.user_id]);
+  }, [contractor.user_id, contractor.contractor_id, activeContractorId, hasFullContractorAccess]);
 
   // ── Fetch profile ──
   const fetchProfile = useCallback(async (silent = false) => {
@@ -209,8 +222,20 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const avgRating    = header?.avg_rating ?? contractor.rating ?? 0;
   const totalReviews = header?.total_reviews ?? contractor.reviews_count ?? 0;
   const completedProjects = header?.completed_projects ?? contractor.completed_projects ?? 0;
-  const coverPhotoUrl = resolveImageUrl(header?.cover_photo) || resolveImageUrl(contractor.cover_photo);
-  const logoUrl       = resolveImageUrl(header?.profile_pic) || resolveImageUrl(contractor.logo_url);
+  // Resolve logo: prefer API header (which returns company_logo for contractor role),
+  // then typed prop, then raw feed field company_logo.
+  // Never fall back to profile_pic — that is the owner's personal photo, not the company logo.
+  const logoUrl = resolveImageUrl(header?.profile_pic)
+    || resolveImageUrl(contractor.logo_url)
+    || resolveImageUrl((contractor as any).company_logo);
+  // Resolve cover: API header first.
+  // If raw contractor payload includes `company_banner`, it is authoritative and
+  // we must not fall back to owner `cover_photo`.
+  const hasCompanyBannerField = Object.prototype.hasOwnProperty.call(contractor as any, 'company_banner');
+  const coverPhotoUrl = resolveImageUrl(header?.cover_photo)
+    || (hasCompanyBannerField
+      ? resolveImageUrl((contractor as any).company_banner)
+      : resolveImageUrl((contractor as any).company_banner));
   const description   = profile?.about?.contractor?.bio
     || profile?.about?.contractor?.company_description
     || contractor.company_description;
@@ -668,9 +693,9 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
 
       {/* Description */}
       <View style={styles.aboutSection}>
-        <Text style={styles.aboutSectionTitle}>Bio</Text>
+        <Text style={styles.aboutSectionTitle}>Company Description</Text>
         <Text style={styles.aboutText}>
-          {description || 'No bio added yet.'}
+          {description || 'No company description added yet.'}
         </Text>
       </View>
 
@@ -855,9 +880,16 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
         {/* Company Info */}
         <View style={styles.companySection}>
           <View style={styles.nameRow}>
-            <Text style={styles.companyName}>{displayName}</Text>
+            <Text
+              style={styles.companyName}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.65}
+            >
+              {displayName}
+            </Text>
             {header?.verification_status === 'approved' && (
-              <MaterialIcons name="verified" size={22} color="#3b82f6" style={{ marginLeft: 6 }} />
+              <MaterialIcons name="verified" size={22} color="#3b82f6" style={{ marginLeft: 3 }} />
             )}
           </View>
 
@@ -888,11 +920,23 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
           </View>
 
           {/* Description */}
-          <Text style={styles.descriptionPreview} numberOfLines={3}>
-            {description || `We're ${displayName} — passionate about building spaces that last.`}
-            {' '}
-            <Text style={styles.seeMoreText}>See more</Text>
-          </Text>
+          {description ? (
+            <View style={{ marginBottom: 12 }}>
+              <Text
+                style={styles.descriptionPreview}
+                numberOfLines={descExpanded ? undefined : 3}
+              >
+                {description}
+              </Text>
+              {description.length > 120 && (
+                <TouchableOpacity onPress={() => setDescExpanded(prev => !prev)} activeOpacity={0.7}>
+                  <Text style={styles.seeMoreText}>
+                    {descExpanded ? 'See less' : '...See more'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
 
           {/* Action buttons */}
           <View style={styles.profileActions}>
@@ -1066,6 +1110,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     color: T1,
+    flexShrink: 1,
   },
   typeBadge: {
     flexDirection: 'row',

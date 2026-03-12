@@ -25,7 +25,6 @@ class contractor extends Model
         'services_offered',
         'business_address',
         'company_email',
-        'company_phone',
         'company_website',
         'company_social_media',
         'company_description',
@@ -248,7 +247,9 @@ class contractorProjectService
     // Get contractor by user_id
     public function getContractorByUserId($userId)
     {
-        return Contractor::where('user_id', $userId)->first();
+        $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        if (!$ownerId) return null;
+        return DB::table('contractors')->where('owner_id', $ownerId)->first();
     }
 
 

@@ -77,7 +77,7 @@
     // Downpayment gate: when payment_mode is 'downpayment' and not yet cleared, block actions
     $downpaymentPending = false;
     if (isset($milestone) && ($milestone->payment_mode ?? 'full_payment') === 'downpayment') {
-        $downpaymentPending = !\App\Services\milestoneService::isDownpaymentCleared($item->project_id ?? ($milestone->project_id ?? 0));
+        $downpaymentPending = !\App\Services\MilestoneService::isDownpaymentCleared($item->project_id ?? ($milestone->project_id ?? 0));
     }
     if ($downpaymentPending) {
         $showPaymentBtn = false;

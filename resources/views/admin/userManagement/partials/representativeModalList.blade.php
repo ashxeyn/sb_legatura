@@ -1,6 +1,6 @@
 @php
   $teamMembers = collect($contractor->team_members ?? [])->filter(function($member) {
-    return $member->role !== 'representative' && $member->is_active == 1;
+  return $member->company_role !== 'representative' && !$member->deletion_reason && $member->is_active == 1;
   });
 @endphp
 
@@ -9,7 +9,7 @@
     @php
       $initials = strtoupper(substr($member->authorized_rep_fname ?? '', 0, 1) . substr($member->authorized_rep_lname ?? '', 0, 1));
       $fullName = trim(($member->authorized_rep_fname ?? '') . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . ($member->authorized_rep_lname ?? ''));
-      $role = $member->role === 'others' ? ($member->role_if_others ?? 'Staff') : ucfirst($member->role ?? 'Staff');
+  $role = $member->company_role === 'others' ? ($member->if_others ?? 'Staff') : ucfirst($member->company_role ?? 'Staff');
       $colors = ['from-purple-500 to-purple-600', 'from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-red-500 to-red-600', 'from-yellow-500 to-yellow-600'];
       $colorIndex = ord($initials[0]) % count($colors);
     @endphp

@@ -32,6 +32,12 @@ use Illuminate\Support\Facades\Log;
  */
 class ProjectUpdateService
 {
+    private function validateProjectUpdateRequestAccess(int $userId): ?string
+    {
+        $authService = app(\App\Services\ContractorAuthorizationService::class);
+        return $authService->validateMilestoneAccess($userId);
+    }
+
     // ───────────────────────────────────────────────────────────────────────
     // 1. READ HELPERS
     // ───────────────────────────────────────────────────────────────────────
@@ -54,19 +60,47 @@ class ProjectUpdateService
             ->first();
 
         $totalCost = $plan ? (float) $plan->total_project_cost : 0.0;
+        $paymentMode = $plan->payment_mode ?? 'full_payment';
+        $downpaymentAmount = $plan ? (float) ($plan->downpayment_amount ?? 0) : 0.0;
+        $milestoneBudgetBase = $paymentMode === 'downpayment'
+            ? max(0.0, $totalCost - $downpaymentAmount)
+            : $totalCost;
 
-        $totalPaid = (float) DB::table('milestone_payments as mp')
+        $approvedMilestonePayments = (float) DB::table('milestone_payments as mp')
             ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
             ->where('m.project_id', $projectId)
             ->where('mp.payment_status', 'approved')
             ->sum('mp.amount');
 
+        $approvedDownpayment = (float) DB::table('downpayment_payments')
+            ->where('project_id', $projectId)
+            ->where('payment_status', 'approved')
+            ->sum('amount');
+
+        $totalPaid = $approvedMilestonePayments + $approvedDownpayment;
+
         $timeline = DB::table('milestones')
             ->where('project_id', $projectId)
             ->whereNull('is_deleted')
             ->selectRaw('MIN(start_date) as start_date, MAX(end_date) as end_date')
             ->first();
+
+        $preferredSetup = DB::table('milestones')
+            ->where('project_id', $projectId)
+            ->where(function ($query) {
+                $query->whereNull('is_deleted')
+                    ->orWhere('is_deleted', 0);
+            })
+            ->orderByRaw("CASE WHEN setup_status = 'approved' THEN 0 WHEN setup_status = 'submitted' THEN 1 ELSE 2 END")
+            ->orderByRaw('COALESCE(updated_at, created_at) DESC')
+            ->orderByDesc('milestone_id')
+            ->select('milestone_name')
+            ->first();
+
+        $displayTitle = !empty($preferredSetup?->milestone_name)
+            ? $preferredSetup->milestone_name
+            : $project->project_title;
 
         $rel = DB::table('project_relationships')
             ->where('rel_id', $project->relationship_id)
@@ -83,33 +117,43 @@ class ProjectUpdateService
         // Resolve selected_contractor_id → users.user_id (references contractors PK)
         $contractorUserId = null;
         if ($rel?->selected_contractor_id) {
-            $contractorUserId = DB::table('contractors')
-                ->where('contractor_id', $rel->selected_contractor_id)
-                ->value('user_id');
+            $contractorUserId = DB::table('contractors as c')
+                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                ->where('c.contractor_id', $rel->selected_contractor_id)
+                ->value('po.user_id');
         }
 
         // --- Existing milestone items with payment info ---
         $milestoneItems = $this->getMilestoneItemsWithPayments($projectId);
-        $totalAllocated = array_sum(array_column($milestoneItems, 'effective_cost'));
+        $totalAllocated = 0.0;
+        foreach ($milestoneItems as $item) {
+            $effectiveCost = (float) ($item['effective_cost'] ?? 0);
+            $paid = (float) ($item['total_paid'] ?? 0);
+            // Already-approved overpayments must count as consumed allocation.
+            $totalAllocated += max($effectiveCost, $paid);
+        }
 
         return [
             'success'            => true,
             'project_id'         => $projectId,
-            'project_title'      => $project->project_title,
+            'project_title'      => $displayTitle,
             'project_status'     => $project->project_status,
             'start_date'         => $timeline?->start_date,
             'end_date'           => $timeline?->end_date,
             'total_cost'         => $totalCost,
+            'payment_mode'       => $paymentMode,
+            'downpayment_amount' => $downpaymentAmount,
+            'milestone_budget_base' => $milestoneBudgetBase,
             'total_paid'         => $totalPaid,
             'total_allocated'    => $totalAllocated,
             'remaining_balance'  => max(0, $totalCost - $totalPaid),
-            'remaining_allocatable' => max(0, $totalCost - $totalAllocated),
+            'remaining_allocatable' => $milestoneBudgetBase - $totalAllocated,
             'owner_user_id'      => $ownerUserId ? (int) $ownerUserId : null,
             'contractor_user_id' => $contractorUserId ? (int) $contractorUserId : null,
             'milestone_items'    => $milestoneItems,
             'pending_extension'  => $this->getPendingUpdate($projectId),
             'plan_id'            => $plan?->plan_id ?? null,
-            'contractor_id'      => $contractorUserId ? (int) $contractorUserId : null,
+            'contractor_id'      => $rel?->selected_contractor_id ? (int) $rel->selected_contractor_id : null,
             'downpayment_cleared' => milestoneService::isDownpaymentCleared($projectId),
         ];
     }
@@ -267,6 +311,10 @@ class ProjectUpdateService
         $proposedBudget = isset($payload['proposed_budget']) && $payload['proposed_budget'] !== null
             ? (float) $payload['proposed_budget']
             : $currentBudget;
+        $downpaymentOffset = ($ctx['payment_mode'] ?? 'full_payment') === 'downpayment'
+            ? (float) ($ctx['downpayment_amount'] ?? 0)
+            : 0.0;
+        $allocationBudget = max(0.0, $proposedBudget - $downpaymentOffset);
 
         $budgetValidation = $this->validateBudgetChange($currentBudget, $proposedBudget, $ctx['total_paid'], $ctx['milestone_items']);
 
@@ -464,22 +512,25 @@ class ProjectUpdateService
 
         foreach ($keptItems as $item) {
             $editEntry = collect($editedItems)->firstWhere('item_id', $item['item_id']);
+            $proposedCost = $item['effective_cost'];
             if ($editEntry && isset($editEntry['cost'])) {
-                $totalAllocation += (float) $editEntry['cost'];
-            } else {
-                $totalAllocation += $item['effective_cost'];
+                $proposedCost = (float) $editEntry['cost'];
             }
+
+            $paidAlready = (float) ($item['total_paid'] ?? 0);
+            // Budget consumption cannot be less than what is already paid.
+            $totalAllocation += max((float) $proposedCost, $paidAlready);
         }
 
         foreach ($newItems as $ni) {
             $totalAllocation += (float) ($ni['cost'] ?? 0);
         }
 
-        $remainingBudget = $proposedBudget - $totalAllocation;
+        $remainingBudget = $allocationBudget - $totalAllocation;
 
-        if ($totalAllocation > $proposedBudget) {
+        if ($totalAllocation > $allocationBudget) {
             $result['budget']['allocation_exceeds'] = true;
-            $result['budget']['allocation_warning'] = 'Total allocation (₱' . number_format($totalAllocation, 2) . ') exceeds proposed contract value (₱' . number_format($proposedBudget, 2) . ').';
+            $result['budget']['allocation_warning'] = 'Total allocation (₱' . number_format($totalAllocation, 2) . ') exceeds available milestone budget (₱' . number_format($allocationBudget, 2) . ').';
         }
 
         // Compute percentages for each item
@@ -487,7 +538,7 @@ class ProjectUpdateService
         foreach ($keptItems as $item) {
             $editEntry = collect($editedItems)->firstWhere('item_id', $item['item_id']);
             $cost = ($editEntry && isset($editEntry['cost'])) ? (float) $editEntry['cost'] : $item['effective_cost'];
-            $pct  = $proposedBudget > 0 ? round(($cost / $proposedBudget) * 100, 2) : 0;
+            $pct  = $allocationBudget > 0 ? round(($cost / $allocationBudget) * 100, 2) : 0;
 
             $previewItems[] = [
                 'item_id'     => $item['item_id'],
@@ -502,7 +553,7 @@ class ProjectUpdateService
         }
         foreach ($newItems as $idx => $ni) {
             $cost = (float) ($ni['cost'] ?? 0);
-            $pct  = $proposedBudget > 0 ? round(($cost / $proposedBudget) * 100, 2) : 0;
+            $pct  = $allocationBudget > 0 ? round(($cost / $allocationBudget) * 100, 2) : 0;
             $previewItems[] = [
                 'temp_id'     => 'new_' . $idx,
                 'title'       => $ni['title'],
@@ -519,7 +570,7 @@ class ProjectUpdateService
             'mode'              => $allocationMode,
             'total_allocated'   => round($totalAllocation, 2),
             'remaining_budget'  => round($remainingBudget, 2),
-            'proposed_budget'   => $proposedBudget,
+            'proposed_budget'   => $allocationBudget,
             'items'             => $previewItems,
             'deleted_item_ids'  => $deletedItemIds,
         ];
@@ -538,6 +589,11 @@ class ProjectUpdateService
     public function submit(int $projectId, int $contractorUserId, array $data): array
     {
         try {
+            $accessError = $this->validateProjectUpdateRequestAccess($contractorUserId);
+            if ($accessError) {
+                return ['success' => false, 'message' => $accessError, 'error_code' => 'UNAUTHORIZED_PROJECT_UPDATE_REQUEST'];
+            }
+
             $existing = $this->getPendingUpdate($projectId);
 
             // If there's an existing request with revision_requested, treat as resubmission
@@ -943,6 +999,11 @@ class ProjectUpdateService
 
     public function withdraw(int $extensionId, int $contractorUserId): array
     {
+        $accessError = $this->validateProjectUpdateRequestAccess($contractorUserId);
+        if ($accessError) {
+            return ['success' => false, 'message' => $accessError, 'error_code' => 'UNAUTHORIZED_PROJECT_UPDATE_REQUEST'];
+        }
+
         $ext = DB::table('project_updates')
             ->where('extension_id', $extensionId)
             ->where('contractor_user_id', $contractorUserId)
@@ -1036,6 +1097,11 @@ class ProjectUpdateService
      */
     private function resubmit(object $existing, int $projectId, int $contractorUserId, array $data): array
     {
+        $accessError = $this->validateProjectUpdateRequestAccess($contractorUserId);
+        if ($accessError) {
+            return ['success' => false, 'message' => $accessError, 'error_code' => 'UNAUTHORIZED_PROJECT_UPDATE_REQUEST'];
+        }
+
         if ((int) $existing->contractor_user_id !== $contractorUserId) {
             return ['success' => false, 'message' => 'Unauthorized: you are not the contractor for this update.'];
         }

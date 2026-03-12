@@ -37,13 +37,17 @@ class disputeRequest extends FormRequest
                     $project = \DB::table('projects as p')
                         ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                         ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-                        // Join contractor based on project_relationships table
-                        ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
+                        // Join contractor based on projects table first
+                        ->leftJoin('contractors as c1', 'p.selected_contractor_id', '=', 'c1.contractor_id')
+                        // Join contractor based on project_relationships table as fallback
+                        ->leftJoin('contractors as c2', 'pr.selected_contractor_id', '=', 'c2.contractor_id')
+                        ->leftJoin('property_owners as c1_po', 'c1.owner_id', '=', 'c1_po.owner_id')
+                        ->leftJoin('property_owners as c2_po', 'c2.owner_id', '=', 'c2_po.owner_id')
                         ->where('p.project_id', $value)
                         ->select(
                             'pr.owner_id',
                             'po.user_id as owner_user_id',
-                            'c.user_id as contractor_user_id'
+                            \DB::raw('COALESCE(c1_po.user_id, c2_po.user_id) as contractor_user_id')
                         )
                         ->first();
 
@@ -51,9 +55,10 @@ class disputeRequest extends FormRequest
                         // Fallback to accepted bid
                         $acceptedBid = \DB::table('bids as b')
                             ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
+                            ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
                             ->where('b.project_id', $value)
                             ->where('b.bid_status', 'accepted')
-                            ->select('c.user_id')
+                            ->select('c_po.user_id')
                             ->first();
 
                         if ($acceptedBid) {

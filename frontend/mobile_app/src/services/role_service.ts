@@ -38,7 +38,7 @@
         console.error('Role switch error:', error);
         return {
             success: false,
-            message: error instanceof Error ? error.message : 'Failed to switch role'
+            message: error instanceof Error ? error.message : 'Failed to switch dashboard'
         };
         }
     }

@@ -103,7 +103,7 @@ class ProfileService
         } else {
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($owner) {
-                $fullName = trim(($owner->first_name ?? '') . ' ' . ($owner->last_name ?? ''));
+                $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
                 if (!empty($fullName)) $displayName = $fullName;
             }
         }
@@ -111,15 +111,19 @@ class ProfileService
         // Project counts
         $projectStats = $this->getProjectCounts($userId, $role);
 
-        // Profile/cover images — guard missing columns to avoid undefined property notices
-        $profilePic = isset($user->profile_pic) ? $user->profile_pic : null;
-        $coverPhoto = isset($user->cover_photo) ? $user->cover_photo : null;
+        // Profile/cover images — strict role separation, no cross-contamination.
+        // Contractor → company_logo / company_banner from contractors table only.
+        //   If absent, return null so the frontend shows the default contractor image.
+        // Owner → profile_pic / cover_photo from property_owners only.
+        //   If absent, return null so the frontend shows the default owner image.
         if ($role === 'contractor') {
             $contractor = $contractor ?? $this->getContractorByUserId($userId);
-            if ($contractor) {
-                if (empty($profilePic) && !empty($contractor->company_logo)) $profilePic = $contractor->company_logo;
-                if (empty($coverPhoto) && !empty($contractor->company_banner)) $coverPhoto = $contractor->company_banner;
-            }
+            $profilePic = $contractor->company_logo ?? null;
+            $coverPhoto = $contractor->company_banner ?? null;
+        } else {
+            $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
+            $profilePic = $ownerRow->profile_pic ?? null;
+            $coverPhoto = $ownerRow->cover_photo ?? null;
         }
 
         return [
@@ -217,7 +221,7 @@ class ProfileService
 
                 $about['contractor'] = [
                     'company_name'         => $contractor->company_name,
-                    'bio'                  => $contractor->bio,
+                    'bio'                  => $contractor->company_description ?? null,
                     'company_description'  => $contractor->company_description ?? null,
                     'type_name'            => ($typeName === 'Others' || $typeName === null)
                         ? ($contractor->contractor_type_other ?? $typeName)
@@ -228,7 +232,6 @@ class ProfileService
                     'business_address'     => $contractor->business_address ?? null,
                     'company_website'      => $contractor->company_website ?? null,
                     'company_email'        => $contractor->company_email ?? null,
-                    'company_phone'        => $contractor->company_phone ?? null,
                     'verification_status'  => $contractor->verification_status,
                     'picab_category'       => $contractor->picab_category ?? null,
                     'subscription_tier'    => $this->getSubscriptionTier($contractor->contractor_id),
@@ -236,9 +239,10 @@ class ProfileService
             }
         } else {
             $owner = DB::table('property_owners as po')
+                ->join('users as po_u', 'po.user_id', '=', 'po_u.user_id')
                 ->leftJoin('occupations as o', 'po.occupation_id', '=', 'o.id')
                 ->where('po.user_id', $userId)
-                ->select('po.*', 'o.occupation_name')
+                ->select('po.*', 'po_u.first_name', 'po_u.middle_name', 'po_u.last_name', 'po_u.phone_number', 'o.occupation_name')
                 ->first();
 
             if ($owner) {
@@ -354,8 +358,7 @@ class ProfileService
     }
 
     /**
-     * Resolve contractor row for a given user_id in a schema-agnostic way.
-     * Supports `contractors.user_id` (legacy) and `contractors.owner_id` (newer schemas).
+     * Resolve contractor row for a given user_id using owner_id linkage.
      */
     public function getContractorByUserId(int $userId)
     {

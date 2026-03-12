@@ -154,7 +154,6 @@ class projectsController extends Controller
                             'b.contractor_notes',
                             'b.submitted_at',
                             'c.company_name',
-                            'c.company_phone',
                             'c.company_email',
                             'c.years_of_experience',
                             'c.completed_projects',
@@ -172,7 +171,6 @@ class projectsController extends Controller
                             'company_name'       => $acceptedBid->company_name,
                             'username'           => $acceptedBid->username,
                             'profile_pic'        => $acceptedBid->profile_pic,
-                            'company_phone'      => $acceptedBid->company_phone,
                             'company_email'      => $acceptedBid->company_email,
                             'years_of_experience' => $acceptedBid->years_of_experience,
                             'completed_projects' => $acceptedBid->completed_projects,
@@ -292,7 +290,7 @@ class projectsController extends Controller
                 'users.username as owner_username',
                 'project_relationships.bidding_due',
                 DB::raw('DATE(project_relationships.created_at) as created_at'),
-                DB::raw("CONCAT(property_owners.first_name, ' ', property_owners.last_name) as owner_name")
+                DB::raw("CONCAT(users.first_name, ' ', users.last_name) as owner_name")
             )
             ->first();
 
@@ -356,7 +354,8 @@ class projectsController extends Controller
 
             $bids = DB::table('bids as b')
                 ->join('contractors as c', 'c.contractor_id', '=', 'b.contractor_id')
-                ->join('users as u', 'u.user_id', '=', 'c.user_id')
+                ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+                ->join('users as u', 'c_po.user_id', '=', 'u.user_id')
                 ->leftJoin('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
                 ->where('b.project_id', $projectId)
                 ->whereNotIn('b.bid_status', ['cancelled'])
@@ -372,14 +371,13 @@ class projectsController extends Controller
                     'b.submitted_at',
                     'b.decision_date',
                     'c.company_name',
-                    'c.company_phone',
                     'c.company_email',
                     'c.company_website',
                     'c.years_of_experience',
                     'c.completed_projects',
                     'c.picab_category',
                     'u.username',
-                    'u.profile_pic',
+                    'c.company_logo as profile_pic',
                     'ct.type_name as contractor_type'
                 )
                 ->get();
@@ -396,7 +394,7 @@ class projectsController extends Controller
 
             // Apply ranking scores
             try {
-                $ranker = app(\App\Services\bidRankingService::class);
+                $ranker = app(\App\Services\BidRankingService::class);
                 $bids   = $ranker->rankBids((int) $projectId, $bids);
             } catch (\Exception $re) {
                 // Ranking failure is non-fatal — fall back to cost order
@@ -536,7 +534,7 @@ class projectsController extends Controller
             $projectSummary = null;
             if ($projectId) {
                 try {
-                    $summaryResult = (new \App\Services\summaryService())->getProjectSummary((int)$projectId);
+                    $summaryResult = (new \App\Services\SummaryService())->getProjectSummary((int)$projectId);
                     if (!empty($summaryResult['success'])) {
                         $projectSummary = $summaryResult['data'];
                     }
@@ -574,6 +572,7 @@ class projectsController extends Controller
                     ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
                     ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                     ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                    ->leftJoin('users as po_u', 'po.user_id', '=', 'po_u.user_id')
                     ->where('mp.project_id', $projectId)
                     ->where(function ($q) {
                         $q->whereNull('mp.payment_status')
@@ -598,12 +597,13 @@ class projectsController extends Controller
                         'mi.settlement_due_date',
                         'mi.extension_date',
                         'm.milestone_name',
-                        DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+                        DB::raw('CONCAT(po_u.first_name, " ", po_u.last_name) as owner_name')
                     )
                     ->get();
 
                 $downpaymentPayments = DB::table('downpayment_payments as dp')
                     ->leftJoin('property_owners as po', 'dp.owner_id', '=', 'po.owner_id')
+                    ->leftJoin('users as po_u', 'po.user_id', '=', 'po_u.user_id')
                     ->where('dp.project_id', $projectId)
                     ->where(function ($q) {
                         $q->whereNull('dp.payment_status')
@@ -628,7 +628,7 @@ class projectsController extends Controller
                         DB::raw('NULL as settlement_due_date'),
                         DB::raw('NULL as extension_date'),
                         DB::raw("'Downpayment' as milestone_name"),
-                        DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+                        DB::raw('CONCAT(po_u.first_name, " ", po_u.last_name) as owner_name')
                     )
                     ->get();
 
@@ -707,7 +707,7 @@ class projectsController extends Controller
         $projectSummary = null;
         if ($projectId) {
             try {
-                $summaryResult = (new \App\Services\summaryService())->getProjectSummary((int)$projectId);
+                $summaryResult = (new \App\Services\SummaryService())->getProjectSummary((int)$projectId);
                 if (!empty($summaryResult['success'])) {
                     $projectSummary = $summaryResult['data'];
                 }
@@ -867,13 +867,14 @@ class projectsController extends Controller
                     // Get payments for this item
                     $payments = DB::table('milestone_payments as mp')
                         ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                        ->leftJoin('users as po_u', 'po.user_id', '=', 'po_u.user_id')
                         ->where('mp.item_id', $itemId)
                         ->whereNotIn('mp.payment_status', ['deleted'])
                         ->select(
                             'mp.payment_id', 'mp.item_id', 'mp.amount', 'mp.payment_type',
                             'mp.transaction_number', 'mp.receipt_photo', 'mp.transaction_date',
                             'mp.payment_status', 'mp.reason', 'mp.updated_at',
-                            DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+                            DB::raw('CONCAT(po_u.first_name, " ", po_u.last_name) as owner_name')
                         )
                         ->orderBy('mp.transaction_date', 'desc')
                         ->get()
@@ -961,7 +962,7 @@ class projectsController extends Controller
         $projectSummary = null;
         if ($projectId) {
             try {
-                $summaryService = new \App\Services\summaryService();
+                $summaryService = new \App\Services\SummaryService();
                 $summaryResult = $summaryService->getProjectSummary((int) $projectId);
                 if (!empty($summaryResult['success'])) {
                     $projectSummary = $summaryResult['data'];
@@ -1079,14 +1080,15 @@ class projectsController extends Controller
 
                     $acceptedBid = DB::table('bids as b')
                         ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
-                        ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                        ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+                        ->join('users as u', 'c_po.user_id', '=', 'u.user_id')
                         ->select(
                             'b.bid_id',
                             'b.proposed_cost',
                             'b.estimated_timeline',
                             'c.company_name',
                             'u.username',
-                            'u.profile_pic'
+                            'c.company_logo as profile_pic'
                         )
                         ->where('b.project_id', $project->project_id)
                         ->where('b.contractor_id', $effectiveContractorId)
@@ -1614,7 +1616,7 @@ class projectsController extends Controller
             // Notify contractor whose bid was accepted
             $bid = DB::table('bids')->where('bid_id', $bidId)->first();
             if ($bid) {
-                $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                $cUserId = DB::table('contractors')->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')->where('contractors.contractor_id', $bid->contractor_id)->value('property_owners.user_id');
                 $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
                 if ($cUserId) {
                     NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$projTitle}\" has been accepted!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
@@ -1627,7 +1629,7 @@ class projectsController extends Controller
                     ->where('bid_status', 'rejected')
                     ->get();
                 foreach ($rejectedBids as $rBid) {
-                    $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                    $rUserId = DB::table('contractors')->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')->where('contractors.contractor_id', $rBid->contractor_id)->value('property_owners.user_id');
                     if ($rUserId) {
                         NotificationService::create((int) $rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$projTitle}\". Thank you for your bid.", 'normal', 'bid', (int) $rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int) $projectId]]);
                     }
@@ -1694,7 +1696,7 @@ class projectsController extends Controller
             // Notify contractor whose bid was accepted
             $bid = DB::table('bids')->where('bid_id', $bidId)->first();
             if ($bid) {
-                $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                $cUserId = DB::table('contractors')->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')->where('contractors.contractor_id', $bid->contractor_id)->value('property_owners.user_id');
                 if ($cUserId) {
                     NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$project->project_title}\" has been accepted!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
                 }
@@ -1706,7 +1708,7 @@ class projectsController extends Controller
                     ->where('bid_status', 'rejected')
                     ->get();
                 foreach ($rejectedBids as $rBid) {
-                    $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                    $rUserId = DB::table('contractors')->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')->where('contractors.contractor_id', $rBid->contractor_id)->value('property_owners.user_id');
                     if ($rUserId) {
                         NotificationService::create((int) $rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$project->project_title}\". Thank you for your bid.", 'normal', 'bid', (int) $rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int) $projectId]]);
                     }
@@ -1826,7 +1828,8 @@ class projectsController extends Controller
                     // Get the accepted bid
                     $acceptedBid = DB::table('bids as b')
                         ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
-                        ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                        ->join('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
+                        ->join('users as u', 'c_po.user_id', '=', 'u.user_id')
                         ->select(
                             'b.bid_id',
                             'b.proposed_cost',
@@ -1835,14 +1838,13 @@ class projectsController extends Controller
                             'b.submitted_at',
                             'c.contractor_id',
                             'c.company_name',
-                            'c.company_phone',
                             'c.company_email',
                             'c.company_website',
                             'c.years_of_experience',
                             'c.completed_projects',
                             'c.picab_category',
                             'u.username',
-                            'u.profile_pic'
+                            'c.company_logo as profile_pic'
                         )
                         ->where('b.project_id', $project->project_id)
                         ->where('b.contractor_id', $effectiveContractorId)
@@ -1853,7 +1855,6 @@ class projectsController extends Controller
                         $project->accepted_bid = $acceptedBid;
                         $project->contractor_info = (object) [
                             'company_name' => $acceptedBid->company_name,
-                            'company_phone' => $acceptedBid->company_phone,
                             'company_email' => $acceptedBid->company_email,
                             'company_website' => $acceptedBid->company_website,
                             'years_of_experience' => $acceptedBid->years_of_experience,
@@ -2234,8 +2235,8 @@ class projectsController extends Controller
                 'pr.project_post_status',
                 'pr.bidding_due',
                 'pr.owner_id',
-                'po.first_name',
-                'po.last_name',
+                'u.first_name',
+                'u.last_name',
                 'po.owner_id as owner_id',
                 'u.user_id as owner_user_id',
                 'u.profile_pic as owner_profile_pic',
@@ -2354,7 +2355,7 @@ class projectsController extends Controller
             // Notify contractor whose bid was rejected
             $rejBid = DB::table('bids')->where('bid_id', $bidId)->first();
             if ($rejBid) {
-                $cUserId = DB::table('contractor_users')->where('contractor_id', $rejBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                $cUserId = DB::table('contractors')->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')->where('contractors.contractor_id', $rejBid->contractor_id)->value('property_owners.user_id');
                 $projTitle = $project->project_title ?? DB::table('projects')->where('project_id', $projectId)->value('project_title');
                 if ($cUserId) {
                     NotificationService::create($cUserId, 'bid_rejected', 'Bid Rejected', "Your bid for \"{$projTitle}\" was not accepted.", 'normal', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
@@ -2505,7 +2506,7 @@ class projectsController extends Controller
             // Notify contractor that the project is completed
             $cUserId = null;
             if ($project->selected_contractor_id) {
-                $cUserId = DB::table('contractor_users')->where('contractor_id', $project->selected_contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                $cUserId = DB::table('contractors')->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')->where('contractors.contractor_id', $project->selected_contractor_id)->value('property_owners.user_id');
                 if ($cUserId) {
                     NotificationService::create($cUserId, 'project_completed', 'Project Completed', "The project \"{$project->project_title}\" has been marked as completed. Congratulations!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
                 }

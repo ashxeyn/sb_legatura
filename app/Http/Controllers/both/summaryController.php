@@ -62,9 +62,9 @@ class summaryController extends Controller
      *
      * Checks:
      *  1. Owner via project_relationships.owner_id → property_owners.user_id
-     *  2. Contractor owner via selected_contractor_id (projects or project_relationships)
+    *  2. Contractor owner via project_relationships.selected_contractor_id
      *  3. Contractor linked through an accepted bid
-     *  4. Staff member (contractor_users) whose contractor has an accepted bid
+     *  4. Staff member (contractor_staff) whose contractor has an accepted bid
      */
     private function userCanAccessProject(int $userId, int $projectId): bool
     {
@@ -78,18 +78,22 @@ class summaryController extends Controller
 
         if ($isOwner) return true;
 
-        // 2. Direct contractor owner (via selected_contractor_id)
+        // 2. Direct contractor owner (via project_relationships.selected_contractor_id)
         $isContractorDirect = DB::table('projects as p')
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('contractors as c2', 'pr.selected_contractor_id', '=', 'c2.contractor_id')
+            ->leftJoin('property_owners as po2', 'c2.owner_id', '=', 'po2.owner_id')
             ->where('p.project_id', $projectId)
-            ->where('c.user_id', $userId)
+            ->where(function ($q) use ($userId) {
+                $q->where('po2.user_id', $userId);
+            })
             ->exists();
 
         if ($isContractorDirect) return true;
 
         // 3. Contractor linked through accepted bid
-        $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
+        $contractorOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        $contractorId = $contractorOwnerId ? DB::table('contractors')->where('owner_id', $contractorOwnerId)->value('contractor_id') : null;
         if ($contractorId) {
             $hasAcceptedBid = DB::table('bids')
                 ->where('project_id', $projectId)
@@ -100,11 +104,11 @@ class summaryController extends Controller
         }
 
         // 4. Staff member whose contractor has an accepted bid
-        $staffContractorId = DB::table('contractor_users')
-            ->where('user_id', $userId)
+        $staffContractorId = $contractorOwnerId ? DB::table('contractor_staff')
+            ->where('owner_id', $contractorOwnerId)
             ->where('is_active', 1)
-            ->where('is_deleted', 0)
-            ->value('contractor_id');
+            ->whereNull('deletion_reason')
+            ->value('contractor_id') : null;
 
         if ($staffContractorId) {
             $staffHasBid = DB::table('bids')

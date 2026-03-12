@@ -18,6 +18,7 @@ import ProjectBids from './projectBids';
 import MilestoneApproval from '../both/milestoneApproval';
 import { api_config } from '../../config/api';
 import { projects_service } from '../../services/projects_service';
+const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
 
 const COLORS = {
   primary: '#EC7E00',
@@ -133,6 +134,12 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
   const formatDate = (ds: string) => {
     if (!ds) return '';
     return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getContractorAvatarSource = (logoPath?: string | null) => {
+    if (!logoPath) return defaultContractorAvatar;
+    if (typeof logoPath === 'string' && logoPath.startsWith('http')) return { uri: logoPath };
+    return { uri: `${api_config.base_url}/api/files/${logoPath}` };
   };
 
   const getDaysRemaining = (deadline: string) =>
@@ -344,16 +351,10 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
                     <View style={styles.gradDivider} />
                     <Text style={styles.expLabel}>Contractor &amp; Agreement</Text>
                     <View style={styles.ctRow}>
-                      {currentProject.contractor_info.profile_pic ? (
-                        <Image
-                          source={{ uri: `${api_config.base_url}/api/files/${currentProject.contractor_info.profile_pic}` }}
-                          style={styles.ctAvatar}
-                        />
-                      ) : (
-                        <View style={styles.ctAvatarPh}>
-                          <Feather name="user" size={16} color="rgba(255,255,255,0.7)" />
-                        </View>
-                      )}
+                      <Image
+                        source={getContractorAvatarSource(currentProject.contractor_info.profile_pic)}
+                        style={styles.ctAvatar}
+                      />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.ctName}>{currentProject.contractor_info.company_name}</Text>
                         <Text style={styles.ctUser}>@{currentProject.contractor_info.username}</Text>

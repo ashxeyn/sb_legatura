@@ -76,7 +76,7 @@ class subscriptionClass
             ->leftJoin('contractors', 'platform_payments.contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('projects', 'platform_payments.project_id', '=', 'projects.project_id')
             ->leftJoin('property_owners', 'platform_payments.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+            ->leftJoin('users as po_user', 'property_owners.user_id', '=', 'po_user.user_id')
             ->select(
                 'platform_payments.*',
                 'subscription_plans.name as plan_name',
@@ -85,8 +85,8 @@ class subscriptionClass
                 'subscription_plans.duration_days',
                 'contractors.company_name',
                 'projects.project_title',
-                'owner_users.first_name',
-                'owner_users.last_name'
+                'po_user.first_name',
+                'po_user.last_name'
             );
 
         if ($status === 'active') {

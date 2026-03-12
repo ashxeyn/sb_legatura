@@ -3,11 +3,13 @@
     $secEmail = $secUser->email ?? '';
     $secContact = '';
     if ($secUser) {
-        $cRow = \Illuminate\Support\Facades\DB::table('contractors')->where('user_id', $secUser->user_id ?? null)->value('company_phone');
+        $cRow = \Illuminate\Support\Facades\DB::table('contractors')
+            ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+            ->where('property_owners.user_id', $secUser->user_id ?? null)
+            ->value('company_phone');
         if ($cRow) { $secContact = $cRow; }
         else {
-            $oRow = \Illuminate\Support\Facades\DB::table('property_owners')->where('user_id', $secUser->user_id ?? null)->value('phone_number');
-            if ($oRow) { $secContact = $oRow; }
+            $secContact = $secUser->phone_number ?? '';
         }
     }
 @endphp

@@ -23,6 +23,7 @@ import { projects_service } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
 
 // Color palette
 const COLORS = {
@@ -75,6 +76,7 @@ interface Bid {
   contractor_type?: string;
   verification_status?: string;
   username: string;
+  company_logo?: string;
   profile_pic?: string;
   file_count?: number;
   files?: BidFile[];
@@ -306,12 +308,18 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
     }
   };
 
-  const getProfilePicUrl = (profilePic: string | undefined) => {
-    if (!profilePic) return null;
+  const getCompanyLogoUrl = (bid: Bid | null | undefined) => {
+    const imagePath = bid?.company_logo || bid?.profile_pic;
+    if (!imagePath) return null;
     // If already a full URL, return as is
-    if (profilePic.startsWith('http')) return profilePic;
+    if (imagePath.startsWith('http')) return imagePath;
     // Use the API files endpoint for proper file serving on mobile
-    return `${api_config.base_url}/api/files/${profilePic}`;
+    return `${api_config.base_url}/api/files/${imagePath}`;
+  };
+
+  const getContractorAvatarSource = (bid: Bid | null | undefined) => {
+    const logoUrl = getCompanyLogoUrl(bid);
+    return logoUrl ? { uri: logoUrl } : defaultContractorAvatar;
   };
 
   const getFileUrl = (filePath: string) => {
@@ -384,7 +392,6 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
   const renderBidCard = (bid: Bid, index: number) => {
     const statusConfig = getStatusConfig(bid.bid_status);
     const isProcessing = processingBidId === bid.bid_id;
-    const profilePicUrl = getProfilePicUrl(bid.profile_pic);
     const rankBadge = getRankBadgeStyle(index);
     const isTopThree = index < 3;
 
@@ -414,15 +421,7 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
         {/* Contractor Info */}
         <View style={styles.contractorRow}>
           <View style={styles.contractorAvatar}>
-            {profilePicUrl ? (
-              <Image source={{ uri: profilePicUrl }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>
-                  {bid.company_name?.charAt(0).toUpperCase() || 'C'}
-                </Text>
-              </View>
-            )}
+            <Image source={getContractorAvatarSource(bid)} style={styles.avatarImage} />
           </View>
           <View style={styles.contractorInfo}>
             <Text style={styles.companyName} numberOfLines={1}>{bid.company_name}</Text>
@@ -601,17 +600,10 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
               <View style={styles.heroSection}>
                 <View style={styles.heroContractor}>
                   <View style={styles.heroAvatar}>
-                    {getProfilePicUrl(selectedBid.profile_pic) ? (
-                      <Image source={{ uri: getProfilePicUrl(selectedBid.profile_pic) }} style={styles.heroAvatarImage} />
-                    ) : (
-                      <Text style={styles.heroAvatarText}>
-                        {selectedBid.company_name?.charAt(0).toUpperCase() || 'C'}
-                      </Text>
-                    )}
+                    <Image source={getContractorAvatarSource(selectedBid)} style={styles.heroAvatarImage} />
                   </View>
                   <View style={styles.heroInfo}>
                     <Text style={styles.heroCompanyName}>{selectedBid.company_name}</Text>
-                    <Text style={styles.heroUsername}>@{selectedBid.username}</Text>
                   </View>
                 </View>
                 <View style={styles.heroPricing}>
@@ -1216,10 +1208,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: 2,
-  },
-  heroUsername: {
-    fontSize: 14,
-    color: COLORS.textMuted,
   },
   heroPricing: {
     backgroundColor: COLORS.background,

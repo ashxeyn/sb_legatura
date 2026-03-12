@@ -247,7 +247,10 @@ class otpChangeController extends Controller
 
                 $roleLower = is_string($role) ? strtolower($role) : null;
                 if ($roleLower === 'contractor' || $roleLower === 'contractor_user') {
-                    DB::table('contractors')->where('user_id', $user->user_id)->update(['company_phone' => $newValue]);
+                    $otpOwnerId = DB::table('property_owners')->where('user_id', $user->user_id)->value('owner_id');
+                    if ($otpOwnerId) {
+                        DB::table('contractors')->where('owner_id', $otpOwnerId)->update(['phone_number' => $newValue]);
+                    }
                 } elseif ($roleLower === 'property_owner' || $roleLower === 'owner') {
                     DB::table('property_owners')->where('user_id', $user->user_id)->update(['phone_number' => $newValue]);
                 } else {

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\owner;
 
 use App\Http\Controllers\Controller;
+use App\Services\ContractorAuthorizationService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -69,7 +71,7 @@ class downpaymentController extends Controller
         if ($user->user_type === 'both') {
             $currentRole = Session::get('current_role', 'owner');
             if ($currentRole !== 'owner') {
-                return [null, response()->json(['success' => false, 'message' => 'Please switch to owner role.'], 403)];
+                return [null, response()->json(['success' => false, 'message' => 'Please switch to the owner dashboard.'], 403)];
             }
         }
 
@@ -87,14 +89,23 @@ class downpaymentController extends Controller
             return [null, response()->json(['success' => false, 'message' => 'Authentication required.'], 401)];
         }
 
-        if (!in_array($user->user_type, ['contractor', 'both'])) {
+        $authService = app(ContractorAuthorizationService::class);
+        $memberContext = $authService->getMemberContext((int) $user->user_id);
+        $isContractorUser = in_array($user->user_type, ['contractor', 'both', 'staff']) || $memberContext !== null;
+
+        if (!$isContractorUser) {
             return [null, response()->json(['success' => false, 'message' => 'Access denied. Only contractors can perform this action.'], 403)];
         }
 
-        if ($user->user_type === 'both') {
+        $currentRole = Session::get('current_role', $user->preferred_role ?? null);
+        if (($user->user_type === 'both' || ($memberContext && $user->user_type === 'property_owner')) && $currentRole && $currentRole !== 'contractor') {
+            return [null, response()->json(['success' => false, 'message' => 'Please switch to the contractor dashboard.'], 403)];
+        }
+
+        if ($user->user_type === 'both' && !$currentRole) {
             $currentRole = Session::get('current_role', $user->preferred_role ?? 'contractor');
             if ($currentRole !== 'contractor') {
-                return [null, response()->json(['success' => false, 'message' => 'Please switch to contractor role.'], 403)];
+                return [null, response()->json(['success' => false, 'message' => 'Please switch to the contractor dashboard.'], 403)];
             }
         }
 
@@ -102,7 +113,8 @@ class downpaymentController extends Controller
     }
 
     /**
-     * Resolve contractor_user_id for a project (from selected_contractor or payment_plan).
+     * Resolve contractor linkage for a project (selected contractor fallback to payment plan contractor).
+     * Note: downpayment_payments.contractor_user_id references contractors.contractor_id.
      */
     private function resolveContractorUser(int $projectId): ?object
     {
@@ -110,26 +122,12 @@ class downpaymentController extends Controller
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('payment_plans as pp', 'p.project_id', '=', 'pp.project_id')
             ->leftJoin('contractors as c', DB::raw('COALESCE(pr.selected_contractor_id, pp.contractor_id)'), '=', 'c.contractor_id')
-            ->leftJoin('contractor_users as cu', function ($join) {
-                $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                    ->where('cu.is_deleted', '=', 0);
-            })
+            ->leftJoin('property_owners as cpo', 'c.owner_id', '=', 'cpo.owner_id')
             ->where('p.project_id', $projectId)
             ->select(
-                DB::raw("COALESCE(
-                    MAX(CASE WHEN cu.is_active = 1 AND cu.role = 'owner' THEN cu.contractor_user_id END),
-                    MAX(CASE WHEN cu.is_active = 1 THEN cu.contractor_user_id END),
-                    MAX(CASE WHEN cu.role = 'owner' THEN cu.contractor_user_id END),
-                    MIN(cu.contractor_user_id)
-                ) as contractor_user_id"),
-                DB::raw("COALESCE(
-                    MAX(CASE WHEN cu.is_active = 1 AND cu.role = 'owner' THEN cu.user_id END),
-                    MAX(CASE WHEN cu.is_active = 1 THEN cu.user_id END),
-                    MAX(CASE WHEN cu.role = 'owner' THEN cu.user_id END),
-                    MIN(cu.user_id)
-                ) as contractor_notify_user_id")
+                'c.contractor_id as contractor_user_id',
+                'cpo.user_id as contractor_notify_user_id'
             )
-            ->groupBy('p.project_id')
             ->first();
     }
 
@@ -216,6 +214,21 @@ class downpaymentController extends Controller
                 'total_approved'  => $existingApproved,
             ]);
 
+            $contractorNotifyUserId = $contractorInfo->contractor_notify_user_id ?? null;
+            if ($contractorNotifyUserId) {
+                $projectTitle = $project->project_title ?? 'your project';
+                NotificationService::create(
+                    (int) $contractorNotifyUserId,
+                    'payment_submitted',
+                    'Downpayment Sent',
+                    "The property owner sent a downpayment for \"{$projectTitle}\". Please review it.",
+                    'high',
+                    'payment',
+                    (int) $dpPaymentId,
+                    ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $validated['project_id'], 'tab' => 'payments']]
+                );
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Downpayment receipt uploaded successfully.',
@@ -250,6 +263,7 @@ class downpaymentController extends Controller
 
             $payments = DB::table('downpayment_payments as dp')
                 ->leftJoin('property_owners as po', 'dp.owner_id', '=', 'po.owner_id')
+                ->leftJoin('users as po_u', 'po.user_id', '=', 'po_u.user_id')
                 ->where('dp.project_id', $projectId)
                 ->whereNotIn('dp.payment_status', ['deleted'])
                 ->select(
@@ -262,7 +276,7 @@ class downpaymentController extends Controller
                     'dp.payment_status',
                     'dp.reason',
                     'dp.updated_at',
-                    DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+                    DB::raw('CONCAT(po_u.first_name, " ", po_u.last_name) as owner_name')
                 )
                 ->orderBy('dp.transaction_date', 'desc')
                 ->orderBy('dp.dp_payment_id', 'desc')
@@ -297,6 +311,13 @@ class downpaymentController extends Controller
         try {
             [$user, $error] = $this->requireContractor($request);
             if ($error) return $error;
+
+            // Authorization: only owner/representative can approve payments (Tier 1 + 2)
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validatePaymentApprovalAccess((int) $user->user_id);
+            if ($authError) {
+                return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'UNAUTHORIZED_PAYMENT_APPROVAL'], 403);
+            }
 
             $payment = DB::table('downpayment_payments')->where('dp_payment_id', $dpPaymentId)->first();
             if (!$payment) {
@@ -341,6 +362,13 @@ class downpaymentController extends Controller
         try {
             [$user, $error] = $this->requireContractor($request);
             if ($error) return $error;
+
+            // Authorization: only owner/representative can reject payments (Tier 1 + 2)
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validatePaymentApprovalAccess((int) $user->user_id);
+            if ($authError) {
+                return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'UNAUTHORIZED_PAYMENT_APPROVAL'], 403);
+            }
 
             $validated = $request->validate([
                 'reason' => 'required|string|max:1000',

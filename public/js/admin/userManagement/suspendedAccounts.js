@@ -792,7 +792,7 @@ function confirmReactivateSuspendedAccount() {
 			'Accept': 'application/json'
 		},
 		body: JSON.stringify({
-			contractor_user_id: currentReactivateUserId,
+			staff_id: currentReactivateUserId,
 			user_type: currentReactivateUserType
 		})
 	})

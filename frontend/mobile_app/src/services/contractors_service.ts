@@ -147,8 +147,9 @@ export class contractors_service {
     let logoUrl: string | undefined;
     let imageUrl: string | undefined;
 
-    // Prefer contractor-level `company_logo` when present, otherwise fall back to user's `profile_pic`.
-    const resolvedLogoPath = backendContractor.company_logo || backendContractor.profile_pic || null;
+    // Use company_logo only — never fall back to personal profile_pic.
+    // If company has no logo, let it be undefined so the default contractor image shows.
+    const resolvedLogoPath = backendContractor.company_logo || null;
     if (resolvedLogoPath) {
       logoUrl = resolvedLogoPath.startsWith('http') ? resolvedLogoPath : `${baseUrl}/storage/${resolvedLogoPath}`;
       imageUrl = logoUrl;
@@ -156,9 +157,9 @@ export class contractors_service {
       imageUrl = 'https://via.placeholder.com/400x200';
     }
 
-    // Prefer contractor-level `company_banner` when present, otherwise fall back to `cover_photo`.
+    // Use company_banner only — never fall back to personal cover_photo.
     let coverUrl: string | undefined;
-    const resolvedCoverPath = backendContractor.company_banner || backendContractor.cover_photo || null;
+    const resolvedCoverPath = backendContractor.company_banner || null;
     if (resolvedCoverPath) {
       coverUrl = resolvedCoverPath.startsWith('http') ? resolvedCoverPath : `${baseUrl}/storage/${resolvedCoverPath}`;
     }
@@ -174,7 +175,7 @@ export class contractors_service {
       contractor_type: backendContractor.type_name,
       logo_url: logoUrl,
       image_url: imageUrl,
-      cover_photo: coverUrl || (backendContractor.cover_photo ? (backendContractor.cover_photo.startsWith('http') ? backendContractor.cover_photo : `${baseUrl}/storage/${backendContractor.cover_photo}`) : undefined),
+      cover_photo: coverUrl || undefined,
       years_of_experience: backendContractor.years_of_experience,
       services_offered: backendContractor.services_offered || undefined,
       completed_projects: backendContractor.completed_projects,

@@ -9,6 +9,7 @@ import {
   Image,
   StatusBar,
   Modal,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import MilestoneApproval from '../both/milestoneApproval';
 import MilestoneSetup from './milestoneSetup';
 import { api_config } from '../../config/api';
 import { projects_service } from '../../services/projects_service';
+import { useContractorAuth } from '../../hooks/useContractorAuth';
 
 const COLORS = {
   primary: '#EC7E00',
@@ -116,6 +118,8 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
   const [showMilestones, setShowMilestones] = useState(false);
   const [showMilestoneApproval, setShowMilestoneApproval] = useState(initialView === 'milestones');
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
+
+  const { canManageMilestones } = useContractorAuth();
 
   const milestones: Milestone[] = currentProject.milestones || [];
   const approvedMilestoneTitle = milestones.find(m => m.setup_status === 'approved' && !!m.milestone_name)?.milestone_name;
@@ -399,7 +403,18 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
         {renderStatusBanner()}
 
         {/* ── Milestone action card ── */}
-        <TouchableOpacity style={styles.actionCard} onPress={() => { const hasNone = milestones.length === 0; hasNone ? setShowMilestoneSetup(true) : setShowMilestoneApproval(true); }} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.actionCard} onPress={() => {
+          const hasNone = milestones.length === 0;
+          if (hasNone) {
+            if (canManageMilestones) {
+              setShowMilestoneSetup(true);
+            } else {
+              Alert.alert('Permission Required', 'Only the company owner or representative can set up milestones.');
+            }
+          } else {
+            setShowMilestoneApproval(true);
+          }
+        }} activeOpacity={0.8}>
           <View style={[styles.actionIconWrap, { backgroundColor: milestoneConfig.color + '1A' }]}>
             <Feather name={milestoneConfig.icon as any} size={22} color={milestoneConfig.color} />
           </View>

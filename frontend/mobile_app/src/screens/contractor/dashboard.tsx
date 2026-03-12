@@ -13,6 +13,7 @@ import {
   Dimensions,
   Modal,
   FlatList,
+  AppState,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, DeviceEventEmitter } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -125,9 +126,10 @@ export default function ContractorDashboard({
     initial_item_tab?: 'payments';
   } | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const hasInitialized = useRef(false);
 
-  // Contractor member authorization - controls access to Members feature and milestones
-  const { canManageMembers } = useContractorAuth();
+  // Contractor member authorization and capability flags for role-based dashboard sections
+  const { canManageMembers, canViewMembers, canBid, canViewFinancials } = useContractorAuth();
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -141,7 +143,37 @@ export default function ContractorDashboard({
   useEffect(() => {
     setAvatarError(false);
     fetchData();
-  }, [userData?.user_id]);
+    hasInitialized.current = true;
+  }, [userData?.user_id, canBid]);
+
+  // Auto-refresh dashboard data on relevant app events
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (!showMyProjects && !showMyBids && !showMembers && !showAiAnalytics) {
+        fetchData();
+      }
+    };
+
+    const roleChangedSub = DeviceEventEmitter.addListener('roleChanged', handleRefresh);
+    const dashboardRefreshSub = DeviceEventEmitter.addListener('dashboardRefresh', handleRefresh);
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') handleRefresh();
+    });
+
+    return () => {
+      try { roleChangedSub.remove(); } catch (e) {}
+      try { dashboardRefreshSub.remove(); } catch (e) {}
+      try { appStateSub.remove(); } catch (e) {}
+    };
+  }, [showMyProjects, showMyBids, showMembers, showAiAnalytics, userData?.user_id, canBid]);
+
+  // Refresh parent dashboard when coming back from sub-screens
+  useEffect(() => {
+    if (!hasInitialized.current) return;
+    if (!showMyProjects && !showMyBids && !showMembers && !showAiAnalytics) {
+      fetchData();
+    }
+  }, [showMyProjects, showMyBids, showMembers, showAiAnalytics]);
 
   // Listen for navigation events from notifications
   useEffect(() => {
@@ -197,19 +229,23 @@ export default function ContractorDashboard({
         setMyProjects([]);
       }
 
-      // Fetch contractor bids
-      const bidsResponse = await projects_service.get_my_bids(userData.user_id);
-      console.log('Bids response:', JSON.stringify(bidsResponse, null, 2));
-      if (bidsResponse.success) {
-        // The API returns data wrapped, so we need to extract it properly
-        const apiData = bidsResponse.data;
-        const bidsData = apiData?.data || apiData || [];
-        const bidsArray = Array.isArray(bidsData) ? bidsData : [];
-        console.log('Bids array length:', bidsArray.length);
-        console.log('Bids array:', bidsArray);
-        setMyBids(bidsArray);
+      // Fetch contractor bids only for roles that are allowed to bid.
+      if (canBid) {
+        const bidsResponse = await projects_service.get_my_bids(userData.user_id);
+        console.log('Bids response:', JSON.stringify(bidsResponse, null, 2));
+        if (bidsResponse.success) {
+          // The API returns data wrapped, so we need to extract it properly
+          const apiData = bidsResponse.data;
+          const bidsData = apiData?.data || apiData || [];
+          const bidsArray = Array.isArray(bidsData) ? bidsData : [];
+          console.log('Bids array length:', bidsArray.length);
+          console.log('Bids array:', bidsArray);
+          setMyBids(bidsArray);
+        } else {
+          console.log('Bids fetch failed:', bidsResponse.message);
+          setMyBids([]);
+        }
       } else {
-        console.log('Bids fetch failed:', bidsResponse.message);
         setMyBids([]);
       }
 
@@ -270,9 +306,11 @@ export default function ContractorDashboard({
     return (
       <MyProjects
         userData={userData}
+        initialProjects={myProjects}
         onClose={() => {
           setShowMyProjects(false);
           setMyProjectsInitialAction(null);
+          fetchData();
         }}
         initialAction={myProjectsInitialAction}
       />
@@ -284,7 +322,11 @@ export default function ContractorDashboard({
     return (
       <MyBids
         userData={userData}
-        onClose={() => setShowMyBids(false)}
+        initialBids={myBids}
+        onClose={() => {
+          setShowMyBids(false);
+          fetchData();
+        }}
       />
     );
   }
@@ -294,7 +336,10 @@ export default function ContractorDashboard({
     return (
       <Members
         userData={userData}
-        onClose={() => setShowMembers(false)}
+        onClose={() => {
+          setShowMembers(false);
+          fetchData();
+        }}
       />
     );
   }
@@ -304,7 +349,10 @@ export default function ContractorDashboard({
     return (
       <AiAnalytics
         userData={userData}
-        onClose={() => setShowAiAnalytics(false)}
+        onClose={() => {
+          setShowAiAnalytics(false);
+          fetchData();
+        }}
       />
     );
   }
@@ -400,25 +448,27 @@ export default function ContractorDashboard({
               <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.navButton}
-              activeOpacity={0.7}
-              onPress={() => setShowMyBids(true)}
-            >
-              <View style={[styles.navButtonIcon, styles.bidsNavIconFrame]}>
-                <View style={styles.bidsScaleBadge}>
-                    <MaterialCommunityIcons name="scale-balance" size={20} color="#F0B35E" />
+            {canBid && (
+              <TouchableOpacity
+                style={styles.navButton}
+                activeOpacity={0.7}
+                onPress={() => setShowMyBids(true)}
+              >
+                <View style={[styles.navButtonIcon, styles.bidsNavIconFrame]}>
+                  <View style={styles.bidsScaleBadge}>
+                      <MaterialCommunityIcons name="scale-balance" size={20} color="#F0B35E" />
+                  </View>
                 </View>
-              </View>
-              <View style={styles.navButtonContent}>
-                <Text style={styles.navButtonTitle}>My Bids</Text>
-                <Text style={styles.navButtonSubtitle}>{stats.totalBids} bids submitted</Text>
-              </View>
-              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
-            </TouchableOpacity>
+                <View style={styles.navButtonContent}>
+                  <Text style={styles.navButtonTitle}>My Bids</Text>
+                  <Text style={styles.navButtonSubtitle}>{stats.totalBids} bids submitted</Text>
+                </View>
+                <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
 
-            {/* Members button - only visible to owner and representative roles */}
-            {canManageMembers && (
+            {/* Members button - visible to all active contractor members */}
+            {canViewMembers && (
               <TouchableOpacity
                 style={styles.navButton}
                 activeOpacity={0.7}
@@ -429,31 +479,32 @@ export default function ContractorDashboard({
                 </View>
                 <View style={styles.navButtonContent}>
                   <Text style={styles.navButtonTitle}>Members</Text>
-                  <Text style={styles.navButtonSubtitle}>Manage your team</Text>
+                  <Text style={styles.navButtonSubtitle}>{canManageMembers ? 'Manage your team' : 'View your team'}</Text>
                 </View>
                 <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}
 
-            {/* AI Analytics */}
-            <TouchableOpacity
-              style={styles.navButton}
-              activeOpacity={0.7}
-              onPress={() => setShowAiAnalytics(true)}
-            >
-              <View style={[styles.navButtonIcon, styles.navAiIconFrame]}>
-                <Image
-                  source={require('../../../assets/images/icons/ai.png')}
-                  style={styles.aiIconImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={styles.navButtonContent}>
-                <Text style={styles.navButtonTitle}>AI Analytics</Text>
-                <Text style={styles.navButtonSubtitle}>Predict project delays</Text>
-              </View>
-              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            {canViewFinancials && (
+              <TouchableOpacity
+                style={styles.navButton}
+                activeOpacity={0.7}
+                onPress={() => setShowAiAnalytics(true)}
+              >
+                <View style={[styles.navButtonIcon, styles.navAiIconFrame]}>
+                  <Image
+                    source={require('../../../assets/images/icons/ai.png')}
+                    style={styles.aiIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.navButtonContent}>
+                  <Text style={styles.navButtonTitle}>AI Analytics</Text>
+                  <Text style={styles.navButtonSubtitle}>Predict project delays</Text>
+                </View>
+                <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -475,18 +526,20 @@ export default function ContractorDashboard({
               <Text style={styles.quickActionLabel}>Browse{"\n"}Projects</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              activeOpacity={0.7}
-              onPress={() => {
-                // Navigate to pending bids
-              }}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: COLORS.warningLight }]}>
-                <Feather name="clock" size={22} color={COLORS.warning} />
-              </View>
-              <Text style={styles.quickActionLabel}>Pending{"\n"}Bids</Text>
-            </TouchableOpacity>
+            {canBid && (
+              <TouchableOpacity
+                style={styles.quickActionCard}
+                activeOpacity={0.7}
+                onPress={() => {
+                  // Navigate to pending bids
+                }}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: COLORS.warningLight }]}>
+                  <Feather name="clock" size={22} color={COLORS.warning} />
+                </View>
+                <Text style={styles.quickActionLabel}>Pending{"\n"}Bids</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.quickActionCard}

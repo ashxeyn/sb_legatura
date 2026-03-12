@@ -56,10 +56,10 @@ class FeedService
                 'total_reviews'        => 0,
                 'completed_projects'   => $c->completed_projects ?? 0,
                 'specialization'       => $c->services_offered ?? $c->type_name ?? '',
-                'cover_photo'          => $c->company_banner ?? $c->cover_photo ?? null,
+                'cover_photo'          => $c->company_banner ?? null,
                 'company_logo'         => $c->company_logo ?? null,
                 'company_banner'       => $c->company_banner ?? null,
-                'logo_url'             => $c->company_logo ?? $c->profile_pic ?? null,
+                'logo_url'             => $c->company_logo ?? null,
             ];
         })->toArray();
 
@@ -97,7 +97,8 @@ class FeedService
         $contractorTypeId = null;
 
         if ($userId) {
-            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($userId);
+            $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
             if ($contractor) {
                 $contractorId     = $contractor->contractor_id;
                 $contractorTypeId = $contractor->type_id;
@@ -139,7 +140,8 @@ class FeedService
         $contractorTypeId = null;
 
         if ($userId) {
-            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($userId);
+            $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
             if ($contractor) {
                 $contractorId     = $contractor->contractor_id;
                 $contractorTypeId = $contractor->type_id;

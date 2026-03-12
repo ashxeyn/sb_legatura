@@ -188,8 +188,8 @@ class postController extends Controller
 
         $query = DB::table('showcases as s')
             ->join('users as u', 's.user_id', '=', 'u.user_id')
-            ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
             ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
             ->leftJoin('projects as lp', 's.linked_project_id', '=', 'lp.project_id')
             ->select(
                 's.*',
@@ -282,7 +282,8 @@ class postController extends Controller
             ->toArray();
 
         // Build query based on whether user is contractor, owner, or both
-        $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+        $postOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        $contractor = $postOwnerId ? DB::table('contractors')->where('owner_id', $postOwnerId)->first() : null;
         $owner      = DB::table('property_owners')->where('user_id', $userId)->first();
 
         $projects = collect();
@@ -293,7 +294,7 @@ class postController extends Controller
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-                ->where('pr.selected_contractor_id', $contractor->contractor_id)
+                ->where('p.selected_contractor_id', $contractor->contractor_id)
                 ->where('p.project_status', 'completed')
                 ->select(
                     'p.project_id',
@@ -304,7 +305,7 @@ class postController extends Controller
                     'p.budget_range_max',
                     'p.property_type',
                     'ct.type_name as contractor_type_name',
-                    DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                    DB::raw("CONCAT(po_u.first_name, ' ', po_u.last_name) as owner_name"),
                     'pr.created_at as completed_at'
                 )
                 ->orderByDesc('pr.created_at')
@@ -318,6 +319,7 @@ class postController extends Controller
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->join('users as po_u', 'po.user_id', '=', 'po_u.user_id')
                 ->where('pr.owner_id', $owner->owner_id)
                 ->where('p.project_status', 'completed')
                 ->select(
@@ -329,7 +331,7 @@ class postController extends Controller
                     'p.budget_range_max',
                     'p.property_type',
                     'ct.type_name as contractor_type_name',
-                    DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                    DB::raw("CONCAT(po_u.first_name, ' ', po_u.last_name) as owner_name"),
                     'pr.created_at as completed_at'
                 )
                 ->orderByDesc('pr.created_at')

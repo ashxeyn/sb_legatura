@@ -699,7 +699,8 @@ class disputeController extends Controller
 
         // For contractors, check milestone status for each project
         if ($isContractor) {
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            $dispOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $dispOwnerId ? DB::table('contractors')->where('owner_id', $dispOwnerId)->first() : null;
             if ($contractor) {
                 $contractorClass = new \App\Models\contractor\contractorClass();
                 foreach ($projects as $project) {
@@ -894,7 +895,8 @@ class disputeController extends Controller
             // Check if contractor can setup milestone (is selected contractor and no milestone exists)
             $canSetupMilestone = false;
             if ($isContractor && $project->selected_contractor_id) {
-                $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+                $dispOwnerId2 = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+                $contractor = $dispOwnerId2 ? DB::table('contractors')->where('owner_id', $dispOwnerId2)->first() : null;
                 if ($contractor && $contractor->contractor_id == $project->selected_contractor_id) {
                     $contractorClass = new \App\Models\contractor\contractorClass();
                     $canSetupMilestone = !$contractorClass->contractorHasMilestoneForProject($projectId, $contractor->contractor_id);

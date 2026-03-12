@@ -13,6 +13,7 @@ class progressUploadClass
         try {
             $progressId = DB::table('progress')->insertGetId([
                 'milestone_item_id' => $data['item_id'],
+                'submitted_by_owner_id' => $data['submitted_by_owner_id'] ?? null,
                 'purpose' => $data['purpose'],
                 'progress_status' => $data['progress_status'] ?? 'submitted'
             ]);
@@ -56,6 +57,8 @@ class progressUploadClass
 
     public function getProgressByItem($itemId, $contractorId = null)
     {
+        $hasSubmittedByOwnerId = Schema::hasColumn('progress', 'submitted_by_owner_id');
+
         $query = DB::table('progress as p')
             ->join('milestone_items as mi', 'p.milestone_item_id', '=', 'mi.item_id')
             ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
@@ -63,8 +66,19 @@ class progressUploadClass
             ->where('p.milestone_item_id', $itemId)
             ->where('p.progress_status', '!=', 'deleted');
 
+        if ($hasSubmittedByOwnerId) {
+            $query
+                ->leftJoin('users as submitter_u', 'p.submitted_by_owner_id', '=', 'submitter_u.user_id')
+                ->leftJoin('property_owners as submitter_po', 'submitter_u.user_id', '=', 'submitter_po.user_id')
+                ->leftJoin('contractor_staff as submitter_cs', function ($join) {
+                    $join->on('submitter_cs.owner_id', '=', 'submitter_po.owner_id')
+                        ->on('submitter_cs.contractor_id', '=', 'm.contractor_id')
+                        ->whereNull('submitter_cs.deletion_reason');
+                });
+        }
+
         if ($contractorId) {
-            $query->where('proj.selected_contractor_id', $contractorId);
+            $query->where('m.contractor_id', $contractorId);
         }
 
         $select = [
@@ -73,8 +87,15 @@ class progressUploadClass
             'p.purpose',
             'p.progress_status',
             'p.submitted_at',
-            'proj.selected_contractor_id as contractor_id'
+            'm.contractor_id as contractor_id'
         ];
+
+        if ($hasSubmittedByOwnerId) {
+            $select[] = 'submitter_u.user_id as uploader_user_id';
+            $select[] = DB::raw("TRIM(CONCAT(COALESCE(submitter_u.first_name, ''), ' ', COALESCE(submitter_u.middle_name, ''), ' ', COALESCE(submitter_u.last_name, ''))) as uploader_name");
+            $select[] = 'submitter_cs.company_role as uploader_role';
+            $select[] = DB::raw("CASE WHEN submitter_cs.staff_id IS NULL THEN 0 ELSE 1 END as uploaded_by_staff");
+        }
 
         // Include delete/rejection reason if present in schema
         if (Schema::hasColumn('progress', 'delete_reason')) {
@@ -118,22 +139,46 @@ class progressUploadClass
 
     public function getProgressById($progressId)
     {
-        $select = [
-            'progress_id',
-            'milestone_item_id as item_id',
-            'purpose',
-            'progress_status',
-            'submitted_at'
-        ];
+        $hasSubmittedByOwnerId = Schema::hasColumn('progress', 'submitted_by_owner_id');
 
-        if (Schema::hasColumn('progress', 'delete_reason')) {
-            $select[] = 'delete_reason';
-        } elseif (Schema::hasColumn('progress', 'rejection_reason')) {
-            $select[] = 'rejection_reason as delete_reason';
+        $query = DB::table('progress as p');
+
+        if ($hasSubmittedByOwnerId) {
+            $query
+                ->leftJoin('users as submitter_u', 'p.submitted_by_owner_id', '=', 'submitter_u.user_id')
+                ->leftJoin('property_owners as submitter_po', 'submitter_u.user_id', '=', 'submitter_po.user_id')
+                ->leftJoin('milestone_items as mi', 'p.milestone_item_id', '=', 'mi.item_id')
+                ->leftJoin('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->leftJoin('contractor_staff as submitter_cs', function ($join) {
+                    $join->on('submitter_cs.owner_id', '=', 'submitter_po.owner_id')
+                        ->on('submitter_cs.contractor_id', '=', 'm.contractor_id')
+                        ->whereNull('submitter_cs.deletion_reason');
+                });
         }
 
-        return DB::table('progress')
-            ->where('progress_id', $progressId)
+        $select = [
+            'p.progress_id',
+            'p.milestone_item_id as item_id',
+            'p.purpose',
+            'p.progress_status',
+            'p.submitted_at'
+        ];
+
+        if ($hasSubmittedByOwnerId) {
+            $select[] = 'submitter_u.user_id as uploader_user_id';
+            $select[] = DB::raw("TRIM(CONCAT(COALESCE(submitter_u.first_name, ''), ' ', COALESCE(submitter_u.middle_name, ''), ' ', COALESCE(submitter_u.last_name, ''))) as uploader_name");
+            $select[] = 'submitter_cs.company_role as uploader_role';
+            $select[] = DB::raw("CASE WHEN submitter_cs.staff_id IS NULL THEN 0 ELSE 1 END as uploaded_by_staff");
+        }
+
+        if (Schema::hasColumn('progress', 'delete_reason')) {
+            $select[] = 'p.delete_reason';
+        } elseif (Schema::hasColumn('progress', 'rejection_reason')) {
+            $select[] = 'p.rejection_reason as delete_reason';
+        }
+
+        return $query
+            ->where('p.progress_id', $progressId)
             ->select($select)
             ->first();
     }
@@ -244,7 +289,7 @@ class progressUploadClass
                 'mi.milestone_item_title as item_title',
                 'proj.project_id',
                 'proj.project_title',
-                'proj.selected_contractor_id as contractor_id'
+                'm.contractor_id as contractor_id'
             )
             ->first();
     }

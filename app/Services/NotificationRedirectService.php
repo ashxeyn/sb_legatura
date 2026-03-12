@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Resolves the correct redirect URL for a notification based on its
@@ -26,6 +27,28 @@ use Illuminate\Support\Facades\Log;
  */
 class NotificationRedirectService
 {
+    private static function milestonePaymentItemColumn(): ?string
+    {
+        if (Schema::hasColumn('milestone_payments', 'item_id')) {
+            return 'item_id';
+        }
+        if (Schema::hasColumn('milestone_payments', 'milestone_item_id')) {
+            return 'milestone_item_id';
+        }
+        return null;
+    }
+
+    private static function progressItemColumn(): ?string
+    {
+        if (Schema::hasColumn('progress', 'milestone_item_id')) {
+            return 'milestone_item_id';
+        }
+        if (Schema::hasColumn('progress', 'item_id')) {
+            return 'item_id';
+        }
+        return null;
+    }
+
     // ─── Public entry point ────────────────────────────────────────────
 
     /**
@@ -144,11 +167,31 @@ class NotificationRedirectService
                 if (!$projectId) {
                     $projectId = self::resolveProjectIdFromRef($notification);
                 }
-                // Resolve the milestone item ID so the mobile app can drill
-                // straight into the item's full-detail payments tab.
-                $itemId = ($notification->reference_type === 'milestone_item')
-                    ? $notification->reference_id
-                    : null;
+                // Prefer explicit action params, then derive from reference.
+                $itemId = $actionData['params']['initial_item_id']
+                    ?? $actionData['params']['itemId']
+                    ?? null;
+
+                if (!$itemId && $notification->reference_type === 'milestone_item') {
+                    $itemId = $notification->reference_id;
+                }
+
+                // Existing payment notifications often reference payment_id.
+                // Resolve to milestone item so taps open the exact item.
+                if (!$itemId && $notification->reference_type === 'payment' && $notification->reference_id) {
+                    $paymentRow = DB::table('milestone_payments')
+                        ->where('payment_id', $notification->reference_id)
+                        ->first();
+
+                    if ($paymentRow) {
+                        if (Schema::hasColumn('milestone_payments', 'item_id')) {
+                            $itemId = $paymentRow->item_id ?? null;
+                        } elseif (Schema::hasColumn('milestone_payments', 'milestone_item_id')) {
+                            $itemId = $paymentRow->milestone_item_id ?? null;
+                        }
+                    }
+                }
+
                 return [
                     'screen' => 'dashboard',
                     'params' => [
@@ -310,8 +353,13 @@ class NotificationRedirectService
                 return $item?->project_id;
 
             case 'payment':
+                $paymentItemCol = self::milestonePaymentItemColumn();
+                if (!$paymentItemCol) {
+                    return null;
+                }
+
                 $pay = DB::table('milestone_payments as mp')
-                    ->join('milestone_items as mi', 'mp.milestone_item_id', '=', 'mi.item_id')
+                    ->join('milestone_items as mi', "mp.{$paymentItemCol}", '=', 'mi.item_id')
                     ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                     ->where('mp.payment_id', $refId)
                     ->select('m.project_id')
@@ -319,8 +367,13 @@ class NotificationRedirectService
                 return $pay?->project_id;
 
             case 'progress':
+                $progressItemCol = self::progressItemColumn();
+                if (!$progressItemCol) {
+                    return null;
+                }
+
                 $prog = DB::table('progress as p')
-                    ->join('milestone_items as mi', 'p.milestone_item_id', '=', 'mi.item_id')
+                    ->join('milestone_items as mi', "p.{$progressItemCol}", '=', 'mi.item_id')
                     ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                     ->where('p.progress_id', $refId)
                     ->select('m.project_id')
@@ -597,16 +650,21 @@ class NotificationRedirectService
 
         // If reference_type is 'payment', look up the payment record
         if ($refType === 'payment') {
+            $paymentItemCol = self::milestonePaymentItemColumn();
+            if (!$paymentItemCol) {
+                return self::dashboardFallback($userRole, 'The payment item mapping is unavailable.');
+            }
+
             $payment = DB::table('milestone_payments')
                 ->where('payment_id', $refId)
-                ->select('milestone_item_id')
+                ->select("{$paymentItemCol} as item_id")
                 ->first();
 
-            if (!$payment || !$payment->milestone_item_id) {
+            if (!$payment || !$payment->item_id) {
                 return self::dashboardFallback($userRole, 'The payment record no longer exists.');
             }
 
-            return self::resolveMilestoneItemRedirect($payment->milestone_item_id, $userRole);
+            return self::resolveMilestoneItemRedirect((int) $payment->item_id, $userRole);
         }
 
         return self::dashboardFallback($userRole, 'Could not resolve payment location.');
@@ -639,13 +697,18 @@ class NotificationRedirectService
         }
 
         // Try treating refId as a progress record
+        $progressItemCol = self::progressItemColumn();
+        if (!$progressItemCol) {
+            return self::dashboardFallback($userRole, 'The progress item mapping is unavailable.');
+        }
+
         $progress = DB::table('progress')
             ->where('progress_id', $refId)
-            ->select('milestone_item_id')
+            ->select("{$progressItemCol} as item_id")
             ->first();
 
-        if ($progress && $progress->milestone_item_id) {
-            return self::resolveMilestoneItemRedirect($progress->milestone_item_id, $userRole);
+        if ($progress && $progress->item_id) {
+            return self::resolveMilestoneItemRedirect((int) $progress->item_id, $userRole);
         }
 
         return self::dashboardFallback($userRole, 'The progress record no longer exists.');

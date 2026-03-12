@@ -24,6 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
 import { projects_service } from '../../services/projects_service';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 import { auth_service } from '../../services/auth_service';
 
 interface CreateProjectScreenProps {
@@ -570,7 +571,7 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.formContainer}>
           {/* Project Title */}
           <View style={styles.inputGroup}>
@@ -916,7 +917,7 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
             )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Barangay Modal */}
       <Modal visible={showBarangayModal} animationType="slide" transparent>

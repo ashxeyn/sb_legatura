@@ -16,8 +16,8 @@ class projectAdminController extends Controller
         $q = DB::table('projects')
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
-            ->select('projects.*', 'users.first_name', 'users.last_name')
+            ->leftJoin('users as po_user', 'property_owners.user_id', '=', 'po_user.user_id')
+            ->select('projects.*', 'po_user.first_name', 'po_user.last_name')
             ->orderBy('projects.project_id', 'desc')
             ->paginate(20);
 

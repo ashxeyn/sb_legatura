@@ -342,10 +342,10 @@
             @endif
             @if($userType === 'both')
                 @if($currentRole !== 'contractor')
-                    <button onclick="switchRole('contractor', this)" class="nav-btn">Switch to Contractor</button>
+                    <button onclick="switchRole('contractor', this)" class="nav-btn">Switch to Contractor Dashboard</button>
                 @endif
                 @if($currentRole !== 'owner')
-                    <button onclick="switchRole('owner', this)" class="nav-btn">Switch to Owner</button>
+                    <button onclick="switchRole('owner', this)" class="nav-btn">Switch to Owner Dashboard</button>
                 @endif
             @endif
             <a href="/accounts/logout">Logout</a>

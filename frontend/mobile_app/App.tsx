@@ -1033,6 +1033,7 @@ export default function App() {
             <SafeAreaProvider>
                 <ViewProfileScreen
                     onBack={() => { set_view_profile_initial_tab(undefined); set_app_state('main'); }}
+                    userToken={user_data?.token || user_data?.api_token || ''}
                     userData={{
                         ...user_data,
                         profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,

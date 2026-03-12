@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Services\NotificationService;
+use App\Services\ContractorAuthorizationService;
 
 class progressUploadController extends Controller
 {
@@ -19,6 +20,12 @@ class progressUploadController extends Controller
     public function __construct()
     {
         $this->progressUploadClass = new progressUploadClass();
+    }
+
+    private function resolveAuthorizedContractor(int $userId): ?object
+    {
+        $authService = app(ContractorAuthorizationService::class);
+        return $authService->getContractorForUser($userId);
     }
 
     public function showUploadPage(Request $request)
@@ -31,9 +38,7 @@ class progressUploadController extends Controller
         $user = Session::get('user');
 
         // Get c id
-        $contractor = DB::table('contractors')
-            ->where('user_id', $user->user_id)
-            ->first();
+        $contractor = $this->resolveAuthorizedContractor((int) $user->user_id);
 
         if (!$contractor) {
             return redirect('/dashboard')->with('error', 'Contractor profile not found');
@@ -112,8 +117,11 @@ class progressUploadController extends Controller
             }
         }
 
-        // Check if yung user is c
-        if (!in_array($user->user_type, ['contractor', 'both'])) {
+        $authService = app(ContractorAuthorizationService::class);
+        $memberContext = $authService->getMemberContext((int) $user->user_id);
+        $isContractorUser = in_array($user->user_type, ['contractor', 'both', 'staff']) || $memberContext !== null;
+
+        if (!$isContractorUser) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -125,18 +133,32 @@ class progressUploadController extends Controller
             }
         }
 
-        if ($user->user_type === 'both') {
+        $currentRole = $request->header('X-Current-Role', Session::get('current_role', $user->preferred_role ?? null));
+        if (($user->user_type === 'both' || ($memberContext && $user->user_type === 'property_owner')) && $currentRole && $currentRole !== 'contractor') {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Please switch to the contractor dashboard to upload progress.',
+                    'redirect_url' => '/dashboard',
+                    'suggested_action' => 'switch_to_contractor'
+                ], 403);
+            } else {
+                return redirect('/dashboard')->with('error', 'Please switch to the contractor dashboard to upload progress.');
+            }
+        }
+
+        if ($user->user_type === 'both' && !$currentRole) {
             $currentRole = $request->header('X-Current-Role', Session::get('current_role', 'contractor'));
             if ($currentRole !== 'contractor') {
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Access denied. Please switch to contractor role to upload progress.',
+                        'message' => 'Access denied. Please switch to the contractor dashboard to upload progress.',
                         'redirect_url' => '/dashboard',
                         'suggested_action' => 'switch_to_contractor'
                     ], 403);
                 } else {
-                    return redirect('/dashboard')->with('error', 'Please switch to contractor role to upload progress.');
+                    return redirect('/dashboard')->with('error', 'Please switch to the contractor dashboard to upload progress.');
                 }
             }
         }
@@ -154,9 +176,17 @@ class progressUploadController extends Controller
 
             $user = Session::get('user');
 
-            $contractor = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->first();
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateProgressUploadAccess((int) $user->user_id);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_PROGRESS_UPLOAD'
+                ], 403);
+            }
+
+            $contractor = $authService->getContractorForUser((int) $user->user_id);
 
             if (!$contractor) {
                 return response()->json([
@@ -274,9 +304,16 @@ class progressUploadController extends Controller
             }
 
             try {
-                DB::transaction(function () use (&$progressId, &$uploadedFiles, $validated, $uploadedFilePaths) {
+                $sessionUser = Session::get('user');
+                $currentUserId = $sessionUser->user_id ?? null;
+
+                DB::transaction(function () use (&$progressId, &$uploadedFiles, $validated, $uploadedFilePaths, $currentUserId) {
+                    // progress.submitted_by_owner_id now references users.user_id
+                    $submittedByOwnerId = $currentUserId ? (int) $currentUserId : null;
+
                     $progressId = $this->progressUploadClass->createProgress([
                         'item_id'         => $validated['item_id'],
+                        'submitted_by_owner_id' => $submittedByOwnerId,
                         'purpose'         => $validated['purpose'],
                         'progress_status' => 'submitted',
                     ]);
@@ -416,9 +453,7 @@ class progressUploadController extends Controller
 
             $user = Session::get('user');
 
-            $contractor = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->first();
+            $contractor = $this->resolveAuthorizedContractor((int) $user->user_id);
 
             if (!$contractor) {
                 return response()->json([
@@ -583,10 +618,25 @@ class progressUploadController extends Controller
                 ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
+                ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
                 ->where('mi.item_id', $itemId)
                 ->where(function ($query) use ($user) {
                     $query->where('po.user_id', $user->user_id)
-                        ->orWhere('c.user_id', $user->user_id);
+                        ->orWhere('c_po.user_id', $user->user_id)
+                        ->orWhereExists(function ($sub) use ($user) {
+                            $sub->select(DB::raw(1))
+                                ->from('property_owners as viewer_po')
+                                ->join('project_relationships as viewer_pr', 'viewer_pr.owner_id', '=', 'viewer_po.owner_id')
+                                ->join('contractor_staff as viewer_cs', function ($join) {
+                                    $join->on('viewer_cs.owner_id', '=', 'viewer_po.owner_id')
+                                        ->on('viewer_cs.contractor_id', '=', 'viewer_pr.selected_contractor_id')
+                                        ->where('viewer_cs.is_active', 1)
+                                        ->where('viewer_cs.is_suspended', 0)
+                                        ->whereNull('viewer_cs.deletion_reason');
+                                })
+                                ->whereColumn('viewer_pr.rel_id', 'p.relationship_id')
+                                ->where('viewer_po.user_id', $user->user_id);
+                        });
                 })
                 ->select('mi.item_id', 'p.project_id', 'p.project_title')
                 ->first();
@@ -650,9 +700,17 @@ class progressUploadController extends Controller
 
             $user = Session::get('user');
 
-            $contractor = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->first();
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateProgressUploadAccess((int) $user->user_id);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_PROGRESS_UPLOAD'
+                ], 403);
+            }
+
+            $contractor = $authService->getContractorForUser((int) $user->user_id);
 
             if (!$contractor) {
                 return response()->json([
@@ -783,9 +841,17 @@ class progressUploadController extends Controller
 
             $user = Session::get('user');
 
-            $contractor = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->first();
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateProgressUploadAccess((int) $user->user_id);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_PROGRESS_UPLOAD'
+                ], 403);
+            }
+
+            $contractor = $authService->getContractorForUser((int) $user->user_id);
 
             if (!$contractor) {
                 return response()->json([
@@ -922,7 +988,7 @@ class progressUploadController extends Controller
                 if ($currentRole !== 'owner') {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Access denied. Please switch to owner role to approve progress.'
+                        'message' => 'Access denied. Please switch to the owner dashboard to approve progress.'
                     ], 403);
                 }
             }
@@ -976,10 +1042,11 @@ class progressUploadController extends Controller
                 ->select('m.contractor_id', 'mi.milestone_item_title', 'p.project_id', 'p.project_title')
                 ->first();
             if ($progInfo) {
-                $cUserId = DB::table('contractor_users')->where('contractor_id', $progInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
-                if ($cUserId) {
-                    NotificationService::create($cUserId, 'progress_approved', 'Progress Approved', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
-                }
+                $cUserId = DB::table('contractors')
+                    ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                    ->where('contractors.contractor_id', $progInfo->contractor_id)
+                    ->value('property_owners.user_id');
+                NotificationService::create((int) $cUserId, 'progress_updated', 'Progress Approved', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
                 // Remind owner to mark the milestone item complete (required next step)
                 NotificationService::create((int) $user->user_id, 'progress_updated', 'Action Required', "Progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved. Mark the milestone item as complete to proceed.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'milestones']]);
             }
@@ -1073,7 +1140,7 @@ class progressUploadController extends Controller
                 if ($currentRole !== 'owner') {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Access denied. Please switch to owner role to reject progress.'
+                        'message' => 'Access denied. Please switch to the owner dashboard to reject progress.'
                     ], 403);
                 }
             }
@@ -1128,11 +1195,11 @@ class progressUploadController extends Controller
                 ->select('m.contractor_id', 'mi.milestone_item_title', 'p.project_id', 'p.project_title')
                 ->first();
             if ($progInfo) {
-                $cUserId = DB::table('contractor_users')->where('contractor_id', $progInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
-                if ($cUserId) {
-                    $reasonNote = $reason ? " Reason: {$reason}" : '';
-                    NotificationService::create($cUserId, 'progress_rejected', 'Progress Rejected', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was rejected.{$reasonNote}", 'high', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
-                }
+                $cUserId = DB::table('contractors')
+                    ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                    ->where('contractors.contractor_id', $progInfo->contractor_id)
+                    ->value('property_owners.user_id');
+                NotificationService::create($cUserId, 'progress_rejected', 'Progress Rejected', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was rejected.{$reasonNote}", 'high', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
             }
 
             return response()->json([

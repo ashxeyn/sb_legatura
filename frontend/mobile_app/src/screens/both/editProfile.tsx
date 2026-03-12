@@ -16,8 +16,10 @@ import {
   Modal,
   Platform,
   RefreshControl,
+  Image,
   KeyboardAvoidingView,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -101,6 +103,11 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
   const [picabNumber, setPicabNumber] = useState(userData?.contractor?.picab_number || '');
   const [businessPermitNumber, setBusinessPermitNumber] = useState(userData?.contractor?.business_permit_number || '');
   const [tinNumber, setTinNumber] = useState(userData?.contractor?.tin_business_reg_number || '');
+  const [companyPhone, setCompanyPhone] = useState(userData?.contractor?.company_phone || '');
+  const [companyLogoUri, setCompanyLogoUri] = useState<string | null>(null);
+  const [companyBannerUri, setCompanyBannerUri] = useState<string | null>(null);
+  const [companyLogoServer, setCompanyLogoServer] = useState(userData?.contractor?.company_logo || '');
+  const [companyBannerServer, setCompanyBannerServer] = useState(userData?.contractor?.company_banner || '');
 
   // System Calculated Fields (Display Only)
 
@@ -330,6 +337,9 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
               setPicabNumber(c.picab_number || '');
               setBusinessPermitNumber(c.business_permit_number || '');
               setTinNumber(c.picab_number || c.tin_business_reg_number || '');
+              setCompanyPhone(c.company_phone || '');
+              setCompanyLogoServer(c.company_logo || '');
+              setCompanyBannerServer(c.company_banner || '');
               setContractorBio(c?.bio ?? merged?.bio ?? (u && u.bio) ?? '');
             }
 
@@ -459,6 +469,20 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
   };
 
   // Phone input is editable without OTP verification in this screen
+
+  const pickCompanyImage = async (type: 'logo' | 'banner') => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: type === 'logo' ? [1, 1] : [16, 9],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length) {
+      const uri = result.assets[0].uri;
+      if (type === 'logo') setCompanyLogoUri(uri);
+      else setCompanyBannerUri(uri);
+    }
+  };
 
   const handleAddressChange = () => {
     // Check if address actually changed
@@ -829,6 +853,9 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       if (companySocialMedia) formData.append('company_social_media', companySocialMedia);
       if (companyDescription) formData.append('company_description', companyDescription);
       if (servicesOffered) formData.append('services_offered', servicesOffered);
+      if (companyPhone) formData.append('company_phone', companyPhone);
+      if (companyLogoUri) formData.append('company_logo', { uri: companyLogoUri, name: 'company_logo.jpg', type: 'image/jpeg' } as any);
+      if (companyBannerUri) formData.append('company_banner', { uri: companyBannerUri, name: 'company_banner.jpg', type: 'image/jpeg' } as any);
 
       // Fields that trigger re-verification
       const reVerificationFields: Record<string, any> = {
@@ -1052,12 +1079,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
 
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 80}
-    >
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {loadingProfile ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#EC7E00" />
@@ -1304,6 +1327,16 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                     placeholderTextColor="#999"
                   />
 
+                  <Text style={styles.label}>Company Phone</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={companyPhone}
+                    onChangeText={setCompanyPhone}
+                    keyboardType="phone-pad"
+                    placeholder="09XXXXXXXXX"
+                    placeholderTextColor="#999"
+                  />
+
                   <Text style={styles.label}>Company Website</Text>
                   <TextInput
                     style={styles.input}
@@ -1333,6 +1366,59 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                     multiline
                     numberOfLines={4}
                   />
+
+                  <Text style={styles.label}>Company Logo</Text>
+                  <View style={{ alignSelf: 'flex-start' }}>
+                    <TouchableOpacity style={[styles.uploadButton, { width: 100, height: 100 }]} onPress={() => pickCompanyImage('logo')}>
+                      {companyLogoUri || companyLogoServer ? (
+                        <Image
+                          source={{ uri: companyLogoUri || `${api_config.base_url}/storage/${companyLogoServer}` }}
+                          style={{ width: '100%', height: '100%', borderRadius: 6 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Ionicons name="cloud-upload" size={28} color="#EC7E00" />
+                          <Text style={[styles.uploadHint, { textAlign: 'center' }]}>Logo{`\n`}1:1</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    {(companyLogoUri || companyLogoServer) ? (
+                      <TouchableOpacity
+                        onPress={() => { setCompanyLogoUri(null); setCompanyLogoServer(''); }}
+                        style={{ position: 'absolute', top: -8, right: -8 }}
+                      >
+                        <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+
+                  <Text style={styles.label}>Company Banner</Text>
+                  <View>
+                    <TouchableOpacity style={[styles.uploadButton, { aspectRatio: 16 / 9, height: undefined }]} onPress={() => pickCompanyImage('banner')}>
+                      {companyBannerUri || companyBannerServer ? (
+                        <Image
+                          source={{ uri: companyBannerUri || `${api_config.base_url}/storage/${companyBannerServer}` }}
+                          style={{ width: '100%', height: '100%', borderRadius: 6 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Ionicons name="cloud-upload" size={32} color="#EC7E00" />
+                          <Text style={styles.uploadText}>Tap to upload company banner</Text>
+                          <Text style={styles.uploadHint}>JPG, JPEG, PNG (16:9)</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    {(companyBannerUri || companyBannerServer) ? (
+                      <TouchableOpacity
+                        onPress={() => { setCompanyBannerUri(null); setCompanyBannerServer(''); }}
+                        style={{ position: 'absolute', top: 6, right: 6 }}
+                      >
+                        <Ionicons name="close-circle" size={26} color="#E74C3C" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
 
                   <Text style={styles.label}>Services Offered</Text>
                   <TextInput
@@ -1587,8 +1673,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       )}
 
       {/* Email and phone removed from this edit form */}
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -1808,5 +1894,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 6,
     marginBottom: -6,
+  },
+
+  /** IMAGE UPLOAD **/
+  uploadButton: {
+    borderWidth: 2,
+    borderColor: '#EC7E00',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
+  },
+  uploadPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadText: {
+    color: '#EC7E00',
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  uploadHint: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  uploadedFile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+  },
+  thumbnailImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 6,
+    backgroundColor: '#eee',
+  },
+  fileName: {
+    flex: 1,
+    color: '#333',
+    fontSize: 13,
   },
 });

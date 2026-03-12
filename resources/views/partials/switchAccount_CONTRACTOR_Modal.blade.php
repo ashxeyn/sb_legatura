@@ -467,8 +467,8 @@
                 <i class="fi fi-rr-interrogation"></i>
             </div>
         </div>
-        <h2 class="confirmation-title">Switch to Contractor?</h2>
-        <p class="confirmation-message">You are about to add the Contractor role. You can switch roles anytime from settings.</p>
+        <h2 class="confirmation-title">Add Company?</h2>
+        <p class="confirmation-message">You are about to register as a contractor. You can switch dashboards anytime from settings.</p>
         <div class="confirmation-actions">
             <button type="button" class="confirmation-cancel-btn" id="contractorConfirmCancelBtn">
                 <span>Cancel</span>

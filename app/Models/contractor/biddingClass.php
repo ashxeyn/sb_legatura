@@ -13,6 +13,7 @@ class biddingClass
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->join('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
             ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->where('projects.project_id', $projectId)
             ->where('projects.project_status', 'open')
             ->where('project_relationships.project_post_status', 'approved')
@@ -22,7 +23,7 @@ class biddingClass
                 'project_relationships.project_post_status',
                 'project_relationships.bidding_due as bidding_deadline',
                 'project_relationships.created_at',
-                    DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name")
+                    DB::raw("CONCAT(users.first_name, ' ', COALESCE(users.middle_name, ''), ' ', users.last_name) as owner_name")
                 )
                 ->first();
     }

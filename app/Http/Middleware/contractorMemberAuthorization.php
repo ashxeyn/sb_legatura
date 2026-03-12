@@ -120,51 +120,72 @@ class ContractorMemberAuthorization
 
     /**
      * Get the contractor member context for a user.
-     * Returns the contractor_users record with contractor info.
+     * Returns the contractor_staff record with contractor info.
      */
     protected function getContractorMemberContext(int $userId): ?object
     {
-        // First, try to find the user as a contractor owner (main account)
-        $contractor = DB::table('contractors')
+        // Resolve owner_id from property_owners
+        $ownerRecord = DB::table('property_owners')
             ->where('user_id', $userId)
             ->first();
 
+        if (!$ownerRecord) {
+            return null;
+        }
+
+        $ownerId = $ownerRecord->owner_id;
+
+        // First, try to find the user as a contractor owner (main account)
+        $contractor = DB::table('contractors')
+            ->where('owner_id', $ownerId)
+            ->first();
+
         if ($contractor) {
-            // User is the primary contractor account owner
-            // Get their contractor_users record
-            $memberRecord = DB::table('contractor_users')
+            // User is the primary contractor account owner.
+            // Look up their contractor_staff record only to carry extra fields,
+            // but always enforce company_role = 'owner' and is_active = 1 —
+            // the staff record may have a pending/limited role set during registration.
+            $memberRecord = DB::table('contractor_staff')
                 ->where('contractor_id', $contractor->contractor_id)
-                ->where('user_id', $userId)
-                ->where('is_deleted', 0)
+                ->where('owner_id', $ownerId)
+                ->whereNull('deletion_reason')
                 ->first();
 
             if ($memberRecord) {
+                $memberRecord->company_role   = 'owner';
+                $memberRecord->is_active      = 1;
                 $memberRecord->contractor_name = $contractor->company_name ?? null;
+                $memberRecord->user_id        = $userId;
                 return $memberRecord;
             }
 
-            // If no member record exists but they own the contractor, create a virtual owner context
+            // No staff record yet — return virtual owner context.
             return (object) [
-                'contractor_user_id' => 0,
-                'contractor_id' => $contractor->contractor_id,
-                'user_id' => $userId,
-                'role' => 'owner',
-                'is_active' => 1,
-                'is_deleted' => 0,
+                'staff_id'        => 0,
+                'contractor_id'   => $contractor->contractor_id,
+                'owner_id'        => $ownerId,
+                'user_id'         => $userId,
+                'company_role'    => 'owner',
+                'is_active'       => 1,
+                'deletion_reason' => null,
                 'contractor_name' => $contractor->company_name ?? null,
             ];
         }
 
         // User might be a team member (not the primary owner)
-        $memberRecord = DB::table('contractor_users')
-            ->join('contractors', 'contractor_users.contractor_id', '=', 'contractors.contractor_id')
-            ->where('contractor_users.user_id', $userId)
-            ->where('contractor_users.is_deleted', 0)
+        $memberRecord = DB::table('contractor_staff')
+            ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
+            ->where('contractor_staff.owner_id', $ownerId)
+            ->whereNull('contractor_staff.deletion_reason')
             ->select(
-                'contractor_users.*',
+                'contractor_staff.*',
                 'contractors.company_name as contractor_name'
             )
             ->first();
+
+        if ($memberRecord) {
+            $memberRecord->user_id = $userId;
+        }
 
         return $memberRecord;
     }

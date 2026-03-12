@@ -85,11 +85,11 @@ class authController extends Controller
 
     /**
      * Return the contractor identifier column name used in the `contractors` table.
-     * Supports legacy schemas using `user_id` and newer schemas using `owner_id`.
+     * This codebase uses `owner_id` for contractor linkage.
      */
     private function getContractorUserColumn()
     {
-        return Schema::hasColumn('contractors', 'user_id') ? 'user_id' : (Schema::hasColumn('contractors', 'owner_id') ? 'owner_id' : 'user_id');
+        return 'owner_id';
     }
 
     /**
@@ -99,9 +99,8 @@ class authController extends Controller
     private function resolveContractorIdentifier($userId)
     {
         $col = $this->getContractorUserColumn();
-        if ($col === 'user_id') return [$col, $userId];
 
-        // owner_id expected — attempt to find matching property_owners.owner_id
+        // owner_id lookup from property_owners
         try {
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             $ownerId = $owner->owner_id ?? null;
@@ -110,6 +109,26 @@ class authController extends Controller
         }
 
         return [$col, $ownerId];
+    }
+
+    /**
+     * Keep only columns that exist in the contractors table.
+     * This prevents SQL errors when running against evolving schemas.
+     */
+    private function filterContractorPayloadColumns(array $payload): array
+    {
+        if (!Schema::hasTable('contractors')) {
+            return $payload;
+        }
+
+        $safe = [];
+        foreach ($payload as $column => $value) {
+            if (Schema::hasColumn('contractors', $column)) {
+                $safe[$column] = $value;
+            }
+        }
+
+        return $safe;
     }
 
 
@@ -1001,7 +1020,7 @@ class authController extends Controller
             }
         }
 
-        // Ensure step2 defaults — and ensure names are Title Case (mobile fallback sends raw data)
+        // Ensure step2 defaults â€” and ensure names are Title Case (mobile fallback sends raw data)
         $step2['first_name'] = !empty($step2['first_name']) ? ucwords(strtolower($step2['first_name'])) : null;
         $step2['middle_name'] = !empty($step2['middle_name']) ? ucwords(strtolower($step2['middle_name'])) : null;
         $step2['last_name'] = !empty($step2['last_name']) ? ucwords(strtolower($step2['last_name'])) : null;
@@ -1025,7 +1044,7 @@ class authController extends Controller
         }
 
         // Recover OTP hash from cache BEFORE validation (mobile/stateless clients
-        // never have otp_hash in step2_data — it is server-side only)
+        // never have otp_hash in step2_data â€” it is server-side only)
         if (empty($step2['otp_hash'])) {
             $foundHash = null;
             try {
@@ -1305,7 +1324,7 @@ class authController extends Controller
         // Age
         $age = $this->authService->calculateAge($request->date_of_birth);
 
-        // Combine address — resolve PSGC codes to actual place names
+        // Combine address â€” resolve PSGC codes to actual place names
         $provinceName = $this->psgcService->resolveCodeToName($request->owner_address_province ?? '', 'province');
         $cityName = $this->psgcService->resolveCodeToName($request->owner_address_city ?? '', 'city');
         $barangayName = $this->psgcService->resolveCodeToName($request->owner_address_barangay ?? '', 'barangay');
@@ -1678,7 +1697,7 @@ class authController extends Controller
                 \Log::warning('Failed to clear owner OTP attempts: ' . $e->getMessage());
             }
 
-            // Do NOT delete the OTP cache entries yet — stateless mobile clients
+            // Do NOT delete the OTP cache entries yet â€” stateless mobile clients
             // need them during the final step to recover the otp_hash (they have
             // no session).  Instead, mark them as verified so the entries remain
             // until they expire naturally or the final step consumes them.
@@ -1700,7 +1719,7 @@ class authController extends Controller
                         Cache::put('signup_otp_token_owner_' . $otpToken, $existing, now()->addSeconds($verifiedTtl));
                     }
                 }
-                // IP mapping can stay as-is — it's just a pointer to the email key
+                // IP mapping can stay as-is â€” it's just a pointer to the email key
             } catch (\Exception $e) {
                 \Log::warning('Failed to update owner OTP cache after verify: ' . $e->getMessage());
             }
@@ -1917,7 +1936,7 @@ class authController extends Controller
         $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array) $step2 : []);
         $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array) $step4 : []);
 
-        // Provide defaults — and ensure names are Title Case (mobile fallback sends raw data)
+        // Provide defaults â€” and ensure names are Title Case (mobile fallback sends raw data)
         $step1['first_name'] = !empty($step1['first_name'] ?? '') ? ucwords(strtolower($step1['first_name'])) : '';
         $step1['last_name'] = !empty($step1['last_name'] ?? '') ? ucwords(strtolower($step1['last_name'])) : '';
         $step1['middle_name'] = !empty($step1['middle_name']) ? ucwords(strtolower($step1['middle_name'])) : null;
@@ -1976,7 +1995,7 @@ class authController extends Controller
         $step4['police_clearance'] = $step4['police_clearance'] ?? null;
 
         // Recover OTP hash from cache BEFORE validation (mobile/stateless clients
-        // never have otp_hash in step2_data — it is server-side only)
+        // never have otp_hash in step2_data â€” it is server-side only)
         if (empty($step2['otp_hash'])) {
             $foundHash = null;
             try {
@@ -2490,35 +2509,19 @@ class authController extends Controller
             'user' => $user ? (array) $user : null,
         ];
 
-        // Always attempt to include contractor and property_owner related rows when present
-        // Prefer new contractor_staff table but fall back to contractor_users for legacy installs.
+        // Always attempt to include contractor and property_owner related rows when present.
+        // Contractor identity is linked through owner_id + contractor_staff.
         try {
-            // Use schema-agnostic resolver to avoid querying a non-existent `user_id` column
-            $contractor = $this->getContractorByUserId($userId);
-
+            $ownerRecord = DB::table('property_owners')->where('user_id', $userId)->first();
+            $ownerId = $ownerRecord ? $ownerRecord->owner_id : null;
+            $contractor = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
             if ($contractor) {
+                $contractorStaff = DB::table('contractor_staff')
+                    ->where('contractor_id', $contractor->contractor_id)
+                    ->where('owner_id', $ownerId)
+                    ->first();
                 $data['contractor'] = (array) $contractor;
-                $contractorUser = null;
-
-                if (Schema::hasTable('contractor_users')) {
-                    $contractorUser = DB::table('contractor_users')->where('user_id', $userId)->first();
-                } elseif (Schema::hasTable('contractor_staff')) {
-                    try {
-                        $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
-                        $ownerId = $ownerRow->owner_id ?? null;
-                        if ($ownerId) {
-                            $q = DB::table('contractor_staff')->where('owner_id', $ownerId);
-                            if (!empty($contractor->contractor_id)) {
-                                $q->where('contractor_id', $contractor->contractor_id);
-                            }
-                            $contractorUser = $q->first();
-                        }
-                    } catch (\Throwable $e) {
-                        Log::warning('getExistingUserData contractor_staff fetch failed: ' . $e->getMessage());
-                    }
-                }
-
-                $data['contractor_user'] = $contractorUser ? (array) $contractorUser : null;
+                $data['contractor_staff'] = $contractorStaff ? (array) $contractorStaff : null;
             }
         } catch (\Throwable $e) {
             Log::warning('getExistingUserData contractor fetch failed: ' . $e->getMessage());
@@ -2558,6 +2561,26 @@ class authController extends Controller
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
         }
 
+        $userIdForGuard = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+        $ownerIdForGuard = $userIdForGuard ? DB::table('property_owners')->where('user_id', $userIdForGuard)->value('owner_id') : null;
+        if ($ownerIdForGuard) {
+            $activeStaffLink = DB::table('contractor_staff')
+                ->where('owner_id', $ownerIdForGuard)
+                ->where('is_active', 1)
+                ->where('is_suspended', 0)
+                ->whereNull('deletion_reason')
+                ->where('company_role', '!=', 'owner')
+                ->first();
+
+            if ($activeStaffLink) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are already linked to a contractor company. Creating another contractor company profile is not allowed.',
+                    'error_code' => 'STAFF_COMPANY_LINKED'
+                ], 403);
+            }
+        }
+
         // For switch mode, step1 can be either company info OR account info
         // Check what fields are being sent
         $step1Data = Session::get('switch_contractor_step1', []);
@@ -2577,7 +2600,8 @@ class authController extends Controller
                 'business_address_province',
                 'business_address_postal',
                 'company_website',
-                'company_social_media'
+                'company_social_media',
+                'company_description'
             ]);
 
             // Build business address
@@ -2597,7 +2621,8 @@ class authController extends Controller
                 'services_offered' => $companyData['services_offered'],
                 'business_address' => $businessAddress,
                 'company_website' => $companyData['company_website'] ?? null,
-                'company_social_media' => $companyData['company_social_media'] ?? null
+                'company_social_media' => $companyData['company_social_media'] ?? null,
+                'company_description' => $companyData['company_description'] ?? null
             ]);
             // Accept optional company logo/banner uploads in switch mode
             try {
@@ -2646,6 +2671,26 @@ class authController extends Controller
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
         }
 
+        $userIdForGuard = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+        $ownerIdForGuard = $userIdForGuard ? DB::table('property_owners')->where('user_id', $userIdForGuard)->value('owner_id') : null;
+        if ($ownerIdForGuard) {
+            $activeStaffLink = DB::table('contractor_staff')
+                ->where('owner_id', $ownerIdForGuard)
+                ->where('is_active', 1)
+                ->where('is_suspended', 0)
+                ->whereNull('deletion_reason')
+                ->where('company_role', '!=', 'owner')
+                ->first();
+
+            if ($activeStaffLink) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are already linked to a contractor company. Creating another contractor company profile is not allowed.',
+                    'error_code' => 'STAFF_COMPANY_LINKED'
+                ], 403);
+            }
+        }
+
         $validated = $request->validated();
 
         if ($request->hasFile('dti_sec_registration_photo')) {
@@ -2653,6 +2698,28 @@ class authController extends Controller
             $filename = time() . '_dti_sec_' . $file->getClientOriginalName();
             $path = $file->storeAs('contractor_documents', $filename, 'public');
             $validated['dti_sec_registration_photo'] = $path;
+        }
+
+        if ($request->hasFile('company_logo')) {
+            $file = $request->file('company_logo');
+            $filename = time() . '_logo_' . $file->getClientOriginalName();
+            $path = $file->storeAs('profile_pics', $filename, 'public');
+            $validated['company_logo'] = $path;
+        }
+
+        if ($request->hasFile('company_banner')) {
+            $file = $request->file('company_banner');
+            $filename = time() . '_banner_' . $file->getClientOriginalName();
+            $path = $file->storeAs('profile_pics', $filename, 'public');
+            $validated['company_banner'] = $path;
+        }
+
+        // For web flow: also update step1 session so final can read logo/banner from $step1
+        if (!empty($validated['company_logo']) || !empty($validated['company_banner'])) {
+            $s1 = Session::get('switch_contractor_step1', []);
+            if (!empty($validated['company_logo'])) $s1['company_logo'] = $validated['company_logo'];
+            if (!empty($validated['company_banner'])) $s1['company_banner'] = $validated['company_banner'];
+            Session::put('switch_contractor_step1', $s1);
         }
 
         Session::put('switch_contractor_step2', $validated);
@@ -2668,6 +2735,8 @@ class authController extends Controller
                 'business_permit_expiration' => $validated['business_permit_expiration'] ?? null,
                 'tin_business_reg_number' => $validated['tin_business_reg_number'] ?? null,
                 'dti_sec_registration_photo' => $validated['dti_sec_registration_photo'] ?? null,
+                'company_logo' => $validated['company_logo'] ?? null,
+                'company_banner' => $validated['company_banner'] ?? null,
             ]
         ]);
     }
@@ -2691,6 +2760,26 @@ class authController extends Controller
 
         if (!$user) {
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
+        }
+
+        $userIdForGuard = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+        $ownerIdForGuard = $userIdForGuard ? DB::table('property_owners')->where('user_id', $userIdForGuard)->value('owner_id') : null;
+        if ($ownerIdForGuard) {
+            $activeStaffLink = DB::table('contractor_staff')
+                ->where('owner_id', $ownerIdForGuard)
+                ->where('is_active', 1)
+                ->where('is_suspended', 0)
+                ->whereNull('deletion_reason')
+                ->where('company_role', '!=', 'owner')
+                ->first();
+
+            if ($activeStaffLink) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are already linked to a contractor company. Creating another contractor company profile is not allowed.',
+                    'error_code' => 'STAFF_COMPANY_LINKED'
+                ], 403);
+            }
         }
 
         // For mobile API, allow passing step data directly in request
@@ -2783,6 +2872,7 @@ class authController extends Controller
             }
 
             $ownerData = DB::table('property_owners')->where('user_id', $userId)->first();
+            $userPhone = is_object($user) ? ($user->phone_number ?? '') : ($user['phone_number'] ?? '');
 
             // If a contractors row already exists for this user, update it and set verification back to pending.
             list($col, $lookupId) = $this->resolveContractorIdentifier($userId);
@@ -2792,16 +2882,19 @@ class authController extends Controller
             }
 
             if ($existingContractor) {
-                DB::table('contractors')->where($col, $lookupId)->update([
+                $updatePayload = [
                     'company_name' => $step1['company_name'] ?? '',
                     'company_logo' => $step1['company_logo'] ?? null,
                     'company_banner' => $step1['company_banner'] ?? null,
                     'years_of_experience' => $step1['years_of_experience'] ?? 0,
                     'type_id' => $step1['type_id'] ?? null,
+                    'occupation_id' => $step1['type_id'] ?? null,
                     'contractor_type_other' => $step1['contractor_type_other'] ?? null,
                     'services_offered' => $step1['services_offered'] ?? '',
                     'business_address' => $businessAddress,
                     'company_email' => $userEmail,
+                    'phone_number' => $userPhone,
+                    'company_description' => $step1['company_description'] ?? null,
                     'company_website' => $step1['company_website'] ?? null,
                     'company_social_media' => $step1['company_social_media'] ?? null,
                     'picab_number' => $step2['picab_number'] ?? '',
@@ -2816,7 +2909,10 @@ class authController extends Controller
                     // Update timestamps: set created_at to now to reflect the new application time
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
+
+                $updatePayload = $this->filterContractorPayloadColumns($updatePayload);
+                DB::table('contractors')->where($col, $lookupId)->update($updatePayload);
                 $contractorId = $existingContractor->contractor_id;
             } else {
                 // Build payload dynamically depending on which identifier column exists
@@ -2826,10 +2922,13 @@ class authController extends Controller
                     'company_banner' => $step1['company_banner'] ?? null,
                     'years_of_experience' => $step1['years_of_experience'] ?? 0,
                     'type_id' => $step1['type_id'] ?? null,
+                    'occupation_id' => $step1['type_id'] ?? null,
                     'contractor_type_other' => $step1['contractor_type_other'] ?? null,
                     'services_offered' => $step1['services_offered'] ?? '',
                     'business_address' => $businessAddress,
                     'company_email' => $userEmail,
+                    'phone_number' => $userPhone,
+                    'company_description' => $step1['company_description'] ?? null,
                     'company_website' => $step1['company_website'] ?? null,
                     'company_social_media' => $step1['company_social_media'] ?? null,
                     'picab_number' => $step2['picab_number'] ?? '',
@@ -2856,82 +2955,44 @@ class authController extends Controller
                     $payload['user_id'] = $userId;
                 }
 
+                $payload = $this->filterContractorPayloadColumns($payload);
+
                 $contractorId = DB::table('contractors')->insertGetId($payload);
             }
 
             if ($ownerData) {
-                // Prefer submitted authorized representative fields from step2 if provided; otherwise fall back to property owner data
-                $auth_fname = $step2['first_name'] ?? $ownerData->first_name ?? '';
-                $auth_mname = $step2['middle_name'] ?? $ownerData->middle_name ?? null;
-                $auth_lname = $step2['last_name'] ?? $ownerData->last_name ?? '';
-                $auth_phone = $ownerData->phone_number ?? (is_object($user) ? ($user->phone_number ?? null) : ($user['phone_number'] ?? null)) ?? '';
+                // Update user's name from step2 if provided, or fall back to property owner's user record
+                $auth_fname = $step2['first_name'] ?? (is_object($user) ? ($user->first_name ?? '') : ($user['first_name'] ?? ''));
+                $auth_mname = $step2['middle_name'] ?? (is_object($user) ? ($user->middle_name ?? null) : ($user['middle_name'] ?? null));
+                $auth_lname = $step2['last_name'] ?? (is_object($user) ? ($user->last_name ?? '') : ($user['last_name'] ?? ''));
+                $auth_phone = (is_object($user) ? ($user->phone_number ?? null) : ($user['phone_number'] ?? null)) ?? '';
 
-                // Prefer new contractor_staff table (stores owner_id) when available
-                if (Schema::hasTable('contractor_staff')) {
-                    try {
-                        $ownerId = $ownerData->owner_id ?? null;
-                        $existingStaff = null;
-                        if ($ownerId) {
-                            $existingStaff = DB::table('contractor_staff')
-                                ->where('owner_id', $ownerId)
-                                ->where('contractor_id', $contractorId)
-                                ->first();
-                        }
+                // Update names on users table
+                DB::table('users')->where('user_id', $userId)->update([
+                    'first_name' => $auth_fname,
+                    'middle_name' => $auth_mname,
+                    'last_name' => $auth_lname,
+                ]);
 
-                        if ($existingStaff) {
-                            DB::table('contractor_staff')
-                                ->where('contractor_id', $contractorId)
-                                ->where('owner_id', $ownerId)
-                                ->update([
-                                    'is_active' => 0,
-                                    'company_role' => 'representative'
-                                ]);
-                        } else {
-                            DB::table('contractor_staff')->insert([
-                                'contractor_id' => $contractorId,
-                                'owner_id' => $ownerId,
-                                'company_role' => 'representative',
-                                'is_active' => 0,
-                                'created_at' => now(),
-                            ]);
-                        }
-                    } catch (\Throwable $e) {
-                        Log::warning('Failed to insert/update contractor_staff: ' . $e->getMessage());
-                        // Fall back to legacy table below if available
-                    }
-                }
-
-                // Backwards-compatible: update/insert legacy contractor_users when present
-                if (Schema::hasTable('contractor_users')) {
-                    $existingContractorUser = DB::table('contractor_users')->where('user_id', $userId)->first();
-                    if ($existingContractorUser) {
-                        DB::table('contractor_users')->where('user_id', $userId)->update([
-                            'contractor_id' => $contractorId,
-                            'authorized_rep_lname' => $auth_lname,
-                            'authorized_rep_mname' => $auth_mname,
-                            'authorized_rep_fname' => $auth_fname,
-                            'phone_number' => $auth_phone,
-                            'role' => 'owner',
-                            'is_active' => 0,
-                        ]);
-                    } else {
-                        DB::table('contractor_users')->insert([
-                            'contractor_id' => $contractorId,
-                            'user_id' => $userId,
-                            'authorized_rep_lname' => $auth_lname,
-                            'authorized_rep_mname' => $auth_mname,
-                            'authorized_rep_fname' => $auth_fname,
-                            'phone_number' => $auth_phone,
-                            'role' => 'owner',
-                            'is_active' => 0,
-                            'created_at' => now(),
-                        ]);
-                    }
+                $ownerId = $ownerData->owner_id;
+                $existingStaff = DB::table('contractor_staff')
+                    ->where('owner_id', $ownerId)
+                    ->where('contractor_id', $contractorId)
+                    ->first();
+                if ($existingStaff) {
+                    DB::table('contractor_staff')->where('staff_id', $existingStaff->staff_id)->update([
+                        'contractor_id' => $contractorId,
+                        'company_role' => 'manager',
+                        'is_active' => 0,
+                    ]);
                 } else {
-                    // If neither table exists, log and continue; avoid throwing
-                    if (!Schema::hasTable('contractor_staff')) {
-                        Log::warning('No contractor_users or contractor_staff table found; skipping contractor member insert.');
-                    }
+                    DB::table('contractor_staff')->insert([
+                        'contractor_id' => $contractorId,
+                        'owner_id' => $ownerId,
+                        'company_role' => 'manager',
+                        'is_active' => 0,
+                        'created_at' => now(),
+                    ]);
                 }
             }
 
@@ -2957,7 +3018,8 @@ class authController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'errors' => ['An error occurred: ' . $e->getMessage()]], 500);
+            $err = 'An error occurred: ' . $e->getMessage();
+            return response()->json(['success' => false, 'message' => $err, 'errors' => [$err]], 500);
         }
     }
 
@@ -3180,6 +3242,9 @@ class authController extends Controller
         try {
             DB::beginTransaction();
 
+            // Fetch existing owner record (may be null for first-time owner switch)
+            $existingOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+
             // Prepare variables for any uploaded images
             $profilePicPath = null;
             $coverPhotoPath = null;
@@ -3198,32 +3263,11 @@ class authController extends Controller
                 $coverPhotoPath = $file->storeAs('cover_photos', $filename, 'public');
             }
 
-            // Get existing contractor user data (optional fallback)
-            $contractorUser = null;
-            if (Schema::hasTable('contractor_users')) {
-                $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
-            } elseif (Schema::hasTable('contractor_staff')) {
-                try {
-                    $ownerRow = DB::table('property_owners')->where('user_id', $user->user_id)->first();
-                    $ownerId = $ownerRow->owner_id ?? null;
-                    if ($ownerId) {
-                        $contractorUser = DB::table('contractor_staff')->where('owner_id', $ownerId)->first();
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('switchOwnerFinal contractor_staff lookup failed: ' . $e->getMessage());
-                }
-            }
-
-            // Create or update property owner record using validated top-level fields with fallbacks
-            $existingOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            // Names are stored on users table; use validated values or fallback to existing user data
             $ownerPayload = [
                 'user_id' => $user->user_id,
                 'profile_pic' => $profilePicPath ?? ($existingOwner->profile_pic ?? null),
                 'cover_photo' => $coverPhotoPath ?? ($existingOwner->cover_photo ?? null),
-                'last_name' => $validated['last_name'] ?? ($contractorUser->authorized_rep_lname ?? null),
-                'middle_name' => $validated['middle_name'] ?? ($contractorUser->authorized_rep_mname ?? null),
-                'first_name' => $validated['first_name'] ?? ($contractorUser->authorized_rep_fname ?? null),
-                'phone_number' => $validated['phone_number'] ?? ($contractorUser->phone_number ?? null),
                 'valid_id_id' => $docs['valid_id_id'] ?? null,
                 'valid_id_back_photo' => $docs['valid_id_back_photo'] ?? null,
                 'valid_id_photo' => $docs['valid_id_photo'] ?? null,
@@ -3237,6 +3281,16 @@ class authController extends Controller
                 'verification_date' => null,
                 'created_at' => now(),
             ];
+
+            // Update names on users table
+            $nameUpdate = [];
+            if (!empty($validated['first_name'])) $nameUpdate['first_name'] = $validated['first_name'];
+            if (array_key_exists('middle_name', $validated)) $nameUpdate['middle_name'] = $validated['middle_name'];
+            if (!empty($validated['last_name'])) $nameUpdate['last_name'] = $validated['last_name'];
+            if (!empty($validated['phone_number'])) $nameUpdate['phone_number'] = $validated['phone_number'];
+            if (!empty($nameUpdate)) {
+                DB::table('users')->where('user_id', $user->user_id)->update($nameUpdate);
+            }
 
             if ($existingOwner) {
                 // Update existing owner record and set verification back to pending
@@ -3261,7 +3315,7 @@ class authController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success'              => true,
-                    'message'              => 'Request submitted — awaiting admin approval',
+                    'message'              => 'Request submitted - awaiting admin approval',
                     'user_type'            => $updatedUser->user_type ?? ($user->user_type ?? 'property_owner'),
                     'current_role'         => 'owner',
                     'is_role_addition'     => true,
@@ -3269,7 +3323,7 @@ class authController extends Controller
                     'redirect_url'         => '/contractor/homepage'
                 ], 201);
             } else {
-                return response()->json(['success' => true, 'message' => 'Request submitted — awaiting admin approval', 'redirect' => '/contractor/homepage']);
+                return response()->json(['success' => true, 'message' => 'Request submitted - awaiting admin approval', 'redirect' => '/contractor/homepage']);
             }
 
         } catch (\Exception $e) {
@@ -3744,11 +3798,11 @@ class authController extends Controller
 
                 /**
                  * DASHBOARD ROUTING RULES:
-                 * - user_type === 'staff' → contractor dashboard (staff are contractor team members)
-                 * - user_type === 'contractor' → contractor dashboard
-                 * - determinedRole === 'contractor' → contractor dashboard
-                 * - user_type === 'property_owner' → property_owner dashboard
-                 * - user_type === 'both' → property_owner dashboard (default)
+                 * - user_type === 'staff' â†’ contractor dashboard (staff are contractor team members)
+                 * - user_type === 'contractor' â†’ contractor dashboard
+                 * - determinedRole === 'contractor' â†’ contractor dashboard
+                 * - user_type === 'property_owner' â†’ property_owner dashboard
+                 * - user_type === 'both' â†’ property_owner dashboard (default)
                  */
                 $isContractorUser = $userData->user_type === 'staff'
                     || $userData->user_type === 'contractor'
@@ -3772,40 +3826,8 @@ class authController extends Controller
                     // Always set determinedRole for contractor/staff users
                     $responseData['determinedRole'] = 'contractor';
 
-                    // For staff users, attach their real name from contractor_users (legacy) or best-effort from contractor_staff/property_owners
-                    if ($userData->user_type === 'staff') {
-                        if (Schema::hasTable('contractor_users')) {
-                            $staffLink = \DB::table('contractor_users')
-                                ->where('user_id', $userId)
-                                ->first(['authorized_rep_fname', 'authorized_rep_mname', 'authorized_rep_lname']);
-                            if ($staffLink) {
-                                $userData->first_name  = $staffLink->authorized_rep_fname;
-                                $userData->middle_name = $staffLink->authorized_rep_mname;
-                                $userData->last_name   = $staffLink->authorized_rep_lname;
-                                $responseData['user']  = $userData;
-                            }
-                        } elseif (Schema::hasTable('contractor_staff')) {
-                            try {
-                                // Best-effort: contractor_staff links to owner_id, try to map owner info
-                                $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
-                                $ownerId = $ownerRow->owner_id ?? null;
-                                if ($ownerId) {
-                                    $staffRow = DB::table('contractor_staff')->where('owner_id', $ownerId)->first();
-                                    if ($staffRow) {
-                                        $owner = DB::table('property_owners')->where('owner_id', $ownerId)->first();
-                                        if ($owner) {
-                                            $userData->first_name  = $owner->first_name ?? $userData->first_name;
-                                            $userData->middle_name = $owner->middle_name ?? $userData->middle_name;
-                                            $userData->last_name   = $owner->last_name ?? $userData->last_name;
-                                            $responseData['user']  = $userData;
-                                        }
-                                    }
-                                }
-                            } catch (\Throwable $e) {
-                                \Log::warning('apiLogin contractor_staff lookup failed: ' . $e->getMessage());
-                            }
-                        }
-                    }
+                    // For staff users, their names are already on the users table
+                    // No need for additional lookup - names are in users.first_name/last_name/middle_name
 
                     if ($memberContext) {
                         $responseData['contractor_member'] = $memberContext;
@@ -3822,8 +3844,8 @@ class authController extends Controller
                             ], 403);
                         }
                     } else {
-                        // Staff user without contractor_users record - log warning but allow login
-                        \Illuminate\Support\Facades\Log::warning('Staff user without contractor_users record', [
+                        // Staff user without contractor_staff record - log warning but allow login
+                        \Illuminate\Support\Facades\Log::warning('Staff user without contractor_staff record', [
                             'user_id' => $userId,
                             'username' => $userData->username ?? null
                         ]);
@@ -3983,7 +4005,7 @@ class authController extends Controller
             }
 
             // Update password (changing away from the default automatically
-            // clears the "must change" state — no flag column needed).
+            // clears the "must change" state â€” no flag column needed).
             $user->password_hash = bcrypt($request->new_password);
             $user->updated_at = now();
             $user->save();

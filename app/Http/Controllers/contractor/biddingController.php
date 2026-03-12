@@ -247,8 +247,24 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not authenticated.'], 401);
             }
 
-            // Resolve contractor (schema-agnostic)
-            $contractor = $this->resolveContractorForUser($user);
+            // Get contractor info via property_owners
+            $bOwnerId = DB::table('property_owners')->where('user_id', $user->user_id)->value('owner_id');
+            $contractor = $bOwnerId ? DB::table('contractors')->where('owner_id', $bOwnerId)->first() : null;
+
+            // Also check staff membership (representative) for mobile
+            if (!$contractor && $bOwnerId) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $bOwnerId)
+                    ->where('is_active', 1)
+                    ->whereNull('deletion_reason')
+                    ->first();
+
+                if ($staffRecord) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $staffRecord->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
@@ -401,8 +417,23 @@ class biddingController extends Controller
                 ], 403);
             }
 
-            // Resolve contractor context (schema-agnostic)
-            $contractor = $this->resolveContractorForUser($userId);
+            // Resolve contractor context (owner account or active staff member)
+            $bOwnerId2 = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $bOwnerId2 ? DB::table('contractors')->where('owner_id', $bOwnerId2)->first() : null;
+
+            if (!$contractor && $bOwnerId2) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $bOwnerId2)
+                    ->where('is_active', 1)
+                    ->whereNull('deletion_reason')
+                    ->first();
+
+                if ($staffRecord) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $staffRecord->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([
@@ -509,7 +540,6 @@ class biddingController extends Controller
                     'b.bid_status',
                     'b.submitted_at',
                     'c.company_name',
-                    'c.company_phone',
                     'c.company_email',
                     'c.company_website',
                     'c.years_of_experience',
@@ -579,6 +609,16 @@ class biddingController extends Controller
                 ], 400);
             }
 
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateBiddingAccess((int) $userId);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_BIDDING'
+                ], 403);
+            }
+
             $eligibility = \App\Models\subs\platformPaymentClass::checkBidEligibility((int) $userId);
 
             return response()->json([
@@ -621,8 +661,25 @@ class biddingController extends Controller
                 ], 403);
             }
 
-            // Resolve contractor context (supports multiple schema variants)
-            $contractor = $this->resolveContractorForUser($userId);
+            // Get contractor info - check both direct contractor ownership and staff membership (for representatives)
+            $bOwnerId3 = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $bOwnerId3 ? DB::table('contractors')->where('owner_id', $bOwnerId3)->first() : null;
+
+            // If not a direct contractor owner, check if user is a staff member (representative)
+            if (!$contractor && $bOwnerId3) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $bOwnerId3)
+                    ->where('is_active', 1)
+                    ->whereNull('deletion_reason')
+                    ->first();
+
+                if ($staffRecord) {
+                    // Get the contractor this staff member belongs to
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $staffRecord->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([
@@ -839,8 +896,33 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Resolve contractor context (schema-agnostic)
-            $contractor = $this->resolveContractorForUser($userId);
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateBiddingAccess((int) $userId);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_BIDDING'
+                ], 403);
+            }
+
+            // Get contractor info - check both direct contractor ownership and staff membership
+            $bOwnerId4 = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $bOwnerId4 ? DB::table('contractors')->where('owner_id', $bOwnerId4)->first() : null;
+
+            if (!$contractor && $bOwnerId4) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $bOwnerId4)
+                    ->where('is_active', 1)
+                    ->whereNull('deletion_reason')
+                    ->first();
+
+                if ($staffRecord) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $staffRecord->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([
@@ -900,8 +982,35 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Resolve contractor context (schema-agnostic)
-            $contractor = $this->resolveContractorForUser($userId);
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateFinancialAccess((int) $userId);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_FINANCIAL_ACCESS'
+                ], 403);
+            }
+
+            // Get contractor info - check both direct contractor ownership and staff membership
+            $bOwnerId5 = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $contractor = $bOwnerId5 ? DB::table('contractors')->where('owner_id', $bOwnerId5)->first() : null;
+
+            // If not a direct contractor owner, check if user is a staff member
+            if (!$contractor && $bOwnerId5) {
+                $staffRecord = DB::table('contractor_staff')
+                    ->where('owner_id', $bOwnerId5)
+                    ->where('is_active', 1)
+                    ->whereNull('deletion_reason')
+                    ->first();
+
+                if ($staffRecord) {
+                    // Get the contractor this staff member belongs to
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $staffRecord->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([

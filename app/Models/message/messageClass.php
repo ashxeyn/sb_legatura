@@ -456,19 +456,16 @@ class messageClass extends Model
                 $name = !empty($fullName) ? ($fullName) : ($profile->username ?? $name);
             }
         } elseif ($type === 'contractor' || $type === 'staff') {
-            // Get contractor through property_owners
-            $contractor = DB::table('contractors as c')
-                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
-                ->where('po.user_id', $userId)
-                ->first();
-            if ($contractor) {
-                $name = $contractor->company_name ?? $name;
+            $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            $profile = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
+            if ($profile) {
+                $name = $profile->company_name ?? $name;
             }
         } elseif ($type === 'owner' || $type === 'property_owner') {
             $profile = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($profile) {
-                // Get names from users table
-                $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+                $userRecord = DB::table('users')->where('user_id', $userId)->first();
+                $fullName = trim(($userRecord->first_name ?? '') . ' ' . ($userRecord->last_name ?? ''));
                 $name = !empty($fullName) ? $fullName : $name;
                 // Get profile pic from property_owners
                 if (!empty($profile->profile_pic)) {

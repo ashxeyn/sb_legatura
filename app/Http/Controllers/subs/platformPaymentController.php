@@ -65,19 +65,52 @@ class platformPaymentController extends Controller
             }
         }
 
-        // For 'both' users, check if they have a contractor record to determine default
-        // Also check if user has contractor record as final fallback
+        // Determine whether subscription plans should be loaded in contractor context.
+        // Representatives/staff should see contractor plans even if they do not own the contractor record.
         $isContractor = false;
+        $ownerId = null;
+        if ($userId) {
+            try {
+                $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+            } catch (\Throwable $e) {
+                $ownerId = null;
+            }
+        }
+
         if ($role === 'contractor') {
             $isContractor = true;
         } elseif ($role === 'both' && $userId) {
             // Check current_role session or default to contractor for 'both' users
             $currentRole = Session::get('current_role');
             $isContractor = ($currentRole === 'contractor' || !$currentRole);
-        } elseif ($userId && !$role) {
-            // No role detected - check if user has a contractor record (schema-agnostic)
-            $hasContractor = (new \App\Services\ProfileService())->getContractorByUserId($userId) ? true : false;
-            $isContractor = $hasContractor;
+        } else {
+            // For property_owner users or unclear role, treat as contractor when:
+            // 1) they own a contractor company, OR
+            // 2) they are an active contractor staff member (e.g., representative).
+            if ($ownerId) {
+                try {
+                    $ownsContractor = DB::table('contractors')->where('owner_id', $ownerId)->exists();
+                    $activeStaffMembership = DB::table('contractor_staff')
+                        ->where('owner_id', $ownerId)
+                        ->whereNull('deletion_reason')
+                        ->where(function ($q) {
+                            $q->where('is_active', 1)
+                              ->orWhere('is_active', true)
+                              ->orWhere('is_active', '1');
+                        })
+                        ->where(function ($q) {
+                            $q->whereNull('is_suspended')
+                              ->orWhere('is_suspended', 0)
+                              ->orWhere('is_suspended', false)
+                              ->orWhere('is_suspended', '0');
+                        })
+                        ->exists();
+
+                    $isContractor = $ownsContractor || $activeStaffMembership;
+                } catch (\Throwable $e) {
+                    $isContractor = false;
+                }
+            }
         }
 
         $plansQuery = DB::table('subscription_plans')

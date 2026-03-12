@@ -11,23 +11,27 @@ class contractorClass
 
 	public function getContractorByUserId($userId)
 	{
-		return DB::table('contractors')
-			->where('user_id', $userId)
-			->first();
+		$ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+		if (!$ownerId) return null;
+		return DB::table('contractors')->where('owner_id', $ownerId)->first();
 	}
 
 	public function getContractorUserByUserId($userId)
 	{
-		return DB::table('contractor_users')
-			->where('user_id', $userId)
-			->first();
+		$ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+		return $ownerId ? DB::table('contractor_staff')
+			->where('owner_id', $ownerId)
+			->where('is_active', 1)
+			->whereNull('deletion_reason')
+			->first() : null;
 	}
 
 	public function projectBelongsToContractor($projectId, $contractorId)
 	{
-		$project = DB::table('projects')
-			->where('project_id', $projectId)
-			->where('selected_contractor_id', $contractorId)
+		$project = DB::table('projects as p')
+			->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+			->where('p.project_id', $projectId)
+			->where('pr.selected_contractor_id', $contractorId)
 			->first();
 
 		if ($project) {

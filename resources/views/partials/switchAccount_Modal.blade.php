@@ -6,7 +6,7 @@
         <div class="switch-account-modal-header">
             <h2 class="switch-account-modal-title">
                 <i class="fi fi-rr-refresh"></i>
-                Switch Account
+                Company Management
             </h2>
             <button class="switch-account-close-btn" id="closeSwitchAccountModalBtn" aria-label="Close modal">
                 <i class="fi fi-rr-cross"></i>
@@ -20,9 +20,9 @@
                 <div class="switch-intro-icon">
                     <i class="fi fi-rr-user-gear"></i>
                 </div>
-                <h3 class="switch-intro-title">Choose Account Type</h3>
+                <h3 class="switch-intro-title">Manage Your Dashboards</h3>
                 <p class="switch-intro-description">
-                    Select which account you'd like to switch to. Your data and progress will be saved.
+                    Select which dashboard you'd like to switch to. Your data and progress will be saved.
                 </p>
             </div>
 
@@ -64,7 +64,7 @@
                     <div class="account-card-footer">
                         <button type="button" class="account-switch-btn owner-btn" data-target="owner">
                             <i class="fi fi-rr-arrow-right"></i>
-                            <span>Switch to Property Owner</span>
+                            <span>Switch to Owner Dashboard</span>
                         </button>
                     </div>
                 </div>
@@ -104,7 +104,7 @@
                     <div class="account-card-footer">
                         <button type="button" class="account-switch-btn contractor-btn" data-target="contractor">
                             <i class="fi fi-rr-arrow-right"></i>
-                            <span>Switch to Contractor</span>
+                            <span>Switch to Contractor Dashboard</span>
                         </button>
                     </div>
                 </div>
@@ -114,9 +114,9 @@
             <div class="switch-info-note">
                 <i class="fi fi-rr-info"></i>
                 <div class="switch-info-content">
-                    <p class="switch-info-title">Switching Accounts</p>
+                    <p class="switch-info-title">Switching Dashboards</p>
                     <p class="switch-info-text">
-                        When you switch accounts, your current session will be saved. You can switch back anytime
+                        When you switch dashboards, your current session will be saved. You can switch back anytime
                         without losing any data.
                     </p>
                 </div>
@@ -137,7 +137,7 @@
 <div id="switchAccountLoading" class="switch-loading-overlay hidden">
     <div class="switch-loading-content">
         <div class="switch-loading-spinner"></div>
-        <h3 class="switch-loading-title">Switching Account...</h3>
+        <h3 class="switch-loading-title">Switching Dashboard...</h3>
         <p class="switch-loading-text">Please wait while we prepare your workspace.</p>
     </div>
 </div>

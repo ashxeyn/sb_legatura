@@ -189,12 +189,12 @@ class dashboardController extends Controller
         $currentRole = $activeRole ?? session('current_role', $user->user_type ?? null);
 
         if ($currentRole === 'owner') {
-            // Check verification status before allowing access to owner homepage
+            // Owner is the base role; require profile existence (and active flag when present),
+            // but do not gate owner access by verification_status.
             $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
-            if (!$owner || strtolower($owner->verification_status) !== 'approved') {
-                $statusMsg = ($owner && strtolower($owner->verification_status) === 'pending')
-                    ? 'Your property owner profile is still pending admin approval.'
-                    : 'A property owner profile is required to access this role.';
+            $ownerIsActive = $owner && (!isset($owner->is_active) || intval($owner->is_active) === 1);
+            if (!$ownerIsActive) {
+                $statusMsg = 'A property owner profile is required to access this role.';
 
                 // If blocked, force back to contractor role for safety
                 session(['active_role' => 'contractor']);

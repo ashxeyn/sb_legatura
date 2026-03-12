@@ -192,11 +192,21 @@ class FeatureSeeder extends Seeder
 
                 $userId = DB::table('users')->insertGetId([
                     'username'      => $username,
+                    'first_name'    => $this->contractorCompanies[$i],
+                    'last_name'     => 'Rep',
                     'email'         => $email,
                     'password_hash' => bcrypt('SeedPass123!'),
                     'user_type'     => 'contractor',
                     'created_at'    => now()->subDays(rand(30, 365)),
                     'updated_at'    => now(),
+                ]);
+
+                // Create property_owners record (identity hub for contractor owner)
+                $contractorOwnerId = DB::table('property_owners')->insertGetId([
+                    'user_id'    => $userId,
+                    'phone_number' => '09' . rand(100000000, 999999999),
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
                 $typeId = $typeIds[array_rand($typeIds)];
@@ -205,7 +215,7 @@ class FeatureSeeder extends Seeder
                 $verification = $verificationDistribution[$i] ?? 'approved';
 
                 $contractorId = DB::table('contractors')->insertGetId([
-                    'user_id'               => $userId,
+                    'owner_id'              => $contractorOwnerId,
                     'company_name'          => $this->contractorCompanies[$i],
                     'type_id'               => $typeId,
                     'bio'                   => 'Professional construction company with ' . $years . ' years of experience in ' . $location . '.',
@@ -221,15 +231,12 @@ class FeatureSeeder extends Seeder
                     'updated_at'            => now(),
                 ]);
 
-                // Create contractor_user row (owner role)
-                DB::table('contractor_users')->insert([
+                // Create contractor_staff row (owner role)
+                DB::table('contractor_staff')->insert([
                     'contractor_id'       => $contractorId,
-                    'user_id'             => $userId,
-                    'authorized_rep_fname' => $this->contractorCompanies[$i],
-                    'authorized_rep_lname' => 'Rep',
+                    'owner_id'            => $contractorOwnerId,
                     'phone_number'        => '09' . rand(100000000, 999999999),
-                    'role'                => 'owner',
-                    'is_deleted'          => 0,
+                    'company_role'        => 'owner',
                     'is_active'           => 1,
                 ]);
 
@@ -270,6 +277,8 @@ class FeatureSeeder extends Seeder
 
                 $userId = DB::table('users')->insertGetId([
                     'username'      => $username,
+                    'first_name'    => $name[0],
+                    'last_name'     => $name[1],
                     'email'         => $email,
                     'password_hash' => bcrypt('SeedPass123!'),
                     'user_type'     => 'property_owner',
@@ -282,8 +291,6 @@ class FeatureSeeder extends Seeder
 
                 $ownerId = DB::table('property_owners')->insertGetId([
                     'user_id'             => $userId,
-                    'first_name'          => $name[0],
-                    'last_name'           => $name[1],
                     'phone_number'        => '09' . rand(100000000, 999999999),
                     'address'             => $location . ', Philippines',
                     'valid_id_id'         => !empty($validIds) ? $validIds[array_rand($validIds)] : 1,
@@ -401,8 +408,9 @@ class FeatureSeeder extends Seeder
                     ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                     ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                     ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+                    ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
                     ->where('p.project_id', $projId)
-                    ->select('po.user_id as owner_user_id', 'c.user_id as contractor_user_id')
+                    ->select('po.user_id as owner_user_id', 'c_po.user_id as contractor_user_id')
                     ->first();
 
                 if (!$project || !$project->owner_user_id || !$project->contractor_user_id) continue;

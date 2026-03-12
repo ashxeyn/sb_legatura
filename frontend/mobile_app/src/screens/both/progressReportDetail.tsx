@@ -13,6 +13,8 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
   Animated,
 } from 'react-native';
 import {
@@ -63,6 +65,10 @@ interface ProgressReport {
   purpose: string;
   progress_status: 'submitted' | 'approved' | 'rejected' | 'deleted';
   submitted_at: string;
+  uploader_user_id?: number;
+  uploader_name?: string;
+  uploader_role?: string;
+  uploaded_by_staff?: number;
   files?: ProgressFile[];
   delete_reason?: string;
 }
@@ -280,6 +286,16 @@ export default function progressReportDetail({
   const files = progressReport.files || [];
   const imageFiles = files.filter(f => isImageFile(f.original_name));
   const otherFiles = files.filter(f => !isImageFile(f.original_name));
+  const uploaderName = (progressReport.uploader_name || '').trim();
+  const uploaderRole = (progressReport.uploader_role || '')
+    .replace(/_/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+  const uploadAttributionLabel = uploaderName
+    ? `Uploaded by: ${uploaderName}${uploaderRole ? ` (${uploaderRole})` : ''}`
+    : null;
   const [localStatus, setLocalStatus] = useState(progressReport.progress_status);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -387,6 +403,7 @@ export default function progressReportDetail({
         )}
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.fullDetailScrollContent}
@@ -420,6 +437,12 @@ export default function progressReportDetail({
               <Feather name="calendar" size={13} color={COLORS.textMuted} />
               <Text style={styles.fdInfoDescText}>{formatDate(progressReport.submitted_at)}</Text>
             </View>
+            {uploadAttributionLabel ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <Feather name="user" size={13} color={COLORS.textMuted} />
+                <Text style={styles.fdInfoDescText}>{uploadAttributionLabel}</Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Description */}
@@ -516,6 +539,7 @@ export default function progressReportDetail({
 
         <View style={{ height: 20 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Owner actions: Approve / Reject — fixed at bottom */}
       {!isProjectHalted && userRole === 'owner' && localStatus === 'submitted' && (

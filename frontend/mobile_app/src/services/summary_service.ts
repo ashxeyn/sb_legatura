@@ -105,6 +105,10 @@ export interface ProgressReport {
   status: string;
   submitted_at: string;
   updated_at: string | null;
+  submitted_by_owner_id?: number | null;
+  uploader_name?: string | null;
+  uploader_role?: string | null;
+  uploaded_by_staff?: number | boolean;
 }
 
 export interface ProjectSummaryData {
