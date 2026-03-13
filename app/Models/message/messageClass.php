@@ -239,6 +239,77 @@ class messageClass extends Model
     }
 
     /**
+     * Get admin inbox - shows all admin conversations
+     * For admin conversations, both sender_id and receiver_id are the user's ID
+     * We use is_admin_conversation flag to identify them
+     *
+     * @return array
+     */
+    public static function getAdminInbox(): array
+    {
+        $conversations = DB::table('conversations as c')
+            ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
+            ->select(
+                'c.conversation_id',
+                'c.sender_id',
+                'c.receiver_id',
+                'c.status',
+                'c.is_suspended',
+                'c.suspended_until',
+                'c.reason',
+                'c.is_admin_conversation',
+                'm.content as last_content',
+                'm.created_at as last_sent_at',
+                'm.from_sender'
+            )
+            ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
+            ->where('c.is_admin_conversation', 1)
+            ->orderBy('m.created_at', 'desc')
+            ->get();
+
+        $result = [];
+        foreach ($conversations as $conv) {
+            // For admin conversations, sender_id and receiver_id are both the user's ID
+            $userId = $conv->sender_id;
+            $otherUser = self::getUserDetails($userId, false); // Get user details (not admin)
+
+            if (!$otherUser)
+                continue;
+
+            // Calculate unread count: count messages from user (from_sender=true)
+            $unreadCount = DB::table('messages')
+                ->where('conversation_id', $conv->conversation_id)
+                ->where('from_sender', true) // Messages from user to admin
+                ->where('is_read', 0)
+                ->count();
+
+            // Check if conversation has any flagged messages
+            $isFlagged = DB::table('messages')
+                ->where('conversation_id', $conv->conversation_id)
+                ->where('is_flagged', 1)
+                ->exists();
+
+            $result[] = [
+                'conversation_id' => $conv->conversation_id,
+                'other_user' => $otherUser,
+                'last_message' => [
+                    'content' => $conv->last_content,
+                    'sent_at' => Carbon::parse($conv->last_sent_at)->diffForHumans(),
+                    'sent_at_timestamp' => Carbon::parse($conv->last_sent_at, 'UTC')->toIso8601String()
+                ],
+                'unread_count' => $unreadCount,
+                'is_flagged' => $isFlagged,
+                'status' => $conv->status,
+                'is_suspended' => (bool) $conv->is_suspended,
+                'suspended_until' => $conv->suspended_until,
+                'reason' => $conv->reason
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Store a new message with attachments
      *
      * @param array $data
@@ -248,6 +319,14 @@ class messageClass extends Model
     {
         try {
             DB::beginTransaction();
+
+            // DEBUG: Log incoming data
+            \Log::info('storeMessage called', [
+                'sender_id' => $data['sender_id'] ?? null,
+                'receiver_id' => $data['receiver_id'] ?? null,
+                'is_admin_sending' => $data['is_admin_sending'] ?? false,
+                'conversation_id' => $data['conversation_id'] ?? null
+            ]);
 
             // SECURITY: Validate message content BEFORE saving
             $validation = self::validateMessageContent($data['content'] ?? '');
@@ -260,10 +339,37 @@ class messageClass extends Model
                 return null;
             }
 
+            // ADMIN CONVERSATION FIX: When admin sends message, use user ID for both sender and receiver
+            // The conversations table has FK constraints on sender_id and receiver_id that reference users.user_id
+            // Admin IDs don't exist in users table (or might collide with real user IDs)
+            // So for admin conversations, we use the user's ID for BOTH sender_id and receiver_id
+            // and track admin status via is_admin_conversation flag + from_sender boolean
+            $isAdminSending = $data['is_admin_sending'] ?? false;
+            $conversationSenderId = $data['sender_id'];
+            $conversationReceiverId = $data['receiver_id'];
+            $messageFromSender = true; // Will be recalculated after conversation creation
+
+            \Log::info('Before swap', [
+                'isAdminSending' => $isAdminSending,
+                'conversationSenderId' => $conversationSenderId,
+                'conversationReceiverId' => $conversationReceiverId
+            ]);
+
+            if ($isAdminSending) {
+                // For admin conversations: use receiver's ID for BOTH sender and receiver in conversations table
+                // The from_sender boolean will indicate who actually sent the message
+                $conversationSenderId = $data['receiver_id'];
+                $conversationReceiverId = $data['receiver_id'];
+                \Log::info('After swap (admin)', [
+                    'conversationSenderId' => $conversationSenderId,
+                    'conversationReceiverId' => $conversationReceiverId
+                ]);
+            }
+
             // Generate conversation ID if not provided (combine user IDs as integer)
             if (!isset($data['conversation_id'])) {
-                $minId = min($data['sender_id'], $data['receiver_id']);
-                $maxId = max($data['sender_id'], $data['receiver_id']);
+                $minId = min($conversationSenderId, $conversationReceiverId);
+                $maxId = max($conversationSenderId, $conversationReceiverId);
                 // Formula: smaller_id * 1000000 + larger_id (ensures uniqueness)
                 $data['conversation_id'] = ($minId * 1000000) + $maxId;
             }
@@ -271,17 +377,22 @@ class messageClass extends Model
             // Get or create conversation
             $conversation = self::getOrCreateConversation(
                 $data['conversation_id'],
-                $data['sender_id'],
-                $data['receiver_id']
+                $conversationSenderId,
+                $conversationReceiverId
             );
 
             // Determine if message is from sender or receiver
-            $fromSender = ($data['sender_id'] == $conversation->sender_id);
+            // For admin conversations: if admin is sending, message is NOT from sender (it's from receiver)
+            if ($isAdminSending) {
+                $messageFromSender = false;
+            } else {
+                $messageFromSender = ($data['sender_id'] == $conversation->sender_id);
+            }
 
             // Rule B: Prepare message data with auto-flag if suspicious keywords detected
             $messageData = [
                 'conversation_id' => $data['conversation_id'],
-                'from_sender' => $fromSender,
+                'from_sender' => $messageFromSender,
                 'content' => $data['content'],
                 'is_read' => 0
             ];
@@ -294,6 +405,13 @@ class messageClass extends Model
 
             // Create message
             $message = self::create($messageData);
+
+            // Mark conversation as admin conversation if admin is sending
+            if ($isAdminSending) {
+                DB::table('conversations')
+                    ->where('conversation_id', $data['conversation_id'])
+                    ->update(['is_admin_conversation' => 1]);
+            }
 
             // Handle attachments
             if (isset($data['attachments']) && is_array($data['attachments'])) {
@@ -315,13 +433,53 @@ class messageClass extends Model
     }
 
     /**
+     * Get admin details for display
+     * Returns the first active admin or a default admin representation
+     *
+     * @return array
+     */
+    public static function getAdminDetails(): array
+    {
+        // Get the first active admin (you can modify this to get a specific admin)
+        $admin = DB::table('admin_users')
+            ->where('is_active', 1)
+            ->first();
+
+        if ($admin) {
+            $fullName = trim(($admin->first_name ?? '') . ' ' . ($admin->middle_name ?? '') . ' ' . ($admin->last_name ?? ''));
+            $name = !empty($fullName) ? $fullName : ($admin->username ?? 'Admin');
+            
+            // Extract numeric ID from admin_id (e.g., 'ADMIN-1' -> 1)
+            $numericId = (int) preg_replace('/[^0-9]/', '', $admin->admin_id);
+            
+            return [
+                'id' => $numericId,
+                'name' => $name,
+                'type' => 'Admin',
+                'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true',
+                'online' => false // Will be updated in real-time by frontend presence channel
+            ];
+        }
+
+        // Fallback if no admin found
+        return [
+            'id' => 1,
+            'name' => 'Admin',
+            'type' => 'Admin',
+            'avatar' => 'https://ui-avatars.com/api/?name=Admin&background=dc2626&color=fff&bold=true',
+            'online' => false
+        ];
+    }
+
+    /**
      * Get conversation history
      *
      * @param int $conversationId
      * @param int $limit
+     * @param int|null $viewerUserId User ID of who is viewing (for censoring)
      * @return array
      */
-    public static function getConversationHistory(int|string $conversationId, ?int $limit = null): array
+    public static function getConversationHistory(int|string $conversationId, ?int $limit = null, ?int $viewerUserId = null): array
     {
         $conversation = DB::table('conversations')
             ->where('conversation_id', $conversationId)
@@ -343,14 +501,37 @@ class messageClass extends Model
 
         $result = [];
         foreach ($messages as $msg) {
-            // Determine actual sender based on from_sender boolean
-            $senderId = $msg->from_sender ? $conversation->sender_id : $conversation->receiver_id;
-            $sender = self::getUserDetails($senderId, $isAdminConv);
+            // Determine actual sender based on from_sender boolean and conversation type
+            if ($isAdminConv) {
+                // For admin conversations: from_sender=true means user sent it, false means admin sent it
+                // Both sender_id and receiver_id are the user's ID
+                if ($msg->from_sender) {
+                    // User sent the message
+                    $senderId = $conversation->sender_id;
+                    $sender = self::getUserDetails($senderId, false); // Get user details
+                } else {
+                    // Admin sent the message - get actual admin details
+                    $sender = self::getAdminDetails();
+                }
+            } else {
+                // Regular conversation: use normal logic
+                $senderId = $msg->from_sender ? $conversation->sender_id : $conversation->receiver_id;
+                $sender = self::getUserDetails($senderId, false);
+            }
+
+            // Determine if viewer is admin
+            $isViewerAdmin = $viewerUserId ? self::isAdminUser($viewerUserId) : false;
+            
+            // Censor content for non-admin users
+            $messageContent = $msg->content;
+            if (!$isViewerAdmin && $msg->is_flagged) {
+                $messageContent = self::censorBadWords($msg->content);
+            }
 
             $result[] = [
                 'message_id' => $msg->message_id,
                 'conversation_id' => $msg->conversation_id,
-                'content' => $msg->content,
+                'content' => $messageContent,
                 'sender' => $sender,
                 'is_read' => (bool) $msg->is_read,
                 'is_flagged' => (bool) $msg->is_flagged,
@@ -444,8 +625,8 @@ class messageClass extends Model
 
         $name = $user->username ?? $user->email;
         $type = $user->user_type ?? 'user';
-        $profilePic = isset($user->profile_pic) ? $user->profile_pic : null;
-        $avatar = url('storage/' . ($profilePic ?: 'default-avatar.png'));
+        $profilePic = null;
+        $avatar = null;
 
         // Polymorphic lookup for profile details
         if ($type === 'admin') {
@@ -454,28 +635,38 @@ class messageClass extends Model
             if ($profile) {
                 $fullName = trim(($profile->first_name ?? '') . ' ' . ($profile->middle_name ?? '') . ' ' . ($profile->last_name ?? ''));
                 $name = !empty($fullName) ? ($fullName) : ($profile->username ?? $name);
+                $profilePic = $profile->profile_pic ?? null;
             }
-        } elseif ($type === 'contractor' || $type === 'staff') {
-            $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
-            $profile = $ownerId ? DB::table('contractors')->where('owner_id', $ownerId)->first() : null;
-            if ($profile) {
-                $name = $profile->company_name ?? $name;
-            }
-        } elseif ($type === 'owner' || $type === 'property_owner') {
-            $profile = DB::table('property_owners')->where('user_id', $userId)->first();
-            if ($profile) {
-                $userRecord = DB::table('users')->where('user_id', $userId)->first();
-                $fullName = trim(($userRecord->first_name ?? '') . ' ' . ($userRecord->last_name ?? ''));
-                $name = !empty($fullName) ? $fullName : $name;
-                // Get profile pic from property_owners
-                if (!empty($profile->profile_pic)) {
-                    $profilePic = $profile->profile_pic;
+        } elseif ($type === 'contractor' || $type === 'both') {
+            // For contractors, get owner_id from property_owners, then get contractor details
+            $propertyOwner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($propertyOwner) {
+                $contractor = DB::table('contractors')->where('owner_id', $propertyOwner->owner_id)->first();
+                if ($contractor) {
+                    $name = $contractor->company_name ?? $name;
+                    $profilePic = $contractor->company_logo ?? null;
+                } else {
+                    // No contractor profile, use property owner details
+                    $fullName = trim(($user->first_name ?? '') . ' ' . ($user->middle_name ?? '') . ' ' . ($user->last_name ?? ''));
+                    $name = !empty($fullName) ? $fullName : $name;
+                    $profilePic = $propertyOwner->profile_pic ?? null;
                 }
+            }
+        } elseif ($type === 'property_owner') {
+            // For property owners, get profile from property_owners table
+            $propertyOwner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($propertyOwner) {
+                $fullName = trim(($user->first_name ?? '') . ' ' . ($user->middle_name ?? '') . ' ' . ($user->last_name ?? ''));
+                $name = !empty($fullName) ? $fullName : $name;
+                $profilePic = $propertyOwner->profile_pic ?? null;
             }
         }
 
-        // Use UI Avatars as fallback when no profile picture is available
-        if (empty($profilePic)) {
+        // Set avatar URL
+        if (!empty($profilePic)) {
+            $avatar = url('storage/' . $profilePic);
+        } else {
+            // Use UI Avatars as fallback
             $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=6366f1&color=fff&bold=true';
         }
 
@@ -484,7 +675,7 @@ class messageClass extends Model
             'name' => $name,
             'type' => ucfirst($type),
             'avatar' => $avatar,
-            'online' => false // Could implement real online status later
+            'online' => false // Will be updated in real-time by frontend presence channel
         ];
     }
 
@@ -823,6 +1014,64 @@ class messageClass extends Model
         }
 
         return false;
+    }
+
+    /**
+     * Censor bad words in message content by replacing them with ###
+     * Used to hide profanity from users while keeping original for admin moderation
+     * Handles obfuscation attempts like spaces, numbers, special chars between letters
+     *
+     * @param string $content
+     * @return string
+     */
+    public static function censorBadWords(string $content): string
+    {
+        $path = storage_path('app/profanity_dataset.csv');
+        $keywords = [];
+
+        try {
+            if (file_exists($path) && is_readable($path)) {
+                if (($handle = fopen($path, 'r')) !== false) {
+                    while (($row = fgetcsv($handle)) !== false) {
+                        foreach ($row as $cell) {
+                            $w = trim((string) $cell);
+                            if ($w === '')
+                                continue;
+                            $keywords[] = strtolower($w);
+                        }
+                    }
+                    fclose($handle);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to load profanity dataset for censoring', ['error' => $e->getMessage()]);
+        }
+
+        // Fallback keywords if CSV not loaded
+        if (empty($keywords)) {
+            $keywords = [
+                'sex', 'vagina', 'penis', 'fuck', 'bitch', 'whore', 'slut',
+                'dick', 'cock', 'pussy', 'ass', 'bastard', 'damn',
+                'harassment', 'assault', 'rape', 'molest', 'abuse'
+            ];
+        }
+
+        $censoredContent = $content;
+
+        // Replace each bad word with ### (case-insensitive)
+        foreach ($keywords as $keyword) {
+            // Pattern 1: Normal word boundaries (e.g., "ass" but not "class")
+            $pattern = '/\b' . preg_quote($keyword, '/') . '\b/iu';
+            $censoredContent = preg_replace($pattern, '###', $censoredContent);
+            
+            // Pattern 2: Words with any characters between letters (spaces, numbers, special chars)
+            // Convert keyword to pattern: "ass" -> "a[^a-z]*s[^a-z]*s"
+            $obfuscatedPattern = implode('[^a-z]*', str_split($keyword));
+            $obfuscatedRegex = '/\b' . $obfuscatedPattern . '\b/iu';
+            $censoredContent = preg_replace($obfuscatedRegex, '###', $censoredContent);
+        }
+
+        return $censoredContent;
     }
 
     /**

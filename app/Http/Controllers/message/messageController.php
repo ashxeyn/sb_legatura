@@ -15,69 +15,6 @@ use Illuminate\Support\Facades\Log;
 class messageController extends Controller
 {
     /**
-     * Resolve all user IDs this account can act as in chat.
-     *
-     * For contractor staff/representatives, include the parent contractor owner's user_id
-     * so they can access the same company conversations.
-     */
-    private function getMessagingActorIds(int $userId): array
-    {
-        $actorIds = [$userId];
-
-        try {
-            $ownerId = DB::table('property_owners')
-                ->where('user_id', $userId)
-                ->value('owner_id');
-
-            if ($ownerId) {
-                $staffMembership = DB::table('contractor_staff')
-                    ->where('owner_id', $ownerId)
-                    ->whereNull('deletion_reason')
-                    ->where('is_active', 1)
-                    ->where(function ($q) {
-                        $q->whereNull('is_suspended')
-                            ->orWhere('is_suspended', 0);
-                    })
-                    ->first();
-
-                if ($staffMembership) {
-                    $contractorOwnerUserId = DB::table('contractors as c')
-                        ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
-                        ->where('c.contractor_id', $staffMembership->contractor_id)
-                        ->value('po.user_id');
-
-                    if ($contractorOwnerUserId) {
-                        $actorIds[] = (int) $contractorOwnerUserId;
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning('getMessagingActorIds: fallback to direct user id', [
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return array_values(array_unique(array_map('intval', $actorIds)));
-    }
-
-    /** Choose the participant ID this actor should use inside a specific conversation. */
-    private function resolveConversationParticipantId(object $conversation, array $actorIds): ?int
-    {
-        $senderId = (int) $conversation->sender_id;
-        $receiverId = (int) $conversation->receiver_id;
-
-        if (in_array($senderId, $actorIds, true)) {
-            return $senderId;
-        }
-        if (in_array($receiverId, $actorIds, true)) {
-            return $receiverId;
-        }
-
-        return null;
-    }
-
-    /**
      * Get authenticated user ID from either Bearer token (mobile), session (web), or X-User-Id header
      * NOTE: Uses manual token lookup instead of auth('sanctum') to avoid PHP dev server crash on Windows
      */
@@ -190,54 +127,18 @@ class messageController extends Controller
                 ], 401);
             }
 
-            $actorIds = $this->getMessagingActorIds((int) $userId);
-
-            $inboxByConversation = [];
-            foreach ($actorIds as $actorId) {
-                $actorInbox = messageClass::getInbox((int) $actorId);
-                foreach ($actorInbox as $conv) {
-                    $key = (string) ($conv['conversation_id'] ?? '');
-                    if ($key === '') {
-                        continue;
-                    }
-
-                    if (!isset($inboxByConversation[$key])) {
-                        $inboxByConversation[$key] = $conv;
-                        continue;
-                    }
-
-                    $existingTs = strtotime($inboxByConversation[$key]['last_message']['sent_at_timestamp'] ?? '') ?: 0;
-                    $newTs = strtotime($conv['last_message']['sent_at_timestamp'] ?? '') ?: 0;
-                    if ($newTs > $existingTs) {
-                        $inboxByConversation[$key] = $conv;
-                    }
-                }
-            }
-
-            $inbox = array_values($inboxByConversation);
-
-            // ADMIN "All" tab: only show conversations admin directly initiated (is_admin_conversation=1).
-            // admin_id is now VARCHAR ('ADMIN-1') but sender_id in conversations is still bigint (numeric part),
-            // so getInbox($numericAdminId) accidentally returns user conversations with the same numeric ID.
-            // We use the is_admin_conversation flag to cleanly separate admin from user conversations.
+            // Check if this is an admin session
             $sessionUser = session('user');
             $isAdminSession = $sessionUser && isset($sessionUser->admin_id);
 
             if ($isAdminSession) {
-                // Admin: show ONLY admin-initiated conversations
-                $adminConvIds = DB::table('conversations')
-                    ->where('is_admin_conversation', 1)
-                    ->pluck('conversation_id')
-                    ->toArray();
-
-                $inbox = array_values(array_filter($inbox, function ($conv) use ($adminConvIds) {
-                    return in_array($conv['conversation_id'], $adminConvIds);
-                }));
+                // Admin: use special admin inbox that shows all admin conversations
+                $inbox = messageClass::getAdminInbox();
             } else {
-                // Regular users: Only exclude admin conversations if there's an ID collision
-                // (i.e., if the user's ID matches an admin's numeric ID portion)
-                // User ID 5 should see their conversation with admin
-                // User ID 1 should NOT see admin's conversations (because admin_id='ADMIN-1' extracts to 1)
+                // Regular users: use normal inbox
+                $inbox = messageClass::getInbox($userId);
+
+                // Exclude admin conversations if there's an ID collision
                 $adminNumericIds = DB::table('admin_users')
                     ->pluck('admin_id')
                     ->map(fn($aid) => (int) preg_replace('/[^0-9]/', '', $aid))
@@ -254,14 +155,7 @@ class messageController extends Controller
                         return !in_array($conv['conversation_id'], $adminConvIds);
                     }));
                 }
-                // If no collision, user sees all their conversations including those with admin
             }
-
-            usort($inbox, function ($a, $b) {
-                $at = strtotime($a['last_message']['sent_at_timestamp'] ?? '') ?: 0;
-                $bt = strtotime($b['last_message']['sent_at_timestamp'] ?? '') ?: 0;
-                return $bt <=> $at;
-            });
 
             return response()->json([
                 'success' => true,
@@ -297,7 +191,6 @@ class messageController extends Controller
             }
 
             $isAdminUser = $this->isAdmin($userId);
-            $actorIds = $this->getMessagingActorIds((int) $userId);
 
             // Get the conversation first to check is_admin_conversation
             $conversation = DB::table('conversations')
@@ -312,8 +205,7 @@ class messageController extends Controller
             }
 
             // Check if user is a participant in this conversation
-            $isParticipantInConv = in_array((int) $conversation->sender_id, $actorIds, true)
-                || in_array((int) $conversation->receiver_id, $actorIds, true);
+            $isParticipantInConv = $conversation->sender_id == $userId || $conversation->receiver_id == $userId;
 
             if ($isAdminUser) {
                 // Admin can view ANY conversation for moderation purposes
@@ -345,14 +237,13 @@ class messageController extends Controller
                 }
             }
 
-            $messages = messageClass::getConversationHistory($conversationId);
+            $messages = messageClass::getConversationHistory($conversationId, null, $userId);
 
             // Mark messages as read if user is a participant (sender or receiver)
-            $participantIdForRead = $this->resolveConversationParticipantId($conversation, $actorIds);
-            $isParticipant = $participantIdForRead !== null;
+            $isParticipant = $conversation->sender_id == $userId || $conversation->receiver_id == $userId;
 
             if ($isParticipant) {
-                messageClass::markAsRead($conversationId, (int) $participantIdForRead);
+                messageClass::markAsRead($conversationId, $userId);
             }
 
             // Get conversation participants for admin view
@@ -365,7 +256,8 @@ class messageController extends Controller
                     'count' => count($messages),
                     'conversation' => $conversation ? [
                         'sender_id' => $conversation->sender_id,
-                        'receiver_id' => $conversation->receiver_id
+                        'receiver_id' => $conversation->receiver_id,
+                        'is_admin_conversation' => (bool) $conversation->is_admin_conversation
                     ] : null
                 ]
             ], 200);
@@ -413,9 +305,6 @@ class messageController extends Controller
             // SECURITY: Prevent cross-contamination of admin/user conversations
             $sessionUser = session('user');
             $isAdminSession = $sessionUser && isset($sessionUser->admin_id);
-            $actorIds = $this->getMessagingActorIds((int) $userId);
-            $effectiveSenderId = (int) $userId;
-            $effectiveReceiverId = (int) $validated['receiver_id'];
 
             if (!empty($validated['conversation_id'])) {
                 $existingConv = DB::table('conversations')
@@ -423,16 +312,6 @@ class messageController extends Controller
                     ->first();
 
                 if ($existingConv) {
-                    $isParticipant = in_array((int) $existingConv->sender_id, $actorIds, true)
-                        || in_array((int) $existingConv->receiver_id, $actorIds, true);
-
-                    if (!$isAdminSession && !$isParticipant) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Unauthorized access to this conversation'
-                        ], 403);
-                    }
-
                     // Check if conversation is suspended - block ALL participants from sending
                     if ($existingConv->status === 'suspended' || $existingConv->is_suspended) {
                         // Check if suspension has expired
@@ -470,6 +349,16 @@ class messageController extends Controller
                     // For admin conversations, only block users whose ID collides with an admin ID
                     // (user_id=5 can reply to admin, but user_id=1 cannot hijack admin's conversations)
                     if (!$isAdminSession && $existingConv->is_admin_conversation) {
+                        // Check if this user is actually a participant
+                        $isParticipant = $existingConv->sender_id == $userId || $existingConv->receiver_id == $userId;
+
+                        if (!$isParticipant) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Unauthorized access to this conversation'
+                            ], 403);
+                        }
+
                         // Check for ID collision
                         $adminNumericIds = DB::table('admin_users')
                             ->pluck('admin_id')
@@ -483,21 +372,12 @@ class messageController extends Controller
                             ], 403);
                         }
                     }
-
-                    // Use the matched participant identity so delegated staff can send in the same thread.
-                    $matchedParticipantId = $this->resolveConversationParticipantId($existingConv, $actorIds);
-                    if ($matchedParticipantId !== null) {
-                        $effectiveSenderId = (int) $matchedParticipantId;
-                        $effectiveReceiverId = $effectiveSenderId === (int) $existingConv->sender_id
-                            ? (int) $existingConv->receiver_id
-                            : (int) $existingConv->sender_id;
-                    }
                 }
             }
 
             $data = [
-                'sender_id' => $effectiveSenderId,
-                'receiver_id' => $effectiveReceiverId,
+                'sender_id' => $userId,
+                'receiver_id' => $validated['receiver_id'],
                 'content' => $validated['content'] ?? '',
                 'conversation_id' => $validated['conversation_id'] ?? null,
                 'attachments' => $request->file('attachments') ?? [],
@@ -513,20 +393,18 @@ class messageController extends Controller
                 ], 500);
             }
 
-            // When admin sends a message, mark this conversation so it appears in admin "All" tab
-            // (needed because admin_id numeric part collides with user_ids in conversations table)
-            if ($isAdminSession) {
-                DB::table('conversations')
-                    ->where('conversation_id', $message->conversation_id)
-                    ->update(['is_admin_conversation' => 1]);
-            }
-
             // Broadcast the message via Pusher
-            // \Log::info('Broadcasting message event', [
-            //     'message_id' => $message->message_id,
-            //     'conversation_id' => $message->conversation_id
-            // ]);
             broadcast(new messageSentEvent($message));
+            
+            // For admin conversations with flagged content, also broadcast uncensored version to admin
+            if ($message->is_flagged) {
+                $conversation = DB::table('conversations')
+                    ->where('conversation_id', $message->conversation_id)
+                    ->first();
+                if ($conversation && $conversation->is_admin_conversation) {
+                    broadcast(new \App\Events\messageSentEventUncensored($message));
+                }
+            }
 
             // Get conversation to retrieve sender/receiver info
             $conversation = DB::table('conversations')
@@ -540,8 +418,8 @@ class messageController extends Controller
                     'message_id' => $message->message_id,
                     'conversation_id' => $message->conversation_id,
                     'content' => $message->content,
-                    'sender' => messageClass::getUserDetails($effectiveSenderId, $isAdminSession),
-                    'receiver' => messageClass::getUserDetails($effectiveReceiverId, $isAdminSession),
+                    'sender' => messageClass::getUserDetails($userId, $isAdminSession),
+                    'receiver' => messageClass::getUserDetails($validated['receiver_id'], $isAdminSession),
                     'attachments' => $message->attachments->map(function ($att) {
                         return [
                             'attachment_id' => $att->attachment_id,

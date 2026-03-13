@@ -12,21 +12,20 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 
-class messageSentEvent implements ShouldBroadcastNow
+class messageSentEventUncensored implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $message;
     public $conversation;
-    public $censorForNonAdmin;
 
     /**
      * Create a new event instance.
+     * This event broadcasts the UNCENSORED message to admin channels
      */
-    public function __construct(messageClass $message, bool $censorForNonAdmin = true)
+    public function __construct(messageClass $message)
     {
         $this->message = $message;
-        $this->censorForNonAdmin = $censorForNonAdmin;
 
         // Load conversation data
         $this->conversation = DB::table('conversations')
@@ -36,15 +35,22 @@ class messageSentEvent implements ShouldBroadcastNow
 
     /**
      * Get the channels the event should broadcast on.
-     * Using a private channel for security - only the receiver can listen
+     * Only broadcast to admin channel if this is an admin conversation
      */
     public function broadcastOn(): array
     {
-        // Broadcast to both participants
-        return [
-            new PrivateChannel('chat.' . $this->conversation->sender_id),
-            new PrivateChannel('chat.' . $this->conversation->receiver_id),
-        ];
+        $isAdminConv = (bool) ($this->conversation->is_admin_conversation ?? false);
+        
+        if ($isAdminConv) {
+            // For admin conversations, also broadcast uncensored to admin
+            // Admin ID is stored in sender_id for admin conversations
+            return [
+                new PrivateChannel('chat.' . $this->conversation->sender_id),
+            ];
+        }
+
+        // Don't broadcast for user-to-user conversations
+        return [];
     }
 
     /**
@@ -52,23 +58,18 @@ class messageSentEvent implements ShouldBroadcastNow
      */
     public function broadcastAs(): string
     {
-        return 'message.sent';
+        return 'message.sent.uncensored';
     }
 
     /**
-     * Get the data to broadcast.
-     * Returns a clean JSON payload for mobile/web clients
-     * Censors bad words for non-admin users in user-to-user conversations
+     * Get the data to broadcast (UNCENSORED).
+     * Returns the original message content for admin viewing
      */
     public function broadcastWith(): array
     {
-        // Get context for user lookup (admin conversation vs user conversation)
         $isAdminConv = (bool) ($this->conversation->is_admin_conversation ?? false);
 
-        // Determine actual sender and receiver based on from_sender boolean and conversation type
         if ($isAdminConv) {
-            // For admin conversations: from_sender=true means user sent it, false means admin sent it
-            // Both sender_id and receiver_id are the user's ID
             if ($this->message->from_sender) {
                 // User sent the message
                 $senderId = $this->conversation->sender_id;
@@ -81,7 +82,6 @@ class messageSentEvent implements ShouldBroadcastNow
                 $receiver = messageClass::getUserDetails($receiverId, false);
             }
         } else {
-            // Regular conversation: use normal logic
             $senderId = $this->message->from_sender
                 ? $this->conversation->sender_id
                 : $this->conversation->receiver_id;
@@ -94,17 +94,10 @@ class messageSentEvent implements ShouldBroadcastNow
             $receiver = messageClass::getUserDetails($receiverId, false);
         }
 
-        // Prepare content - censor for non-admin users if message is flagged
-        $messageContent = $this->message->content;
-        if ($this->censorForNonAdmin && $this->message->is_flagged && !$isAdminConv) {
-            // For user-to-user conversations, censor bad words
-            $messageContent = messageClass::censorBadWords($this->message->content);
-        }
-
         return [
             'message_id' => $this->message->message_id,
             'conversation_id' => $this->message->conversation_id,
-            'content' => $messageContent,
+            'content' => $this->message->content, // UNCENSORED
             'sender' => $sender,
             'receiver' => $receiver,
             'attachments' => $this->message->attachments->map(function ($attachment) {
@@ -126,4 +119,3 @@ class messageSentEvent implements ShouldBroadcastNow
         ];
     }
 }
-

@@ -257,24 +257,6 @@
             <div class="progress-bar-wrap"><div class="progress-bar-fill" data-width="{{ $bidMetrics['acceptance_rate'] }}" style="width:0%"></div></div>
           </div>
         </div>
-
-        {{-- Total Contracted Value --}}
-        <div class="perf-card bg-gradient-to-br from-purple-500 to-purple-700 text-white">
-          <div class="blob"></div>
-          <div class="relative z-10">
-            <div class="flex items-start justify-between mb-3">
-              <div class="bg-white/20 rounded-xl p-2.5">
-                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-              </div>
-              @if($projectPerformance['value_mom_growth'] != 0)
-              <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded-full">{{ $projectPerformance['value_mom_growth'] > 0 ? '+' : '' }}{{ $projectPerformance['value_mom_growth'] }}% MoM</span>
-              @endif
-            </div>
-            <div class="text-3xl font-black mb-0.5">₱{{ number_format($projectPerformance['total_value'] / 1000000, 1) }}M</div>
-            <div class="text-sm font-medium opacity-80 mb-3">Contracted Value</div>
-            <div class="progress-bar-wrap"><div class="progress-bar-fill" data-width="{{ min(100, round($projectPerformance['total_value'] / max(1, 10000000) * 100)) }}" style="width:0%"></div></div>
-          </div>
-        </div>
       </div>
 
       {{-- ═══════════════════════════════════════════════════════════

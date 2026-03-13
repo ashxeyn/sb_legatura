@@ -237,9 +237,9 @@
                 <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                      <div class="relative">
+                      <div class="relative" id="headerAvatar">
                         <img id="selectedAvatar" src="" alt="Avatar" class="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow">
-                        <span id="selectedStatus" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                        <span class="avatar-status offline"></span>
                       </div>
                       <div>
                         <h3 id="selectedName" class="font-semibold text-gray-800 text-lg"></h3>

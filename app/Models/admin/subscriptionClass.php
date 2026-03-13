@@ -57,7 +57,7 @@ class subscriptionClass
 
         return [
             'total' => $totalSub,
-            'revenue' => number_format($totalRevenue, 2),
+            'revenue' => number_format($totalRevenue, 2, '.', ','),
             'expiring_soon' => $expiringSoon,
             'expired' => $expired,
             'limit' => 300 // Placeholder for goal UI

@@ -85,6 +85,54 @@ class broadcastAuthController extends Controller
             'current_user_id' => $currentUserId
         ]);
 
+        // Handle presence channels (format: presence-online)
+        if (preg_match('/^presence-/', $channelName)) {
+            try {
+                $pusher = new Pusher(
+                    env('PUSHER_APP_KEY'),
+                    env('PUSHER_APP_SECRET'),
+                    env('PUSHER_APP_ID'),
+                    [
+                        'cluster' => env('PUSHER_APP_CLUSTER', 'mt1'),
+                        'useTLS' => true
+                    ]
+                );
+
+                // Get user info for presence channel
+                $sessionUser = session('user');
+                $userName = 'User';
+                
+                if ($sessionUser) {
+                    if (isset($sessionUser->admin_id)) {
+                        $userName = $sessionUser->username ?? 'Admin';
+                    } else {
+                        $userName = $sessionUser->username ?? $sessionUser->email ?? 'User';
+                    }
+                }
+
+                $presenceData = [
+                    'user_id' => $currentUserId,
+                    'user_info' => [
+                        'id' => $currentUserId,
+                        'name' => $userName
+                    ]
+                ];
+
+                $auth = $pusher->authorizePresenceChannel($channelName, $socketId, $currentUserId, $presenceData['user_info']);
+
+                Log::info('Presence channel auth SUCCESS for user ' . $currentUserId);
+
+                return response()->json(json_decode($auth, true));
+
+            } catch (\Exception $e) {
+                Log::error('Pusher presence auth failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return response()->json(['message' => 'Server error: ' . $e->getMessage()], 500);
+            }
+        }
+
         // Parse channel name to get user ID (format: private-chat.{userId})
         if (preg_match('/private-chat\.(\d+)/', $channelName, $matches)) {
             $channelUserId = (int) $matches[1];

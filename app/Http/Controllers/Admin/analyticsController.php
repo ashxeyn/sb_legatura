@@ -219,8 +219,6 @@ class analyticsController extends authController
     {
         $base = fn() => DB::table('platform_payments as pp')
             ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
-            ->where('sp.for_contractor', 1)
-            ->where('sp.plan_key', '!=', 'boost')
             ->where('pp.is_approved',  1)
             ->where('pp.is_cancelled', 0);
 
@@ -1783,8 +1781,6 @@ class analyticsController extends authController
         $base = function () use ($dateFrom, $dateTo) {
             $q = DB::table('platform_payments as pp')
                 ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
-                ->where('sp.for_contractor', 1)
-                ->where('sp.plan_key', '!=', 'boost')
                 ->where('pp.is_approved', 1)
                 ->where('pp.is_cancelled', 0);
             if ($dateFrom) $q->where('pp.transaction_date', '>=', $dateFrom);

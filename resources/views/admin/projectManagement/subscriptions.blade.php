@@ -243,11 +243,20 @@
                 <span>Filter By</span>
               </div>
 
-              <button
-                class="filter-dropdown relative flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition">
-                <span>Plan Type</span>
-                <i class="fi fi-rr-angle-small-down text-gray-500"></i>
-              </button>
+              <select id="filterPlanType"
+                class="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition">
+                <option value="">All Plan Types</option>
+                @php
+                  $planKeys = collect(array_merge(
+                    $activeSubscriptions->pluck('plan_key')->unique()->toArray(),
+                    $expiredSubscriptions->pluck('plan_key')->unique()->toArray(),
+                    $cancelledSubscriptions->pluck('plan_key')->unique()->toArray()
+                  ))->unique()->sort()->values();
+                @endphp
+                @foreach($planKeys as $key)
+                  <option value="{{ $key }}">{{ ucfirst($key) }}</option>
+                @endforeach
+              </select>
             </div>
 
             <button

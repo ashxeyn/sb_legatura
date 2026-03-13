@@ -249,6 +249,20 @@
 
 .status-dot-red { background-color: #EF4444; }
 
+/* Online/Offline Status Indicator */
+.avatar-status {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.avatar-status.online  { background: #10b981; } /* Green for online */
+.avatar-status.offline { background: #9ca3af; } /* Gray for offline */
+
 /* Conversation Info */
 .conversation-info {
     flex: 1;

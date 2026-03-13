@@ -58,10 +58,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const id = row.cells[0]?.textContent.toLowerCase().trim() || '';
         const name = row.cells[1]?.textContent.toLowerCase().trim() || '';
-        const plan = row.cells[2]?.textContent.toLowerCase().trim() || '';
+        
+        // Get plan_key from the view button's data attribute
+        const viewBtn = row.querySelector('.view-subscription-btn');
+        const planKey = viewBtn?.dataset['planKey']?.toLowerCase().trim() || '';
 
         const matchesSearch = id.includes(searchQuery) || name.includes(searchQuery);
-        const matchesPlan = planFilter === '' || plan.includes(planFilter);
+        const matchesPlan = planFilter === '' || planKey === planFilter;
 
         if (matchesSearch && matchesPlan) {
           row.classList.remove('hidden');
@@ -1195,7 +1198,7 @@ function animateNumbers() {
     const text = element.textContent.trim();
     const haspeso = text.includes('₱');
     const numStr = text.replace(/[₱,]/g, '');
-    const targetNum = parseInt(numStr);
+    const targetNum = parseFloat(numStr);
 
     if (isNaN(targetNum)) return;
 
@@ -1212,7 +1215,7 @@ function animateNumbers() {
       }
 
       if (haspeso) {
-        element.textContent = `₱${currentNum.toLocaleString()}`;
+        element.textContent = `₱${currentNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       } else {
         element.textContent = currentNum.toString();
       }

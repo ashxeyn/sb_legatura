@@ -670,6 +670,7 @@ Route::prefix('admin/messages')->group(function () {
     Route::get('/search', [\App\Http\Controllers\message\messageController::class, 'search'])->name('admin.messages.search');
     Route::get('/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show'])->name('admin.messages.show');
     Route::post('/', [\App\Http\Controllers\message\messageController::class, 'store'])->name('admin.messages.store');
+    Route::post('/typing', [\App\Http\Controllers\message\messageController::class, 'typing'])->name('admin.messages.typing');
     Route::post('/report', [\App\Http\Controllers\message\messageController::class, 'report'])->name('admin.messages.report');
     Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class, 'suspend'])->name('admin.messages.suspend');
     Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class, 'restore'])->name('admin.messages.restore');

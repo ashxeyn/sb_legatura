@@ -146,33 +146,45 @@ function initializePusher() {
         // Listen for incoming messages on user's private channel
         window.Echo.private(`chat.${userId}`)
             .listen('.message.sent', (event) => {
-                console.log('Pusher: Message received!', event);
+                handleIncomingMessage(event);
+            })
+            .listen('.message.sent.uncensored', (event) => {
+                // Admin receives uncensored version of flagged messages
                 handleIncomingMessage(event);
             })
             .listen('.messages.read', (event) => {
-                console.log('Pusher: Messages marked as read!', event);
                 handleMessagesRead(event);
             })
             .listen('.conversation.suspended', (event) => {
-                console.log('Pusher: Conversation suspended/unsuspended!', event);
                 handleConversationSuspension(event);
             })
             .listen('client-typing', (event) => {
-                console.log('Pusher: Received client-typing event (without dot)', event);
                 handleTypingEvent(event);
             })
             .listen('.client-typing', (event) => {
-                console.log('Pusher: Received .client-typing event (with dot)', event);
                 handleTypingEvent(event);
             })
             .subscribed(() => {
-                console.log('Pusher: Successfully subscribed to channel chat.' + userId);
                 updatePusherStatus('connected', 'Real-time enabled');
             })
             .error((error) => {
                 console.error('Pusher channel subscription failed:', error);
-                console.info('Tip: Make sure PUSHER credentials are set in .env and queue worker is running');
                 updatePusherStatus('error', 'Connection failed');
+            });
+
+        // Subscribe to presence channel for online status tracking
+        window.Echo.join('online')
+            .here((users) => {
+                updateOnlineStatus(users);
+            })
+            .joining((user) => {
+                setUserOnlineStatus(user.id, true);
+            })
+            .leaving((user) => {
+                setUserOnlineStatus(user.id, false);
+            })
+            .error((error) => {
+                console.error('Pusher presence channel failed:', error);
             });
 
         // console.log('Pusher: Listener attached for .message.sent and .messages.read events');
@@ -219,6 +231,63 @@ function updatePusherStatus(status, message) {
             statusDot.classList.add('bg-gray-400');
             statusText.textContent = message;
             break;
+    }
+}
+
+/**
+ * Update online status for all users in the list
+ * @param {Array} users - Array of online users from presence channel
+ */
+function updateOnlineStatus(users) {
+    const onlineUserIds = users.map(u => parseInt(u.id));
+    
+    // First, set all users to offline
+    document.querySelectorAll('.conversation-item').forEach(item => {
+        const receiverId = parseInt(item.dataset.receiverId);
+        setUserOnlineStatus(receiverId, false);
+    });
+    
+    // Then, set online users to online
+    onlineUserIds.forEach(userId => {
+        setUserOnlineStatus(userId, true);
+    });
+}
+
+/**
+ * Set online/offline status for a specific user
+ * @param {number} userId - User ID
+ * @param {boolean} isOnline - Whether user is online
+ */
+function setUserOnlineStatus(userId, isOnline) {
+    // Update in conversation list
+    const conversationItem = document.querySelector(`[data-receiver-id="${userId}"]`);
+    if (conversationItem) {
+        const statusDot = conversationItem.querySelector('.avatar-status');
+        if (statusDot) {
+            statusDot.classList.remove('online', 'offline');
+            statusDot.classList.add(isOnline ? 'online' : 'offline');
+        }
+    }
+
+    // Update in conversation header if this is the current conversation
+    if (currentReceiverId === userId) {
+        const headerAvatar = document.getElementById('headerAvatar');
+        if (headerAvatar) {
+            const headerStatusDot = headerAvatar.querySelector('.avatar-status');
+            if (headerStatusDot) {
+                headerStatusDot.classList.remove('online', 'offline');
+                headerStatusDot.classList.add(isOnline ? 'online' : 'offline');
+            } else {
+                // Add status dot if it doesn't exist
+                const img = headerAvatar.querySelector('img');
+                if (img) {
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = `avatar-status ${isOnline ? 'online' : 'offline'}`;
+                    headerAvatar.style.position = 'relative';
+                    headerAvatar.appendChild(statusSpan);
+                }
+            }
+        }
     }
 }
 
@@ -351,6 +420,20 @@ function renderConversations(conversations) {
             selectConversation(conversationId, receiverId);
         });
     });
+
+    // Request current online status from presence channel if Echo is available
+    if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
+        const presenceChannel = window.Echo.connector.pusher.channel('presence-online');
+        if (presenceChannel && presenceChannel.members) {
+            const onlineUsers = [];
+            presenceChannel.members.each(member => {
+                onlineUsers.push(member);
+            });
+            if (onlineUsers.length > 0) {
+                updateOnlineStatus(onlineUsers);
+            }
+        }
+    }
 }
 
 /**
@@ -382,7 +465,31 @@ async function selectConversation(conversationId, receiverId) {
         const selectedAvatar = document.getElementById('selectedAvatar');
 
         if (headerAvatar) {
-            headerAvatar.innerHTML = `<img src="${receiverAvatar}" alt="${receiverName}" class="w-10 h-10 rounded-full object-cover">`;
+            headerAvatar.innerHTML = `
+                <img src="${receiverAvatar}" alt="${receiverName}" class="w-10 h-10 rounded-full object-cover">
+                <span class="avatar-status offline"></span>
+            `;
+            headerAvatar.style.position = 'relative';
+            
+            // Check if this user is online in the presence channel
+            if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
+                const presenceChannel = window.Echo.connector.pusher.channel('presence-online');
+                if (presenceChannel && presenceChannel.members) {
+                    let isOnline = false;
+                    presenceChannel.members.each(member => {
+                        if (parseInt(member.id) === receiverId) {
+                            isOnline = true;
+                        }
+                    });
+                    
+                    // Update status immediately
+                    const statusDot = headerAvatar.querySelector('.avatar-status');
+                    if (statusDot) {
+                        statusDot.classList.remove('online', 'offline');
+                        statusDot.classList.add(isOnline ? 'online' : 'offline');
+                    }
+                }
+            }
         }
         if (selectedAvatar) {
             selectedAvatar.src = receiverAvatar;
@@ -760,6 +867,8 @@ function renderMessages(messages, conversationData = null) {
     // If not (e.g., admin viewing user-to-user chat), use sender_id for alignment
     let alignmentUserId = userId;
     let isAdminView = false;
+    let isAdminConversation = conversationData && conversationData.is_admin_conversation;
+    
     if (conversationData) {
         const isParticipant = conversationData.sender_id === userId || conversationData.receiver_id === userId;
         if (!isParticipant && conversationData.sender_id) {
@@ -770,7 +879,16 @@ function renderMessages(messages, conversationData = null) {
     }
 
     container.innerHTML = messages.map(msg => {
-        const isSent = msg.sender.id === alignmentUserId;
+        // For admin conversations: admin messages should be on the right
+        let isSent;
+        if (isAdminConversation && isAdmin()) {
+            // Admin viewing admin conversation: admin's messages on right, user's on left
+            isSent = msg.sender.type === 'Admin';
+        } else {
+            // Normal logic
+            isSent = msg.sender.id === alignmentUserId;
+        }
+        
         const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
         const alignClass = isSent ? 'justify-end' : 'justify-start';
         const flaggedBubbleClass = msg.is_flagged ? 'flagged-message-bubble' : '';
@@ -1261,6 +1379,8 @@ function appendMessage(messageData) {
     // If not (e.g., admin viewing user-to-user chat), use sender_id for alignment
     let alignmentUserId = userId;
     let isAdminView = false;
+    let isAdminConversation = currentConversationData && currentConversationData.is_admin_conversation;
+    
     if (currentConversationData) {
         const isParticipant = currentConversationData.sender_id === userId || currentConversationData.receiver_id === userId;
         if (!isParticipant && currentConversationData.sender_id) {
@@ -1270,7 +1390,16 @@ function appendMessage(messageData) {
         }
     }
 
-    const isSent = messageData.sender.id === alignmentUserId;
+    // For admin conversations: admin messages should be on the right
+    let isSent;
+    if (isAdminConversation && isAdmin()) {
+        // Admin viewing admin conversation: admin's messages on right, user's on left
+        isSent = messageData.sender.type === 'Admin';
+    } else {
+        // Normal logic
+        isSent = messageData.sender.id === alignmentUserId;
+    }
+    
     const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
     const alignClass = isSent ? 'justify-end' : 'justify-start';
     const flaggedBubbleClass = messageData.is_flagged ? 'flagged-message-bubble' : '';

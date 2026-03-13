@@ -67,3 +67,54 @@ Broadcast::channel('chat.{userId}', function ($user, $userId) {
 
     return false;
 });
+
+/*
+|--------------------------------------------------------------------------
+| Presence Channel - Online Status
+|--------------------------------------------------------------------------
+| Track which users are currently online
+*/
+
+Broadcast::channel('online', function ($user) {
+    // Handle both Sanctum (API) and session (web) authentication
+    $currentUserId = null;
+    $userName = 'User';
+
+    if ($user) {
+        // Sanctum authenticated user (mobile app)
+        $currentUserId = $user->user_id ?? $user->id ?? null;
+        $userName = $user->username ?? $user->email ?? 'User';
+    }
+
+    // If no $user from guard, check custom session data (admin web dashboard)
+    if (!$currentUserId) {
+        $sessionUser = session('user');
+        if ($sessionUser) {
+            // Admin users: admin_id is VARCHAR 'ADMIN-1' - extract numeric part
+            // Regular users: user_id or id
+            if (isset($sessionUser->admin_id)) {
+                $currentUserId = (int) preg_replace('/[^0-9]/', '', $sessionUser->admin_id);
+                $userName = $sessionUser->username ?? 'Admin';
+            } else {
+                $currentUserId = $sessionUser->user_id ?? $sessionUser->id ?? null;
+                $userName = $sessionUser->username ?? $sessionUser->email ?? 'User';
+            }
+        }
+    }
+
+    // Also check Laravel's default auth (fallback)
+    if (!$currentUserId && auth()->check()) {
+        $authUser = auth()->user();
+        $currentUserId = $authUser->user_id ?? $authUser->id ?? null;
+        $userName = $authUser->username ?? $authUser->email ?? 'User';
+    }
+
+    if ($currentUserId) {
+        return [
+            'id' => $currentUserId,
+            'name' => $userName
+        ];
+    }
+
+    return false;
+});
