@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 class propertyOwnerClass
 {
+    // Get paginated list of property owners with search, status, and date filters
     public function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $perPage = 15, $page = null, $onlyEligible = false)
     {
         $query = DB::table('property_owners')
@@ -94,6 +95,7 @@ class propertyOwnerClass
         return $query->orderBy('property_owners.created_at', 'desc')->paginate($perPage, ['*'], 'page', $page);
     }
 
+    // Get property owner details by ID with occupation and user info
     public function getPropertyOwnerById($id)
     {
         return DB::table('property_owners')
@@ -115,6 +117,7 @@ class propertyOwnerClass
             ->first();
     }
 
+    // Fetch owner view with contractor details and project information
     public function fetchOwnerView($id)
     {
         $owner = $this->getPropertyOwnerById($id);
@@ -122,14 +125,17 @@ class propertyOwnerClass
         if (!$owner) return null;
 
         // If user is also a contractor, fetch contractor details
-        if ($owner->user_type === 'both') {
+        if ($owner->user_type === 'both' || $owner->user_type === 'owner_staff') {
             // Check if owner owns a contractor company
             $contractorDetails = DB::table('contractors')
                 ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
                 ->where('contractors.owner_id', $owner->owner_id)
                 ->select(
                     'contractors.company_name',
-                    'contractors.dti_sec_registration_photo',
+                    'contractors.years_of_experience',
+                    'contractors.services_offered',
+                    'contractors.business_address',
+                    'contractors.company_description',
                     DB::raw("'owner' as position"),
                     DB::raw("CASE WHEN contractor_types.type_name = 'Others' OR contractor_types.type_name IS NULL THEN contractors.contractor_type_other ELSE contractor_types.type_name END as contractor_type")
                 )
@@ -143,7 +149,10 @@ class propertyOwnerClass
                     ->where('contractor_staff.owner_id', $owner->owner_id)
                     ->select(
                         'contractors.company_name',
-                        'contractors.dti_sec_registration_photo',
+                        'contractors.years_of_experience',
+                        'contractors.services_offered',
+                        'contractors.business_address',
+                        'contractors.company_description',
                         'contractor_staff.company_role as position',
                         DB::raw("CASE WHEN contractor_types.type_name = 'Others' OR contractor_types.type_name IS NULL THEN contractors.contractor_type_other ELSE contractor_types.type_name END as contractor_type")
                     )
@@ -185,6 +194,7 @@ class propertyOwnerClass
         return $owner;
     }
 
+    // Create new property owner with user account and profile
     public function addPropertyOwner(array $data)
     {
         return DB::transaction(function () use ($data) {
@@ -233,6 +243,7 @@ class propertyOwnerClass
         });
     }
 
+    // Update property owner and user account information
     public function editPropertyOwner($userId, array $data)
     {
         return DB::transaction(function () use ($userId, $data) {
@@ -284,6 +295,7 @@ class propertyOwnerClass
         });
     }
 
+    // Delete property owner account and mark as deleted
     public function deleteOwner($ownerId, $reason)
     {
         return DB::transaction(function () use ($ownerId, $reason) {
@@ -312,6 +324,7 @@ class propertyOwnerClass
         });
     }
 
+    // Suspend property owner and cascade suspension to contractors and projects
     public function suspendOwner($id, $reason, $duration, $suspensionUntil)
     {
         return DB::transaction(function () use ($id, $reason, $duration, $suspensionUntil) {

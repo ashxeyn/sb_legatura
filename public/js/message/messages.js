@@ -104,6 +104,18 @@ function updateAllTimestamps() {
     });
 }
 
+/**
+ * Generate initials from a name
+ */
+function getInitials(name) {
+    if (!name) return 'U';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initializePusher();
 
@@ -378,7 +390,9 @@ function renderConversations(conversations) {
         return;
     }
 
-    list.innerHTML = conversations.map(conv => `
+    list.innerHTML = conversations.map(conv => {
+        const initials = getInitials(conv.other_user.name);
+        return `
         <div class="conversation-item ${conv.unread_count > 0 ? 'unread' : ''} ${conv.is_flagged ? 'flagged' : ''} ${(conv.status === 'suspended' || conv.is_suspended) ? 'suspended' : ''}"
              data-conversation-id="${conv.conversation_id}"
              data-receiver-id="${conv.other_user.id}"
@@ -386,10 +400,14 @@ function renderConversations(conversations) {
              data-receiver-avatar="${conv.other_user.avatar}"
              data-receiver-type="${conv.other_user.type}">
             <div class="flex items-start gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
-                <div class="relative flex-shrink-0">
+                <div class="relative flex-shrink-0 avatar-container" data-initials="${initials}">
                     <img src="${conv.other_user.avatar}"
                          alt="${conv.other_user.name}"
-                         class="w-12 h-12 rounded-full object-cover">
+                         class="w-12 h-12 rounded-full object-cover avatar-img"
+                         onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-fallback')?.style.display='flex';">
+                    <div class="avatar-fallback w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm hidden">
+                        ${initials}
+                    </div>
                     ${conv.other_user.online ? '<span class="avatar-status online"></span>' : '<span class="avatar-status offline"></span>'}
                 </div>
                 <div class="flex-1 min-w-0">
@@ -410,7 +428,8 @@ function renderConversations(conversations) {
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     // Add click listeners
     document.querySelectorAll('.conversation-item').forEach(item => {
@@ -465,8 +484,12 @@ async function selectConversation(conversationId, receiverId) {
         const selectedAvatar = document.getElementById('selectedAvatar');
 
         if (headerAvatar) {
+            const initials = getInitials(receiverName);
             headerAvatar.innerHTML = `
-                <img src="${receiverAvatar}" alt="${receiverName}" class="w-10 h-10 rounded-full object-cover">
+                <img src="${receiverAvatar}" alt="${receiverName}" class="w-10 h-10 rounded-full object-cover avatar-img" onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-fallback')?.style.display='flex';">
+                <div class="avatar-fallback w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm hidden">
+                    ${initials}
+                </div>
                 <span class="avatar-status offline"></span>
             `;
             headerAvatar.style.position = 'relative';
@@ -901,14 +924,19 @@ function renderMessages(messages, conversationData = null) {
 
         return `
             <div class="flex ${alignClass} mb-4" data-message-id="${msg.message_id}">
-                ${!isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${msg.sender.name}">` : ''}
+                ${!isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${msg.sender.name}" onerror="this.style.display='none';">` : ''}
                 <div class="max-w-[70%]">
-                    <div class="${bubbleClass} ${flaggedBubbleClass} relative" ${msg.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
+                    <div class="${bubbleClass} ${flaggedBubbleClass} relative group" ${msg.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
                         <p class="text-sm">${escapeHtml(msg.content)}</p>
                         ${msg.attachments.length > 0 ? renderAttachments(msg.attachments) : ''}
                         ${msg.is_flagged && isAdmin() ? `
-                            <div class="mt-1 pt-1 border-t border-amber-200 text-xs text-amber-700">
-                                <i class="fi fi-sr-flag"></i> ${escapeHtml(flaggedTooltip)}
+                            <div class="mt-2 pt-2 border-t border-amber-200 flex items-center justify-between">
+                                <div class="flex items-center gap-1 text-xs text-amber-700">
+                                    <i class="fi fi-sr-flag"></i> ${escapeHtml(flaggedTooltip)}
+                                </div>
+                                <button class="unflag-message-btn text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1 rounded transition" data-message-id="${msg.message_id}" title="Unflag this message">
+                                    <i class="fi fi-rr-check"></i> Unflag
+                                </button>
                             </div>
                         ` : ''}
                     </div>
@@ -920,10 +948,21 @@ function renderMessages(messages, conversationData = null) {
                         ${isSent ? `<span class="read-indicator text-xs ${msg.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${msg.is_read ? 'Seen' : 'Sent'}">✓${msg.is_read ? '✓' : ''}</span>` : ''}
                     </div>
                 </div>
-                ${isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${msg.sender.name}">` : ''}
+                ${isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${msg.sender.name}" onerror="this.style.display='none';">` : ''}
             </div>
         `;
     }).join('');
+
+    // Add unflag button listeners for flagged messages (admin only)
+    if (isAdmin()) {
+        document.querySelectorAll('.unflag-message-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const messageId = parseInt(btn.dataset.messageId);
+                unflagMessage(messageId);
+            });
+        });
+    }
 
     // Scroll to bottom
     scrollToBottom();
@@ -1412,14 +1451,19 @@ function appendMessage(messageData) {
 
     const messageHtml = `
         <div class="flex ${alignClass} mb-4" data-message-id="${messageData.message_id}">
-            ${!isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${messageData.sender.name}">` : ''}
+            ${!isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${messageData.sender.name}" onerror="this.style.display='none';">` : ''}
             <div class="max-w-[70%]">
                 <div class="${bubbleClass} ${flaggedBubbleClass} relative group" ${messageData.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
                     <p class="text-sm">${escapeHtml(messageData.content)}</p>
                     ${messageData.attachments?.length > 0 ? renderAttachments(messageData.attachments) : ''}
                     ${messageData.is_flagged && isAdmin() ? `
-                        <div class="mt-1 pt-1 border-t border-amber-200 text-xs text-amber-700">
-                            <i class="fi fi-sr-flag"></i> ${escapeHtml(flaggedTooltip)}
+                        <div class="mt-2 pt-2 border-t border-amber-200 flex items-center justify-between">
+                            <div class="flex items-center gap-1 text-xs text-amber-700">
+                                <i class="fi fi-sr-flag"></i> ${escapeHtml(flaggedTooltip)}
+                            </div>
+                            <button class="unflag-message-btn text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1 rounded transition" data-message-id="${messageData.message_id}" title="Unflag this message">
+                                <i class="fi fi-rr-check"></i> Unflag
+                            </button>
                         </div>
                     ` : ''}
                     ${!isSent && !isAdminView ? `
@@ -1438,7 +1482,7 @@ function appendMessage(messageData) {
                     ${isSent ? `<span class="read-indicator text-xs ${messageData.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${messageData.is_read ? 'Seen' : 'Sent'}">✓${messageData.is_read ? '✓' : ''}</span>` : ''}
                 </div>
             </div>
-            ${isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${messageData.sender.name}">` : ''}
+            ${isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${messageData.sender.name}" onerror="this.style.display='none';">` : ''}
         </div>
     `;
 
@@ -1448,6 +1492,12 @@ function appendMessage(messageData) {
     if (!isSent && !isAdminView) {
         const reportBtn = container.querySelector(`[data-message-id="${messageData.message_id}"] .report-message-btn`);
         reportBtn?.addEventListener('click', () => reportMessage(messageData.message_id));
+    }
+
+    // Attach unflag button event listener (only for admin)
+    if (isAdmin()) {
+        const unflagBtn = container.querySelector(`[data-message-id="${messageData.message_id}"] .unflag-message-btn`);
+        unflagBtn?.addEventListener('click', () => unflagMessage(messageData.message_id));
     }
 
     scrollToBottom();
@@ -1499,11 +1549,11 @@ function setupEventListeners() {
         const query = e.target.value.toLowerCase().trim();
         const dropdown = document.getElementById('composeRecipientDropdown');
 
-        if (query.length === 0) {
-            // Hide dropdown when search is empty (like Messenger)
+        if (query.length < 2) {
+            // Hide dropdown when search is less than 2 characters
             dropdown?.classList.add('hidden');
         } else {
-            // Show filtered suggestions based on search
+            // Show filtered suggestions based on search (require at least 2 characters)
             const filtered = availableUsers.filter(user =>
                 user.name.toLowerCase().includes(query) ||
                 user.type.toLowerCase().includes(query)
@@ -1645,6 +1695,7 @@ function setupEventListeners() {
     // Modal confirm buttons
     document.getElementById('confirmFlagBtn')?.addEventListener('click', flagCurrentConversation);
     document.getElementById('confirmUnflagBtn')?.addEventListener('click', unflagCurrentConversation);
+    document.getElementById('confirmUnflagMessageBtn')?.addEventListener('click', confirmUnflagMessage);
     document.getElementById('confirmSuspendBtn')?.addEventListener('click', suspendCurrentConversation);
     document.getElementById('confirmRestoreBtn')?.addEventListener('click', restoreCurrentConversation);
 
@@ -1889,6 +1940,18 @@ async function showComposeModal() {
 }
 
 /**
+ * Format user type for display
+ */
+function formatUserType(userType) {
+    const typeMap = {
+        'property_owner': 'Property Owner',
+        'both': 'Company Owner',
+        'owner_staff': 'Company Staff'
+    };
+    return typeMap[userType] || userType;
+}
+
+/**
  * Show user dropdown with filtered users
  */
 function showUserDropdown(users) {
@@ -1901,15 +1964,22 @@ function showUserDropdown(users) {
         return;
     }
 
-    dropdown.innerHTML = users.map(user => `
+    dropdown.innerHTML = users.map(user => {
+        const initials = getInitials(user.name);
+        return `
         <div class="user-option p-3 hover:bg-indigo-50 cursor-pointer flex items-center gap-3 transition" data-user-id="${user.id}">
-            <img src="${user.avatar}" class="w-8 h-8 rounded-full" alt="${user.name}">
+            <div class="relative w-8 h-8">
+                <img src="${user.avatar}" class="w-8 h-8 rounded-full avatar-img" alt="${user.name}" onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-fallback')?.style.display='flex';">
+                <div class="avatar-fallback w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs hidden">
+                    ${initials}
+                </div>
+            </div>
             <div class="flex-1">
                 <div class="font-semibold text-gray-800">${user.name}</div>
-                <div class="text-xs text-gray-500">${user.type}</div>
+                <div class="text-xs text-gray-500">${formatUserType(user.type)}</div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
     dropdown.classList.remove('hidden');
 
@@ -2496,6 +2566,79 @@ async function reportMessage(messageId) {
     } catch (error) {
         console.error('Error reporting message:', error);
         toast(error.message || 'Failed to report message', 'error');
+    }
+}
+
+/**
+ * Unflag a message (admin only)
+ */
+async function unflagMessage(messageId) {
+    // Show confirmation modal
+    const modal = document.getElementById('unflagMessageConfirmModal');
+    if (!modal) {
+        console.error('Unflag confirmation modal not found');
+        return;
+    }
+
+    // Store the message ID for the confirmation handler
+    modal.dataset.messageId = messageId;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+/**
+ * Confirm unflag message action
+ */
+async function confirmUnflagMessage() {
+    const modal = document.getElementById('unflagMessageConfirmModal');
+    const messageId = parseInt(modal.dataset.messageId);
+
+    try {
+        const response = await fetch(`${getApiPrefix()}/message/${messageId}/unflag`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                ...(getAuthToken() && { 'Authorization': `Bearer ${getAuthToken()}` })
+            },
+            credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to unflag message');
+        }
+
+        toast(result.message || 'Message unflagged successfully', 'success');
+
+        // Update the message bubble to remove flagged styling
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageElement) {
+            // Remove flagged class from bubble
+            const bubble = messageElement.querySelector('.flagged-message-bubble');
+            if (bubble) {
+                bubble.classList.remove('flagged-message-bubble');
+            }
+
+            // Remove the flag indicator and unflag button
+            const flagDiv = messageElement.querySelector('.mt-2.pt-2.border-t.border-amber-200');
+            if (flagDiv) {
+                flagDiv.remove();
+            }
+
+            // Remove the title attribute that shows the flag tooltip
+            bubble?.removeAttribute('title');
+        }
+
+        // Close modal
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+
+    } catch (error) {
+        console.error('Error unflagging message:', error);
+        toast(error.message || 'Failed to unflag message', 'error');
     }
 }
 

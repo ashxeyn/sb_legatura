@@ -157,6 +157,21 @@ User card reads from session('user').
   {{-- ── User card ── --}}
   @php
     $user = session('user');
+    $profilePic = null;
+    
+    // If user is in session, check for profile_pic
+    if ($user) {
+      $profilePic = $user->profile_pic ?? null;
+      
+      // If profile_pic is not in session object, fetch from database
+      if (!$profilePic && isset($user->admin_id)) {
+        $adminFromDb = DB::table('admin_users')->where('admin_id', $user->admin_id)->first();
+        if ($adminFromDb && $adminFromDb->profile_pic) {
+          $profilePic = $adminFromDb->profile_pic;
+        }
+      }
+    }
+    
     $initials = $user
       ? strtoupper(substr($user->first_name ?? '', 0, 1) . substr($user->last_name ?? '', 0, 1))
       : 'AD';
@@ -166,10 +181,14 @@ User card reads from session('user').
 
   <div class="mt-auto p-4">
     <div class="user-card flex items-center gap-3 p-3 rounded-lg shadow-md text-white">
-      <div
-        class="w-10 h-10 rounded-full bg-white text-indigo-900 flex items-center justify-center font-bold shadow flex-shrink-0">
-        {{ $initials }}
-      </div>
+      @if($profilePic)
+        <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $fullName }}" class="w-10 h-10 rounded-full object-cover shadow flex-shrink-0">
+      @else
+        <div
+          class="w-10 h-10 rounded-full bg-white text-indigo-900 flex items-center justify-center font-bold shadow flex-shrink-0">
+          {{ $initials }}
+        </div>
+      @endif
       <div class="flex-1 min-w-0">
         <div class="font-semibold text-sm truncate">{{ $fullName }}</div>
         <div class="text-xs opacity-80 truncate">{{ $userEmail }}</div>

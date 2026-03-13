@@ -14,18 +14,12 @@ use Illuminate\Support\Facades\Log;
 
 class messageController extends Controller
 {
-    /**
-     * Get authenticated user ID from either Bearer token (mobile), session (web), or X-User-Id header
-     * NOTE: Uses manual token lookup instead of auth('sanctum') to avoid PHP dev server crash on Windows
-     */
+    // Get authenticated user ID from Bearer token, session, or X-User-Id header
     private function getAuthUserId(): ?int
     {
-        // 1. Try Bearer token — manual DB lookup (same pattern as payMongoController)
         $bearerToken = request()->bearerToken();
         if ($bearerToken) {
             try {
-                // Sanctum tokens are formatted as {id}|{plaintext}
-                // We need to hash only the plaintext part (after the pipe)
                 $tokenParts = explode('|', $bearerToken, 2);
                 $plainText = count($tokenParts) === 2 ? $tokenParts[1] : $bearerToken;
                 $tokenHash = hash('sha256', $plainText);
@@ -40,17 +34,14 @@ class messageController extends Controller
             }
         }
 
-        // 2. Fallback to session (admin web dashboard)
         $sessionUser = session('user');
         if ($sessionUser) {
             if (isset($sessionUser->admin_id)) {
-                // admin_id is now VARCHAR ('ADMIN-1') — extract numeric part for conversation sender_id (bigint)
                 return (int) preg_replace('/[^0-9]/', '', $sessionUser->admin_id);
             }
             return $sessionUser->user_id ?? $sessionUser->id ?? null;
         }
 
-        // 3. Fallback: X-User-Id header (mobile clients)
         $headerUserId = request()->header('X-User-Id');
         if ($headerUserId) {
             return (int) $headerUserId;
@@ -59,10 +50,7 @@ class messageController extends Controller
         return null;
     }
 
-    /**
-     * Broadcast typing indicator to the receiver's channel
-     * Ultra-lightweight: no DB queries, just auth + Pusher trigger
-     */
+    // Broadcast typing indicator to receiver via Pusher
     public function typing(Request $request): JsonResponse
     {
         $userId = $this->getAuthUserId();
@@ -98,23 +86,14 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Check if current user is an admin
-     */
+    // Check if current user is an admin from session
     private function isAdmin(int $userId): bool
     {
-        // Check if the CURRENT SESSION is an admin session (has admin_id in session)
-        // Do NOT check DB with numeric ID as that causes collision between
-        // admin_id='ADMIN-1' and user_id=1
         $sessionUser = session('user');
         return $sessionUser && isset($sessionUser->admin_id);
     }
-    /**
-     * Get inbox for the authenticated user
-     * Returns list of conversations with latest message preview
-     *
-     * @return JsonResponse
-     */
+
+    // Get inbox for authenticated user with latest message previews
     public function index(): JsonResponse
     {
         try {
@@ -172,12 +151,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Get full conversation history
-     *
-     * @param int $conversationId
-     * @return JsonResponse
-     */
+    // Get full conversation history with authorization checks
     public function show(int $conversationId): JsonResponse
     {
         try {
@@ -271,12 +245,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Store a new message and broadcast via Pusher
-     *
-     * @param messageRequest $request
-     * @return JsonResponse
-     */
+    // Store new message, validate content, broadcast via Pusher
     public function store(messageRequest $request): JsonResponse
     {
         try {
@@ -445,11 +414,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Get dashboard statistics for admin analytics cards
-     *
-     * @return JsonResponse
-     */
+    // Get dashboard statistics for admin analytics cards
     public function getStats(): JsonResponse
     {
         try {
@@ -479,13 +444,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Suspend a conversation
-     *
-     * @param Request $request
-     * @param int $conversationId
-     * @return JsonResponse
-     */
+    // Suspend conversation with escalating duration based on offense count
     public function suspend(Request $request, int $conversationId): JsonResponse
     {
         try {
@@ -572,12 +531,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Restore a suspended conversation
-     *
-     * @param int $conversationId
-     * @return JsonResponse
-     */
+    // Restore suspended conversation and broadcast event
     public function restore(int $conversationId): JsonResponse
     {
         try {
@@ -606,13 +560,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Flag a conversation
-     *
-     * @param Request $request
-     * @param int $conversationId
-     * @return JsonResponse
-     */
+    // Flag entire conversation for admin review
     public function flagConversation(Request $request, int $conversationId): JsonResponse
     {
         try {
@@ -637,12 +585,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Unflag a conversation
-     *
-     * @param int $conversationId
-     * @return JsonResponse
-     */
+    // Unflag entire conversation
     public function unflagConversation(int $conversationId): JsonResponse
     {
         try {
@@ -662,12 +605,27 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Search messages by content
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
+    // Unflag specific message and revert flagged status
+    public function unflagMessage(int $messageId): JsonResponse
+    {
+        try {
+            messageClass::unflagMessage($messageId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Message unflagged successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to unflag message',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Search messages by content in user's conversations
     public function search(Request $request): JsonResponse
     {
         try {
@@ -714,11 +672,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * Get list of users available for messaging
-     *
-     * @return JsonResponse
-     */
+    // Get list of users available for messaging
     public function getAvailableUsers(): JsonResponse
     {
         try {
@@ -759,13 +713,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * SECURITY: Report a message for inappropriate content
-     * Flags the message and stores the user's report reason
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
+    // Report message for inappropriate content, flag and store reason
     public function report(Request $request): JsonResponse
     {
         try {
@@ -843,11 +791,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * ADMIN MODERATION: Get flagged conversations
-     *
-     * @return JsonResponse
-     */
+    // Get flagged conversations for admin moderation
     public function getFlaggedConversations(): JsonResponse
     {
         try {
@@ -877,11 +821,7 @@ class messageController extends Controller
         }
     }
 
-    /**
-     * ADMIN MODERATION: Get suspended conversations
-     *
-     * @return JsonResponse
-     */
+    // Get suspended conversations for admin moderation
     public function getSuspendedConversations(): JsonResponse
     {
         try {

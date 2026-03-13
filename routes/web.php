@@ -676,6 +676,7 @@ Route::prefix('admin/messages')->group(function () {
     Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class, 'restore'])->name('admin.messages.restore');
     Route::post('/conversation/{conversationId}/flag', [\App\Http\Controllers\message\messageController::class, 'flagConversation'])->name('admin.messages.conversation.flag');
     Route::post('/conversation/{conversationId}/unflag', [\App\Http\Controllers\message\messageController::class, 'unflagConversation'])->name('admin.messages.conversation.unflag');
+    Route::post('/message/{messageId}/unflag', [\App\Http\Controllers\message\messageController::class, 'unflagMessage'])->name('admin.messages.message.unflag');
 });
 
 // Bid routes

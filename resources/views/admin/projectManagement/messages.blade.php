@@ -523,6 +523,42 @@
         </div>
       </div>
 
+      <!-- Unflag Message Confirmation Modal -->
+      <div id="unflagMessageConfirmModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+          <div class="px-6 py-5 bg-gradient-to-r from-amber-500 to-orange-500">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse-slow">
+                  <i class="fi fi-sr-check-circle text-white text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">Unflag This Message?</h3>
+              </div>
+              <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+            </div>
+          </div>
+          <div class="p-6 space-y-5">
+            <div class="flex items-start gap-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+              <i class="fi fi-rr-info-circle text-amber-600 text-xl mt-0.5"></i>
+              <div class="flex-1">
+                <p class="text-sm text-amber-900 font-semibold mb-1">You are about to unflag this message</p>
+                <p class="text-xs text-amber-800">This will remove the flag and restore the message to its normal appearance. The message will no longer be marked as suspicious.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+              <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all transform hover:scale-105">Cancel</button>
+              <button id="confirmUnflagMessageBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-md hover:shadow-lg transition-all transform hover:scale-105">
+                <span class="flex items-center gap-2">
+                  <i class="fi fi-rr-check"></i>
+                  <span>Unflag Message</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Compose New Message Modal -->
       <div id="composeModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">

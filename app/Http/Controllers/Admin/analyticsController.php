@@ -8,9 +8,7 @@ use App\Http\Controllers\authController;
 
 class analyticsController extends authController
 {
-    /**
-     * Show the unified project analytics page (merged projectAnalytics + projectPerformance)
-     */
+    // Show unified project analytics page with all metrics
     public function analytics()
     {
         $projectsAnalytics      = $this->getProjectsAnalytics();
@@ -34,6 +32,7 @@ class analyticsController extends authController
     // EXISTING METHODS (unchanged)
     // =============================================
 
+    // Show subscription analytics page with metrics, tiers, revenue, and subscribers
     public function subscriptionAnalytics(\Illuminate\Http\Request $request)
     {
         $subscriptionMetrics = $this->getSubscriptionMetrics();
@@ -55,6 +54,7 @@ class analyticsController extends authController
         ]);
     }
 
+    // Apply tier condition to query based on amount ranges
     private function applyTierCondition($query, $tier)
     {
         switch ($tier) {
@@ -71,8 +71,8 @@ class analyticsController extends authController
         return $query;
     }
 
-   // ── Revenue chart data (per tier, current vs previous year) ──────────────
-   private function getSubscriptionRevenue(string $tier = 'all'): array
+    // Get subscription revenue data per tier for current and previous year
+    private function getSubscriptionRevenue(string $tier = 'all'): array
     {
         $currentYear      = (int) date('Y');
         $previousYear     = $currentYear - 1;
@@ -127,7 +127,7 @@ class analyticsController extends authController
         ];
     }
 
-    // ── AJAX endpoint for revenue chart tier switching ────────────────────────
+    // Get subscription revenue data for AJAX tier switching
     public function subscriptionRevenue(\Illuminate\Http\Request $request)
     {
         $tier = strtolower($request->input('tier', 'gold'));
@@ -137,6 +137,7 @@ class analyticsController extends authController
         return response()->json($this->getSubscriptionRevenue($tier));
     }
 
+    // Get subscribers list as JSON with formatted data
     public function getSubscribersJson(\Illuminate\Http\Request $request)
     {
         $paginator = $this->getSubscribers($request);
@@ -187,8 +188,8 @@ class analyticsController extends authController
         ]);
     }
 
-    // ── Tier bar chart counts ─────────────────────────────────────────────────
-     private function getSubscriptionTiers(): array
+    // Get subscription tier counts for bar chart
+    private function getSubscriptionTiers(): array
     {
         $counts = DB::table('platform_payments as pp')
             ->join('subscription_plans as sp', 'sp.id', '=', 'pp.subscriptionPlanId')
@@ -214,7 +215,7 @@ class analyticsController extends authController
         ];
     }
 
-    // ── Hero KPI metrics ──────────────────────────────────────────────────────
+    // Get subscription KPI metrics (total, active, revenue, expiring, expired)
     private function getSubscriptionMetrics(): array
     {
         $base = fn() => DB::table('platform_payments as pp')
@@ -267,7 +268,7 @@ class analyticsController extends authController
         ];
     }
 
-    // ── NEW: Subscriber list with search, filter, sort, pagination ────────────
+    // Get subscribers list with search, filter, sort, and pagination
     private function getSubscribers(\Illuminate\Http\Request $request)
     {
         $search = trim($request->input('search', ''));

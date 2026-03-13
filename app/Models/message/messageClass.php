@@ -27,9 +27,7 @@ class messageClass extends Model
         'flag_reason'
     ];
 
-    /**
-     * Get the user_id of who sent this message
-     */
+    // Get sender ID from conversation based on from_sender flag
     public function getSenderIdAttribute(): int
     {
         $conversation = DB::table('conversations')
@@ -39,11 +37,7 @@ class messageClass extends Model
         return $this->from_sender ? $conversation->sender_id : $conversation->receiver_id;
     }
 
-    /**
-     * Get attachments for this message
-     *
-     * @return \Illuminate\Support\Collection
-     */
+    // Get attachments for this message from database
     public function getAttachmentsAttribute()
     {
         return DB::table('message_attachments')
@@ -61,12 +55,7 @@ class messageClass extends Model
             });
     }
 
-    /**
-     * Store an attachment for this message
-     *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @return object|null
-     */
+    // Store file attachment for message in storage and database
     public function addAttachment($file): ?object
     {
         try {
@@ -93,12 +82,7 @@ class messageClass extends Model
         }
     }
 
-    /**
-     * Delete an attachment
-     *
-     * @param int $attachmentId
-     * @return bool
-     */
+    // Delete attachment file from storage and database
     public static function deleteAttachment(int $attachmentId): bool
     {
         try {
@@ -125,11 +109,7 @@ class messageClass extends Model
         }
     }
 
-    /**
-     * Get dashboard statistics for admin analytics
-     *
-     * @return array
-     */
+    // Get dashboard statistics for admin analytics cards
     public static function getDashboardStats(): array
     {
         // Total suspended conversations (exclude admin conversations)
@@ -165,12 +145,7 @@ class messageClass extends Model
         ];
     }
 
-    /**
-     * Get inbox/conversation list for a user
-     *
-     * @param int $userId
-     * @return array
-     */
+    // Get inbox/conversation list for user with latest message preview
     public static function getInbox(int $userId): array
     {
         $conversations = DB::table('conversations as c')
@@ -199,6 +174,16 @@ class messageClass extends Model
         foreach ($conversations as $conv) {
             $otherUserId = ($conv->sender_id == $userId) ? $conv->receiver_id : $conv->sender_id;
             $isAdminConv = (bool) ($conv->is_admin_conversation ?? false);
+            
+            // If is_admin_conversation is already set, use it directly
+            // Otherwise, check if the other user is an admin by looking in admin_users table
+            if (!$isAdminConv) {
+                $adminUser = DB::table('admin_users')->where('admin_id', 'ADMIN-' . $otherUserId)->first();
+                if ($adminUser) {
+                    $isAdminConv = true;
+                }
+            }
+            
             $otherUser = self::getUserDetails($otherUserId, $isAdminConv);
 
             if (!$otherUser)
@@ -238,13 +223,7 @@ class messageClass extends Model
         return $result;
     }
 
-    /**
-     * Get admin inbox - shows all admin conversations
-     * For admin conversations, both sender_id and receiver_id are the user's ID
-     * We use is_admin_conversation flag to identify them
-     *
-     * @return array
-     */
+    // Get admin inbox showing all admin conversations
     public static function getAdminInbox(): array
     {
         $conversations = DB::table('conversations as c')
@@ -309,12 +288,7 @@ class messageClass extends Model
         return $result;
     }
 
-    /**
-     * Store a new message with attachments
-     *
-     * @param array $data
-     * @return messageClass|null
-     */
+    // Store new message with attachments, validate content, auto-flag if suspicious
     public static function storeMessage(array $data): ?messageClass
     {
         try {
@@ -432,12 +406,7 @@ class messageClass extends Model
         }
     }
 
-    /**
-     * Get admin details for display
-     * Returns the first active admin or a default admin representation
-     *
-     * @return array
-     */
+    // Get admin details for display in messages
     public static function getAdminDetails(): array
     {
         // Get the first active admin (you can modify this to get a specific admin)
@@ -452,11 +421,19 @@ class messageClass extends Model
             // Extract numeric ID from admin_id (e.g., 'ADMIN-1' -> 1)
             $numericId = (int) preg_replace('/[^0-9]/', '', $admin->admin_id);
             
+            // Get avatar from profile_pic or use UI Avatars fallback
+            $avatar = null;
+            if (!empty($admin->profile_pic)) {
+                $avatar = asset('storage/' . $admin->profile_pic);
+            } else {
+                $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+            }
+            
             return [
                 'id' => $numericId,
                 'name' => $name,
                 'type' => 'Admin',
-                'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true',
+                'avatar' => $avatar,
                 'online' => false // Will be updated in real-time by frontend presence channel
             ];
         }
@@ -471,14 +448,7 @@ class messageClass extends Model
         ];
     }
 
-    /**
-     * Get conversation history
-     *
-     * @param int $conversationId
-     * @param int $limit
-     * @param int|null $viewerUserId User ID of who is viewing (for censoring)
-     * @return array
-     */
+    // Get conversation history with sender details and censoring for non-admins
     public static function getConversationHistory(int|string $conversationId, ?int $limit = null, ?int $viewerUserId = null): array
     {
         $conversation = DB::table('conversations')
@@ -553,12 +523,7 @@ class messageClass extends Model
         return $result;
     }
 
-    /**
-     * Get user details with polymorphic lookup
-     *
-     * @param int $userId
-     * @return array|null
-     */
+    // Get user details with polymorphic lookup for profile info
     /**
      * Get user details for display
      *
@@ -581,7 +546,15 @@ class messageClass extends Model
                 if (!empty($fullName)) {
                     $name = $fullName;
                 }
-                $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+                
+                // Get avatar from profile_pic or use UI Avatars fallback
+                $avatar = null;
+                if (!empty($admin->profile_pic)) {
+                    $avatar = asset('storage/' . $admin->profile_pic);
+                } else {
+                    $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+                }
+                
                 return [
                     'id' => $userId,
                     'name' => $name,
@@ -606,7 +579,15 @@ class messageClass extends Model
                 if (!empty($fullName)) {
                     $name = $fullName;
                 }
-                $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+                
+                // Get avatar from profile_pic or use UI Avatars fallback
+                $avatar = null;
+                if (!empty($admin->profile_pic)) {
+                    $avatar = asset('storage/' . $admin->profile_pic);
+                } else {
+                    $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+                }
+                
                 return [
                     'id' => $userId,
                     'name' => $name,
@@ -637,20 +618,13 @@ class messageClass extends Model
                 $name = !empty($fullName) ? ($fullName) : ($profile->username ?? $name);
                 $profilePic = $profile->profile_pic ?? null;
             }
-        } elseif ($type === 'contractor' || $type === 'both') {
-            // For contractors, get owner_id from property_owners, then get contractor details
+        } elseif ($type === 'both' || $type === 'owner_staff') {
+            // For both (company owner) and owner_staff, get details from property_owners table
             $propertyOwner = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($propertyOwner) {
-                $contractor = DB::table('contractors')->where('owner_id', $propertyOwner->owner_id)->first();
-                if ($contractor) {
-                    $name = $contractor->company_name ?? $name;
-                    $profilePic = $contractor->company_logo ?? null;
-                } else {
-                    // No contractor profile, use property owner details
-                    $fullName = trim(($user->first_name ?? '') . ' ' . ($user->middle_name ?? '') . ' ' . ($user->last_name ?? ''));
-                    $name = !empty($fullName) ? $fullName : $name;
-                    $profilePic = $propertyOwner->profile_pic ?? null;
-                }
+                $fullName = trim(($user->first_name ?? '') . ' ' . ($user->middle_name ?? '') . ' ' . ($user->last_name ?? ''));
+                $name = !empty($fullName) ? $fullName : $name;
+                $profilePic = $propertyOwner->profile_pic ?? null;
             }
         } elseif ($type === 'property_owner') {
             // For property owners, get profile from property_owners table
@@ -664,24 +638,31 @@ class messageClass extends Model
 
         // Set avatar URL
         if (!empty($profilePic)) {
-            $avatar = url('storage/' . $profilePic);
+            $avatar = asset('storage/' . $profilePic);
         } else {
             // Use UI Avatars as fallback
             $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=6366f1&color=fff&bold=true';
         }
 
+        // Format user type for display
+        $displayType = match($type) {
+            'property_owner' => 'Property Owner',
+            'both' => 'Company Owner',
+            'owner_staff' => 'Company Staff',
+            'admin' => 'Admin',
+            default => ucfirst($type)
+        };
+
         return [
             'id' => $userId,
             'name' => $name,
-            'type' => ucfirst($type),
+            'type' => $displayType,
             'avatar' => $avatar,
             'online' => false // Will be updated in real-time by frontend presence channel
         ];
     }
 
-    /**
-     * Mark messages as read
-     */
+    // Mark messages as read for user in conversation
     public static function markAsRead(int|string $conversationId, int $userId): void
     {
         // Get conversation to determine user's role
@@ -710,9 +691,7 @@ class messageClass extends Model
         }
     }
 
-    /**
-     * Flag all messages in a conversation
-     */
+    // Flag all messages in conversation for admin review
     public static function flagConversation(int|string $conversationId, string $reason, ?string $notes = null): void
     {
         DB::table('messages')
@@ -723,9 +702,7 @@ class messageClass extends Model
             ]);
     }
 
-    /**
-     * Unflag all messages in a conversation
-     */
+    // Unflag all messages in conversation
     public static function unflagConversation(int|string $conversationId): void
     {
         DB::table('messages')
@@ -736,13 +713,18 @@ class messageClass extends Model
             ]);
     }
 
-    /**
-     * Suspend a conversation
-     *
-     * @param int|string $conversationId
-     * @param string|null $reason
-     * @param string|null $suspendedUntil DateTime string (Y-m-d H:i:s)
-     */
+    // Unflag specific message and revert flagged status
+    public static function unflagMessage(int $messageId): void
+    {
+        DB::table('messages')
+            ->where('message_id', $messageId)
+            ->update([
+                'is_flagged' => 0,
+                'flag_reason' => null
+            ]);
+    }
+
+    // Suspend conversation with escalating duration based on offense count
     public static function suspendConversation(int|string $conversationId, ?string $reason = null, ?string $suspendedUntil = null, ?int $offenseCount = null): void
     {
         $updateData = [
@@ -765,9 +747,7 @@ class messageClass extends Model
         self::unflagConversation($conversationId);
     }
 
-    /**
-     * Restore a suspended conversation
-     */
+    // Restore suspended conversation to active status
     public static function restoreConversation(int|string $conversationId): void
     {
         DB::table('conversations')
@@ -780,12 +760,7 @@ class messageClass extends Model
             ]);
     }
 
-    /**
-     * Check and auto-restore expired suspensions
-     *
-     * @param int|string $conversationId
-     * @return bool True if conversation is currently suspended (not expired)
-     */
+    // Check suspension status and auto-restore if expiry date passed
     public static function checkSuspensionStatus(int|string $conversationId): bool
     {
         $conversation = DB::table('conversations')
@@ -815,9 +790,7 @@ class messageClass extends Model
         return false;
     }
 
-    /**
-     * Get or create conversation
-     */
+    // Get or create conversation record in database
     public static function getOrCreateConversation(int|string $conversationId, int $senderId, int $receiverId): object
     {
         $conversation = DB::table('conversations')
@@ -842,13 +815,7 @@ class messageClass extends Model
         return $conversation;
     }
 
-    /**
-     * SECURITY: Detect contact information (emails and Philippine phone numbers)
-     * Also catches spaced-out evasion like "e x a m p l e @ g m a i l . c o m"
-     *
-     * @param string $content
-     * @return bool
-     */
+    // Detect contact information (emails and Philippine phone numbers) including spaced-out evasion
     private static function detectContactInfo(string $content): bool
     {
         // ── 1. Check the ORIGINAL content first ──────────────────────────
@@ -905,12 +872,7 @@ class messageClass extends Model
         return false;
     }
 
-    /**
-     * SECURITY: Detect suspicious keywords that should flag a message
-     *
-     * @param string $content
-     * @return bool
-     */
+    // Detect suspicious keywords and platform names for message flagging
     private static function detectSuspiciousKeywords(string $content): bool
     {
         $path = storage_path('app/profanity_dataset.csv');
@@ -988,42 +950,47 @@ class messageClass extends Model
 
         $contentLower = strtolower($content);
 
-        // Also create a version that strips non-alphanumeric characters
-        // to catch spaced-out or punctuation-separated characters (e.g., f  u c k or f.u.c.k)
-        $normalized = preg_replace('/[^a-z0-9]+/i', '', $contentLower);
-
         foreach ($keywords as $keyword) {
-            if ($keyword === '')
+            if ($keyword === '' || strlen($keyword) < 3)
                 continue;
 
-            // Direct substring match first
-            if (stripos($contentLower, $keyword) !== false || stripos($normalized, $keyword) !== false) {
+            // 1. First check: whole word match with word boundaries
+            // This prevents matching 'ass' in 'class' or 'pass'
+            $pattern = '/\b' . preg_quote($keyword, '/') . '\b/i';
+            
+            if (preg_match($pattern, $content)) {
                 return true;
             }
 
-            // Build a regex that allows any non-alphanumeric characters between letters
-            // e.g., 'fuck' -> /f[^A-Za-z0-9]*u[^A-Za-z0-9]*c[^A-Za-z0-9]*k/i
-            $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
-            if (empty($letters))
-                continue;
-            $pattern = '/' . implode('[^A-Za-z0-9]*', $letters) . '/i';
+            // 2. For longer keywords (4+ chars), check for spaced-out versions
+            // e.g., 'fuck' matches 'f u c k' or 'f.u.c.k'
+            // This catches evasion attempts while reducing false positives
+            if (strlen($keyword) >= 4) {
+                // Build a regex that allows spaces/dashes/dots between letters
+                // e.g., 'fuck' -> /f[\s\-\.]*u[\s\-\.]*c[\s\-\.]*k/i
+                $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
+                if (!empty($letters)) {
+                    $pattern = '/\b' . implode('[\s\-\.]*', $letters) . '\b/i';
+                    if (preg_match($pattern, $content)) {
+                        return true;
+                    }
+                }
+            }
 
-            if (preg_match($pattern, $content)) {
-                return true;
+            // 3. For platform keywords, also check with spaces/dashes removed
+            // e.g., 'facebook' matches 'face book' or 'face-book'
+            if (in_array($keyword, $platformKeywords)) {
+                $normalized = preg_replace('/[\s\-_.]+/', '', $contentLower);
+                if (stripos($normalized, $keyword) !== false) {
+                    return true;
+                }
             }
         }
 
         return false;
     }
 
-    /**
-     * Censor bad words in message content by replacing them with ###
-     * Used to hide profanity from users while keeping original for admin moderation
-     * Handles obfuscation attempts like spaces, numbers, special chars between letters
-     *
-     * @param string $content
-     * @return string
-     */
+    // Censor bad words by replacing with ### to hide profanity from users
     public static function censorBadWords(string $content): string
     {
         $path = storage_path('app/profanity_dataset.csv');
@@ -1074,13 +1041,7 @@ class messageClass extends Model
         return $censoredContent;
     }
 
-    /**
-     * SECURITY: Validate message content against all rules
-     * Returns: ['valid' => bool, 'flagged' => bool, 'reason' => string|null, 'error' => string|null]
-     *
-     * @param string $content
-     * @return array
-     */
+    // Validate message content against contact info and suspicious keywords rules
     public static function validateMessageContent(string $content): array
     {
         // Rule A: Hard Block - Contact Information
@@ -1112,12 +1073,7 @@ class messageClass extends Model
         ];
     }
 
-    /**
-     * Check if a user is an admin (from admin_users table or users.user_type='admin')
-     *
-     * @param int $userId
-     * @return bool
-     */
+    // Check if user is admin from admin_users table or users.user_type
     private static function isAdminUser(int $userId): bool
     {
         // admin_id is now VARCHAR 'ADMIN-{n}' — query with prefix
@@ -1130,11 +1086,7 @@ class messageClass extends Model
         return $user && $user->user_type === 'admin';
     }
 
-    /**
-     * ADMIN MODERATION: Get all conversations with flagged messages
-     *
-     * @return array
-     */
+    // Get all conversations with flagged messages for admin moderation
     public static function getFlaggedConversations(): array
     {
         // Get all conversations that have at least one flagged message
@@ -1199,11 +1151,7 @@ class messageClass extends Model
         return $result;
     }
 
-    /**
-     * ADMIN MODERATION: Get all suspended conversations
-     *
-     * @return array
-     */
+    // Get all suspended conversations for admin moderation
     public static function getSuspendedConversations(): array
     {
         $conversations = DB::table('conversations as c')

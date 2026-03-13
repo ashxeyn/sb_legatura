@@ -57,9 +57,7 @@ class contractorClass extends Model
         return $this->belongsTo(\App\Models\admin\propertyOwnerClass::class, 'owner_id', 'owner_id');
     }
 
-    /**
-     * Get contractors with filters
-     */
+    // Get paginated list of contractors with search, status, and date filters
     public function getContractors($search = null, $status = null, $dateFrom = null, $dateTo = null, $perPage = 15)
     {
         $query = DB::table('contractors')
@@ -185,9 +183,7 @@ class contractorClass extends Model
         return $query->orderBy('contractors.created_at', 'desc')->paginate($perPage);
     }
 
-    /**
-     * Get contractor by ID
-     */
+    // Get contractor details by ID with owner and type information
     public function getContractorById($id)
     {
         return DB::table('contractors')
@@ -209,9 +205,7 @@ class contractorClass extends Model
             ->first();
     }
 
-    /**
-     * Add a new contractor (creates property owner first, then links contractor)
-     */
+    // Create new contractor linked to property owner
     public function addContractor($data)
     {
         return DB::transaction(function () use ($data) {
@@ -305,9 +299,7 @@ class contractorClass extends Model
         });
     }
 
-    /**
-     * Edit an existing contractor
-     */
+    // Update contractor information and linked user email
     public function editContractor($contractorId, $data)
     {
         return DB::transaction(function () use ($contractorId, $data) {
@@ -374,6 +366,7 @@ class contractorClass extends Model
         });
     }
 
+    // Delete contractor and cascade deletion to staff members
     public function deleteContractor($contractorId, $reason)
     {
         return DB::transaction(function () use ($contractorId, $reason) {
@@ -426,9 +419,7 @@ class contractorClass extends Model
         });
     }
 
-    /**
-     * Fetch contractor view with all related data
-     */
+    // Fetch contractor view with projects, team members, and representative info
     public function fetchContractorView($contractorId)
     {
         // Get main contractor data
@@ -524,9 +515,7 @@ class contractorClass extends Model
         return $contractor;
     }
 
-    /**
-     * Add a new team member to a contractor (links existing property owner as staff)
-     */
+    // Add existing property owner as team member to contractor
     public function addTeamMember($data)
     {
         return DB::transaction(function () use ($data) {
@@ -553,6 +542,7 @@ class contractorClass extends Model
         });
     }
 
+    // Cancel team member invitation
     public function cancelInvitation($staffId, $reason)
     {
         return DB::transaction(function () use ($staffId, $reason) {
@@ -569,6 +559,7 @@ class contractorClass extends Model
         });
     }
 
+    // Reapply cancelled team member invitation
     public function reapplyInvitation($staffId)
     {
         return DB::transaction(function () use ($staffId) {
@@ -584,6 +575,7 @@ class contractorClass extends Model
         });
     }
 
+    // Change contractor representative and demote previous representative
     public function changeRepresentative($contractorId, $newRepresentativeStaffId)
     {
         return DB::transaction(function () use ($contractorId, $newRepresentativeStaffId) {
@@ -656,9 +648,7 @@ class contractorClass extends Model
             ];
         });
     }
-    /**
-     * Suspend contractor
-     */
+    // Suspend contractor and cascade suspension to staff and bids
     public function suspendContractor($id, $reason, $duration, $suspensionUntil)
     {
         return DB::transaction(function () use ($id, $reason, $duration, $suspensionUntil) {
