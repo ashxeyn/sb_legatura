@@ -19,6 +19,7 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { auth_service } from '../../services/auth_service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface PersonalInfoScreenProps {
   onBackPress: () => void;
@@ -59,6 +60,41 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
   const [addressCity, setAddressCity] = useState(initialData?.owner_address_city || '');
   const [addressBarangay, setAddressBarangay] = useState(initialData?.owner_address_barangay || '');
   const [addressPostal, setAddressPostal] = useState(initialData?.owner_address_postal || '');
+
+  useEffect(() => {
+    if (!initialData || Object.keys(initialData).length === 0) {
+      AsyncStorage.getItem('signup_po_personalInfo').then(cached => {
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.firstName) setFirstName(parsed.firstName);
+            if (parsed.middleName) setMiddleName(parsed.middleName);
+            if (parsed.lastName) setLastName(parsed.lastName);
+            if (parsed.occupationId) setOccupationId(parsed.occupationId);
+            if (parsed.occupationOther) setOccupationOther(parsed.occupationOther);
+            if (parsed.dateOfBirth) { setDateOfBirth(parsed.dateOfBirth); setSelectedDate(new Date(parsed.dateOfBirth)); }
+            if (parsed.phoneNumber) setPhoneNumber(parsed.phoneNumber);
+            if (parsed.addressStreet) setAddressStreet(parsed.addressStreet);
+            if (parsed.addressProvince) setAddressProvince(parsed.addressProvince);
+            if (parsed.addressCity) setAddressCity(parsed.addressCity);
+            if (parsed.addressBarangay) setAddressBarangay(parsed.addressBarangay);
+            if (parsed.addressPostal) setAddressPostal(parsed.addressPostal);
+          } catch (e) {}
+        }
+      });
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    const cache = {
+      firstName, middleName, lastName, occupationId, occupationOther, dateOfBirth,
+      phoneNumber, addressStreet, addressProvince, addressCity, addressBarangay, addressPostal
+    };
+    const timer = setTimeout(() => {
+      AsyncStorage.setItem('signup_po_personalInfo', JSON.stringify(cache)).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [firstName, middleName, lastName, occupationId, occupationOther, dateOfBirth, phoneNumber, addressStreet, addressProvince, addressCity, addressBarangay, addressPostal]);
 
   // UI states
   const [isLoading, setIsLoading] = useState(false);

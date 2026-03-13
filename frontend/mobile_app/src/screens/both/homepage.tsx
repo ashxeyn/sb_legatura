@@ -219,6 +219,9 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ postType: 'project' | 'showcase'; postId: number } | null>(null);
 
+  // Local image state — seeded from prop, then refreshed from API
+  const [ownerProfilePicPath, setOwnerProfilePicPath] = useState<string | null>(userData?.profile_pic || null);
+
   // Poll unread notification count every 30 seconds
   useEffect(() => {
     const fetchUnread = async () => {
@@ -247,6 +250,27 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // canBid: only owner/representative can bid
   // canManageMilestones: only owner/representative can manage milestones
   const { canBid, canManageMilestones, role: contractorRole, isLoading: authLoading } = useContractorAuth();
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadProfile = async () => {
+      try {
+        const { api_request } = require('../../config/api');
+        const res = await api_request('/api/profile/fetch', { method: 'GET' });
+        if (res?.success && res.data) {
+          const payload = res.data?.data ?? res.data;
+          const user = payload?.user ?? payload;
+          const pic = user?.profile_pic ?? null;
+          if (isMounted) {
+            if (pic) setOwnerProfilePicPath(pic);
+          }
+        }
+      } catch (e) {}
+    };
+    // Fetch profile immediately to ensure we have the latest avatar
+    loadProfile();
+    return () => { isMounted = false; };
+  }, []);
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -1753,13 +1777,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Render the home content (unified feed for both roles)
   const renderHomeContent = () => {
-    // Build profile image URL using getStorageUrl and respect preferred_role for 'both' users
+    // Build profile image URL exactly like profile.tsx
     const profileImageUrl = (() => {
-      if (!userData) return undefined;
-      const companyLogo = userData.company_logo || myContractorProfile?.company_logo || null;
-      if (effectiveUserType === 'contractor') return getStorageUrl(companyLogo);
-      if (effectiveUserType === 'property_owner') return getStorageUrl(userData.profile_pic);
-      return getStorageUrl(userData.profile_pic);
+      if (effectiveUserType === 'contractor') {
+         const logo = (userData as any)?.company_logo || myContractorProfile?.company_logo || myContractorProfile?.logo_url || ownerProfilePicPath || userData?.profile_pic;
+         return getStorageUrl(logo);
+      }
+      return getStorageUrl(ownerProfilePicPath || userData?.profile_pic || undefined);
     })();
 
     return (
@@ -1774,7 +1798,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         {/* ── Create Post Section ── */}
         <View style={styles.profileSection}>
           <ImageFallback
-            uri={profileImageUrl}
+            uri={profileImageUrl || undefined}
             defaultImage={
               effectiveUserType === 'contractor'
                 ? require('../../../assets/images/pictures/contractor_default.png')
@@ -2643,6 +2667,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 12,
+    marginLeft: 12,
   },
   projectInputText: {
     fontSize: 16,
@@ -2746,6 +2771,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333333',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   contractorSubtitle: {
     fontSize: 12,
@@ -3177,6 +3204,9 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 13,
     color: '#666666',
+    flex: 1,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   projectCardFooter: {
     flexDirection: 'row',

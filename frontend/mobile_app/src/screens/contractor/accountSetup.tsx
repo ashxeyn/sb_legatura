@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompanyInfo } from './companyInfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ContractorAccountSetupScreenProps {
   onBackPress: () => void;
@@ -43,16 +44,38 @@ export default function ContractorAccountSetupScreen({ onBackPress, onNext, comp
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
-  // Update form fields when initialData changes (when navigating back)
   useEffect(() => {
-    if (initialData) {
+    if (initialData && Object.keys(initialData).length > 0) {
       setUsername(initialData.username || '');
       setFirstName(initialData.firstName || '');
       setMiddleName(initialData.middleName || '');
       setLastName(initialData.lastName || '');
       setCompanyEmail(initialData.companyEmail || '');
+    } else {
+      AsyncStorage.getItem('signup_contractor_accountSetup').then(cached => {
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.username) setUsername(parsed.username);
+            if (parsed.firstName) setFirstName(parsed.firstName);
+            if (parsed.middleName) setMiddleName(parsed.middleName);
+            if (parsed.lastName) setLastName(parsed.lastName);
+            if (parsed.companyEmail) setCompanyEmail(parsed.companyEmail);
+            if (parsed.password) setPassword(parsed.password);
+            if (parsed.confirmPassword) setConfirmPassword(parsed.confirmPassword);
+          } catch (e) {}
+        }
+      });
     }
   }, [initialData]);
+
+  useEffect(() => {
+    const cache = { username, firstName, middleName, lastName, companyEmail, password, confirmPassword };
+    const timer = setTimeout(() => {
+      AsyncStorage.setItem('signup_contractor_accountSetup', JSON.stringify(cache)).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [username, firstName, middleName, lastName, companyEmail, password, confirmPassword]);
 
   const handleNext = async () => {
     if (isLoading) return;

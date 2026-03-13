@@ -26,6 +26,9 @@
     "web": {
       "bundler": "metro"
     },
+    "packagerOpts": {
+      "hostType": "lan"
+    },
     "extra": {
       "eas": {
         "projectId": "ae2aaa48-b348-43da-b3b1-ec8debee58f1"

@@ -20,7 +20,9 @@ export default function ImageFallback({ uri, defaultImage, style, resizeMode }: 
   const normalizeUri = (path?: string | null) => {
     if (!path) return null;
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (path.startsWith(`${api_config.base_url}`)) return path;
     if (path.startsWith('/api/files/')) return `${api_config.base_url}${path}`;
+    if (path.startsWith('/storage/')) return `${api_config.base_url}${path}`;
     if (path.startsWith('/')) return `${api_config.base_url}/api/files${path}`;
     return `${api_config.base_url}/api/files/${path}`;
   };

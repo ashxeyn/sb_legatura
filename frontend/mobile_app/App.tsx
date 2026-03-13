@@ -39,6 +39,7 @@ import ResetOtpScreen from './src/screens/auth/resetOtpScreen';
 import ResetPasswordScreen from './src/screens/auth/resetPasswordScreen';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 'user_type_selection' |
     // Contractor Flow
@@ -307,7 +308,8 @@ export default function App() {
         set_app_state('po_profile_picture');
     };
 
-    const handle_po_profile_picture_complete = () => {
+    const handle_po_profile_picture_complete = async () => {
+        await clearSignupCache();
         set_app_state('main'); // Complete signup
     };
 
@@ -371,11 +373,27 @@ export default function App() {
         set_contractor_documents_info(null);
     };
 
+    const clearSignupCache = async () => {
+        try {
+            await AsyncStorage.multiRemove([
+                'signup_companyInfo',
+                'signup_contractor_accountSetup',
+                'signup_contractor_businessDocs',
+                'signup_po_personalInfo',
+                'signup_po_accountSetup',
+                'signup_po_verification'
+            ]);
+        } catch (e) {
+            console.warn('Failed to clear cached signup data', e);
+        }
+    };
+
     // Called when the registration success modal is dismissed. Clears signup state
     // and navigates to the target app state (usually 'login').
-    const handle_registration_success_dismiss = () => {
+    const handle_registration_success_dismiss = async () => {
         set_show_registration_success(false);
         clearSignupState();
+        await clearSignupCache();
         set_app_state(registration_success_target);
     };
 

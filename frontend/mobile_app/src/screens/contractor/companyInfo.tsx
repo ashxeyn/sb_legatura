@@ -17,6 +17,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { auth_service } from '../../services/auth_service';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Company Info interface for contractor step 1
 export interface CompanyInfo {
@@ -57,9 +58,8 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
     const [companyWebsite, setCompanyWebsite] = useState(initialData?.companyWebsite || '');
     const [companySocialMedia, setCompanySocialMedia] = useState(initialData?.companySocialMedia || '');
 
-    // Update form fields when initialData changes (when navigating back)
     useEffect(() => {
-        if (initialData) {
+        if (initialData && Object.keys(initialData).length > 0) {
             setCompanyName(initialData.companyName || '');
             setFoundedDate(initialData.foundedDate || '');
             setContractorTypeId(initialData.contractorTypeId || '');
@@ -72,8 +72,41 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
             setBusinessAddressPostal(initialData.businessAddressPostal || '');
             setCompanyWebsite(initialData.companyWebsite || '');
             setCompanySocialMedia(initialData.companySocialMedia || '');
+        } else {
+            // Unpack from local cache if no initial data
+            AsyncStorage.getItem('signup_companyInfo').then(cached => {
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        if (parsed.companyName) setCompanyName(parsed.companyName);
+                        if (parsed.foundedDate) setFoundedDate(parsed.foundedDate);
+                        if (parsed.contractorTypeId) setContractorTypeId(parsed.contractorTypeId);
+                        if (parsed.contractorTypeOtherText) setContractorTypeOtherText(parsed.contractorTypeOtherText);
+                        if (parsed.servicesOffered) setServicesOffered(parsed.servicesOffered);
+                        if (parsed.businessAddressStreet) setBusinessAddressStreet(parsed.businessAddressStreet);
+                        if (parsed.businessAddressProvince) setBusinessAddressProvince(parsed.businessAddressProvince);
+                        if (parsed.businessAddressCity) setBusinessAddressCity(parsed.businessAddressCity);
+                        if (parsed.businessAddressBarangay) setBusinessAddressBarangay(parsed.businessAddressBarangay);
+                        if (parsed.businessAddressPostal) setBusinessAddressPostal(parsed.businessAddressPostal);
+                        if (parsed.companyWebsite) setCompanyWebsite(parsed.companyWebsite);
+                        if (parsed.companySocialMedia) setCompanySocialMedia(parsed.companySocialMedia);
+                    } catch (e) {}
+                }
+            });
         }
     }, [initialData]);
+
+    useEffect(() => {
+        const cache = {
+            companyName, foundedDate, contractorTypeId, contractorTypeOtherText, servicesOffered,
+            businessAddressStreet, businessAddressProvince, businessAddressCity, businessAddressBarangay,
+            businessAddressPostal, companyWebsite, companySocialMedia
+        };
+        const timer = setTimeout(() => {
+            AsyncStorage.setItem('signup_companyInfo', JSON.stringify(cache)).catch(() => {});
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [companyName, foundedDate, contractorTypeId, contractorTypeOtherText, servicesOffered, businessAddressStreet, businessAddressProvince, businessAddressCity, businessAddressBarangay, businessAddressPostal, companyWebsite, companySocialMedia]);
 
     // UI states
     const [showContractorTypeModal, setShowContractorTypeModal] = useState(false);

@@ -12,6 +12,7 @@ import PlatformDatePicker from '../../components/platformDatePicker';
 import { Platform } from 'react-native';
 import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 import { computeYears, formatDate, formatDateForDisplay, formatExperience } from '../../utils/roleFormUtils';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface RoleAddScreenProps {
   targetRole: 'contractor' | 'owner';
@@ -131,6 +132,17 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   useEffect(() => {
     (async () => {
       try {
+        const cached = await AsyncStorage.getItem(`roleAddCache_${targetRole}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.formData) setFormData(prev => ({ ...prev, ...parsed.formData }));
+          if (parsed.formStep) setFormStep(parsed.formStep);
+        }
+      } catch (e) {
+        console.warn('Failed to load form cache', e);
+      }
+      
+      try {
         const res = await role_service.get_switch_form_data();
         if (res?.success) {
           const root = res?.data || {};
@@ -203,6 +215,22 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
     })();
   }, [targetRole]);
 
+  // Persist form data continuously
+  useEffect(() => {
+    if (loading) return; // don't overwrite cache with empty state while loading
+    const save = async () => {
+      try {
+        // Only cache the primitive fields from formData, not large base64 strings if any are huge,
+        // but since formData stores URIs it should be fine.
+        await AsyncStorage.setItem(`roleAddCache_${targetRole}`, JSON.stringify({ formData, formStep }));
+      } catch (e) {
+        console.warn('Failed to save form cache', e);
+      }
+    };
+    const debounce = setTimeout(save, 500);
+    return () => clearTimeout(debounce);
+  }, [formData, formStep, targetRole, loading]);
+
   // Load all cities list when contractor step 2 is active
   useEffect(() => {
     (async () => {
@@ -225,8 +253,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
       if (!existingData || !provinces?.length) return;
       try {
         if (targetRole === 'contractor') {
-          await prefillContractorFromOwner(existingData);
+          // Intentional: Do not prefill company address from property owner's address
         } else {
+
           await prefillOwnerFromContractor(existingData);
           const opc = formData.owner_address_province;
           const occ = formData.owner_address_city;
@@ -671,6 +700,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           const body = buildContractorFinalBody(formData, provinces, cities, barangays);
           const res = await role_service.add_contractor_final(body);
           if (res?.success) {
+            await AsyncStorage.removeItem(`roleAddCache_${targetRole}`);
             Alert.alert('Application Submitted', 'Your application has been received and is pending administrative review and approval.', [
               { text: 'OK', onPress: handleComplete }
             ]);

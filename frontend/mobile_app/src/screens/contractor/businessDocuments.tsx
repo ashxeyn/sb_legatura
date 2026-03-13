@@ -18,6 +18,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { auth_service } from '../../services/auth_service';
 import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Business Documents interface for contractor step 4
 export interface BusinessDocuments {
@@ -272,7 +273,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
 
     // Update form fields when initialData changes (when navigating back)
     useEffect(() => {
-        if (initialData) {
+        if (initialData && Object.keys(initialData).length > 0) {
             setPicabNumber(initialData.picabNumber || '');
             setPicabCategory(initialData.picabCategory || '');
             setPicabExpirationDate(initialData.picabExpirationDate || '');
@@ -289,8 +290,35 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
             if (initialData.businessPermitExpiration) {
                 setPermitDate(new Date(initialData.businessPermitExpiration));
             }
+        } else {
+            AsyncStorage.getItem('signup_contractor_businessDocs').then(cached => {
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        if (parsed.picabNumber) setPicabNumber(parsed.picabNumber);
+                        if (parsed.picabCategory) setPicabCategory(parsed.picabCategory);
+                        if (parsed.picabExpirationDate) { setPicabExpirationDate(parsed.picabExpirationDate); setPicabDate(new Date(parsed.picabExpirationDate)); }
+                        if (parsed.businessPermitNumber) setBusinessPermitNumber(parsed.businessPermitNumber);
+                        if (parsed.businessPermitCity) setBusinessPermitCity(parsed.businessPermitCity);
+                        if (parsed.businessPermitExpiration) { setBusinessPermitExpiration(parsed.businessPermitExpiration); setPermitDate(new Date(parsed.businessPermitExpiration)); }
+                        if (parsed.tinBusinessRegNumber) setTinBusinessRegNumber(parsed.tinBusinessRegNumber);
+                        if (parsed.dtiSecRegistrationPhoto) setDtiSecRegistrationPhoto(parsed.dtiSecRegistrationPhoto);
+                    } catch (e) {}
+                }
+            });
         }
     }, [initialData]);
+
+    useEffect(() => {
+        const cache = {
+            picabNumber, picabCategory, picabExpirationDate, businessPermitNumber,
+            businessPermitCity, businessPermitExpiration, tinBusinessRegNumber, dtiSecRegistrationPhoto
+        };
+        const timer = setTimeout(() => {
+            AsyncStorage.setItem('signup_contractor_businessDocs', JSON.stringify(cache)).catch(() => {});
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [picabNumber, picabCategory, picabExpirationDate, businessPermitNumber, businessPermitCity, businessPermitExpiration, tinBusinessRegNumber, dtiSecRegistrationPhoto]);
 
     // Format date to YYYY-MM-DD string (for backend)
     const formatDate = (date: Date): string => {

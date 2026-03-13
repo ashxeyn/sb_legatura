@@ -19,10 +19,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
+import { summary_service } from '../../services/summary_service';
 import { api_config } from '../../config/api';
 import { storage_service } from '../../utils/storage';
+import ImageFallback from '../../components/imageFallback';
 import ProjectDetails from './projectDetails';
 import ProjectList from './projectList';
+
+const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');
+
 import CreateProject from './createProject';
 import SearchScreen from '../both/searchScreen';
 
@@ -97,6 +102,8 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
   const [projectInitialItemId, setProjectInitialItemId] = useState<number | null>(null);
   const [projectInitialItemTab, setProjectInitialItemTab] = useState<'payments' | null>(null);
   const [pendingNavigate, setPendingNavigate] = useState<Record<string, any> | null>(null);
+  const [activeMilestoneItems, setActiveMilestoneItems] = useState<any[]>([]);
+  const [loadingMilestoneItems, setLoadingMilestoneItems] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const hasInitialized = useRef(false);
 
@@ -221,6 +228,8 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
         const projectsArray = Array.isArray(projectsData) ? projectsData : [];
         console.log('Projects loaded:', projectsArray.length, projectsArray);
         setProjects(projectsArray);
+        // Fetch active milestone items for in-progress projects
+        fetchMilestoneItems(projectsArray);
       } else {
         console.log('API error:', response.message);
         setError(response.message || 'Failed to load projects');
@@ -230,6 +239,49 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
       setError('Failed to load projects');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMilestoneItems = async (projectsArray: Project[]) => {
+    const inProgressProjects = projectsArray.filter(
+      p => p.project_status === 'in_progress' || p.project_status === 'bidding_closed'
+    );
+    if (inProgressProjects.length === 0) {
+      setActiveMilestoneItems([]);
+      return;
+    }
+    setLoadingMilestoneItems(true);
+    try {
+      const results: any[] = [];
+      await Promise.all(
+        inProgressProjects.map(async (project) => {
+          try {
+            const res = await summary_service.getProjectSummary(project.project_id);
+            if (res.success && res.data?.milestones) {
+              const items = res.data.milestones.filter(
+                (m: any) => m.status !== 'completed'
+              );
+              items.forEach((item: any) => {
+                results.push({
+                  ...item,
+                  project_id: project.project_id,
+                  project_title: project.project_title,
+                  project_obj: project,
+                });
+              });
+            }
+          } catch (e) {
+            console.warn('Failed to fetch milestones for project', project.project_id);
+          }
+        })
+      );
+      // Sort by sequence_order
+      results.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+      setActiveMilestoneItems(results);
+    } catch (e) {
+      console.error('fetchMilestoneItems error:', e);
+    } finally {
+      setLoadingMilestoneItems(false);
     }
   };
 
@@ -295,6 +347,153 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     outputRange: [1, 0.9],
     extrapolate: 'clamp',
   });
+
+  const getPaymentStatusColor = (status: string) => {
+    switch (status) {
+      case 'Fully Paid': return '#22c55e';
+      case 'Partially Paid': return '#f59e0b';
+      case 'Overdue': return '#ef4444';
+      default: return '#94a3b8';
+    }
+  };
+
+  const getMilestoneStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return '#22c55e';
+      case 'in_progress': return '#3b82f6';
+      case 'halt': return '#ef4444';
+      default: return '#94a3b8';
+    }
+  };
+
+  const getDueDateUrgency = (dueDateStr: string | null) => {
+    if (!dueDateStr) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDateStr + 'T00:00:00');
+    const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+    if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, color: '#dc2626' };
+    if (diff === 0) return { label: 'Due today', color: '#dc2626' };
+    if (diff <= 3) return { label: `${diff}d left`, color: '#ea580c' };
+    if (diff <= 7) return { label: `${diff}d left`, color: '#d97706' };
+    return { label: `${diff}d left`, color: '#16a34a' };
+  };
+
+  const renderMilestoneItemCard = (item: any, index: number) => {
+    const totalPaid = parseFloat(item.total_paid) || 0;
+    const expected = parseFloat(item.current_allocation) || parseFloat(item.original_allocation) || 0;
+    const remaining = parseFloat(item.remaining) || 0;
+    const adjustedCost = item.adjusted_cost != null ? parseFloat(item.adjusted_cost) : null;
+    const carryForward = item.carry_forward_amount != null ? parseFloat(item.carry_forward_amount) : 0;
+    const progressPct = expected > 0 ? Math.min(100, (totalPaid / expected) * 100) : 0;
+    const statusColor = getMilestoneStatusColor(item.status);
+    const payStatusColor = getPaymentStatusColor(item.payment_status || 'Unpaid');
+    const dueUrgency = getDueDateUrgency(item.settlement_due_date);
+    const statusLabel = item.status === 'not_started' ? 'Not Started'
+      : item.status === 'in_progress' ? 'In Progress'
+      : item.status === 'completed' ? 'Completed'
+      : item.status === 'halt' ? 'Halted' : item.status;
+
+    return (
+      <View key={`${item.item_id}-${item.project_id}`} style={styles.msCard}>
+        {/* Project badge */}
+        <Text style={styles.msProjectBadge} numberOfLines={1}>{item.project_title}</Text>
+
+        {/* Row 1: label + title + status badge */}
+        <View style={styles.msTitleRow}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.msItemLabel}>MILESTONE ITEM {index + 1}</Text>
+            <Text style={styles.msItemTitle} numberOfLines={2}>{item.title}</Text>
+          </View>
+          <View style={[styles.msStatusBadge, { backgroundColor: statusColor + '18' }]}>
+            <View style={[styles.msStatusDot, { backgroundColor: statusColor }]} />
+            <Text style={[styles.msStatusText, { color: statusColor }]}>{statusLabel}</Text>
+          </View>
+        </View>
+
+        {/* Row 2: Financial grid */}
+        <View style={styles.msFinGrid}>
+          <View style={styles.msFinItem}>
+            <Text style={styles.msFinLabel}>REQUIRED</Text>
+            {adjustedCost !== null && carryForward > 0 ? (
+              <>
+                <Text style={[styles.msFinValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                  ₱{adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                  <Text style={{ fontSize: 10, color: '#94a3b8', textDecorationLine: 'line-through' }}>
+                    ₱{(parseFloat(item.original_allocation) || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                  </Text>
+                  <View style={styles.msCfBadge}><Text style={styles.msCfBadgeText}>+CF</Text></View>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.msFinValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                ₱{expected.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+              </Text>
+            )}
+          </View>
+          <View style={styles.msFinDivider} />
+          <View style={styles.msFinItem}>
+            <Text style={styles.msFinLabel}>PAID</Text>
+            <Text style={[styles.msFinValue, { color: '#10B981' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              ₱{totalPaid.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+            </Text>
+          </View>
+          <View style={styles.msFinDivider} />
+          <View style={styles.msFinItem}>
+            <Text style={styles.msFinLabel}>REMAINING</Text>
+            <Text style={[styles.msFinValue, { color: remaining > 0 ? COLORS.primary : '#10B981' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              ₱{remaining.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+            </Text>
+          </View>
+        </View>
+
+        {/* Progress bar */}
+        <View style={styles.msProgressBg}>
+          <View style={[styles.msProgressFill, { width: `${progressPct}%` as any }]} />
+        </View>
+
+        {/* Footer: payment status + due date */}
+        <View style={styles.msFooter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <View style={[styles.msStatusDot, { backgroundColor: payStatusColor, width: 7, height: 7 }]} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: payStatusColor }}>{item.payment_status || 'Unpaid'}</Text>
+          </View>
+          {item.settlement_due_date ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Feather name="calendar" size={11} color={dueUrgency?.color || '#94a3b8'} />
+              <Text style={{ fontSize: 11, color: '#64748B' }}>
+                Due {new Date(item.settlement_due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+              {dueUrgency && (
+                <View style={{ backgroundColor: dueUrgency.color + '18', borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: dueUrgency.color }}>{dueUrgency.label}</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <Text style={{ fontSize: 11, color: '#94a3b8' }}>No due date</Text>
+          )}
+        </View>
+
+        {/* View details link */}
+        <TouchableOpacity
+          style={styles.msDetailsBtn}
+          onPress={() => {
+            setProjectInitialSection('milestones');
+            setProjectInitialItemId(item.item_id);
+            setProjectInitialItemTab(null);
+            setSelectedProject(item.project_obj);
+          }}
+          activeOpacity={0.7}
+        >
+          <Feather name="file-text" size={13} color={COLORS.primary} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.primary }}>View full details &amp; payment history</Text>
+          <Feather name="chevron-right" size={13} color={COLORS.primary} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderFilterChip = (key: string, label: string, count: number) => {
     const isActive = activeFilter === key;
@@ -377,11 +576,39 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar hidden={true} />
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingSpinner}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-          <Text style={styles.loadingText}>Loading your dashboard...</Text>
+        <View style={{ flex: 1, padding: 20 }}>
+           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, justifyContent: 'space-between' }}>
+             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+               <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E5E7EB', marginRight: 12 }} />
+               <View>
+                 <View style={{ width: 100, height: 14, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 8 }} />
+                 <View style={{ width: 140, height: 18, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
+               </View>
+             </View>
+             <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#E5E7EB' }} />
+           </View>
+
+           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 }}>
+             <View style={{ width: '48%', height: 90, borderRadius: 12, backgroundColor: '#E5E7EB' }} />
+             <View style={{ width: '48%', height: 90, borderRadius: 12, backgroundColor: '#E5E7EB' }} />
+           </View>
+
+           <View style={{ width: 150, height: 20, backgroundColor: '#E5E7EB', borderRadius: 6, marginBottom: 16 }} />
+
+           {[1, 2, 3].map((_, i) => (
+             <View key={i} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, borderColor: '#F3F4F6', borderWidth: 1 }}>
+               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                 <View style={{ width: 120, height: 16, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
+                 <View style={{ width: 60, height: 24, backgroundColor: '#E5E7EB', borderRadius: 12 }} />
+               </View>
+               <View style={{ width: '100%', height: 14, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 8 }} />
+               <View style={{ width: '80%', height: 14, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 16 }} />
+               <View style={{ flexDirection: 'row', gap: 12 }}>
+                 <View style={{ width: 80, height: 14, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
+                 <View style={{ width: 80, height: 14, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
+               </View>
+             </View>
+           ))}
         </View>
       </SafeAreaView>
     );
@@ -505,49 +732,45 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
           />
         }
       >
-        {/* Hero Header */}
-        <Animated.View style={[styles.heroHeader, { opacity: headerOpacity }]}>
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDeep]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroContent}>
-              <View style={styles.heroTop}>
-                <View style={styles.userInfo}>
-                  <View style={styles.greetingContainer}>
-                    <Text style={styles.greeting}>{getGreeting()}</Text>
-                    <Text style={styles.userName}>{userData?.username || 'Property Owner'}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Quick Summary */}
-              <View style={styles.quickSummary}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>{stats.total}</Text>
-                  <Text style={styles.summaryLabel}>Total</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>{stats.pending}</Text>
-                  <Text style={styles.summaryLabel}>Pending</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>{stats.approved}</Text>
-                  <Text style={styles.summaryLabel}>Active</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>{stats.inProgress}</Text>
-                  <Text style={styles.summaryLabel}>In Progress</Text>
-                </View>
+        {/* Header Card — rectangular, milestoneDetail style */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerCardInner}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerGreeting}>{getGreeting()}</Text>
+              <Text style={styles.headerName}>{userData?.username || 'Property Owner'}</Text>
+              <View style={styles.headerRoleBadge}>
+                <Feather name="home" size={10} color={COLORS.primary} />
+                <Text style={styles.headerRoleText}>Property Owner</Text>
               </View>
             </View>
-          </LinearGradient>
-        </Animated.View>
+          </View>
+        </View>
+
+
+        {/* Stats Row — milestoneDetail summaryMetricsRow style */}
+        <View style={styles.statGrid}>
+          <View style={styles.statMetricsRow}>
+            <View style={styles.statMetric}>
+              <Text style={styles.statMetricLabel}>In Progress</Text>
+              <Text style={styles.statMetricValue}>{stats.inProgress}</Text>
+            </View>
+            <View style={styles.statMetricDivider} />
+            <View style={styles.statMetric}>
+              <Text style={styles.statMetricLabel}>Pending</Text>
+              <Text style={styles.statMetricValue}>{stats.pending}</Text>
+            </View>
+            <View style={styles.statMetricDivider} />
+            <View style={styles.statMetric}>
+              <Text style={styles.statMetricLabel}>Milestone Items</Text>
+              <Text style={styles.statMetricValue}>{activeMilestoneItems.length}</Text>
+            </View>
+            <View style={styles.statMetricDivider} />
+            <View style={styles.statMetric}>
+              <Text style={styles.statMetricLabel}>Completed</Text>
+              <Text style={styles.statMetricValue}>{stats.completed}</Text>
+            </View>
+          </View>
+        </View>
 
         {/* Pinned Project feature removed */}
 
@@ -561,14 +784,14 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
               activeOpacity={0.7}
               onPress={() => setShowProjectList(true)}
             >
-              <View style={styles.navButtonIcon}>
-                <Feather name="folder" size={24} color={COLORS.primary} />
+              <View style={[styles.navButtonIcon, { backgroundColor: COLORS.successLight }]}>
+                <Ionicons name="briefcase" size={18} color={COLORS.success} />
               </View>
               <View style={styles.navButtonContent}>
                 <Text style={styles.navButtonTitle}>All Projects</Text>
                 <Text style={styles.navButtonSubtitle}>{stats.total} projects total</Text>
               </View>
-              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+              <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -579,59 +802,32 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
                 setShowProjectList(true);
               }}
             >
-              <View style={[styles.navButtonIcon, { backgroundColor: COLORS.successLight }]}>
-                <Feather name="check-circle" size={24} color={COLORS.success} />
+              <View style={[styles.navButtonIcon, { backgroundColor: '#EEF4FF', borderWidth: 1, borderColor: '#D6E2F3' }]}>
+                <Feather name="check-circle" size={18} color={COLORS.primary} />
               </View>
               <View style={styles.navButtonContent}>
                 <Text style={styles.navButtonTitle}>Finished Projects</Text>
                 <Text style={styles.navButtonSubtitle}>{stats.completed} completed</Text>
               </View>
-              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+              <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              activeOpacity={0.7}
-              onPress={() => setShowCreateProject(true)}
-            >
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                style={styles.quickActionGradient}
-              >
-                <Feather name="plus" size={22} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={styles.quickActionLabel}>New{"\n"}Project</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              activeOpacity={0.7}
-              onPress={() => setShowSearchScreen(true)}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: COLORS.infoLight }]}>
-                <Feather name="search" size={22} color={COLORS.info} />
+        {/* Active Milestone Items */}
+        {(loadingMilestoneItems || activeMilestoneItems.length > 0) && (
+          <View style={styles.msSection}>
+            <Text style={styles.sectionTitle}>Active Milestone Items</Text>
+            {loadingMilestoneItems ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
               </View>
-              <Text style={styles.quickActionLabel}>Find{"\n"}Contractors</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              activeOpacity={0.7}
-              onPress={onNavigateToMessages}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: COLORS.warningLight }]}>
-                <Feather name="message-circle" size={22} color={COLORS.warning} />
-              </View>
-              <Text style={styles.quickActionLabel}>Messages</Text>
-            </TouchableOpacity>
+            ) : (
+              activeMilestoneItems.map((item, idx) => renderMilestoneItemCard(item, idx))
+            )}
           </View>
-        </View>
+        )}
+
       </Animated.ScrollView>
 
       {/* Pinned project modals removed */}
@@ -677,17 +873,56 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Hero Header
-  heroHeader: {
-    marginTop: -1,
+  // ── Header Card (rectangular, milestoneDetail style) ──
+  headerCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  heroGradient: {
-    paddingTop: 12,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+  headerCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
   },
+  headerGreeting: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  headerName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 6,
+  },
+  headerRoleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  headerRoleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+
   heroContent: {
     gap: 20,
   },
@@ -780,6 +1015,47 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
 
+  // ── Stats Metrics Row (milestoneDetail style) ──
+  statGrid: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  statMetricsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  statMetric: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statMetricLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  statMetricValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  statMetricDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#E2E8F0',
+  },
+
   // Quick Actions Section
   quickActionsSection: {
     paddingHorizontal: 20,
@@ -802,20 +1078,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   quickActionGradient: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   quickActionLabel: {
     fontSize: 11,
@@ -1104,30 +1384,165 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingHorizontal: 20,
   },
+
+  // Active Milestone Items Section
+  msSection: {
+    paddingTop: 20,
+    paddingHorizontal: 20,
+  },
+  msCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 12,
+  },
+  msProjectBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  msTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+    gap: 8,
+  },
+  msItemLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 3,
+  },
+  msItemTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 22,
+  },
+  msStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  msStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  msStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  msFinGrid: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    marginBottom: 10,
+  },
+  msFinItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  msFinDivider: {
+    width: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: -2,
+  },
+  msFinLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  msFinValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  msProgressBg: {
+    height: 4,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  msProgressFill: {
+    height: '100%' as any,
+    backgroundColor: '#10B981',
+    borderRadius: 2,
+  },
+  msFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  msCfBadge: {
+    backgroundColor: '#dc2626',
+    borderRadius: 3,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  msCfBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  msDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    marginTop: 4,
+  },
   navButtonsContainer: {
-    marginTop: 14,
+    marginTop: 0,
   },
   navButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 14,
+    borderRadius: 8,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   navButtonIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   navButtonContent: {
     flex: 1,

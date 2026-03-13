@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import React, { useState } from 'react';
 import {
   View,
@@ -230,6 +230,7 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
   const milestoneConfig = getMilestoneCardConfig();
   const deadline = currentProject.bidding_deadline || currentProject.bidding_due;
   const daysLeft = deadline ? getDaysRemaining(deadline) : null;
+  const isProjectOpen = (currentProject.display_status || currentProject.project_status || '').toLowerCase() === 'open';
 
   // â”€â”€ Sub-screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -292,7 +293,7 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
                 <Feather name={statusConfig.icon as any} size={11} color="#FFFFFF" />
                 <Text style={styles.pillText}>{statusConfig.label}</Text>
               </View>
-              {daysLeft !== null && daysLeft > 0 && (
+              {daysLeft !== null && daysLeft > 0 && isProjectOpen && !hasContractor && (
                 <View style={styles.pill}>
                   <Feather name="clock" size={11} color="#FFFFFF" />
                   <Text style={styles.pillText}>{daysLeft}d left</Text>

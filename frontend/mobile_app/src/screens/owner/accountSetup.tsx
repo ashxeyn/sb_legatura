@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PropertyOwnerPersonalInfo } from './personalInfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AccountSetupScreenProps {
   onBackPress: () => void;
@@ -38,6 +39,30 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (!initialData || Object.keys(initialData).length === 0) {
+      AsyncStorage.getItem('signup_po_accountSetup').then(cached => {
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.username) setUsername(parsed.username);
+            if (parsed.email) setEmail(parsed.email);
+            if (parsed.password) setPassword(parsed.password);
+            if (parsed.confirmPassword) setConfirmPassword(parsed.confirmPassword);
+          } catch (e) {}
+        }
+      });
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    const cache = { username, email, password, confirmPassword };
+    const timer = setTimeout(() => {
+      AsyncStorage.setItem('signup_po_accountSetup', JSON.stringify(cache)).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [username, email, password, confirmPassword]);
 
   const handleNext = async () => {
     if (isLoading) return;

@@ -18,6 +18,7 @@ import { PropertyOwnerPersonalInfo as PersonalInfo } from './personalInfo';
 import { AccountInfo } from './accountSetup';
 import { valid_id, auth_service } from '../../services/auth_service';
 import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface VerificationScreenProps {
   onBackPress: () => void;
@@ -78,14 +79,48 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
     }
   };
 
-  const [selectedValidId, setSelectedValidId] = useState<valid_id | null>(
-    initialData?.valid_id_id && validIds && validIds.length > 0
-      ? validIds.find(id => id.id === initialData.valid_id_id) || null
-      : null
-  );
-  const [idFrontImage, setIdFrontImage] = useState<string | null>(initialData?.idFrontImage || null);
-  const [idBackImage, setIdBackImage] = useState<string | null>(initialData?.idBackImage || null);
-  const [policeClearanceImage, setPoliceClearanceImage] = useState<string | null>(initialData?.policeClearanceImage || null);
+  const [selectedValidId, setSelectedValidId] = useState<valid_id | null>(null);
+  const [idFrontImage, setIdFrontImage] = useState<string | null>(null);
+  const [idBackImage, setIdBackImage] = useState<string | null>(null);
+  const [policeClearanceImage, setPoliceClearanceImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      if (initialData.valid_id_id && validIds && validIds.length > 0) {
+        setSelectedValidId(validIds.find(id => id.id === initialData.valid_id_id) || null);
+      }
+      setIdFrontImage(initialData.idFrontImage || null);
+      setIdBackImage(initialData.idBackImage || null);
+      setPoliceClearanceImage(initialData.policeClearanceImage || null);
+    } else {
+      AsyncStorage.getItem('signup_po_verification').then(cached => {
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.valid_id_id && validIds && validIds.length > 0) {
+               setSelectedValidId(validIds.find(id => id.id === parsed.valid_id_id) || null);
+            }
+            if (parsed.idFrontImage) setIdFrontImage(parsed.idFrontImage);
+            if (parsed.idBackImage) setIdBackImage(parsed.idBackImage);
+            if (parsed.policeClearanceImage) setPoliceClearanceImage(parsed.policeClearanceImage);
+          } catch (e) {}
+        }
+      });
+    }
+  }, [initialData, validIds]);
+
+  useEffect(() => {
+    const cache = {
+      valid_id_id: selectedValidId?.id,
+      idFrontImage,
+      idBackImage,
+      policeClearanceImage
+    };
+    const timer = setTimeout(() => {
+      AsyncStorage.setItem('signup_po_verification', JSON.stringify(cache)).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [selectedValidId, idFrontImage, idBackImage, policeClearanceImage]);
 
   // ID Type selector states
   const [showIdTypeModal, setShowIdTypeModal] = useState(false);
