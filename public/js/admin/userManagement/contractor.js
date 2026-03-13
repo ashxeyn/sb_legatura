@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
+    try {
+        console.log('[contractor.js] DOMContentLoaded');
 
-    const dateFromInput = document.getElementById('dateFrom');
+        const dateFromInput = document.getElementById('dateFrom');
     const dateToInput = document.getElementById('dateTo');
     const searchInput = document.getElementById('searchInput') || document.getElementById('topNavSearch');
     const resetBtn = document.getElementById('resetFilterBtn');
@@ -134,51 +136,64 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function attachActionListeners() {
-        const viewButtons = document.querySelectorAll('.view-btn');
-        const editButtons = document.querySelectorAll('.edit-btn');
-        const deleteButtons = document.querySelectorAll('.delete-btn');
+        console.log('[contractor.js] attachActionListeners');
+        const contractorsTable = document.getElementById('contractorsTable');
 
-        viewButtons.forEach(btn => {
-            btn.addEventListener('click', function (e) {
+        // Use single delegated listener to avoid duplicate bindings and event conflicts
+        if (contractorsTable && !contractorsTable.dataset.delegationAttached) {
+            contractorsTable.addEventListener('click', function (e) {
+                const btn = e.target.closest('.action-btn');
+                if (!btn || !contractorsTable.contains(btn)) return;
+
                 e.stopPropagation();
-                addRipple(this, e);
-                const id = this.getAttribute('data-id');
-                if (id) {
+                addRipple(btn, e);
+
+                // Debug
+                try { console.log('[contractor.js] button click:', btn.className); } catch (e) {}
+
+                // View
+                if (btn.classList.contains('view-btn')) {
+                    const id = btn.getAttribute('data-id');
+                    try { console.log('[contractor.js] view-btn id=', id); } catch (e) {}
+                    if (id) {
+                        setTimeout(() => {
+                            window.location.href = `/admin/user-management/contractor/view?id=${id}`;
+                        }, 200);
+                    }
+                    return;
+                }
+
+                // Edit
+                if (btn.classList.contains('edit-btn')) {
+                    const id = btn.getAttribute('data-id');
+                    try { console.log('[contractor.js] edit-btn id=', id); } catch (e) {}
+                    if (id) {
+                        setTimeout(() => {
+                            openEditModal(id);
+                        }, 200);
+                    }
+                    return;
+                }
+
+                // Delete
+                if (btn.classList.contains('delete-btn')) {
+                    const row = btn.closest('tr');
+                    const nameEl = row ? row.querySelector('.font-medium') : null;
+                    const name = nameEl ? nameEl.textContent : '';
+                    const id = btn.getAttribute('data-id');
+                    try { console.log('[contractor.js] delete-btn id=', id, 'name=', name); } catch (e) {}
                     setTimeout(() => {
-                        window.location.href = `/admin/user-management/contractor/view?id=${id}`;
+                        openDeleteModal(name, row, id);
                     }, 200);
+                    return;
                 }
             });
-        });
 
-        editButtons.forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                addRipple(this, e);
-                const id = this.getAttribute('data-id');
-                if (id) {
-                    setTimeout(() => {
-                        openEditModal(id);
-                    }, 200);
-                }
-            });
-        });
+            contractorsTable.dataset.delegationAttached = '1';
+            try { console.log('[contractor.js] delegation attached to #contractorsTable'); } catch (e) {}
+        }
 
-        deleteButtons.forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                const row = this.closest('tr');
-                const name = row.querySelector('.font-medium').textContent;
-                const id = this.getAttribute('data-id');
-
-                addRipple(this, e);
-
-                setTimeout(() => {
-                    openDeleteModal(name, row, id);
-                }, 200);
-            });
-        });
-
+        // Row highlight behavior (keeps previous behavior)
         const tableRows = document.querySelectorAll('#contractorsTable tr');
         tableRows.forEach(row => {
             row.addEventListener('click', function () {
@@ -777,6 +792,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const editProfileIcon = document.getElementById('editProfileIcon');
 
     async function openEditModal(contractorId) {
+        try { console.log('[contractor.js] openEditModal contractorId=', contractorId); } catch (e) {}
         if (!editModal || !editModalContent) return;
 
         try {
@@ -854,10 +870,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     const openDocBtn = dtiLinkContainer.querySelector('.open-doc-btn');
                     if (openDocBtn) {
                         openDocBtn.setAttribute('data-doc-src', `/storage/${data.dti_sec_registration_photo}`);
+                        openDocBtn.setAttribute('data-doc-scope', 'edit-dti');
                     } else {
                         // Fallback for older markup that used an <a>
                         const anchor = dtiLinkContainer.querySelector('a');
-                        if (anchor) anchor.href = `/storage/${data.dti_sec_registration_photo}`;
+                        if (anchor) {
+                            anchor.href = `/storage/${data.dti_sec_registration_photo}`;
+                            // Mark the anchor so the delegated handler can pick it up
+                            anchor.classList.add('open-doc-btn');
+                            anchor.setAttribute('data-doc-src', `/storage/${data.dti_sec_registration_photo}`);
+                            anchor.setAttribute('data-doc-scope', 'edit-dti');
+                        }
                     }
                 } else {
                     dtiLinkContainer.classList.add('hidden');
@@ -1251,7 +1274,18 @@ document.addEventListener('DOMContentLoaded', function () {
     let idToDelete = null;
 
     function openDeleteModal(contractorName, row, id) {
-        if (!deleteModal || !deleteModalContent) return;
+        try { console.log('[contractor.js] openDeleteModal', { contractorName, id }); } catch (e) {}
+
+        // Re-query modal elements in case DOM was re-rendered
+        const modalEl = document.getElementById('deleteContractorModal');
+        const contentEl = modalEl ? modalEl.querySelector('.modal-content') : null;
+
+        try { console.log('[contractor.js] modalEl, contentEl ->', !!modalEl, !!contentEl); } catch (e) {}
+
+        if (!modalEl || !contentEl) {
+            console.error('[contractor.js] delete modal elements not found in DOM');
+            return;
+        }
 
         rowToDelete = row;
         idToDelete = id;
@@ -1268,13 +1302,42 @@ document.addEventListener('DOMContentLoaded', function () {
             deletionReasonError.classList.add('hidden');
         }
 
-        deleteModal.classList.remove('hidden');
-        deleteModal.classList.add('flex');
+        // Log computed styles before changing visibility
+        try {
+            const before = window.getComputedStyle(modalEl);
+            console.log('[contractor.js] before show computed:', { display: before.display, visibility: before.visibility, opacity: before.opacity, zIndex: before.zIndex, position: before.position });
+        } catch (e) {}
+
+        // Attempt to move modal to document.body to avoid parent stacking-context issues
+        try {
+            if (modalEl && modalEl.parentElement && modalEl.parentElement !== document.body) {
+                document.body.appendChild(modalEl);
+                console.log('[contractor.js] moved delete modal to document.body to avoid stacking issues');
+            }
+            // Force inline z-index as an extra safeguard
+            modalEl.style.zIndex = modalEl.style.zIndex || '100000';
+            if (contentEl) contentEl.style.zIndex = contentEl.style.zIndex || '100001';
+        } catch (err) {
+            console.warn('[contractor.js] could not move modal to body:', err);
+        }
+
+        modalEl.classList.remove('hidden');
+        modalEl.classList.add('flex');
         document.body.style.overflow = 'hidden';
 
+        // Force a small delay to let CSS apply, then transition the content
         setTimeout(() => {
-            deleteModalContent.classList.remove('scale-95', 'opacity-0');
-            deleteModalContent.classList.add('scale-100', 'opacity-100');
+            try {
+                contentEl.classList.remove('scale-95', 'opacity-0');
+                contentEl.classList.add('scale-100', 'opacity-100');
+
+                const after = window.getComputedStyle(modalEl);
+                console.log('[contractor.js] after show computed:', { display: after.display, visibility: after.visibility, opacity: after.opacity, zIndex: after.zIndex, position: after.position });
+                console.log('[contractor.js] modalEl.classList:', modalEl.className);
+                console.log('[contractor.js] contentEl.classList:', contentEl.className);
+            } catch (err) {
+                console.error('[contractor.js] error during modal show transition:', err);
+            }
         }, 10);
     }
 
@@ -1378,8 +1441,99 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3000);
     }
 
+    // Inline file viewer modal (image/pdf)
+    function createViewModalIfNeeded() {
+        if (document.getElementById('viewFileModal')) return;
+        const modal = document.createElement('div');
+        modal.id = 'viewFileModal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-60 z-50 hidden items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden modal-content relative">
+              <button id="closeViewFileModalBtn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 p-2 rounded-md">
+                <i class="fi fi-rr-cross text-2xl"></i>
+              </button>
+              <div class="p-4 flex items-center justify-center h-full">
+                <img id="viewFileImage" src="" alt="Preview" class="max-w-full max-h-[75vh] object-contain hidden" />
+                <iframe id="viewFileIframe" src="" class="w-full h-[75vh] border-0 hidden"></iframe>
+              </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeViewFileModal();
+        });
+
+        const closeBtn = modal.querySelector('#closeViewFileModalBtn');
+        if (closeBtn) closeBtn.addEventListener('click', closeViewFileModal);
+    }
+
+    function openViewFileModal(src) {
+        try {
+            createViewModalIfNeeded();
+            const modal = document.getElementById('viewFileModal');
+            if (!modal) return;
+            const img = modal.querySelector('#viewFileImage');
+            const iframe = modal.querySelector('#viewFileIframe');
+
+            if (img) { img.src = ''; img.classList.add('hidden'); }
+            if (iframe) { iframe.src = ''; iframe.classList.add('hidden'); }
+
+            const cleaned = String(src || '').split('?')[0].toLowerCase();
+            const isPdf = cleaned.endsWith('.pdf');
+
+            if (isPdf) {
+                if (iframe) {
+                    iframe.src = src;
+                    iframe.classList.remove('hidden');
+                }
+            } else {
+                if (img) {
+                    img.src = src;
+                    img.classList.remove('hidden');
+                }
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        } catch (err) {
+            console.error('openViewFileModal error:', err);
+        }
+    }
+
+    function closeViewFileModal() {
+        const modal = document.getElementById('viewFileModal');
+        if (!modal) return;
+        const img = modal.querySelector('#viewFileImage');
+        const iframe = modal.querySelector('#viewFileIframe');
+        if (img) { img.src = ''; img.classList.add('hidden'); }
+        if (iframe) { iframe.src = ''; iframe.classList.add('hidden'); }
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Delegated click handler for DTI/SEC viewer — strictly scoped by data attribute
+    document.addEventListener('click', function (e) {
+        // Only targets elements explicitly marked for the edit-modal DTI viewer
+        const trigger = e.target.closest('[data-doc-scope="edit-dti"]');
+        if (!trigger) return;
+
+        // Extra safety: ensure it's inside the edit modal
+        if (!trigger.closest('#editContractorModal')) return;
+
+        e.preventDefault();
+        const src = trigger.getAttribute('data-doc-src') || trigger.href;
+        if (!src) return;
+        openViewFileModal(src);
+    });
+
     window.openDeleteModal = openDeleteModal;
     window.openEditModal = openEditModal;
     window.closeEditModal = closeEditModal;
+    } catch (err) {
+        console.error('[contractor.js] initialization error:', err);
+    }
 });
 

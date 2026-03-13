@@ -612,6 +612,19 @@
     </div>
   </div>
 
+  <!-- Image Viewer Modal -->
+  <div id="imageViewerModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden items-center justify-center p-4">
+    <div class="max-w-4xl w-full relative">
+      <button id="closeImageViewerBtn" class="absolute top-2 right-2 text-white bg-black bg-opacity-50 p-2 rounded-full z-20">
+        <i class="fi fi-rr-cross text-2xl"></i>
+      </button>
+      <div class="flex flex-col items-center justify-center">
+        <h3 id="imageViewerTitle" class="text-white text-lg mb-3"></h3>
+        <img id="imageViewerImg" src="" alt="Document" class="max-h-[80vh] w-auto rounded-lg shadow-xl" />
+      </div>
+    </div>
+  </div>
+
   <script src="{{ asset('js/admin/userManagement/propertyOwner.js') }}?v={{ time() }}" defer></script>
   <script src="{{ asset('js/account.js') }}?v={{ time() }}" defer></script>
 

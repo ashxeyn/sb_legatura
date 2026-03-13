@@ -39,10 +39,11 @@
             <span>Back</span>
           </a>
           <div class="flex items-center gap-3">
-            <button onclick="openEditModal({{ $propertyOwner->owner_id }})" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700 flex items-center gap-2 hover:shadow-md hover:scale-105">
+            {{-- remove due to redundancy --}}
+            {{-- <button onclick="openEditModal({{ $propertyOwner->owner_id }})" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700 flex items-center gap-2 hover:shadow-md hover:scale-105">
               <i class="fi fi-rr-edit"></i>
               <span>Edit</span>
-            </button>
+            </button> --}}
             @if($propertyOwner->is_active == 1)
             <button id="suspendPropertyOwnerBtn" data-id="{{ $propertyOwner->owner_id }}" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all duration-300 flex items-center gap-2 hover:shadow-lg hover:scale-105">
               <i class="fi fi-rr-ban"></i>
@@ -255,7 +256,7 @@
                 <div class="space-y-3">
                   <div class="overflow-hidden rounded-lg shadow group">
                     @if($propertyOwner->cover_photo)
-                        <img src="{{ asset('storage/cover/' . $propertyOwner->cover_photo) }}" alt="Company Cover" class="w-full h-36 object-cover group-hover:scale-110 transition-transform duration-500 cursor-pointer" loading="lazy" onclick="openImageModal('{{ asset('storage/cover/' . $propertyOwner->cover_photo) }}', 'Company Cover')">
+                      <img src="{{ asset('storage/' . $propertyOwner->cover_photo) }}" alt="Company Cover" class="w-full h-36 object-cover group-hover:scale-110 transition-transform duration-500 cursor-pointer" loading="lazy" onclick="openImageModal('{{ asset('storage/' . $propertyOwner->cover_photo) }}', 'Company Cover')">
                     @else
                         <div class="w-full h-36 bg-gray-200 flex items-center justify-center text-gray-400">
                             <i class="fi fi-rr-picture text-4xl"></i>
@@ -347,7 +348,7 @@
                 @endif
               </div>
             </section>
-            
+
             <!-- Staff Company Card - Show if user is staff in a contractor company -->
             @if($propertyOwner->user_type === 'owner_staff' && isset($propertyOwner->contractor_details))
             <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">

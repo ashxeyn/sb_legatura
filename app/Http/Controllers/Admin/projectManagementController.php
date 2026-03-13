@@ -1138,6 +1138,24 @@ class projectManagementController extends Controller
                 ], 404);
             }
 
+            // Determine the current (old) selected contractor id from project_relationships
+            $oldContractorId = null;
+            if ($currentProject) {
+                // Prefer joining via relationship_id if present
+                if (isset($currentProject->relationship_id) && $currentProject->relationship_id) {
+                    $oldContractorId = DB::table('project_relationships')
+                        ->where('rel_id', $currentProject->relationship_id)
+                        ->value('selected_contractor_id');
+                }
+
+                // Fallback to finding by project_id (in case relationship_id isn't populated)
+                if ($oldContractorId === null) {
+                    $oldContractorId = DB::table('project_relationships')
+                        ->where('project_id', $id)
+                        ->value('selected_contractor_id');
+                }
+            }
+
             $result = $projectModel->updateProject($id, [
                 'project_title' => $request->project_title,
                 'project_description' => $request->project_description,
@@ -1146,7 +1164,7 @@ class projectManagementController extends Controller
                 'floor_area' => $request->floor_area,
                 'project_location' => $request->project_location,
                 'selected_contractor_id' => $request->selected_contractor_id,
-                'old_contractor_id' => $currentProject->selected_contractor_id
+                'old_contractor_id' => $oldContractorId
             ]);
 
             if ($result['success']) {
@@ -1483,7 +1501,7 @@ class projectManagementController extends Controller
         ]);
 
         $model = new projectClass();
-        
+
         // Get admin user ID from session
         $adminUser = Session::get('admin');
         $adminUserId = $adminUser && isset($adminUser->admin_id) ? $adminUser->admin_id : 1;
@@ -1532,7 +1550,7 @@ class projectManagementController extends Controller
     {
         try {
             \Log::info('Fetching payment history for project: ' . $id);
-            
+
             $model = new projectClass();
             $result = $model->fetchPaymentHistory($id);
 
@@ -1546,7 +1564,7 @@ class projectManagementController extends Controller
         } catch (\Exception $e) {
             \Log::error('Payment history error: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error fetching payment history: ' . $e->getMessage()

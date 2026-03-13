@@ -507,9 +507,12 @@ function initTeamMemberTabs() {
         }
 
         // Delegated click handler for open buttons
+        // Ignore elements that have a specific data-doc-scope (handled by specialized viewers)
         document.addEventListener('click', function(e) {
             const btn = e.target.closest && e.target.closest('.open-doc-btn');
             if (btn) {
+                // If a scope is defined, let the scoped handler manage it (prevents duplicate viewers)
+                if (btn.hasAttribute('data-doc-scope')) return;
                 const src = btn.getAttribute('data-doc-src');
                 if (src) openDocumentViewer(src);
             }

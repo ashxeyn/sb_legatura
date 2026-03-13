@@ -805,7 +805,7 @@
           <div class="mb-6">
             <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
               <i class="fi fi-rr-building"></i>
-              Company Information
+              Company 
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

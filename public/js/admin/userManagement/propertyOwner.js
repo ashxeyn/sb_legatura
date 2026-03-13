@@ -1314,6 +1314,52 @@ document.addEventListener('DOMContentLoaded', function () {
       closeDeleteModal();
     }
   });
+  // Image viewer modal handlers
+  function openImageModal(url, title = '') {
+    const modal = document.getElementById('imageViewerModal');
+    const img = document.getElementById('imageViewerImg');
+    const titleEl = document.getElementById('imageViewerTitle');
+    if (!modal || !img) return;
+    img.src = url;
+    if (titleEl) titleEl.textContent = title || '';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeImageModal() {
+    const modal = document.getElementById('imageViewerModal');
+    const img = document.getElementById('imageViewerImg');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = 'auto';
+    if (img) img.src = '';
+  }
+
+  const imageViewerModal = document.getElementById('imageViewerModal');
+  const closeImageViewerBtn = document.getElementById('closeImageViewerBtn');
+
+  if (closeImageViewerBtn) {
+    closeImageViewerBtn.addEventListener('click', closeImageModal);
+  }
+
+  if (imageViewerModal) {
+    imageViewerModal.addEventListener('click', function (e) {
+      if (e.target === imageViewerModal) {
+        closeImageModal();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && imageViewerModal && !imageViewerModal.classList.contains('hidden')) {
+      closeImageModal();
+    }
+  });
+
+  window.openImageModal = openImageModal;
+  window.closeImageModal = closeImageModal;
 
   window.openDeleteModal = openDeleteModal;
   window.openEditModal = openEditModal;

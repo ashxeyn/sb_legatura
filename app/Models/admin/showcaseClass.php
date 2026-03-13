@@ -249,7 +249,7 @@ class showcaseClass
                 ->update([
                     'status' => 'deleted',
                     'is_highlighted' => 0,
-                    'deletion_reason' => $reason,
+                    'rejection_reason' => $reason,
                     'updated_at' => now(),
                 ]);
 
@@ -287,7 +287,7 @@ class showcaseClass
                 ->update([
                     'status' => 'approved',
                     'is_highlighted' => 0,
-                    'deletion_reason' => '',
+                    'rejection_reason' => '',
                     'updated_at' => now(),
                 ]);
 
