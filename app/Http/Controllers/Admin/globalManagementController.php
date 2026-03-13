@@ -819,11 +819,20 @@ class globalManagementController extends Controller
      */
     public function reportManagement(Request $request)
     {
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 15;
+
         $counts = reportManagementClass::getCounts();
-        $reports = reportManagementClass::getActiveReports();
+        $moderationCases = reportManagementClass::getAllModerationCases([], $page, $perPage);
+        $reports = $moderationCases['data'];
         $reporterStats = reportManagementClass::getReporterStats();
 
-        return view('admin.globalManagement.reportManagement', compact('counts', 'reports', 'reporterStats'));
+        return view('admin.globalManagement.reportManagement', [
+            'counts' => $counts,
+            'reports' => $reports,
+            'casesPagination' => $moderationCases['pagination'],
+            'reporterStats' => $reporterStats,
+        ]);
     }
 
     /**
@@ -833,18 +842,22 @@ class globalManagementController extends Controller
     {
         $filters = [
             'status' => $request->input('status', 'all'),
-            'source' => $request->input('source', 'all'),
+            'source_type' => $request->input('source_type', 'all'),
+            'case_type' => $request->input('case_type', 'all'),
             'search' => $request->input('search'),
             'date_from' => $request->input('date_from'),
             'date_to' => $request->input('date_to'),
         ];
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = max(1, (int) $request->input('per_page', 15));
 
-        $reports = reportManagementClass::getActiveReports($filters);
+        $moderationCases = reportManagementClass::getAllModerationCases($filters, $page, $perPage);
         $counts = reportManagementClass::getCounts();
 
         return response()->json([
             'success' => true,
-            'reports' => $reports,
+            'reports' => $moderationCases['data'],
+            'pagination' => $moderationCases['pagination'],
             'counts' => $counts,
         ]);
     }
@@ -875,6 +888,28 @@ class globalManagementController extends Controller
         }
 
         return response()->json(['success' => true, 'profile' => $profile]);
+    }
+
+    /**
+     * API: Resolve reported user from a moderation case and return profile data.
+     */
+    public function getCaseReportedUserProfile(Request $request, $source, $id)
+    {
+        $reportedUserId = (int) (reportManagementClass::resolveReportedUserIdForCase($source, $id) ?? 0);
+        if ($reportedUserId <= 0) {
+            return response()->json(['success' => false, 'message' => 'Unable to resolve reported user for this case'], 404);
+        }
+
+        $profile = reportManagementClass::getUserProfileCard($reportedUserId);
+        if (!$profile) {
+            return response()->json(['success' => false, 'message' => 'Reported user profile not found'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'reported_user_id' => $reportedUserId,
+            'profile' => $profile,
+        ]);
     }
 
     /**
@@ -937,15 +972,16 @@ class globalManagementController extends Controller
             if ($user) {
                 $duration = $suspensionType === 'permanent' ? 'permanent' : 'temporary';
                 $suspUntilDate = $suspensionType === 'permanent' ? '9999-12-31' : $suspensionUntil;
+                $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
 
                 if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
-                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
                     if ($owner) {
                         $ownerModel = new \App\Models\admin\propertyOwnerClass();
                         $ownerModel->suspendOwner($owner->owner_id, $suspensionReason, $duration, $suspUntilDate);
                     }
-                } elseif ($user->user_type === 'contractor') {
-                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                }
+
+                if ($user->user_type === 'contractor' || $user->user_type === 'both') {
                     if ($owner) {
                         $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
                         if ($contractor) {
@@ -989,6 +1025,11 @@ class globalManagementController extends Controller
 
         $result = reportManagementClass::updateReportStatus($source, $id, $status, $adminNotes, $adminId);
 
+        // Keep moderation behavior intact: resolved reports should hide the offending content.
+        if ($result && $status === 'resolved') {
+            reportManagementClass::hideContent($source, $id);
+        }
+
         AdminActivityLog::log('report_status_updated', [
             'source' => $source,
             'report_id' => $id,
@@ -996,6 +1037,129 @@ class globalManagementController extends Controller
         ]);
 
         return response()->json(['success' => (bool) $result]);
+    }
+
+    /**
+     * Apply resolution action after a case has already been resolved.
+     */
+    public function applyResolutionAction(Request $request, $source, $id)
+    {
+        $actionType = $request->input('action_type'); // warning, temporary_ban, permanent_ban
+        $reason = trim((string) $request->input('reason', ''));
+        $reportedUserId = (int) $request->input('reported_user_id', 0);
+        $banUntil = $request->input('ban_until');
+
+        if (!in_array($actionType, ['warning', 'temporary_ban', 'permanent_ban'], true)) {
+            return response()->json(['success' => false, 'message' => 'Invalid resolution action'], 422);
+        }
+
+        if ($reason === '') {
+            return response()->json(['success' => false, 'message' => 'Resolution action reason is required'], 422);
+        }
+
+        if ($actionType === 'temporary_ban' && empty($banUntil)) {
+            return response()->json(['success' => false, 'message' => 'Ban end date is required for temporary bans'], 422);
+        }
+
+        // Guard: resolution action is only valid on resolved cases.
+        if ($source === 'dispute') {
+            $currentStatus = DB::table('disputes')->where('dispute_id', $id)->value('dispute_status');
+            if ($currentStatus !== 'resolved') {
+                return response()->json(['success' => false, 'message' => 'Case must be resolved before applying a resolution action'], 422);
+            }
+        } else {
+            $table = match ($source) {
+                'post' => 'post_reports',
+                'content' => 'content_reports',
+                'review' => 'review_reports',
+                'user' => 'user_reports',
+                default => null,
+            };
+
+            if (!$table) {
+                return response()->json(['success' => false, 'message' => 'Invalid source'], 422);
+            }
+
+            $currentStatus = DB::table($table)->where('report_id', $id)->value('status');
+            if ($currentStatus !== 'resolved') {
+                return response()->json(['success' => false, 'message' => 'Case must be resolved before applying a resolution action'], 422);
+            }
+        }
+
+        if ($reportedUserId <= 0) {
+            $reportedUserId = (int) (reportManagementClass::resolveReportedUserIdForCase($source, $id) ?? 0);
+        }
+
+        if ($reportedUserId <= 0) {
+            return response()->json(['success' => false, 'message' => 'Unable to resolve the reported user for this case'], 422);
+        }
+
+        $user = DB::table('users')->where('user_id', $reportedUserId)->first();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Reported user not found'], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            if ($actionType === 'warning') {
+                reportManagementClass::notifyUser(
+                    $reportedUserId,
+                    'Official Warning from Admin',
+                    "A moderation warning has been issued on your account. Reason: {$reason}",
+                    'Admin Announcement'
+                );
+            } else {
+                $suspensionType = $actionType === 'permanent_ban' ? 'permanent' : 'temporary';
+                $suspUntilDate = $actionType === 'permanent_ban' ? '9999-12-31' : $banUntil;
+                $this->suspendResolvedUser($user, $reason, $suspensionType, $suspUntilDate);
+
+                $durationLabel = $actionType === 'permanent_ban' ? 'permanent' : ('until ' . $banUntil);
+                reportManagementClass::notifyUser(
+                    $reportedUserId,
+                    'Account Restriction Applied',
+                    "A moderation action has been applied to your account. Reason: {$reason}. Restriction: {$durationLabel}.",
+                    'Admin Announcement'
+                );
+            }
+
+            AdminActivityLog::log('case_resolution_action_applied', [
+                'source' => $source,
+                'report_id' => $id,
+                'reported_user_id' => $reportedUserId,
+                'action_type' => $actionType,
+                'ban_until' => $banUntil,
+            ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Resolution action applied successfully']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
+    private function suspendResolvedUser($user, string $reason, string $duration, string $suspUntilDate): void
+    {
+        $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+
+        if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
+            if ($owner) {
+                $ownerModel = new \App\Models\admin\propertyOwnerClass();
+                $ownerModel->suspendOwner($owner->owner_id, $reason, $duration, $suspUntilDate);
+            }
+        }
+
+        if ($user->user_type === 'contractor' || $user->user_type === 'both') {
+            if ($owner) {
+                $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
+                if ($contractor) {
+                    $contractorModel = new \App\Models\admin\contractorClass();
+                    $contractorModel->suspendContractor($contractor->contractor_id, $reason, $duration, $suspUntilDate);
+                }
+            }
+        }
     }
 
     /**
@@ -1019,6 +1183,8 @@ class globalManagementController extends Controller
 
         $results = match ($type) {
             'user'   => reportManagementClass::searchUsers($query, $page, $perPage),
+            'showcase' => reportManagementClass::searchPosts($query, $page, $perPage),
+            'project' => reportManagementClass::searchProjects($query, $page, $perPage),
             'post'   => reportManagementClass::searchPosts($query, $page, $perPage),
             'review' => reportManagementClass::searchReviews($query, $page, $perPage),
             default  => ['data' => [], 'total' => 0, 'page' => 1, 'per_page' => $perPage, 'last_page' => 1],
@@ -1033,20 +1199,24 @@ class globalManagementController extends Controller
     }
 
     /**
-     * Admin direct action: suspend user, hide post, or hide review
+      * Admin direct action: suspend user, hide/unhide showcase project review content
      */
     public function adminDirectAction(Request $request)
     {
-        $actionType = $request->input('action_type'); // suspend_user, hide_post, hide_review
+          $actionType = $request->input('action_type'); // suspend_user, hide/unhide post/project/review
         $targetId   = $request->input('target_id');
-        $reason     = $request->input('reason', '');
+          $reason     = trim((string) $request->input('reason', ''));
 
         if (empty($actionType) || empty($targetId)) {
             return response()->json(['success' => false, 'message' => 'Action type and target ID are required'], 422);
         }
 
-        if (empty($reason)) {
+        if (empty($reason) && in_array($actionType, ['suspend_user', 'hide_post', 'hide_project', 'hide_review'], true)) {
             return response()->json(['success' => false, 'message' => 'A reason is required for this action'], 422);
+        }
+
+        if (empty($reason) && in_array($actionType, ['unhide_post', 'unhide_project', 'unhide_review'], true)) {
+            $reason = 'Restored by admin after moderation review';
         }
 
         $adminId = session('user')->admin_id ?? null;
@@ -1069,15 +1239,16 @@ class globalManagementController extends Controller
 
                 $duration = $suspensionType === 'permanent' ? 'permanent' : 'temporary';
                 $suspUntilDate = $suspensionType === 'permanent' ? '9999-12-31' : $suspensionUntil;
+                $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
 
                 if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
-                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
                     if ($owner) {
                         $ownerModel = new \App\Models\admin\propertyOwnerClass();
                         $ownerModel->suspendOwner($owner->owner_id, $reason, $duration, $suspUntilDate);
                     }
-                } elseif ($user->user_type === 'contractor') {
-                    $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                }
+
+                if ($user->user_type === 'contractor' || $user->user_type === 'both') {
                     if ($owner) {
                         $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
                         if ($contractor) {
@@ -1107,10 +1278,42 @@ class globalManagementController extends Controller
                     'reason' => $reason,
                 ]);
 
+            } elseif ($actionType === 'hide_project') {
+                reportManagementClass::adminHideProject($targetId, $reason);
+
+                AdminActivityLog::log('admin_direct_hide_project', [
+                    'project_id' => $targetId,
+                    'reason' => $reason,
+                ]);
+
             } elseif ($actionType === 'hide_review') {
                 reportManagementClass::adminHideReview($targetId, $reason);
 
                 AdminActivityLog::log('admin_direct_hide_review', [
+                    'review_id' => $targetId,
+                    'reason' => $reason,
+                ]);
+
+            } elseif ($actionType === 'unhide_post') {
+                reportManagementClass::adminUnhidePost($targetId, $reason);
+
+                AdminActivityLog::log('admin_direct_unhide_post', [
+                    'post_id' => $targetId,
+                    'reason' => $reason,
+                ]);
+
+            } elseif ($actionType === 'unhide_project') {
+                reportManagementClass::adminUnhideProject($targetId, $reason);
+
+                AdminActivityLog::log('admin_direct_unhide_project', [
+                    'project_id' => $targetId,
+                    'reason' => $reason,
+                ]);
+
+            } elseif ($actionType === 'unhide_review') {
+                reportManagementClass::adminUnhideReview($targetId, $reason);
+
+                AdminActivityLog::log('admin_direct_unhide_review', [
                     'review_id' => $targetId,
                     'reason' => $reason,
                 ]);

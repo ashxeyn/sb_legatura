@@ -637,6 +637,17 @@ Route::put('/admin/global-management/proof-of-payments/{id}', [globalManagementC
 Route::get('/admin/global-management/ai-management', [globalManagementController::class, 'aiManagement'])->name('admin.globalManagement.aiManagement');
 Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');
 Route::get('/admin/global-management/report-management', [globalManagementController::class, 'reportManagement'])->name('admin.globalManagement.reportManagement');
+Route::get('/admin/global-management/report-management/api', [globalManagementController::class, 'getReportsApi'])->name('admin.globalManagement.reportManagement.api');
+Route::get('/admin/global-management/report-management/detail/{source}/{id}', [globalManagementController::class, 'getReportDetail'])->name('admin.globalManagement.reportManagement.detail');
+Route::get('/admin/global-management/report-management/user-profile/{userId}', [globalManagementController::class, 'getUserProfileCard'])->name('admin.globalManagement.reportManagement.userProfile');
+Route::get('/admin/global-management/report-management/{source}/{id}/reported-user-profile', [globalManagementController::class, 'getCaseReportedUserProfile'])->name('admin.globalManagement.reportManagement.caseUserProfile');
+Route::post('/admin/global-management/report-management/{source}/{id}/dismiss', [globalManagementController::class, 'dismissReport'])->name('admin.globalManagement.reportManagement.dismiss');
+Route::post('/admin/global-management/report-management/{source}/{id}/confirm', [globalManagementController::class, 'confirmReport'])->name('admin.globalManagement.reportManagement.confirm');
+Route::post('/admin/global-management/report-management/{source}/{id}/status', [globalManagementController::class, 'updateReportStatus'])->name('admin.globalManagement.reportManagement.updateStatus');
+Route::post('/admin/global-management/report-management/{source}/{id}/resolution-action', [globalManagementController::class, 'applyResolutionAction'])->name('admin.globalManagement.reportManagement.applyResolutionAction');
+Route::get('/admin/global-management/report-management/reporter-stats', [globalManagementController::class, 'getReporterStatsApi'])->name('admin.globalManagement.reportManagement.reporterStats');
+Route::get('/admin/global-management/report-management/admin-search', [globalManagementController::class, 'adminSearch'])->name('admin.globalManagement.reportManagement.adminSearch');
+Route::post('/admin/global-management/report-management/admin-action', [globalManagementController::class, 'adminDirectAction'])->name('admin.globalManagement.reportManagement.adminAction');
 Route::get('/admin/global-management/review-management', [globalManagementController::class, 'reviewManagement'])->name('admin.globalManagement.reviewManagement');
 Route::post('/admin/global-management/review-management/{id}/delete', [globalManagementController::class, 'deleteReview'])->name('admin.globalManagement.deleteReview');
 

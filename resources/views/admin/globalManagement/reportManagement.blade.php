@@ -81,11 +81,8 @@
                     <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
                         <div class="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">
                             <button class="tab-btn active" data-tab="moderationHub" id="tabModerationHub">
-                                <i class="fi fi-rr-shield-check mr-1"></i> Active Moderation
+                                <i class="fi fi-rr-shield-check mr-1"></i> Submitted Cases
                                 <span class="ml-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{{ $counts['total'] }}</span>
-                            </button>
-                            <button class="tab-btn" data-tab="reportHistory" id="tabReportHistory">
-                                <i class="fi fi-rr-time-past mr-1"></i> Report History
                             </button>
                             <button class="tab-btn" data-tab="adminAction" id="tabAdminAction">
                                 <i class="fi fi-rr-megaphone mr-1"></i> Direct Admin Action
@@ -104,11 +101,18 @@
                                 </div>
 
                                 <select id="filterSource" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
-                                    <option value="all">All Sources</option>
-                                    <option value="post">Post Reports</option>
-                                    <option value="review">Review Reports</option>
-                                    <option value="content">Content Reports</option>
-                                    <option value="dispute">User Disputes</option>
+                                    <option value="all">All Source Types</option>
+                                    <option value="project">Project</option>
+                                    <option value="showcase">Showcase</option>
+                                    <option value="review">Review</option>
+                                    <option value="user">User</option>
+                                    <option value="dispute">Dispute</option>
+                                </select>
+
+                                <select id="filterCaseType" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                                    <option value="all">All Case Types</option>
+                                    <option value="report">Report</option>
+                                    <option value="dispute">Dispute</option>
                                 </select>
 
                                 <select id="filterStatus" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
@@ -143,32 +147,38 @@
                             <table class="w-full">
                                 <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Source</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Case ID</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Case Type</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Source Type</th>
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reporter</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Target</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason / Subject</th>
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Submitted</th>
                                         <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="reportsTableBody" class="divide-y divide-gray-200">
                                     @forelse ($reports as $report)
                                         <tr class="hover:bg-gray-50 transition"
-                                            data-id="{{ $report->report_id }}"
-                                            data-source="{{ $report->report_source }}"
+                                            data-id="{{ $report->case_ref_id }}"
+                                            data-source="{{ $report->source }}"
                                             data-status="{{ $report->status }}">
-                                            <td class="px-6 py-4 text-sm font-mono text-gray-700">#{{ $report->report_id }}</td>
+                                            <td class="px-6 py-4 text-sm font-mono text-gray-700">{{ $report->case_id }}</td>
                                             <td class="px-6 py-4">
                                                 @php
-                                                    $srcColors = ['post' => 'bg-blue-100 text-blue-700', 'review' => 'bg-purple-100 text-purple-700', 'content' => 'bg-teal-100 text-teal-700', 'dispute' => 'bg-orange-100 text-orange-700'];
-                                                    $srcLabels = ['post' => 'Post', 'review' => 'Review', 'content' => 'Content', 'dispute' => 'Dispute'];
+                                                    $caseColors = ['report' => 'bg-indigo-100 text-indigo-700', 'dispute' => 'bg-orange-100 text-orange-700'];
                                                 @endphp
-                                                <span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold {{ $srcColors[$report->report_source] ?? 'bg-gray-100 text-gray-700' }}">{{ $srcLabels[$report->report_source] ?? ucfirst($report->report_source) }}</span>
+                                                <span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold {{ $caseColors[$report->case_type] ?? 'bg-gray-100 text-gray-700' }}">{{ ucfirst($report->case_type) }}</span>
                                             </td>
-                                            <td class="px-6 py-4 text-sm text-gray-600">{{ ucfirst($report->content_type) }}</td>
-                                            <td class="px-6 py-4 text-sm text-gray-700 font-medium">{{ $report->reporter_username ?? '-' }}</td>
+                                            <td class="px-6 py-4">
+                                                @php
+                                                    $srcColors = ['project' => 'bg-blue-100 text-blue-700', 'showcase' => 'bg-teal-100 text-teal-700', 'review' => 'bg-purple-100 text-purple-700', 'user' => 'bg-cyan-100 text-cyan-700', 'dispute' => 'bg-orange-100 text-orange-700'];
+                                                @endphp
+                                                <span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold {{ $srcColors[$report->source_type] ?? 'bg-gray-100 text-gray-700' }}">{{ ucfirst(str_replace('_', ' ', $report->source_type)) }}</span>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-700 font-medium">{{ $report->reporter ?? '-' }}</td>
+                                            <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="{{ $report->target }}">{{ $report->target }}</td>
                                             <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="{{ $report->reason }}">{{ $report->reason }}</td>
                                             <td class="px-6 py-4">
                                                 @php
@@ -179,19 +189,33 @@
                                             <td class="px-6 py-4 text-sm text-gray-500">{{ $report->created_at ? \Carbon\Carbon::parse($report->created_at)->format('M d, Y') : '-' }}</td>
                                             <td class="px-6 py-4 text-center">
                                                 <button class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition view-report-btn"
-                                                    data-id="{{ $report->report_id }}"
-                                                    data-source="{{ $report->report_source }}">
+                                                    data-id="{{ $report->case_ref_id }}"
+                                                    data-source="{{ $report->source }}"
+                                                    data-case-type="{{ $report->case_type }}">
                                                     <i class="fi fi-rr-eye mr-1"></i> View
                                                 </button>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="px-6 py-12 text-center text-gray-500 text-sm">No reports found.</td>
+                                            <td colspan="9" class="px-6 py-12 text-center text-gray-500 text-sm">No moderation cases found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
                             </table>
+                        </div>
+
+                        <div id="moderationPaginationBar" class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                            <span id="moderationPaginationInfo" class="text-sm text-gray-600"></span>
+                            <div class="flex items-center gap-2">
+                                <button id="moderationPrevPage" class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                                    <i class="fi fi-rr-angle-left mr-1"></i> Previous
+                                </button>
+                                <span id="moderationPageIndicator" class="text-sm font-medium text-gray-700"></span>
+                                <button id="moderationNextPage" class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                                    Next <i class="fi fi-rr-angle-right ml-1"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -278,7 +302,8 @@
                             <div class="flex flex-wrap items-center gap-3">
                                 <select id="adminSearchType" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
                                     <option value="user">Users</option>
-                                    <option value="post">Showcase Posts</option>
+                                    <option value="showcase">Showcase Posts</option>
+                                    <option value="project">Project Posts</option>
                                     <option value="review">Reviews</option>
                                 </select>
 
@@ -346,8 +371,8 @@
                                     <i class="fi fi-sr-document text-white text-xl"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-xl font-bold text-white">Report Details</h3>
-                                    <p class="text-indigo-100 text-sm" id="modalCaseId">Report #---</p>
+                                    <h3 class="text-xl font-bold text-white">Case Details</h3>
+                                    <p class="text-indigo-100 text-sm" id="modalCaseId">Case #---</p>
                                 </div>
                             </div>
                             <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
@@ -389,7 +414,7 @@
 
                         {{-- Report Details --}}
                         <div class="bg-white border border-gray-200 rounded-xl p-4">
-                            <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Reporter's Details</label>
+                            <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Case Description</label>
                             <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line" id="modalDetails">-</p>
                         </div>
 
@@ -421,14 +446,122 @@
                             <div class="flex items-center gap-3">
                                 <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Close</button>
                                 <div id="modalActionBtns" class="flex items-center gap-3">
+                                    <button id="btnUnderReviewReport" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                        <i class="fi fi-rr-search mr-1"></i> Mark Under Review
+                                    </button>
                                     <button id="btnDismissReport" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
                                         <i class="fi fi-rr-cross-small mr-1"></i> Dismiss
                                     </button>
                                     <button id="btnConfirmReport" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                                        <i class="fi fi-rr-check mr-1"></i> Confirm
+                                        <i class="fi fi-rr-check mr-1"></i> Resolve Case
+                                    </button>
+                                </div>
+                                <div id="modalDisputeActionBtns" class="hidden items-center gap-3">
+                                    <button id="btnReviewDispute" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                        <i class="fi fi-rr-eye mr-1"></i> Mark Under Review
+                                    </button>
+                                    <button id="btnRejectDispute" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                        <i class="fi fi-rr-cross-small mr-1"></i> Dismiss
+                                    </button>
+                                    <button id="btnResolveDispute" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                        <i class="fi fi-rr-check mr-1"></i> Resolve Case
+                                    </button>
+                                </div>
+                                <div id="modalDirectActionBtns" class="hidden items-center gap-3">
+                                    <button id="btnDirectHide" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                        <i class="fi fi-rr-eye-crossed mr-1"></i> Hide
+                                    </button>
+                                    <button id="btnDirectUnhide" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                        <i class="fi fi-rr-eye mr-1"></i> Unhide
+                                    </button>
+                                    <button id="btnDirectRemoveReview" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition hidden">
+                                        <i class="fi fi-rr-trash mr-1"></i> Remove Review
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ════════════════════════════════════════════════════════════
+                 RESOLUTION ACTION MODAL (AFTER CASE IS RESOLVED)
+                 ════════════════════════════════════════════════════════════ --}}
+            <div id="resolutionActionModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+                <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden max-h-[90vh] overflow-y-auto">
+                    <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-blue-600 sticky top-0 z-10">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                    <i class="fi fi-sr-gavel text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-white">Resolution Action</h3>
+                                    <p class="text-indigo-100 text-sm">Apply post-resolution action to the reported user.</p>
+                                </div>
+                            </div>
+                            <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <div class="bg-gradient-to-br from-gray-50 to-indigo-50 rounded-xl border border-gray-200 p-5">
+                            <h4 class="text-sm font-bold text-gray-600 uppercase mb-4">Reported User</h4>
+                            <div class="flex items-start gap-5">
+                                <div class="w-14 h-14 rounded-full bg-indigo-100 border-2 border-indigo-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                    <img id="resolutionProfilePic" src="" alt="Profile" class="w-full h-full object-cover hidden">
+                                    <i class="fi fi-sr-user text-indigo-400 text-xl" id="resolutionProfileIcon"></i>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-sm font-bold text-gray-800" id="resolutionUserName">-</p>
+                                    <p class="text-xs text-gray-600" id="resolutionUserRole">-</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-3">Action Type *</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <label class="relative cursor-pointer">
+                                    <input type="radio" name="resolutionActionType" value="warning" class="peer sr-only" checked>
+                                    <div class="border-2 border-gray-300 rounded-xl p-3 text-center transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-50 hover:border-indigo-300">
+                                        <i class="fi fi-rr-exclamation text-lg text-gray-400 peer-checked:text-indigo-500"></i>
+                                        <p class="text-sm font-semibold text-gray-700 mt-1">Warning</p>
+                                    </div>
+                                </label>
+                                <label class="relative cursor-pointer">
+                                    <input type="radio" name="resolutionActionType" value="temporary_ban" class="peer sr-only">
+                                    <div class="border-2 border-gray-300 rounded-xl p-3 text-center transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-50 hover:border-indigo-300">
+                                        <i class="fi fi-rr-clock-three text-lg text-gray-400 peer-checked:text-indigo-500"></i>
+                                        <p class="text-sm font-semibold text-gray-700 mt-1">Temporary Ban</p>
+                                    </div>
+                                </label>
+                                <label class="relative cursor-pointer">
+                                    <input type="radio" name="resolutionActionType" value="permanent_ban" class="peer sr-only">
+                                    <div class="border-2 border-gray-300 rounded-xl p-3 text-center transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-50 hover:border-indigo-300">
+                                        <i class="fi fi-rr-ban text-lg text-gray-400 peer-checked:text-indigo-500"></i>
+                                        <p class="text-sm font-semibold text-gray-700 mt-1">Permanent Ban</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="resolutionBanUntilWrap" class="hidden">
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Ban Until *</label>
+                            <input type="date" id="resolutionBanUntil" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition" min="{{ \Carbon\Carbon::tomorrow()->format('Y-m-d') }}">
+                            <p class="text-xs text-gray-500 mt-1">Select the exact date when the temporary ban will be lifted.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Action Reason *</label>
+                            <textarea id="resolutionActionReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Provide reason for this resolution action..."></textarea>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+                            <button id="confirmResolutionActionBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                Confirm
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -705,6 +838,64 @@
                             <button id="confirmHideReviewBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition">
                                 <i class="fi fi-rr-eye-crossed mr-2"></i>
                                 Hide Review
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ════════════════════════════════════════════════════════════
+                 REMOVE REVIEW CONFIRMATION MODAL
+                 ════════════════════════════════════════════════════════════ --}}
+            <div id="removeReviewModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+                <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                    <div class="px-6 py-5 bg-gradient-to-r from-red-600 to-rose-600">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                    <i class="fi fi-sr-trash text-white text-xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-white">Remove Review?</h3>
+                            </div>
+                            <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="flex items-start gap-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                            <i class="fi fi-rr-info text-red-600 text-xl mt-0.5"></i>
+                            <div class="flex-1">
+                                <p class="text-sm text-red-900 font-semibold mb-1">This review will be removed from public display</p>
+                                <p class="text-xs text-red-800">Use this action for severe violations. You can still restore via Unhide if needed.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-gray-500 uppercase">Review ID</span>
+                                    <span class="text-sm font-bold text-gray-800" id="removeReviewId">-</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-gray-500 uppercase">Reviewer</span>
+                                    <span class="text-sm font-semibold text-gray-800" id="removeReviewAuthor">-</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-gray-500 uppercase">Rating</span>
+                                    <span class="text-sm text-amber-600 font-bold" id="removeReviewRating">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Reason for Removal *</label>
+                            <textarea id="removeReviewReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-300 focus:border-red-300 transition resize-none" placeholder="Explain why this review is being removed..."></textarea>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+                            <button id="confirmRemoveReviewBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                <i class="fi fi-rr-trash mr-2"></i>
+                                Remove Review
                             </button>
                         </div>
                     </div>

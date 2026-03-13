@@ -318,7 +318,9 @@ class projectManagementController extends Controller
                 $model->suspendOwner($owner->owner_id, $suspensionReason, $duration, $suspensionUntil);
                 return true;
             }
-        } elseif ($userType === 'contractor') {
+        }
+
+        if ($userType === 'contractor' || $userType === 'both') {
             // A contractor user_id maps through property_owners -> contractors
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($owner) {
@@ -326,8 +328,19 @@ class projectManagementController extends Controller
                 if ($contractor) {
                     $model = new contractorClass();
                     $model->suspendContractor($contractor->contractor_id, $suspensionReason, $duration, $suspensionUntil);
-                    return true;
+                    if ($userType === 'contractor') {
+                        return true;
+                    }
                 }
+            }
+        }
+
+        if ($userType === 'both') {
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($owner) {
+                $model = new propertyOwnerClass();
+                $model->suspendOwner($owner->owner_id, $suspensionReason, $duration, $suspensionUntil);
+                return true;
             }
         }
 

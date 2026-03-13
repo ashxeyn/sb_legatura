@@ -120,8 +120,8 @@ User card reads from session('user').
         <a href="{{ route('admin.projectManagement.listOfProjects') }}"
           class="submenu-link {{ request()->routeIs('admin.projectManagement.listOfProjects') ? 'active' : '' }}">List
           of Projects</a>
-        <a href="{{ route('admin.projectManagement.disputesReports') }}"
-          class="submenu-link {{ request()->routeIs('admin.projectManagement.disputesReports') ? 'active' : '' }}">Disputes/Reports</a>
+       <!-- <a href="{{ route('admin.projectManagement.disputesReports') }}"
+         class="submenu-link {{ request()->routeIs('admin.projectManagement.disputesReports') ? 'active' : '' }}">Disputes/Reports</a>-->
         <a href="{{ route('admin.projectManagement.messages') }}"
           class="submenu-link {{ request()->routeIs('admin.projectManagement.messages') ? 'active' : '' }}">Messages</a>
         <a href="{{ route('admin.projectManagement.subscriptions') }}"
