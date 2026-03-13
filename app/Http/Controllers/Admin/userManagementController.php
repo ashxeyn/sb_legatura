@@ -154,6 +154,11 @@ class userManagementController extends authController
             $yearsOfExperience = $now->diff($startDate)->y;
 
             // Prepare Data for Model
+            // Normalize optional fields to null when empty
+            $servicesOffered = isset($validated['services_offered']) && strlen(trim($validated['services_offered'])) ? $validated['services_offered'] : null;
+            $companyWebsite = isset($validated['company_website']) && strlen(trim($validated['company_website'])) ? $validated['company_website'] : null;
+            $companySocialMedia = isset($validated['company_social_media']) && strlen(trim($validated['company_social_media'])) ? $validated['company_social_media'] : null;
+
             $data = [
                 // Company Info
                 'company_logo' => $profilePicPath,
@@ -162,9 +167,9 @@ class userManagementController extends authController
                 'years_of_experience' => $yearsOfExperience,
                 'type_id' => $validated['contractor_type_id'],
                 'contractor_type_other' => $validated['contractor_type_id'] == 9 ? $validated['contractor_type_other_text'] : null,
-                'services_offered' => $validated['services_offered'],
-                'company_website' => $validated['company_website'],
-                'company_social_media' => $validated['company_social_media'],
+                'services_offered' => $servicesOffered,
+                'company_website' => $companyWebsite,
+                'company_social_media' => $companySocialMedia,
 
                 // Address
                 'business_address' => $address,
@@ -208,7 +213,15 @@ class userManagementController extends authController
         $validated = $request->validated();
 
         try {
-            // Handle File Uploads
+            // Merge with existing contractor so updates can be partial
+            $contractorModel = new contractorClass();
+            $existing = $contractorModel->getContractorById($id);
+
+            if (!$existing) {
+                return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+            }
+
+            // Handle File Uploads (store and overwrite validated keys)
             if ($request->hasFile('dti_sec_registration_photo')) {
                 $validated['dti_sec_registration_photo'] = $request->file('dti_sec_registration_photo')->store('DTI_SEC', 'public');
             }
@@ -217,50 +230,75 @@ class userManagementController extends authController
                 $validated['profile_pic'] = $request->file('profile_pic')->store('profile_pics', 'public');
             }
 
-            // Construct Address
-            $address = $validated['business_address_street'] . ', ' .
-                $validated['business_address_barangay'] . ', ' .
-                $validated['business_address_city'] . ', ' .
-                $validated['business_address_province'] . ' ' .
-                $validated['business_address_postal'];
+            // Parse existing address into components
+            $addrParts = array_map('trim', explode(', ', $existing->business_address ?? ''));
+            $existingStreet = $addrParts[0] ?? '';
+            $existingBarangay = $addrParts[1] ?? '';
+            $existingCity = $addrParts[2] ?? '';
+            $existingProvinceZip = $addrParts[3] ?? '';
 
-            // Calculate Years of Experience
-            $startDate = new \DateTime($validated['company_start_date']);
-            $now = new \DateTime();
-            $yearsOfExperience = $now->diff($startDate)->y;
+            // If postal is not provided separately, try to extract from existing province field
+            $existingZip = '';
+            $existingProvince = $existingProvinceZip;
+            if (preg_match('/(.*)\s+(\d+)$/', $existingProvinceZip, $m)) {
+                $existingProvince = $m[1];
+                $existingZip = $m[2];
+            }
 
-            // Handle Contractor Type
-            $typeId = $validated['contractor_type_id'];
-            $typeOther = ($typeId == 9) ? ($validated['contractor_type_other_text'] ?? null) : null;
+            // Build address using provided fields when present, otherwise fall back to existing
+            $street = $validated['business_address_street'] ?? $existingStreet;
+            $barangay = $validated['business_address_barangay'] ?? $existingBarangay;
+            $city = $validated['business_address_city'] ?? $existingCity;
+            $province = $validated['business_address_province'] ?? $existingProvince;
+            $postal = $validated['business_address_postal'] ?? $existingZip;
 
-            // Prepare Data Array
+            $addressParts = array_filter([trim($street), trim($barangay), trim($city), trim($province)]);
+            $address = implode(', ', $addressParts) . ($postal ? ' ' . trim($postal) : '');
+
+            // Determine company start date and years of experience
+            $companyStart = $validated['company_start_date'] ?? ($existing->company_start_date ?? null);
+            $yearsOfExperience = $existing->years_of_experience ?? 0;
+            if ($companyStart) {
+                try {
+                    $startDate = new \DateTime($companyStart);
+                    $now = new \DateTime();
+                    $yearsOfExperience = $now->diff($startDate)->y;
+                } catch (\Exception $e) {
+                    // If parsing fails, keep existing years_of_experience
+                }
+            }
+
+            // Contractor type
+            $typeId = $validated['contractor_type_id'] ?? ($existing->type_id ?? null);
+            $typeOther = ($typeId == 9) ? ($validated['contractor_type_other_text'] ?? ($existing->contractor_type_other ?? null)) : null;
+            // Normalize optional fields to null when explicitly provided as empty strings
+            $servicesOffered = array_key_exists('services_offered', $validated) ? (strlen(trim($validated['services_offered'])) ? $validated['services_offered'] : null) : ($existing->services_offered ?? null);
+            $companyWebsite = array_key_exists('company_website', $validated) ? (strlen(trim($validated['company_website'])) ? $validated['company_website'] : null) : ($existing->company_website ?? null);
+            $companySocialMedia = array_key_exists('company_social_media', $validated) ? (strlen(trim($validated['company_social_media'])) ? $validated['company_social_media'] : null) : ($existing->company_social_media ?? null);
+
+            // Prepare merged data array — only overwrite fields that were provided or computed
             $data = [
-                // Users Table Fields
-                'company_email' => $validated['company_email'],
                 'updated_at' => now(),
 
-                // Contractors Table Fields
-                'company_name' => $validated['company_name'],
-                'company_start_date' => $validated['company_start_date'],
+                'company_name' => $validated['company_name'] ?? ($existing->company_name ?? null),
+                'company_start_date' => $companyStart,
                 'years_of_experience' => $yearsOfExperience,
                 'type_id' => $typeId,
                 'contractor_type_other' => $typeOther,
-                'services_offered' => $validated['services_offered'] ?? null,
-                'business_address' => $address,
-                'company_website' => $validated['company_website'] ?? null,
-                'company_social_media' => $validated['company_social_media'] ?? null,
-                'picab_number' => $validated['picab_number'],
-                'picab_category' => $validated['picab_category'],
-                'picab_expiration_date' => $validated['picab_expiration_date'],
-                'business_permit_number' => $validated['business_permit_number'],
-                'business_permit_city' => $validated['business_permit_city'],
-                'business_permit_expiration' => $validated['business_permit_expiration'],
-                'tin_business_reg_number' => $validated['tin_business_reg_number'],
-
-                // Representative fields removed; do not update authorized representative names here.
+                'services_offered' => $servicesOffered,
+                'business_address' => $address ?: ($existing->business_address ?? null),
+                'company_website' => $companyWebsite,
+                'company_social_media' => $companySocialMedia,
+                'picab_number' => $validated['picab_number'] ?? ($existing->picab_number ?? null),
+                'picab_category' => $validated['picab_category'] ?? ($existing->picab_category ?? null),
+                'picab_expiration_date' => $validated['picab_expiration_date'] ?? ($existing->picab_expiration_date ?? null),
+                'business_permit_number' => $validated['business_permit_number'] ?? ($existing->business_permit_number ?? null),
+                'business_permit_city' => $validated['business_permit_city'] ?? ($existing->business_permit_city ?? null),
+                'business_permit_expiration' => $validated['business_permit_expiration'] ?? ($existing->business_permit_expiration ?? null),
+                'tin_business_reg_number' => $validated['tin_business_reg_number'] ?? ($existing->tin_business_reg_number ?? null),
             ];
 
-            // Add optional fields if present
+            // Files / logos
             if (isset($validated['profile_pic'])) {
                 $data['profile_pic'] = $validated['profile_pic'];
                 $data['company_logo'] = $validated['profile_pic'];
@@ -268,12 +306,17 @@ class userManagementController extends authController
             if (isset($validated['dti_sec_registration_photo'])) {
                 $data['dti_sec_registration_photo'] = $validated['dti_sec_registration_photo'];
             }
+
+            // Update user email only when provided
+            if (!empty($validated['company_email'])) {
+                $data['company_email'] = $validated['company_email'];
+            }
+
             if (!empty($request->input('password'))) {
                 $data['password_hash'] = bcrypt($request->input('password'));
             }
 
             // Call Model
-            $contractorModel = new contractorClass();
             $contractorModel->editContractor($id, $data);
 
             return response()->json(['success' => true, 'message' => 'Contractor updated successfully']);

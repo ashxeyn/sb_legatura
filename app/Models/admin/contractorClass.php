@@ -271,7 +271,7 @@ class contractorClass extends Model
                     'contractor_type_other' => $data['contractor_type_other'] ?? null,
                     'services_offered' => $data['services_offered'] ?? null,
                     'business_address' => $data['business_address'] ?? null,
-                    'company_email' => $data['company_email'] ?? ($user->email ?? null),
+                    'company_email' => $data['company_email'] ?? null,
                     'company_website' => $data['company_website'] ?? null,
                     'company_social_media' => $data['company_social_media'] ?? null,
                     'company_description' => $data['company_description'] ?? null,
@@ -294,7 +294,7 @@ class contractorClass extends Model
                     'contractor_id' => $contractorId,
                     'owner_id' => $ownerId,
                     'user_id' => $owner->user_id,
-                    'email' => $data['company_email'] ?? ($user->email ?? null),
+                    'email' => $data['company_email'] ?? null,
                     'username' => $user->username ?? null
                 ];
             }

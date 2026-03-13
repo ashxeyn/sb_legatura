@@ -40,6 +40,9 @@
 (function () {
     let currentUserId = null;
     let currentUserType = null; // 'contractor' or 'property_owner'
+    // Doc viewer state to avoid showing late errors after the modal is closed
+    let _docViewerActive = false;
+    let _docViewerObjectUrl = null;
 
     // Helper functions
     function setText(id, value) {
@@ -51,8 +54,11 @@
         const el = document.getElementById(id);
         if (el) {
             if (path) {
-                el.href = `/storage/${path}`;
-                // Update the filename text (second child, index 1, or find span)
+                const storagePath = `/storage/${path}`;
+                el.href = storagePath;
+                // also set data-doc-src so viewer picks it first
+                el.dataset.docSrc = storagePath;
+                // Update the filename text (first span)
                 const spans = el.querySelectorAll("span");
                 if (spans.length > 0)
                     spans[0].textContent = filename || path.split("/").pop();
@@ -63,12 +69,166 @@
                 el.classList.remove("pointer-events-none", "opacity-50");
             } else {
                 el.href = "#";
-                el.classList.add("pointer-events-none", "opacity-50");
+                el.dataset.docSrc = "#";
+                // Keep element clickable so the viewer can show a 'No document available' notification
+                el.classList.remove("pointer-events-none");
+                el.classList.add("opacity-50");
                 const spans = el.querySelectorAll("span");
                 if (spans.length > 0) spans[0].textContent = "Not Uploaded";
             }
         }
     }
+
+    // Document viewer functions (owner/contractor files)
+    function openDocViewer(src) {
+        console.log('openDocViewer called with src=', src);
+        const modal = document.getElementById('docViewerModal');
+        const img = document.getElementById('docViewerImg');
+        const iframe = document.getElementById('docViewerIframe');
+        if (!modal) return;
+
+        // mark viewer active
+        _docViewerActive = true;
+        // clear any previous object url reference
+        _docViewerObjectUrl = null;
+
+        // Normalize and trim src, convert to absolute URL if needed
+        src = (src || '').toString().trim();
+        if (!src || src === '#') {
+            showNotification('No document available', 'error');
+            return;
+        }
+
+        function toAbsolute(u) {
+            if (!u) return u;
+            u = u.toString().trim();
+            if (u.startsWith('http://') || u.startsWith('https://')) return u;
+            if (u.startsWith('//')) return window.location.protocol + u;
+            if (u.startsWith('/')) return window.location.origin + u;
+            return window.location.origin + '/' + u;
+        }
+
+        const abs = toAbsolute(src);
+        const lower = abs.split('?')[0].split('.').pop().toLowerCase();
+        const imgExts = ['jpg','jpeg','png','gif','webp','bmp'];
+
+        // Reset previous sources
+        if (img) {
+            img.src = '';
+            img.classList.add('hidden');
+        }
+        if (iframe) {
+            iframe.src = '';
+            iframe.classList.add('hidden');
+        }
+
+        if (imgExts.includes(lower)) {
+            if (img) {
+                // Try fetching the image first to inspect HTTP status and get blob
+                fetch(abs, { method: 'GET' })
+                    .then((res) => {
+                        console.log('fetch result for', abs, res.status);
+                        if (!res.ok) {
+                            throw new Error('HTTP ' + res.status);
+                        }
+                        return res.blob();
+                    })
+                    .then((blob) => {
+                        const objectUrl = URL.createObjectURL(blob);
+                        // remember current object url so we can revoke it on close
+                        _docViewerObjectUrl = objectUrl;
+                        img.onload = function () {
+                            console.log('docViewer image loaded (blob):', abs);
+                            // revoke after short delay to allow render
+                            setTimeout(() => {
+                                try { URL.revokeObjectURL(objectUrl); } catch (e) {}
+                                if (_docViewerObjectUrl === objectUrl) _docViewerObjectUrl = null;
+                            }, 10000);
+                        };
+                        img.onerror = function (e) {
+                            console.error('docViewer image failed to render blob:', abs, e);
+                            if (!_docViewerActive) {
+                                console.log('Ignored image onerror after viewer closed');
+                                return;
+                            }
+                            showNotification('Failed to load image', 'error');
+                        };
+                        img.src = objectUrl;
+                        img.classList.remove('hidden');
+                    })
+                    .catch((err) => {
+                        console.error('Failed to fetch image:', abs, err);
+                        if (!_docViewerActive) {
+                            console.log('Ignored fetch error after viewer closed:', err);
+                            return;
+                        }
+                        showNotification('Failed to load image (' + err.message + ')', 'error');
+                    });
+            }
+        } else {
+            if (iframe) {
+                iframe.onload = function () {
+                    console.log('docViewer iframe loaded:', abs);
+                };
+                iframe.onerror = function () {
+                    console.error('docViewer iframe failed to load:', abs);
+                    if (!_docViewerActive) {
+                        console.log('Ignored iframe error after viewer closed');
+                        return;
+                    }
+                    showNotification('Failed to load document', 'error');
+                };
+                iframe.src = abs;
+                iframe.classList.remove('hidden');
+            }
+        }
+
+        // Show modal
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDocViewer() {
+        const modal = document.getElementById('docViewerModal');
+        const img = document.getElementById('docViewerImg');
+        const iframe = document.getElementById('docViewerIframe');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        // clear handlers and sources to avoid late callbacks
+        if (img) {
+            try { img.onload = null; } catch (e) {}
+            try { img.onerror = null; } catch (e) {}
+            try { img.src = ''; } catch (e) {}
+        }
+        if (iframe) {
+            try { iframe.onload = null; } catch (e) {}
+            try { iframe.onerror = null; } catch (e) {}
+            try { iframe.src = ''; } catch (e) {}
+        }
+        // revoke any object URL we created for the viewer
+        if (_docViewerObjectUrl) {
+            try { URL.revokeObjectURL(_docViewerObjectUrl); } catch (e) {}
+            _docViewerObjectUrl = null;
+        }
+        // mark viewer inactive so late errors are ignored
+        _docViewerActive = false;
+        document.body.style.overflow = 'auto';
+    }
+
+    // Delegate clicks on elements with class 'viewer-link' to open the doc viewer
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('.viewer-link');
+        if (trigger) {
+            e.preventDefault();
+            const src = trigger.dataset.docSrc || trigger.href || '#';
+            console.log('viewer-link clicked:', { id: trigger.id, datasetDocSrc: trigger.dataset.docSrc, href: trigger.href, src });
+            openDocViewer(src);
+        }
+    });
+
+    document.getElementById('docViewerCloseBtn')?.addEventListener('click', closeDocViewer);
 
     function setInitials(name) {
         return (name || "")
@@ -90,7 +250,7 @@
         if (!dateString) return "N/A";
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return "N/A";
-        
+
         const options = { year: 'numeric', month: 'long', day: '2-digit' };
         return date.toLocaleDateString('en-US', options);
     }
@@ -238,6 +398,14 @@
         setText("vrTin", profile.tin_number || "N/A");
         setText("vrBpNo", profile.business_permit_number || "N/A");
         setText("vrBpCity", profile.business_permit_city || "N/A");
+        // DTI / SEC registration file
+        setLink("vrDtiFile", profile.dti_sec_registration_photo, "DTIRegistration.pdf");
+        // Debug: log the DTI path and element dataset to help trace missing files
+        try {
+            console.log('Contractor DTI file:', profile.dti_sec_registration_photo, 'vrDtiFile.dataset.docSrc=', document.getElementById('vrDtiFile')?.dataset?.docSrc);
+        } catch (e) {
+            // ignore
+        }
     }
 
     function populateOwnerModal(user, profile) {
@@ -278,8 +446,10 @@
 
         setText("poValidIdType", profile.valid_id_type || "N/A");
         // setText('poValidIdNumber', profile.valid_id_number || 'N/A'); // Removed as per request
-
-        setLink("poValidIdPhoto", profile.valid_id_photo, "Front.jpg");
+        // If front ID is missing, fall back to back photo where appropriate
+        const frontPath = profile.valid_id_photo || profile.valid_id_back_photo || null;
+        const frontFilename = profile.valid_id_photo ? "Front.jpg" : (profile.valid_id_back_photo ? "Back.jpg" : "Front.jpg");
+        setLink("poValidIdPhoto", frontPath, frontFilename);
         setLink("poValidIdBackPhoto", profile.valid_id_back_photo, "Back.jpg");
         setLink(
             "poPoliceClearance",

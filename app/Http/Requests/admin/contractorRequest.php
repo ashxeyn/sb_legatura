@@ -36,19 +36,17 @@ class contractorRequest extends FormRequest
             ];
         }
 
-        $isUpdate = !empty($this->route('user_id'));
-        $userId = $this->route('user_id');
+        // Determine whether this is an update (PUT/PATCH) or create (POST)
+        $isUpdate = $this->isMethod('PUT') || $this->isMethod('PATCH') || !empty($this->route('user_id'));
 
-        // If owner_id is provided, admin intends to link an existing property owner
-        $isExistingOwner = $this->has('owner_id') && !empty($this->input('owner_id'));
-
-        $rules = [
+        // Create (strict) rules
+        $createRules = [
             // Company Information
             'company_name' => 'required|string|max:255',
             'company_start_date' => 'required|date|before:today',
             'contractor_type_id' => 'required|exists:contractor_types,type_id',
             'contractor_type_other_text' => 'required_if:contractor_type_id,9|nullable|string|max:255',
-            'services_offered' => 'nullable|string',
+            'services_offered' => 'required|string',
             'company_website' => 'nullable|url|max:255',
             'company_social_media' => 'nullable|url|max:255',
 
@@ -59,8 +57,6 @@ class contractorRequest extends FormRequest
             'business_address_province' => 'required|string|max:255',
             'business_address_postal' => 'required|string|max:10',
 
-            // Representative fields removed; selection of existing owner is required instead.
-
             // Legal Documents (Files/Data)
             'picab_number' => 'required|string|max:50',
             'picab_category' => 'required|string|max:50',
@@ -69,39 +65,51 @@ class contractorRequest extends FormRequest
             'business_permit_city' => 'required|string|max:100',
             'business_permit_expiration' => 'required|date|after:today',
             'tin_business_reg_number' => 'required|string|max:50',
+
+            // Files
+            'profile_pic' => 'nullable|image|max:5120',
+            'dti_sec_registration_photo' => 'required|image|max:5120',
+
+            // Owner linking
+            'owner_id' => 'required|exists:property_owners,owner_id',
+
+            // Company email
+            'company_email' => ['required', 'email', 'max:100'],
         ];
 
-        if ($isUpdate) {
-            // Update Rules
-            $rules['company_email'] = [
-                'required',
-                'email',
-                'max:100',
-                \Illuminate\Validation\Rule::unique('users', 'email')->ignore($userId, 'user_id'),
-                \Illuminate\Validation\Rule::unique('admin_users', 'email')
-            ];
-            $rules['password'] = 'nullable|min:8';
+        // Update (lenient) rules — fields are optional; validate only when present
+        $updateRules = [
+            'company_name' => 'nullable|string|max:255',
+            'company_start_date' => 'nullable|date|before:today',
+            'contractor_type_id' => 'nullable|exists:contractor_types,type_id',
+            'contractor_type_other_text' => 'nullable|string|max:255',
+            'services_offered' => 'nullable|string',
+            'company_website' => 'nullable|url|max:255',
+            'company_social_media' => 'nullable|url|max:255',
 
-            // Files are optional on update
-            $rules['profile_pic'] = 'nullable|image|max:5120';
-            $rules['dti_sec_registration_photo'] = 'nullable|image|max:5120';
-        } else {
-            // Create Rules: admin must select an existing property owner (owner_id)
-            $rules['owner_id'] = 'required|exists:property_owners,owner_id';
+            'business_address_street' => 'nullable|string|max:255',
+            'business_address_barangay' => 'nullable|string|max:255',
+            'business_address_city' => 'nullable|string|max:255',
+            'business_address_province' => 'nullable|string|max:255',
+            'business_address_postal' => 'nullable|string|max:10',
 
-            // Company email required but not required to be unique (owner's email will be used)
-            $rules['company_email'] = [
-                'required',
-                'email',
-                'max:100'
-            ];
+            'picab_number' => 'nullable|string|max:50',
+            'picab_category' => 'nullable|string|max:50',
+            'picab_expiration_date' => 'nullable|date|after:today',
+            'business_permit_number' => 'nullable|string|max:50',
+            'business_permit_city' => 'nullable|string|max:100',
+            'business_permit_expiration' => 'nullable|date|after:today',
+            'tin_business_reg_number' => 'nullable|string|max:50',
 
-            // Files are required on create
-            $rules['profile_pic'] = 'nullable|image|max:5120';
-            $rules['dti_sec_registration_photo'] = 'required|image|max:5120';
-        }
+            'profile_pic' => 'nullable|image|max:5120',
+            'dti_sec_registration_photo' => 'nullable|image|max:5120',
 
-        return $rules;
+            // Email/password optional on update
+            'company_email' => 'nullable|email|max:100',
+            'password' => 'nullable|min:8',
+        ];
+
+        return $isUpdate ? $updateRules : $createRules;
     }
 
     public function messages()

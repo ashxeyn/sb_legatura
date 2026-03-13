@@ -242,14 +242,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         saveBtn.addEventListener('click', async function () {
-            // Ensure an existing property owner was selected
-            const ownerIdInputCheck = document.getElementById('selectedOwnerId');
-            if (ownerIdInputCheck && (!ownerIdInputCheck.value || ownerIdInputCheck.value.trim() === '')) {
-                showNotification('Please select an existing verified property owner before saving.', 'error');
-                const ownerSearchInputCheck = document.getElementById('ownerSearchInput');
-                if (ownerSearchInputCheck) ownerSearchInputCheck.classList.add('border-red-500');
-                return;
-            }
 
             const formData = new FormData();
 
@@ -311,6 +303,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     if (result.errors) {
                         for (const [key, messages] of Object.entries(result.errors)) {
+                            // Special-case owner_id so the error is shown under the visible search field
+                            if (key === 'owner_id') {
+                                const ownerSearch = modal.querySelector('#ownerSearchInput');
+                                if (ownerSearch) {
+                                        ownerSearch.classList.add('border-red-500');
+                                        const existing = ownerSearch.parentElement.querySelector('.error-message');
+                                        if (existing) existing.remove();
+                                        const errorDiv = document.createElement('div');
+                                        errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
+                                        errorDiv.textContent = 'The owner field is required';
+                                        ownerSearch.parentElement.appendChild(errorDiv);
+                                    } else {
+                                        const hidden = modal.querySelector('[name="owner_id"]');
+                                        if (hidden) {
+                                            const parent = hidden.parentElement;
+                                            const existing = parent.querySelector('.error-message');
+                                            if (existing) existing.remove();
+                                            const errorDiv = document.createElement('div');
+                                            errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
+                                            errorDiv.textContent = 'The owner field is required';
+                                            parent.appendChild(errorDiv);
+                                        } else {
+                                            showNotification('The owner field is required', 'error');
+                                        }
+                                }
+                                continue;
+                            }
+
                             const input = modal.querySelector(`[name="${key}"]`);
                             if (input) {
                                 if (input.type === 'file' && input.id === 'dtiUpload') {
@@ -323,11 +343,29 @@ document.addEventListener('DOMContentLoaded', function () {
                                         dropzone.parentElement.appendChild(errorDiv);
                                     }
                                 } else {
-                                    input.classList.add('border-red-500');
-                                    const errorDiv = document.createElement('div');
-                                    errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
-                                    errorDiv.textContent = messages[0];
-                                    input.parentElement.appendChild(errorDiv);
+                                    // If the input is hidden (like owner_id) try to find a visible companion
+                                    if (input.type === 'hidden') {
+                                        let visibleTarget = modal.querySelector('#ownerSearchInput');
+                                        if (visibleTarget) {
+                                            visibleTarget.classList.add('border-red-500');
+                                            const errorDiv = document.createElement('div');
+                                            errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
+                                            errorDiv.textContent = messages[0];
+                                            visibleTarget.parentElement.appendChild(errorDiv);
+                                        } else {
+                                            input.classList.add('border-red-500');
+                                            const errorDiv = document.createElement('div');
+                                            errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
+                                            errorDiv.textContent = messages[0];
+                                            input.parentElement.appendChild(errorDiv);
+                                        }
+                                    } else {
+                                        input.classList.add('border-red-500');
+                                        const errorDiv = document.createElement('div');
+                                        errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
+                                        errorDiv.textContent = messages[0];
+                                        input.parentElement.appendChild(errorDiv);
+                                    }
                                 }
                             } else {
                                 showNotification(messages[0], 'error');
@@ -398,13 +436,26 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (selectedOwnerSummary) selectedOwnerSummary.classList.remove('hidden');
                             ownerSearchResults.classList.add('hidden');
                             ownerSearchInput.value = '';
-                            // Prefill representative inputs with the owner's identity
+
+                            // Clear any inline error on the owner search input
+                            const ownerSearchEl = document.getElementById('ownerSearchInput');
+                            if (ownerSearchEl) {
+                                ownerSearchEl.classList.remove('border-red-500');
+                                const err = ownerSearchEl.parentElement.querySelector('.error-message');
+                                if (err) err.remove();
+                            }
+
+                            // Also remove any error attached to the hidden input parent
+                            if (selectedOwnerIdInput && selectedOwnerIdInput.parentElement) {
+                                const hiddenErr = selectedOwnerIdInput.parentElement.querySelector('.error-message');
+                                if (hiddenErr) hiddenErr.remove();
+                            }
+
+                            // Prefill representative name inputs with the owner's identity (do NOT prefill company email)
                             const firstNameInput = document.querySelector('#addContractorModal [name="first_name"]');
                             const lastNameInput = document.querySelector('#addContractorModal [name="last_name"]');
-                            const companyEmailInput = document.querySelector('#addContractorModal [name="company_email"]');
                             if (firstNameInput) firstNameInput.value = this.dataset.firstName;
                             if (lastNameInput) lastNameInput.value = this.dataset.lastName;
-                            if (companyEmailInput && (!companyEmailInput.value || companyEmailInput.value.trim() === '')) companyEmailInput.value = this.dataset.email;
                         });
                         ownerSearchResults.appendChild(div);
                     });
@@ -436,6 +487,17 @@ document.addEventListener('DOMContentLoaded', function () {
             if (firstNameInput) firstNameInput.value = '';
             if (lastNameInput) lastNameInput.value = '';
             if (companyEmailInput) companyEmailInput.value = '';
+            // Remove inline owner validation error if present
+            const ownerSearchEl = document.getElementById('ownerSearchInput');
+            if (ownerSearchEl) {
+                ownerSearchEl.classList.remove('border-red-500');
+                const err = ownerSearchEl.parentElement.querySelector('.error-message');
+                if (err) err.remove();
+            }
+            if (selectedOwnerIdInput && selectedOwnerIdInput.parentElement) {
+                const hiddenErr = selectedOwnerIdInput.parentElement.querySelector('.error-message');
+                if (hiddenErr) hiddenErr.remove();
+            }
         });
     }
 
@@ -620,6 +682,24 @@ document.addEventListener('DOMContentLoaded', function () {
             barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
             barangaySelect.disabled = true;
         }
+
+        // Clear owner selection UI (selected owner summary, hidden id, and search input/results)
+        try {
+            if (selectedOwnerIdInput) selectedOwnerIdInput.value = '';
+            if (selectedOwnerName) selectedOwnerName.textContent = '';
+            if (selectedOwnerEmail) selectedOwnerEmail.textContent = '';
+            if (selectedOwnerSummary) selectedOwnerSummary.classList.add('hidden');
+            if (ownerSearchInput) {
+                ownerSearchInput.value = '';
+                ownerSearchInput.classList.remove('border-red-500');
+            }
+            if (ownerSearchResults) {
+                ownerSearchResults.innerHTML = '';
+                ownerSearchResults.classList.add('hidden');
+            }
+        } catch (e) {
+            // Defensive: ignore if elements are not present
+        }
     }
 
     const modalInputs = document.querySelectorAll('#addContractorModal input, #addContractorModal select, #addContractorModal textarea');
@@ -713,7 +793,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = result.data;
 
-            document.getElementById('edit_user_id').value = data.user_id;
+            // Use contractor_id here so the update URL receives the contractor's id
+            document.getElementById('edit_user_id').value = data.contractor_id;
             document.getElementById('edit_company_name').value = data.company_name || '';
             document.getElementById('edit_company_start_date').value = data.company_start_date || '';
 
@@ -733,9 +814,12 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('edit_company_website').value = data.company_website || '';
             document.getElementById('edit_company_social_media').value = data.company_social_media || '';
 
-            document.getElementById('edit_first_name').value = data.first_name || '';
-            document.getElementById('edit_middle_name').value = data.middle_name || '';
-            document.getElementById('edit_last_name').value = data.last_name || '';
+            const editFirstNameEl = document.getElementById('edit_first_name');
+            if (editFirstNameEl) editFirstNameEl.value = data.first_name || '';
+            const editMiddleNameEl = document.getElementById('edit_middle_name');
+            if (editMiddleNameEl) editMiddleNameEl.value = data.middle_name || '';
+            const editLastNameEl = document.getElementById('edit_last_name');
+            if (editLastNameEl) editLastNameEl.value = data.last_name || '';
             document.getElementById('edit_company_email').value = data.email || '';
             document.getElementById('edit_username').value = data.username || '';
 

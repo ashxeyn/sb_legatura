@@ -247,8 +247,7 @@
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-600 mb-1">DTI / SEC Registration</label>
-                    <a id="vrDtiFile" href="#"
-                      class="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition">
+                    <a id="vrDtiFile" href="#" data-doc-src="#" class="viewer-link inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition">
                       <i class="fi fi-rr-file-pdf text-indigo-500"></i>
                       <span>DTIRegistration.pdf</span>
                       <span class="text-xs text-gray-500">200 KB</span>
@@ -422,16 +421,14 @@
                   <div class="grid grid-cols-2 gap-3">
                     <div>
                       <span class="block text-xs text-gray-500 mb-1">Valid ID Photo (Front)</span>
-                      <a id="poValidIdPhoto" href="#"
-                        class="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition w-full">
-                        <i class="fi fi-rr-id-badge text-indigo-500"></i>
-                        <span class="truncate">Front.jpg</span>
-                      </a>
+                        <a id="poValidIdPhoto" href="#" data-doc-src="#" class="viewer-link inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition w-full">
+                          <i class="fi fi-rr-id-badge text-indigo-500"></i>
+                          <span class="truncate">Front.jpg</span>
+                        </a>
                     </div>
                     <div>
                       <span class="block text-xs text-gray-500 mb-1">Valid ID Photo (Back)</span>
-                      <a id="poValidIdBackPhoto" href="#"
-                        class="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition w-full">
+                      <a id="poValidIdBackPhoto" href="#" data-doc-src="#" class="viewer-link inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition w-full">
                         <i class="fi fi-rr-id-badge text-indigo-500"></i>
                         <span class="truncate">Back.jpg</span>
                       </a>
@@ -439,8 +436,7 @@
                   </div>
                   <div>
                     <span class="block text-xs text-gray-500 mb-1">Police Clearance</span>
-                    <a id="poPoliceClearance" href="#"
-                      class="inline-flex items-center gap-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-medium transition">
+                    <a id="poPoliceClearance" href="#" data-doc-src="#" class="viewer-link inline-flex items-center gap-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-medium transition">
                       <i class="fi fi-rr-file text-purple-500"></i>
                       <span>PoliceClearance.pdf</span>
                       <span class="text-xs text-gray-500">200 KB</span>
@@ -459,6 +455,7 @@
               class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl transition font-semibold shadow-md hover:shadow-lg">Accept</button>
           </div>
         </div>
+
       </div>
 
       <!-- Delete Confirmation Modal (Shared) -->
@@ -486,6 +483,21 @@
         </div>
       </div>
 
+      <!-- Document Viewer Modal (moved here) -->
+      <div id="docViewerModal" class="fixed inset-0 bg-black bg-opacity-50 z-[90] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all">
+          <div class="flex items-center justify-between px-4 py-3 border-b">
+            <h3 class="text-lg font-semibold text-gray-800">Document Viewer</h3>
+            <button id="docViewerCloseBtn" class="text-gray-500 hover:text-gray-800 p-2">
+              <i class="fi fi-rr-cross text-2xl"></i>
+            </button>
+          </div>
+          <div class="p-4 flex items-center justify-center min-h-[60vh]">
+            <img id="docViewerImg" src="" alt="Document" class="max-w-full max-h-[70vh] object-contain hidden" />
+            <iframe id="docViewerIframe" src="" class="w-full h-[70vh] hidden border-0"></iframe>
+          </div>
+        </div>
+      </div>
 
     </main>
 
