@@ -819,19 +819,19 @@ document.addEventListener('DOMContentLoaded', function () {
       const currentPoliceClearance = document.getElementById('currentPoliceClearance');
 
       if (owner.valid_id_photo) {
-        currentIdFront.innerHTML = `Current: <a href="/storage/${owner.valid_id_photo}" target="_blank" class="text-orange-500 hover:underline">View File</a>`;
+        currentIdFront.innerHTML = `Current: <a href="/storage/${owner.valid_id_photo}" onclick="event.preventDefault(); event.stopPropagation(); openImageModal('/storage/${owner.valid_id_photo}', 'Valid ID (Front)')" class="text-orange-500 hover:underline">View File</a>`;
       } else {
         currentIdFront.innerHTML = '';
       }
 
       if (owner.valid_id_back_photo) {
-        currentIdBack.innerHTML = `Current: <a href="/storage/${owner.valid_id_back_photo}" target="_blank" class="text-orange-500 hover:underline">View File</a>`;
+        currentIdBack.innerHTML = `Current: <a href="/storage/${owner.valid_id_back_photo}" onclick="event.preventDefault(); event.stopPropagation(); openImageModal('/storage/${owner.valid_id_back_photo}', 'Valid ID (Back)')" class="text-orange-500 hover:underline">View File</a>`;
       } else {
         currentIdBack.innerHTML = '';
       }
 
       if (owner.police_clearance) {
-        currentPoliceClearance.innerHTML = `Current: <a href="/storage/${owner.police_clearance}" target="_blank" class="text-orange-500 hover:underline">View File</a>`;
+        currentPoliceClearance.innerHTML = `Current: <a href="/storage/${owner.police_clearance}" onclick="event.preventDefault(); event.stopPropagation(); openImageModal('/storage/${owner.police_clearance}', 'Police Clearance')" class="text-orange-500 hover:underline">View File</a>`;
       } else {
         currentPoliceClearance.innerHTML = '';
       }

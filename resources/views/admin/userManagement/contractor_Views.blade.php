@@ -365,13 +365,13 @@
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">DTI / SEC
                       Registration</label>
                     @if($contractor->dti_sec_registration_photo)
-                      <a href="{{ asset('storage/' . $contractor->dti_sec_registration_photo) }}" target="_blank"
-                        class="inline-flex items-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-lg text-sm font-medium transition-all hover:shadow-md group">
+                      <button type="button" data-doc-src="{{ asset('storage/' . $contractor->dti_sec_registration_photo) }}"
+                        class="open-doc-btn inline-flex items-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-lg text-sm font-medium transition-all hover:shadow-md group">
                         <i class="fi fi-rr-file-pdf text-red-500"></i>
                         <span>View Document</span>
                         <span class="text-xs text-gray-500 group-hover:text-orange-500">•
                           {{ $contractor->verification_status ?? 'Pending' }}</span>
-                      </a>
+                      </button>
                     @else
                       <p class="text-sm text-gray-500">No document uploaded</p>
                     @endif
@@ -1034,7 +1034,7 @@
                   </div>
                 </div>
                 <div id="editCurrentDtiFile" class="mt-2 text-sm hidden">
-                  Current: <a href="#" target="_blank" class="text-orange-600 hover:underline font-medium">View File</a>
+                  Current: <button type="button" data-doc-src="{{ asset('storage/' . ($contractor->dti_sec_registration_photo ?? '')) }}" class="open-doc-btn text-orange-600 hover:underline font-medium">View File</button>
                 </div>
               </div>
             </div>
@@ -1282,7 +1282,7 @@
     class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div
       class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden">
-      
+
       <!-- Modal Header -->
       <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5 flex items-center justify-between">
         <h2 class="text-2xl font-bold text-white flex items-center gap-3">
@@ -1538,7 +1538,7 @@
   <div id="cancelInvitationModal"
     class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fadeIn">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden border border-gray-200">
-      
+
       <!-- Modal Header -->
       <div class="px-6 py-4 flex items-center justify-between border-b border-red-100 bg-red-50">
         <div class="flex items-center gap-3">
@@ -1593,7 +1593,7 @@
   <div id="reapplyInvitationModal"
     class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fadeIn">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden border border-gray-200">
-      
+
       <!-- Modal Header -->
       <div class="px-6 py-4 flex items-center justify-between border-b border-green-100 bg-green-50">
         <div class="flex items-center gap-3">
@@ -1631,6 +1631,25 @@
           <i class="fi fi-rr-rotate-right"></i>
           Reapply
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Viewer Modal -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fi fi-rr-file-document text-orange-500"></i> Document Viewer</h3>
+        <div class="flex items-center gap-2">
+          <button id="closeDocumentViewerBtn" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg">
+            <i class="fi fi-rr-cross text-xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 max-h-[calc(90vh-120px)] overflow-auto flex items-center justify-center bg-gray-50">
+        <iframe id="documentViewerFrame" src="" class="w-full h-[70vh] border-0 hidden"></iframe>
+        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-[70vh] object-contain hidden" />
       </div>
     </div>
   </div>

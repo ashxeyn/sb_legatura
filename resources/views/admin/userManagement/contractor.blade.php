@@ -145,6 +145,11 @@
                 placeholder="Please specify type"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition mt-2 hidden">
             </div>
+             <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
+              <input type="email" name="company_email" placeholder="Enter email address"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-2">Services Offered</label>
               <input type="text" name="services_offered" placeholder="e.g. Plumbing, Electrical, Roofing"
@@ -166,68 +171,30 @@
         </div>
 
         <!-- Representative Information Section -->
-        <div class="mb-6">
-          <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-            <i class="fi fi-rr-user"></i>
-            Representative Information
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-              <input type="text" name="first_name" placeholder="Enter first name"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+          <!-- Select Existing Property Owner (optional) -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select Existing Verified Property Owner (optional)</label>
+            <input type="hidden" name="owner_id" id="selectedOwnerId">
+            <div class="relative">
+              <input type="text" id="ownerSearchInput" placeholder="Search by name or email"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition" />
+              <div id="ownerSearchResults" class="mt-2 bg-white border border-gray-200 rounded shadow-sm max-h-48 overflow-y-auto hidden"></div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name <span
-                  class="text-gray-400">(optional)</span></label>
-              <input type="text" name="middle_name" placeholder="Enter middle name"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-              <input type="text" name="last_name" placeholder="Enter last name"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
-              <input type="email" name="company_email" placeholder="Enter email address"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            <div id="selectedOwnerSummary" class="mt-3 hidden bg-green-50 border-l-4 border-green-400 p-3 rounded">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div id="selectedOwnerName" class="text-sm font-medium text-green-800"></div>
+                  <div id="selectedOwnerEmail" class="text-xs text-green-700"></div>
+                </div>
+                <button type="button" id="clearSelectedOwner" class="text-sm text-red-600">Remove</button>
+              </div>
             </div>
           </div>
-        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Account Setup Section -->
           <div class="space-y-6">
-            <div>
-              <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-                <i class="fi fi-rr-user-gear"></i>
-                Account Setup
-              </h3>
-              <div class="space-y-4">
-                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                  <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                      <i class="fi fi-rr-info text-blue-500 text-xl"></i>
-                    </div>
-                    <div class="ml-3">
-                      <p class="text-sm text-blue-700">
-                        <span class="font-bold">Note:</span> Username and Password are automatically generated.
-                      </p>
-                      <p class="text-sm text-blue-600 mt-1">
-                        Default Password: <span
-                          class="font-mono font-bold bg-blue-100 px-1 rounded">contractor123@!</span>
-                      </p>
-                      <p class="text-sm text-blue-600 mt-1">
-                        The username will be <span
-                          class="font-mono font-bold bg-blue-100 px-1 rounded">contractor_</span> followed by a random
-                        4-digit number.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+
 
             <div>
               <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">

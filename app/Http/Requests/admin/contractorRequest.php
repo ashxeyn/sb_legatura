@@ -17,22 +17,8 @@ class contractorRequest extends FormRequest
     protected function prepareForValidation()
     {
         $data = [];
-
-        if ($this->has('first_name') && $this->first_name) {
-            $data['first_name'] = ucwords(strtolower(trim($this->first_name)));
-        }
-
-        if ($this->has('middle_name') && $this->middle_name) {
-            $data['middle_name'] = ucwords(strtolower(trim($this->middle_name)));
-        }
-
-        if ($this->has('last_name') && $this->last_name) {
-            $data['last_name'] = ucwords(strtolower(trim($this->last_name)));
-        }
-
-        if (!empty($data)) {
-            $this->merge($data);
-        }
+        // Representative fields removed from Add Contractor form.
+        // No special normalization required for contractor request.
     }
 
     /**
@@ -53,6 +39,9 @@ class contractorRequest extends FormRequest
         $isUpdate = !empty($this->route('user_id'));
         $userId = $this->route('user_id');
 
+        // If owner_id is provided, admin intends to link an existing property owner
+        $isExistingOwner = $this->has('owner_id') && !empty($this->input('owner_id'));
+
         $rules = [
             // Company Information
             'company_name' => 'required|string|max:255',
@@ -70,10 +59,7 @@ class contractorRequest extends FormRequest
             'business_address_province' => 'required|string|max:255',
             'business_address_postal' => 'required|string|max:10',
 
-            // Representative/Contact
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'required|string|max:100',
+            // Representative fields removed; selection of existing owner is required instead.
 
             // Legal Documents (Files/Data)
             'picab_number' => 'required|string|max:50',
@@ -100,13 +86,14 @@ class contractorRequest extends FormRequest
             $rules['profile_pic'] = 'nullable|image|max:5120';
             $rules['dti_sec_registration_photo'] = 'nullable|image|max:5120';
         } else {
-            // Create Rules
+            // Create Rules: admin must select an existing property owner (owner_id)
+            $rules['owner_id'] = 'required|exists:property_owners,owner_id';
+
+            // Company email required but not required to be unique (owner's email will be used)
             $rules['company_email'] = [
                 'required',
                 'email',
-                'max:100',
-                'unique:users,email',
-                'unique:admin_users,email'
+                'max:100'
             ];
 
             // Files are required on create

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 class propertyOwnerClass
 {
-    public function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $perPage = 15, $page = null)
+    public function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $perPage = 15, $page = null, $onlyEligible = false)
     {
         $query = DB::table('property_owners')
             ->leftJoin('occupations', 'property_owners.occupation_id', '=', 'occupations.id')
@@ -20,6 +20,25 @@ class propertyOwnerClass
                 'users.last_name',
                 DB::raw("CASE WHEN occupations.occupation_name = 'Others' OR occupations.occupation_name IS NULL THEN property_owners.occupation_other ELSE occupations.occupation_name END as occupation")
             );
+
+        // If requesting only eligible owners for contractor creation,
+        // exclude owners who already have a contractor company or are listed as contractor staff.
+        if ($onlyEligible) {
+            $query->leftJoin('contractors', function($join) {
+                $join->on('property_owners.owner_id', '=', 'contractors.owner_id')
+                     ->where('contractors.verification_status', '!=', 'deleted')
+                     ->where('contractors.is_active', 1);
+            });
+
+            $query->leftJoin('contractor_staff', function($join) {
+                $join->on('property_owners.owner_id', '=', 'contractor_staff.owner_id')
+                     ->whereNull('contractor_staff.deletion_reason')
+                     ->where('contractor_staff.is_active', 1);
+            });
+
+            $query->whereNull('contractors.contractor_id')
+                  ->whereNull('contractor_staff.staff_id');
+        }
 
         // Posted Projects Count
         $query->addSelect([

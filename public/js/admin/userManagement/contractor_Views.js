@@ -10,7 +10,7 @@ async function fetchAndUpdateTeamMembers() {
     }
 
     const url = `/admin/user-management/contractor/view?id=${contractorId}`;
-    
+
     try {
         const response = await fetch(url, {
             headers: {
@@ -47,7 +47,7 @@ function refreshContractorDetails() {
         console.error('Contractor ID not found');
         return;
     }
-    
+
     // Use replace to refresh page without affecting browser history
     setTimeout(() => {
         window.location.replace(`/admin/user-management/contractor/view?id=${contractorId}`);
@@ -287,14 +287,14 @@ function confirmSuspend() {
         if (data.success) {
             showNotification('Contractor account suspended successfully!', 'success');
             closeSuspendModal();
-            
+
             // Update status badge instantly
             const statusBadge = document.querySelector('.text-xs.font-medium.px-2\\.5.py-1');
             if (statusBadge) {
                 statusBadge.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600';
                 statusBadge.textContent = 'Suspended';
             }
-            
+
             // Hide suspend button
             if (suspendBtn) {
                 suspendBtn.style.display = 'none';
@@ -445,6 +445,92 @@ function initTeamMemberTabs() {
 }
 
 // ============================================
+// DOCUMENT VIEWER MODAL
+// ============================================
+
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('documentViewerModal');
+        const iframe = document.getElementById('documentViewerFrame');
+        const img = document.getElementById('documentViewerImg');
+        const closeBtn = document.getElementById('closeDocumentViewerBtn');
+
+        if (!modal) return;
+
+        function openDocumentViewer(src) {
+            if (!modal) return;
+            const isPdf = /\.pdf(\?|$)/i.test(src);
+
+            // no download link; render document in modal
+
+            if (isPdf) {
+                if (iframe) {
+                    iframe.src = src;
+                    iframe.classList.remove('hidden');
+                }
+                if (img) img.classList.add('hidden');
+            } else {
+                if (img) {
+                    img.src = src;
+                    img.classList.remove('hidden');
+                }
+                if (iframe) iframe.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                setTimeout(function() {
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            }
+        }
+
+        function closeDocumentViewer() {
+            if (!modal) return;
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.classList.remove('scale-100', 'opacity-100');
+                modalContent.classList.add('scale-95', 'opacity-0');
+            }
+            setTimeout(function() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = 'auto';
+                if (iframe) iframe.src = '';
+                if (img) img.src = '';
+            }, 200);
+        }
+
+        // Delegated click handler for open buttons
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest && e.target.closest('.open-doc-btn');
+            if (btn) {
+                const src = btn.getAttribute('data-doc-src');
+                if (src) openDocumentViewer(src);
+            }
+        });
+
+        // Close handlers
+        if (closeBtn) closeBtn.addEventListener('click', closeDocumentViewer);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeDocumentViewer();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeDocumentViewer();
+        });
+
+        // Expose for debugging
+        window.openDocumentViewer = openDocumentViewer;
+        window.closeDocumentViewer = closeDocumentViewer;
+    });
+})();
+
+// ============================================
 // ADD TEAM MEMBER MODAL FUNCTIONS
 // ============================================
 
@@ -534,7 +620,7 @@ function resetAddTeamMemberForm() {
     // Clear error states
     if (roleSelect) roleSelect.classList.remove('border-red-500');
     if (roleOtherInput) roleOtherInput.classList.remove('border-red-500');
-    
+
     const roleError = document.getElementById('teamMemberRoleError');
     const roleOtherError = document.getElementById('teamMemberRoleOtherError');
     if (roleError) roleError.classList.add('hidden');
@@ -605,7 +691,7 @@ async function searchPropertyOwners(searchTerm) {
             teamMemberOwnerList.innerHTML = availableOwners.map(owner => {
                 const fullName = `${owner.first_name || ''} ${owner.middle_name || ''} ${owner.last_name || ''}`.trim();
                 const initials = `${owner.first_name?.[0] || ''}${owner.last_name?.[0] || ''}`.toUpperCase();
-                
+
                 return `
                     <div class="owner-option px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0"
                          data-owner-id="${owner.owner_id}"
@@ -615,7 +701,7 @@ async function searchPropertyOwners(searchTerm) {
                          data-owner-pic="${owner.profile_pic || ''}">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                                ${owner.profile_pic ? 
+                                ${owner.profile_pic ?
                                     `<img src="/storage/${owner.profile_pic}" alt="${fullName}" class="w-full h-full object-cover">` :
                                     initials
                                 }
@@ -690,12 +776,12 @@ function updateSelectedMembersList() {
 
     selectedMembersContainer.innerHTML = selectedPropertyOwners.map((owner, index) => {
         const initials = owner.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-        
+
         return `
             <div class="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-orange-300 transition-colors">
                 <div class="flex items-center gap-3 flex-1">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
-                        ${owner.profile_pic ? 
+                        ${owner.profile_pic ?
                             `<img src="/storage/${owner.profile_pic}" alt="${owner.name}" class="w-full h-full object-cover">` :
                             initials
                         }
@@ -703,10 +789,10 @@ function updateSelectedMembersList() {
                     <div class="flex-1 min-w-0">
                         <p class="font-semibold text-gray-800 text-sm truncate">${owner.name}</p>
                         <p class="text-xs text-gray-500 truncate">${owner.email}</p>
-                        
+
                         <!-- Role Selection for this member -->
                         <div class="mt-2 space-y-2">
-                            <select class="member-role-select w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" 
+                            <select class="member-role-select w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                                     data-owner-id="${owner.owner_id}"
                                     data-index="${index}">
                                 <option value="" disabled ${!owner.role ? 'selected' : ''}>Select Role</option>
@@ -715,15 +801,15 @@ function updateSelectedMembersList() {
                                 <option value="architect" ${owner.role === 'architect' ? 'selected' : ''}>Architect</option>
                                 <option value="others" ${owner.role === 'others' ? 'selected' : ''}>Others</option>
                             </select>
-                            
+
                             <!-- Others input field -->
-                            <input type="text" 
+                            <input type="text"
                                    class="member-role-other-input w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${owner.role === 'others' ? '' : 'hidden'}"
                                    data-owner-id="${owner.owner_id}"
                                    data-index="${index}"
                                    placeholder="Specify role (e.g., Consultant, Surveyor)"
                                    value="${owner.role_other || ''}">
-                            
+
                             <span class="member-role-error text-xs text-red-500 hidden" data-index="${index}"></span>
                         </div>
                     </div>
@@ -749,10 +835,10 @@ function updateSelectedMembersList() {
             const ownerId = this.dataset.ownerId;
             const index = parseInt(this.dataset.index);
             const owner = selectedPropertyOwners.find(o => o.owner_id === ownerId);
-            
+
             if (owner) {
                 owner.role = this.value;
-                
+
                 // Show/hide the "others" input field
                 const otherInput = document.querySelector(`.member-role-other-input[data-index="${index}"]`);
                 if (otherInput) {
@@ -773,7 +859,7 @@ function updateSelectedMembersList() {
         input.addEventListener('input', function() {
             const ownerId = this.dataset.ownerId;
             const owner = selectedPropertyOwners.find(o => o.owner_id === ownerId);
-            
+
             if (owner) {
                 owner.role_other = this.value.trim();
             }
@@ -793,7 +879,7 @@ if (teamMemberOwnerSearch) {
     // Search on input with debounce
     teamMemberOwnerSearch.addEventListener('input', debounce(function() {
         const searchTerm = this.value.trim();
-        
+
         if (searchTerm.length >= 2) {
             if (teamMemberOwnerDropdown) teamMemberOwnerDropdown.classList.remove('hidden');
             searchPropertyOwners(searchTerm);
@@ -804,8 +890,8 @@ if (teamMemberOwnerSearch) {
 
     // Hide dropdown when clicking outside
     document.addEventListener('click', function(e) {
-        if (teamMemberOwnerSearch && teamMemberOwnerDropdown && 
-            !teamMemberOwnerSearch.contains(e.target) && 
+        if (teamMemberOwnerSearch && teamMemberOwnerDropdown &&
+            !teamMemberOwnerSearch.contains(e.target) &&
             !teamMemberOwnerDropdown.contains(e.target)) {
             teamMemberOwnerDropdown.classList.add('hidden');
         }
@@ -827,7 +913,7 @@ function saveAddTeamMember() {
         const errorSpan = document.querySelector(`.member-role-error[data-index="${index}"]`);
         const roleSelect = document.querySelector(`.member-role-select[data-index="${index}"]`);
         const roleOtherInput = document.querySelector(`.member-role-other-input[data-index="${index}"]`);
-        
+
         // Clear previous errors
         if (errorSpan) errorSpan.classList.add('hidden');
         if (roleSelect) roleSelect.classList.remove('border-red-500');
@@ -861,7 +947,7 @@ function saveAddTeamMember() {
     // Disable save button
     const saveBtn = document.getElementById('saveTeamMemberBtn');
     if (!saveBtn) return;
-    
+
     const originalBtnText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Adding...';
@@ -1179,13 +1265,13 @@ function confirmChangeRepresentative() {
         if (ok && data.success === true) {
             showNotification(data.message || `Company representative changed to ${selectedMember.name}`, 'success');
             closeChangeRepresentativeModal();
-            
+
             // Update representative info instantly if elements exist
             const repNameEl = document.querySelector('[data-representative-name]');
             if (repNameEl) {
                 repNameEl.textContent = selectedMember.name;
             }
-            
+
             // Refresh team members table to update roles
             fetchAndUpdateTeamMembers();
         } else {
@@ -1261,7 +1347,7 @@ function openEditTeamMemberModal(memberId) {
                         representativeOption.style.color = '';
                     }
                 }
-                
+
                 roleSelect.value = member.company_role || member.role || '';
             }
 
@@ -1320,7 +1406,7 @@ function saveEditTeamMember() {
     const memberId = document.getElementById('editTeamMemberContractorUserId')?.value;
     const roleSelect = document.getElementById('editTeamMemberRole');
     const roleOtherInput = document.getElementById('editTeamMemberRoleOther');
-    
+
     if (!memberId) {
         showNotification('Member ID is missing', 'error');
         return;
@@ -1362,7 +1448,7 @@ function saveEditTeamMember() {
     // Disable save button
     const saveBtn = document.getElementById('saveEditTeamMemberBtn');
     if (!saveBtn) return;
-    
+
     const originalBtnText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
@@ -1387,7 +1473,7 @@ function saveEditTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member role updated successfully!', 'success');
             closeEditTeamMemberModal();
-            
+
             // Refresh team members table instantly
             fetchAndUpdateTeamMembers();
         } else {
@@ -1429,7 +1515,7 @@ function saveEditTeamMember() {
 function closeEditTeamMemberModal() {
     const modal = document.getElementById('editTeamMemberModal');
     if (!modal) return;
-    
+
     const modalContent = modal.querySelector('.modal-content');
     if (modalContent) {
         modalContent.classList.remove('scale-100', 'opacity-100');
@@ -1538,7 +1624,7 @@ function closeDeactivateTeamMemberModal() {
         // Clear form
         document.getElementById('deactivateTeamMemberReason').value = '';
         document.getElementById('deactivateReasonError').classList.add('hidden');
-        
+
         const suspensionDateInput = document.getElementById('suspensionDateTeamMember');
         const suspensionDateError = document.getElementById('suspensionDateErrorTeamMember');
         if (suspensionDateInput) suspensionDateInput.value = '';
@@ -1646,7 +1732,7 @@ function confirmDeactivateTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member suspended successfully!', 'success');
             closeDeactivateTeamMemberModal();
-            
+
             // Refresh team members table instantly
             fetchAndUpdateTeamMembers();
         } else {
@@ -1754,7 +1840,7 @@ function confirmReactivateTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member reactivated successfully!', 'success');
             closeReactivateTeamMemberModal();
-            
+
             // Refresh team members table instantly
             fetchAndUpdateTeamMembers();
         } else {
@@ -1818,7 +1904,7 @@ function openCancelInvitationModal(memberId, memberName) {
 
 function closeCancelInvitationModal() {
     if (!cancelInvitationModal) return;
-    
+
     const modalContent = cancelInvitationModal.querySelector('.modal-content');
     if (modalContent) {
         modalContent.classList.remove('scale-100', 'opacity-100');
@@ -1872,7 +1958,7 @@ function confirmCancelInvitation() {
     // Disable button
     const confirmBtn = confirmCancelInvitationBtn;
     if (!confirmBtn) return;
-    
+
     const originalBtnText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Canceling...';
@@ -1942,7 +2028,7 @@ function openReapplyInvitationModal(memberId, memberName) {
 
 function closeReapplyInvitationModal() {
     if (!reapplyInvitationModal) return;
-    
+
     const modalContent = reapplyInvitationModal.querySelector('.modal-content');
     if (modalContent) {
         modalContent.classList.remove('scale-100', 'opacity-100');
@@ -1963,7 +2049,7 @@ function confirmReapplyInvitation() {
     // Disable button
     const confirmBtn = confirmReapplyInvitationBtn;
     if (!confirmBtn) return;
-    
+
     const originalBtnText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Reapplying...';

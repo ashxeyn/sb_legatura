@@ -242,6 +242,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         saveBtn.addEventListener('click', async function () {
+            // Ensure an existing property owner was selected
+            const ownerIdInputCheck = document.getElementById('selectedOwnerId');
+            if (ownerIdInputCheck && (!ownerIdInputCheck.value || ownerIdInputCheck.value.trim() === '')) {
+                showNotification('Please select an existing verified property owner before saving.', 'error');
+                const ownerSearchInputCheck = document.getElementById('ownerSearchInput');
+                if (ownerSearchInputCheck) ownerSearchInputCheck.classList.add('border-red-500');
+                return;
+            }
+
             const formData = new FormData();
 
             const inputs = modal.querySelectorAll('input, select, textarea');
@@ -340,6 +349,93 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.innerHTML = originalText;
                 this.disabled = false;
             }
+        });
+    }
+
+    // Owner live-search for Add Contractor modal
+    const ownerSearchInput = document.getElementById('ownerSearchInput');
+    const ownerSearchResults = document.getElementById('ownerSearchResults');
+    const selectedOwnerIdInput = document.getElementById('selectedOwnerId');
+    const selectedOwnerName = document.getElementById('selectedOwnerName');
+    const selectedOwnerEmail = document.getElementById('selectedOwnerEmail');
+    const selectedOwnerSummary = document.getElementById('selectedOwnerSummary');
+    const clearSelectedOwnerBtn = document.getElementById('clearSelectedOwner');
+
+    if (ownerSearchInput) {
+        let ownerDebounce;
+        ownerSearchInput.addEventListener('input', function (e) {
+            clearTimeout(ownerDebounce);
+            const q = this.value.trim();
+            if (!q) {
+                if (ownerSearchResults) ownerSearchResults.classList.add('hidden');
+                return;
+            }
+            ownerDebounce = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/admin/users/property-owners?search=${encodeURIComponent(q)}&eligible=1`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!res.ok) throw new Error('Network error');
+                    const json = await res.json();
+                    const owners = json.data || json;
+                    if (!ownerSearchResults) return;
+                    ownerSearchResults.innerHTML = '';
+                    if (!owners || owners.length === 0) {
+                        ownerSearchResults.innerHTML = '<div class="p-2 text-sm text-gray-500">No results</div>';
+                        ownerSearchResults.classList.remove('hidden');
+                        return;
+                    }
+                    owners.forEach(owner => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3';
+                        div.innerHTML = `<div class="flex-1 text-sm"><div class="font-medium">${owner.first_name || ''} ${owner.last_name || ''}</div><div class="text-xs text-gray-500">${owner.email || ''}</div></div>`;
+                        div.dataset.ownerId = owner.owner_id;
+                        div.dataset.firstName = owner.first_name || '';
+                        div.dataset.lastName = owner.last_name || '';
+                        div.dataset.email = owner.email || '';
+                        div.addEventListener('click', function () {
+                            if (selectedOwnerIdInput) selectedOwnerIdInput.value = this.dataset.ownerId;
+                            if (selectedOwnerName) selectedOwnerName.textContent = `${this.dataset.firstName} ${this.dataset.lastName}`;
+                            if (selectedOwnerEmail) selectedOwnerEmail.textContent = this.dataset.email;
+                            if (selectedOwnerSummary) selectedOwnerSummary.classList.remove('hidden');
+                            ownerSearchResults.classList.add('hidden');
+                            ownerSearchInput.value = '';
+                            // Prefill representative inputs with the owner's identity
+                            const firstNameInput = document.querySelector('#addContractorModal [name="first_name"]');
+                            const lastNameInput = document.querySelector('#addContractorModal [name="last_name"]');
+                            const companyEmailInput = document.querySelector('#addContractorModal [name="company_email"]');
+                            if (firstNameInput) firstNameInput.value = this.dataset.firstName;
+                            if (lastNameInput) lastNameInput.value = this.dataset.lastName;
+                            if (companyEmailInput && (!companyEmailInput.value || companyEmailInput.value.trim() === '')) companyEmailInput.value = this.dataset.email;
+                        });
+                        ownerSearchResults.appendChild(div);
+                    });
+                    ownerSearchResults.classList.remove('hidden');
+                } catch (err) {
+                    console.error('Owner search error', err);
+                }
+            }, 300);
+        });
+
+        // Close results when clicking outside
+        document.addEventListener('click', function (e) {
+            if (ownerSearchResults && !ownerSearchResults.contains(e.target) && e.target !== ownerSearchInput) {
+                ownerSearchResults.classList.add('hidden');
+            }
+        });
+    }
+
+    if (clearSelectedOwnerBtn) {
+        clearSelectedOwnerBtn.addEventListener('click', function () {
+            if (selectedOwnerIdInput) selectedOwnerIdInput.value = '';
+            if (selectedOwnerName) selectedOwnerName.textContent = '';
+            if (selectedOwnerEmail) selectedOwnerEmail.textContent = '';
+            if (selectedOwnerSummary) selectedOwnerSummary.classList.add('hidden');
+            // Optionally clear representative fields
+            const firstNameInput = document.querySelector('#addContractorModal [name="first_name"]');
+            const lastNameInput = document.querySelector('#addContractorModal [name="last_name"]');
+            const companyEmailInput = document.querySelector('#addContractorModal [name="company_email"]');
+            if (firstNameInput) firstNameInput.value = '';
+            if (lastNameInput) lastNameInput.value = '';
+            if (companyEmailInput) companyEmailInput.value = '';
         });
     }
 
@@ -669,7 +765,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (dtiLinkContainer) {
                 if (data.dti_sec_registration_photo) {
                     dtiLinkContainer.classList.remove('hidden');
-                    dtiLinkContainer.querySelector('a').href = `/storage/${data.dti_sec_registration_photo}`;
+
+                    // Prefer .open-doc-btn (new modal viewer) and set its data-doc-src.
+                    const openDocBtn = dtiLinkContainer.querySelector('.open-doc-btn');
+                    if (openDocBtn) {
+                        openDocBtn.setAttribute('data-doc-src', `/storage/${data.dti_sec_registration_photo}`);
+                    } else {
+                        // Fallback for older markup that used an <a>
+                        const anchor = dtiLinkContainer.querySelector('a');
+                        if (anchor) anchor.href = `/storage/${data.dti_sec_registration_photo}`;
+                    }
                 } else {
                     dtiLinkContainer.classList.add('hidden');
                 }

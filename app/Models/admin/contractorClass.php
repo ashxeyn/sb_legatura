@@ -215,82 +215,93 @@ class contractorClass extends Model
     public function addContractor($data)
     {
         return DB::transaction(function () use ($data) {
-            // First, create the property owner (user + property_owner record)
-            // Generate username from email
-            $username = explode('@', $data['company_email'])[0] . rand(100, 999);
+            // If an existing owner_id is provided, create a contractor record linked to that owner.
+            if (!empty($data['owner_id'])) {
+                $ownerId = $data['owner_id'];
 
-            // Create User
-            $userId = DB::table('users')->insertGetId([
-                'email' => $data['company_email'],
-                'username' => $username,
-                'password_hash' => Hash::make('contractor123@!'),
-                'user_type' => 'both', // Will be contractor owner
-                'first_name' => $data['first_name'],
-                'middle_name' => $data['middle_name'] ?? null,
-                'last_name' => $data['last_name'],
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+                $owner = DB::table('property_owners')->where('owner_id', $ownerId)->first();
+                if (!$owner) {
+                    throw new \Exception('Property owner not found');
+                }
 
-            // Create Property Owner
-            $ownerId = DB::table('property_owners')->insertGetId([
-                'user_id' => $userId,
-                'profile_pic' => $data['company_logo'] ?? null,
-                'cover_photo' => null,
-                'valid_id_id' => null,
-                'valid_id_photo' => null,
-                'valid_id_back_photo' => null,
-                'police_clearance' => null,
-                'date_of_birth' => null,
-                'age' => null,
-                'occupation_id' => null,
-                'occupation_other' => null,
-                'address' => $data['business_address'] ?? null,
-                'verification_status' => 'approved',
-                'verification_date' => now(),
-                'is_active' => 1,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+                // Ensure owner is verified and active
+                if (isset($owner->verification_status) && $owner->verification_status !== 'approved') {
+                    throw new \Exception('Selected property owner is not verified');
+                }
+                if (isset($owner->is_active) && !$owner->is_active) {
+                    throw new \Exception('Selected property owner is not active');
+                }
 
-            // Create Contractor
-            $contractorId = DB::table('contractors')->insertGetId([
-                'owner_id' => $ownerId,
-                'company_logo' => $data['company_logo'] ?? null,
-                'company_banner' => $data['company_banner'] ?? null,
-                'company_name' => $data['company_name'],
-                'company_start_date' => $data['company_start_date'],
-                'years_of_experience' => $data['years_of_experience'] ?? 0,
-                'type_id' => $data['type_id'],
-                'contractor_type_other' => $data['contractor_type_other'] ?? null,
-                'services_offered' => $data['services_offered'] ?? null,
-                'business_address' => $data['business_address'] ?? null,
-                'company_email' => $data['company_email'],
-                'company_website' => $data['company_website'] ?? null,
-                'company_social_media' => $data['company_social_media'] ?? null,
-                'company_description' => $data['company_description'] ?? null,
-                'picab_number' => $data['picab_number'] ?? null,
-                'picab_category' => $data['picab_category'] ?? null,
-                'picab_expiration_date' => $data['picab_expiration_date'] ?? null,
-                'business_permit_number' => $data['business_permit_number'] ?? null,
-                'business_permit_city' => $data['business_permit_city'] ?? null,
-                'business_permit_expiration' => $data['business_permit_expiration'] ?? null,
-                'tin_business_reg_number' => $data['tin_business_reg_number'] ?? null,
-                'dti_sec_registration_photo' => $data['dti_sec_registration_photo'] ?? null,
-                'verification_status' => 'approved',
-                'verification_date' => now(),
-                'is_active' => 1,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+                // Prevent linking if owner already has a contractor or is contractor staff
+                $hasContractor = DB::table('contractors')
+                    ->where('owner_id', $ownerId)
+                    ->where('verification_status', '!=', 'deleted')
+                    ->exists();
+                if ($hasContractor) {
+                    throw new \Exception('Selected property owner already owns a contractor');
+                }
 
-            return [
-                'contractor_id' => $contractorId,
-                'owner_id' => $ownerId,
-                'user_id' => $userId,
-                'email' => $data['company_email'],
-                'username' => $username
-            ];
+                $hasStaff = DB::table('contractor_staff')
+                    ->where('owner_id', $ownerId)
+                    ->whereNull('deletion_reason')
+                    ->where('is_active', 1)
+                    ->exists();
+                if ($hasStaff) {
+                    throw new \Exception('Selected property owner is already a staff member of a contractor');
+                }
+
+                // Ensure the related user_type reflects that they're also a contractor owner
+                $user = DB::table('users')->where('user_id', $owner->user_id)->first();
+                if ($user && $user->user_type !== 'both') {
+                    DB::table('users')->where('user_id', $user->user_id)->update([
+                        'user_type' => 'both',
+                        'updated_at' => now()
+                    ]);
+                }
+
+                // Create Contractor record using the existing owner
+                $contractorId = DB::table('contractors')->insertGetId([
+                    'owner_id' => $ownerId,
+                    'company_logo' => $data['company_logo'] ?? null,
+                    'company_banner' => $data['company_banner'] ?? null,
+                    'company_name' => $data['company_name'],
+                    'company_start_date' => $data['company_start_date'],
+                    'years_of_experience' => $data['years_of_experience'] ?? 0,
+                    'type_id' => $data['type_id'],
+                    'contractor_type_other' => $data['contractor_type_other'] ?? null,
+                    'services_offered' => $data['services_offered'] ?? null,
+                    'business_address' => $data['business_address'] ?? null,
+                    'company_email' => $data['company_email'] ?? ($user->email ?? null),
+                    'company_website' => $data['company_website'] ?? null,
+                    'company_social_media' => $data['company_social_media'] ?? null,
+                    'company_description' => $data['company_description'] ?? null,
+                    'picab_number' => $data['picab_number'] ?? null,
+                    'picab_category' => $data['picab_category'] ?? null,
+                    'picab_expiration_date' => $data['picab_expiration_date'] ?? null,
+                    'business_permit_number' => $data['business_permit_number'] ?? null,
+                    'business_permit_city' => $data['business_permit_city'] ?? null,
+                    'business_permit_expiration' => $data['business_permit_expiration'] ?? null,
+                    'tin_business_reg_number' => $data['tin_business_reg_number'] ?? null,
+                    'dti_sec_registration_photo' => $data['dti_sec_registration_photo'] ?? null,
+                    'verification_status' => 'approved',
+                    'verification_date' => now(),
+                    'is_active' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                return [
+                    'contractor_id' => $contractorId,
+                    'owner_id' => $ownerId,
+                    'user_id' => $owner->user_id,
+                    'email' => $data['company_email'] ?? ($user->email ?? null),
+                    'username' => $user->username ?? null
+                ];
+            }
+
+            // Reject creation without an existing owner_id.
+            // This endpoint requires linking to an existing property owner.
+            throw new \Exception('owner_id is required. Please select an existing property owner.');
         });
     }
 

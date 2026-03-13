@@ -175,10 +175,11 @@ class userManagementController extends authController
                 'business_address_postal' => $validated['business_address_postal'],
 
                 // Representative
-                'first_name' => $validated['first_name'],
-                'middle_name' => $validated['middle_name'],
-                'last_name' => $validated['last_name'],
+                // Representative fields removed from Add Contractor form; owner selection is used instead.
                 'company_email' => $validated['company_email'],
+
+                // Optional: link to an existing property owner
+                'owner_id' => $validated['owner_id'] ?? null,
 
                 // Legal Docs
                 'dti_sec_registration_photo' => $dtiSecPath,
@@ -191,26 +192,9 @@ class userManagementController extends authController
                 'tin_business_reg_number' => $validated['tin_business_reg_number'],
             ];
 
-            // Call Model to Create User and Contractor
+            // Call Model to create contractor linked to existing owner
             $contractorModel = new contractorClass();
             $result = $contractorModel->addContractor($data);
-
-            // Send Email
-            try {
-                \Illuminate\Support\Facades\Mail::raw(
-                    "Your contractor account is successfully created by the admin.\n\n" .
-                    "Login with:\n" .
-                    "Username: " . $result['username'] . "\n" .
-                    "Password: contractor123@!\n\n" .
-                    "Please change your password after logging in.",
-                    function ($message) use ($result) {
-                        $message->to($result['email'])
-                            ->subject('Contractor Account Created - Legatura');
-                    }
-                );
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to send contractor account creation email: ' . $e->getMessage());
-            }
 
             return response()->json(['success' => true, 'message' => 'Contractor added successfully']);
 
@@ -273,10 +257,7 @@ class userManagementController extends authController
                 'business_permit_expiration' => $validated['business_permit_expiration'],
                 'tin_business_reg_number' => $validated['tin_business_reg_number'],
 
-                // Contractor Users (Representative) Fields
-                'authorized_rep_fname' => $validated['first_name'],
-                'authorized_rep_lname' => $validated['last_name'],
-                'authorized_rep_mname' => $validated['middle_name'] ?? null,
+                // Representative fields removed; do not update authorized representative names here.
             ];
 
             // Add optional fields if present
@@ -455,7 +436,7 @@ class userManagementController extends authController
                 ->where('property_owners.owner_id', $id)
                 ->select('users.email', 'users.first_name', 'users.last_name')
                 ->first();
-            
+
             $model = new propertyOwnerClass();
             $model->deleteOwner($id, $request->input('deletion_reason'));
 
@@ -498,7 +479,7 @@ class userManagementController extends authController
                 ->where('contractors.contractor_id', $id)
                 ->select('contractors.company_name', 'users.email')
                 ->first();
-            
+
             $model = new contractorClass();
             $model->deleteContractor($id, $request->input('deletion_reason'));
 
@@ -1028,10 +1009,10 @@ class userManagementController extends authController
                     ->where('contractor_staff.staff_id', $staffId)
                     ->select('users.email', 'users.first_name', 'users.last_name', 'contractors.company_name')
                     ->first();
-                
+
                 if ($staff && $staff->email) {
                     $durationText = $validated['duration'] === 'permanent' ? 'Permanent' : 'Until ' . date('F d, Y', strtotime($suspensionUntil));
-                    
+
                     \Mail::raw(
                         "Dear {$staff->first_name} {$staff->last_name},\n\n" .
                         "Your staff membership at {$staff->company_name} has been suspended.\n\n" .
@@ -1111,14 +1092,14 @@ class userManagementController extends authController
                 ->where('contractor_staff.staff_id', $validated['staff_id'])
                 ->select('contractors.is_active as contractor_active', 'contractors.company_name')
                 ->first();
-            
+
             if (!$staff) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Staff member not found'
                 ], 404);
             }
-            
+
             if ($staff->contractor_active == 0) {
                 return response()->json([
                     'success' => false,
@@ -1244,7 +1225,7 @@ class userManagementController extends authController
     public function getVerificationRequestDetails(Request $request, $id)
     {
         $type = $request->query('type', 'property_owner'); // Default to property_owner
-        
+
         $verificationModel = new userVerificationClass();
         $data = $verificationModel->getVerificationDetails($id, $type);
 
@@ -1478,12 +1459,12 @@ class userManagementController extends authController
     {
         try {
             $userType = $request->input('user_type');
-            
+
             if ($userType === 'contractor') {
                 $contractorId = $request->input('contractor_user_id'); // This is actually contractor_id now
                 $result = \App\Models\admin\bothReactivateClass::reactivateContractor($contractorId);
                 $message = 'Contractor reactivated successfully!';
-                
+
                 // Send email notification
                 if ($result) {
                     try {
@@ -1493,7 +1474,7 @@ class userManagementController extends authController
                             ->where('contractors.contractor_id', $contractorId)
                             ->select('contractors.company_name', 'users.email', 'users.first_name')
                             ->first();
-                        
+
                         if ($contractor && $contractor->email) {
                             \Mail::raw(
                                 "Dear {$contractor->company_name},\n\n" .
@@ -1515,7 +1496,7 @@ class userManagementController extends authController
                 $ownerId = $request->input('contractor_user_id'); // For owner, this is owner_id
                 $result = \App\Models\admin\bothReactivateClass::reactivatePropertyOwner($ownerId);
                 $message = 'Property owner reactivated successfully!';
-                
+
                 // Send email notification
                 if ($result) {
                     try {
@@ -1524,7 +1505,7 @@ class userManagementController extends authController
                             ->where('property_owners.owner_id', $ownerId)
                             ->select('users.email', 'users.first_name', 'users.last_name')
                             ->first();
-                        
+
                         if ($owner && $owner->email) {
                             \Mail::raw(
                                 "Dear {$owner->first_name} {$owner->last_name},\n\n" .
@@ -1546,7 +1527,7 @@ class userManagementController extends authController
                 $staffId = $request->input('contractor_user_id'); // For staff, this is staff_id
                 $result = \App\Models\admin\bothReactivateClass::reactivateStaff($staffId);
                 $message = 'Staff member reactivated successfully!';
-                
+
                 // Send email notification
                 if ($result) {
                     try {
@@ -1557,7 +1538,7 @@ class userManagementController extends authController
                             ->where('contractor_staff.staff_id', $staffId)
                             ->select('users.email', 'users.first_name', 'users.last_name', 'contractors.company_name')
                             ->first();
-                        
+
                         if ($staff && $staff->email) {
                             \Mail::raw(
                                 "Dear {$staff->first_name} {$staff->last_name},\n\n" .
@@ -1636,10 +1617,10 @@ class userManagementController extends authController
     /**
      * Get all property owners with optional filters
      */
-    private function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $page = 1)
+    private function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $page = 1, $onlyEligible = false)
     {
         $model = new propertyOwnerClass();
-        return $model->getPropertyOwners($search, $status, $dateFrom, $dateTo, 15, $page);
+        return $model->getPropertyOwners($search, $status, $dateFrom, $dateTo, 15, $page, $onlyEligible);
     }
 
 
@@ -1697,7 +1678,9 @@ class userManagementController extends authController
         $status = $request->input('status');
         $page = $request->input('page', 1);
 
-        $owners = $this->getPropertyOwners($search, $status, null, null, $page);
+        $onlyEligible = $request->input('eligible') ? true : false;
+
+        $owners = $this->getPropertyOwners($search, $status, null, null, $page, $onlyEligible);
 
         return response()->json($owners);
     }
