@@ -726,6 +726,7 @@ Route::get('/admin/project-management/bids/{bid_id}/accept-summary', [projectMan
 Route::post('/admin/project-management/bids/{bid_id}/accept', [projectManagementController::class, 'acceptBid'])->name('admin.projectManagement.acceptBid');
 Route::get('/admin/project-management/bids/{bid_id}/reject-summary', [projectManagementController::class, 'getRejectBidSummary'])->name('admin.projectManagement.rejectBidSummary');
 Route::post('/admin/project-management/bids/{bid_id}/reject', [projectManagementController::class, 'rejectBid'])->name('admin.projectManagement.rejectBid');
+Route::post('/admin/project-management/{projectId}/change-bidder', [projectManagementController::class, 'changeBidder'])->name('admin.projectManagement.changeBidder');
 
 // Dispute routes
 Route::get('/admin/project-management/disputes/{id}/details', [projectManagementController::class, 'getDisputeDetails'])->name('admin.projectManagement.disputeDetails');
@@ -734,6 +735,7 @@ Route::post('/admin/project-management/disputes/{id}/reject', [projectManagement
 Route::post('/admin/project-management/disputes/{id}/finalize', [projectManagementController::class, 'finalizeResolution'])->name('admin.projectManagement.finalizeDispute');
 
 // Project detail routes (specific paths before {id})
+Route::get('/admin/project-management/{id}/summary', [projectManagementController::class, 'getProjectSummaryAdmin'])->name('admin.projectManagement.projectSummary');
 Route::get('/admin/project-management/{id}/details', [projectManagementController::class, 'getProjectDetails'])->name('admin.projectManagement.projectDetails');
 Route::get('/admin/project-management/{id}/completed-details', [projectManagementController::class, 'getCompletedDetails'])->name('admin.projectManagement.completedDetails');
 Route::get('/admin/project-management/{id}/completion-details', [projectManagementController::class, 'getCompletionDetails'])->name('admin.projectManagement.completionDetails');

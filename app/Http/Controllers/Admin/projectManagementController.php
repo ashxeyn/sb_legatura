@@ -507,7 +507,9 @@ class projectManagementController extends Controller
                 ], 404);
             }
 
-            $html = view('admin.projectManagement.partials.completedModalContent', compact('project'))->render();
+            $completionData = $projectModel->getCompletionDetails($id);
+
+            $html = view('admin.projectManagement.partials.completedModalContent', compact('project', 'completionData'))->render();
 
             return response()->json([
                 'success' => true,
@@ -735,6 +737,32 @@ class projectManagementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to reject bid: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function changeBidder(Request $request, $projectId)
+    {
+        try {
+            $bidId = $request->input('bid_id');
+            if (!$bidId) {
+                return response()->json(['success' => false, 'message' => 'Bid ID is required.'], 422);
+            }
+
+            $projectModel = new \App\Models\admin\projectClass();
+            $result = $projectModel->changeBidder($projectId, $bidId);
+
+            if ($result['success']) {
+                AdminActivityLog::log('bidder_changed', ['project_id' => $projectId, 'new_bid_id' => $bidId]);
+            }
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            \Log::error('Error changing bidder: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to change bidder: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1557,6 +1585,31 @@ class projectManagementController extends Controller
         }
 
         return response()->json($result, 400);
+    }
+
+    /**
+     * Get full project summary (mirrors mobile projectSummary.tsx)
+     * Used for in_progress and terminated project "View Details" modal
+     */
+    public function getProjectSummaryAdmin($id)
+    {
+        try {
+            $summaryService = new \App\Services\SummaryService();
+            $result = $summaryService->getProjectSummary((int) $id);
+
+            if (!$result['success']) {
+                return response()->json(['success' => false, 'message' => $result['message'] ?? 'Not found'], 404);
+            }
+
+            $summary = $result['data'];
+            $html = view('admin.projectManagement.partials.projectSummaryContent', compact('summary'))->render();
+
+            return response()->json(['success' => true, 'html' => $html]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching admin project summary: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
+        }
     }
 
     public function getPaymentHistory($id)

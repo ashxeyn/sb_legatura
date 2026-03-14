@@ -1021,6 +1021,7 @@ class projectClass
                 'project_relationships.bidding_due',
                 'project_relationships.created_at as relationship_created_at',
                 'project_relationships.project_post_status',
+                'project_relationships.selected_contractor_id',
                 'property_owners.owner_id',
                 'owner_users.first_name as owner_first_name',
                 'owner_users.middle_name as owner_middle_name',
@@ -1096,6 +1097,7 @@ class projectClass
             ->leftJoin('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'bids.bid_id',
+                'bids.contractor_id',
                 'bids.proposed_cost',
                 'bids.estimated_timeline',
                 'bids.submitted_at',
@@ -1109,6 +1111,11 @@ class projectClass
             ->get();
 
         $project->bids = $bids;
+
+        // Count milestones for this project (used to determine if bidder can be changed)
+        $project->milestone_count = DB::table('milestones')
+            ->where('project_id', $id)
+            ->count();
 
         return $project;
     }
@@ -1239,6 +1246,67 @@ class projectClass
         }
     }
 
+    /**
+     * Change the selected contractor to a different bidder.
+     * Only allowed when no milestones have been set up yet.
+     */
+    public function changeBidder($projectId, $newBidId)
+    {
+        try {
+            // Verify no milestones exist
+            $milestoneCount = DB::table('milestones')->where('project_id', $projectId)->count();
+            if ($milestoneCount > 0) {
+                return ['success' => false, 'message' => 'Cannot change bidder after milestones have been set up.'];
+            }
+
+            $newBid = DB::table('bids')
+                ->select('contractor_id', 'project_id')
+                ->where('bid_id', $newBidId)
+                ->where('project_id', $projectId)
+                ->first();
+
+            if (!$newBid) {
+                return ['success' => false, 'message' => 'Bid not found for this project.'];
+            }
+
+            $project = DB::table('projects')
+                ->select('relationship_id')
+                ->where('project_id', $projectId)
+                ->first();
+
+            if (!$project) {
+                return ['success' => false, 'message' => 'Project not found.'];
+            }
+
+            DB::beginTransaction();
+
+            // Reject the previously accepted bid
+            DB::table('bids')
+                ->where('project_id', $projectId)
+                ->where('bid_status', 'accepted')
+                ->update(['bid_status' => 'rejected', 'decision_date' => now()]);
+
+            // Accept the new bid
+            DB::table('bids')
+                ->where('bid_id', $newBidId)
+                ->update(['bid_status' => 'accepted', 'decision_date' => now()]);
+
+            // Update selected contractor in project_relationships
+            DB::table('project_relationships')
+                ->where('rel_id', $project->relationship_id)
+                ->update(['selected_contractor_id' => $newBid->contractor_id]);
+
+            DB::commit();
+
+            return ['success' => true, 'message' => 'Bidder changed successfully.'];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error changing bidder: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to change bidder: ' . $e->getMessage()];
+        }
+    }
+
     public function acceptBid($bidId)
     {
         try {
@@ -1283,11 +1351,16 @@ class projectClass
                     'decision_date' => now()
                 ]);
 
-            // 3. Update projects table - set selected contractor and change status
+            // 3. Update project_relationships - set selected contractor, and projects - change status
+            DB::table('project_relationships')
+                ->where('rel_id', $project->relationship_id)
+                ->update([
+                    'selected_contractor_id' => $bid->contractor_id
+                ]);
+
             DB::table('projects')
                 ->where('project_id', $bid->project_id)
                 ->update([
-                    'selected_contractor_id' => $bid->contractor_id,
                     'project_status' => 'bidding_closed'
                 ]);
 
@@ -2494,7 +2567,7 @@ class projectClass
         try {
             DB::beginTransaction();
 
-            // Prepare project update data (basic fields only)
+            // Prepare project update data (basic fields only — no contractor here)
             $updateData = [
                 'project_title' => $data['project_title'],
                 'project_description' => $data['project_description'],
@@ -2504,21 +2577,24 @@ class projectClass
                 'project_location' => $data['project_location']
             ];
 
-            // Only update contractor if explicitly provided and different
-            if (isset($data['selected_contractor_id']) && $data['selected_contractor_id'] !== null && $data['selected_contractor_id'] !== '') {
-                $updateData['selected_contractor_id'] = $data['selected_contractor_id'];
-            }
-
             // Update project details
-            // Note: update() returns 0 if no changes were made (data is identical)
-            // This is still a success case - don't treat it as an error
             DB::table('projects')
                 ->where('project_id', $id)
                 ->update($updateData);
 
-            // Handle contractor change (only if contractor was actually changed)
-            if (isset($data['selected_contractor_id']) && $data['selected_contractor_id'] && $data['selected_contractor_id'] != $data['old_contractor_id']) {
-                // Update new contractor's bid to accepted
+            // Handle contractor change — selected_contractor_id lives on project_relationships
+            if (isset($data['selected_contractor_id']) && $data['selected_contractor_id'] !== null && $data['selected_contractor_id'] !== '' && $data['selected_contractor_id'] != $data['old_contractor_id']) {
+                // Get the relationship_id for this project
+                $project = DB::table('projects')->select('relationship_id')->where('project_id', $id)->first();
+
+                if ($project && $project->relationship_id) {
+                    // Update selected contractor on project_relationships
+                    DB::table('project_relationships')
+                        ->where('rel_id', $project->relationship_id)
+                        ->update(['selected_contractor_id' => $data['selected_contractor_id']]);
+                }
+
+                // Accept new contractor's bid
                 DB::table('bids')
                     ->where('project_id', $id)
                     ->where('contractor_id', $data['selected_contractor_id'])
@@ -2527,7 +2603,7 @@ class projectClass
                         'decision_date' => now()
                     ]);
 
-                // Update old contractor's bid to rejected (if exists)
+                // Reject old contractor's bid
                 if ($data['old_contractor_id']) {
                     DB::table('bids')
                         ->where('project_id', $id)

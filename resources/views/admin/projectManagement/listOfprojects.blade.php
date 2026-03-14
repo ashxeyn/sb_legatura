@@ -113,6 +113,7 @@
   @include('admin.projectManagement.partials.cancelledProjectModal')
   @include('admin.projectManagement.partials.extendTimelineModal')
   @include('admin.projectManagement.partials.bulkAdjustDatesModal')
+  @include('admin.projectManagement.partials.projectSummaryModal')
 
   <!-- Edit Milestone Modal Container -->
   <div id="editMilestoneModalContainer">
@@ -127,6 +128,7 @@
   </div>
 
   @include('admin.projectManagement.partials.editProjectConfirmModal')
+  @include('admin.projectManagement.partials.changeBidderModal')
 
   <!-- Delete Project Modal Container -->
   <div id="deleteProjectModalContainer">

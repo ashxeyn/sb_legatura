@@ -1,33 +1,13 @@
--- phpMyAdmin SQL Dump
--- version 5.2.1
--- https://www.phpmyadmin.net/
---
--- Host: 127.0.0.1
--- Generation Time: Mar 12, 2026 at 02:33 PM
--- Server version: 11.4.5-MariaDB
--- PHP Version: 8.2.12
-
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
-
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
---
--- Database: `legatura`
---
 
--- --------------------------------------------------------
-
---
--- Table structure for table `admin_activity_logs`
---
-
-DROP TABLE IF EXISTS `admin_activity_logs`;
 CREATE TABLE `admin_activity_logs` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `admin_id` varchar(20) NOT NULL,
@@ -37,13 +17,6 @@ CREATE TABLE `admin_activity_logs` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `admin_notification_preferences`
---
-
-DROP TABLE IF EXISTS `admin_notification_preferences`;
 CREATE TABLE `admin_notification_preferences` (
   `id` int(11) NOT NULL,
   `admin_id` varchar(20) NOT NULL,
@@ -52,13 +25,6 @@ CREATE TABLE `admin_notification_preferences` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `admin_sent_notifications`
---
-
-DROP TABLE IF EXISTS `admin_sent_notifications`;
 CREATE TABLE `admin_sent_notifications` (
   `id` int(11) NOT NULL,
   `admin_id` varchar(20) NOT NULL,
@@ -71,13 +37,6 @@ CREATE TABLE `admin_sent_notifications` (
   `sent_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `admin_users`
---
-
-DROP TABLE IF EXISTS `admin_users`;
 CREATE TABLE `admin_users` (
   `admin_id` varchar(20) NOT NULL DEFAULT '',
   `username` varchar(50) NOT NULL,
@@ -91,13 +50,6 @@ CREATE TABLE `admin_users` (
   `profile_pic` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `ai_prediction_logs`
---
-
-DROP TABLE IF EXISTS `ai_prediction_logs`;
 CREATE TABLE `ai_prediction_logs` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -109,13 +61,6 @@ CREATE TABLE `ai_prediction_logs` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `bids`
---
-
-DROP TABLE IF EXISTS `bids`;
 CREATE TABLE `bids` (
   `bid_id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -129,13 +74,6 @@ CREATE TABLE `bids` (
   `decision_date` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `bid_files`
---
-
-DROP TABLE IF EXISTS `bid_files`;
 CREATE TABLE `bid_files` (
   `file_id` int(11) NOT NULL,
   `bid_id` int(11) NOT NULL,
@@ -145,13 +83,6 @@ CREATE TABLE `bid_files` (
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `content_reports`
---
-
-DROP TABLE IF EXISTS `content_reports`;
 CREATE TABLE `content_reports` (
   `report_id` bigint(20) UNSIGNED NOT NULL,
   `reporter_user_id` int(11) NOT NULL,
@@ -167,13 +98,6 @@ CREATE TABLE `content_reports` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `contractors`
---
-
-DROP TABLE IF EXISTS `contractors`;
 CREATE TABLE `contractors` (
   `contractor_id` int(11) NOT NULL,
   `owner_id` int(11) NOT NULL,
@@ -210,13 +134,6 @@ CREATE TABLE `contractors` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `contractor_staff`
---
-
-DROP TABLE IF EXISTS `contractor_staff`;
 CREATE TABLE `contractor_staff` (
   `staff_id` int(11) NOT NULL,
   `contractor_id` int(11) NOT NULL,
@@ -232,25 +149,11 @@ CREATE TABLE `contractor_staff` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `contractor_types`
---
-
-DROP TABLE IF EXISTS `contractor_types`;
 CREATE TABLE `contractor_types` (
   `type_id` int(11) NOT NULL,
   `type_name` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `contract_terminations`
---
-
-DROP TABLE IF EXISTS `contract_terminations`;
 CREATE TABLE `contract_terminations` (
   `id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -261,13 +164,6 @@ CREATE TABLE `contract_terminations` (
   `terminated_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `conversations`
---
-
-DROP TABLE IF EXISTS `conversations`;
 CREATE TABLE `conversations` (
   `conversation_id` bigint(20) UNSIGNED NOT NULL,
   `sender_id` int(11) NOT NULL,
@@ -282,13 +178,6 @@ CREATE TABLE `conversations` (
   `is_admin_conversation` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `disputes`
---
-
-DROP TABLE IF EXISTS `disputes`;
 CREATE TABLE `disputes` (
   `dispute_id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -308,13 +197,6 @@ CREATE TABLE `disputes` (
   `resolved_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `dispute_files`
---
-
-DROP TABLE IF EXISTS `dispute_files`;
 CREATE TABLE `dispute_files` (
   `file_id` int(11) NOT NULL,
   `dispute_id` int(11) NOT NULL,
@@ -325,13 +207,6 @@ CREATE TABLE `dispute_files` (
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `downpayment_payments`
---
-
-DROP TABLE IF EXISTS `downpayment_payments`;
 CREATE TABLE `downpayment_payments` (
   `dp_payment_id` int(10) UNSIGNED NOT NULL,
   `project_id` int(10) UNSIGNED NOT NULL,
@@ -348,26 +223,12 @@ CREATE TABLE `downpayment_payments` (
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `item_files`
---
-
-DROP TABLE IF EXISTS `item_files`;
 CREATE TABLE `item_files` (
   `file_id` int(11) NOT NULL,
   `item_id` int(11) NOT NULL,
   `file_path` varchar(500) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `messages`
---
-
-DROP TABLE IF EXISTS `messages`;
 CREATE TABLE `messages` (
   `message_id` int(11) NOT NULL,
   `conversation_id` bigint(20) UNSIGNED NOT NULL,
@@ -380,13 +241,6 @@ CREATE TABLE `messages` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `message_attachments`
---
-
-DROP TABLE IF EXISTS `message_attachments`;
 CREATE TABLE `message_attachments` (
   `attachment_id` int(11) NOT NULL,
   `message_id` int(11) NOT NULL,
@@ -396,13 +250,6 @@ CREATE TABLE `message_attachments` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `milestones`
---
-
-DROP TABLE IF EXISTS `milestones`;
 CREATE TABLE `milestones` (
   `milestone_id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -422,13 +269,6 @@ CREATE TABLE `milestones` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `milestone_date_histories`
---
-
-DROP TABLE IF EXISTS `milestone_date_histories`;
 CREATE TABLE `milestone_date_histories` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `item_id` int(10) UNSIGNED NOT NULL COMMENT 'FK to milestone_items.item_id',
@@ -442,13 +282,6 @@ CREATE TABLE `milestone_date_histories` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `milestone_items`
---
-
-DROP TABLE IF EXISTS `milestone_items`;
 CREATE TABLE `milestone_items` (
   `item_id` int(11) NOT NULL,
   `milestone_id` int(11) NOT NULL,
@@ -471,13 +304,6 @@ CREATE TABLE `milestone_items` (
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `milestone_item_updates`
---
-
-DROP TABLE IF EXISTS `milestone_item_updates`;
 CREATE TABLE `milestone_item_updates` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `milestone_item_id` int(10) UNSIGNED NOT NULL COMMENT 'FK → milestone_items.item_id',
@@ -497,13 +323,6 @@ CREATE TABLE `milestone_item_updates` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `milestone_payments`
---
-
-DROP TABLE IF EXISTS `milestone_payments`;
 CREATE TABLE `milestone_payments` (
   `payment_id` int(11) NOT NULL,
   `item_id` int(11) NOT NULL,
@@ -520,13 +339,6 @@ CREATE TABLE `milestone_payments` (
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `notifications`
---
-
-DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE `notifications` (
   `notification_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -543,25 +355,11 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `occupations`
---
-
-DROP TABLE IF EXISTS `occupations`;
 CREATE TABLE `occupations` (
   `id` int(11) NOT NULL,
   `occupation_name` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `payment_adjustment_logs`
---
-
-DROP TABLE IF EXISTS `payment_adjustment_logs`;
 CREATE TABLE `payment_adjustment_logs` (
   `log_id` bigint(20) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -579,13 +377,6 @@ CREATE TABLE `payment_adjustment_logs` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `payment_plans`
---
-
-DROP TABLE IF EXISTS `payment_plans`;
 CREATE TABLE `payment_plans` (
   `plan_id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -598,13 +389,6 @@ CREATE TABLE `payment_plans` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `personal_access_tokens`
---
-
-DROP TABLE IF EXISTS `personal_access_tokens`;
 CREATE TABLE `personal_access_tokens` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `tokenable_type` varchar(255) NOT NULL,
@@ -618,13 +402,6 @@ CREATE TABLE `personal_access_tokens` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `platform_payments`
---
-
-DROP TABLE IF EXISTS `platform_payments`;
 CREATE TABLE `platform_payments` (
   `platform_payment_id` int(11) NOT NULL,
   `subscriptionPlanId` bigint(20) UNSIGNED DEFAULT NULL,
@@ -642,13 +419,6 @@ CREATE TABLE `platform_payments` (
   `deactivation_reason` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `post_reports`
---
-
-DROP TABLE IF EXISTS `post_reports`;
 CREATE TABLE `post_reports` (
   `report_id` bigint(20) UNSIGNED NOT NULL,
   `reporter_user_id` int(11) NOT NULL,
@@ -664,13 +434,6 @@ CREATE TABLE `post_reports` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `progress`
---
-
-DROP TABLE IF EXISTS `progress`;
 CREATE TABLE `progress` (
   `progress_id` int(11) NOT NULL,
   `milestone_item_id` int(11) NOT NULL,
@@ -682,13 +445,6 @@ CREATE TABLE `progress` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `progress_files`
---
-
-DROP TABLE IF EXISTS `progress_files`;
 CREATE TABLE `progress_files` (
   `file_id` int(11) NOT NULL,
   `progress_id` int(11) NOT NULL,
@@ -696,13 +452,6 @@ CREATE TABLE `progress_files` (
   `original_name` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `projects`
---
-
-DROP TABLE IF EXISTS `projects`;
 CREATE TABLE `projects` (
   `project_id` int(11) NOT NULL,
   `relationship_id` int(11) DEFAULT NULL,
@@ -725,13 +474,6 @@ CREATE TABLE `projects` (
   `highlighted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `project_files`
---
-
-DROP TABLE IF EXISTS `project_files`;
 CREATE TABLE `project_files` (
   `file_id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -740,13 +482,6 @@ CREATE TABLE `project_files` (
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `project_relationships`
---
-
-DROP TABLE IF EXISTS `project_relationships`;
 CREATE TABLE `project_relationships` (
   `rel_id` int(11) NOT NULL,
   `owner_id` int(11) NOT NULL,
@@ -758,13 +493,6 @@ CREATE TABLE `project_relationships` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `project_updates`
---
-
-DROP TABLE IF EXISTS `project_updates`;
 CREATE TABLE `project_updates` (
   `extension_id` int(10) UNSIGNED NOT NULL,
   `project_id` int(10) UNSIGNED NOT NULL,
@@ -788,13 +516,6 @@ CREATE TABLE `project_updates` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `property_owners`
---
-
-DROP TABLE IF EXISTS `property_owners`;
 CREATE TABLE `property_owners` (
   `owner_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -819,13 +540,6 @@ CREATE TABLE `property_owners` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `report_attachments`
---
-
-DROP TABLE IF EXISTS `report_attachments`;
 CREATE TABLE `report_attachments` (
   `attachment_id` bigint(20) UNSIGNED NOT NULL,
   `report_type` varchar(30) NOT NULL,
@@ -838,13 +552,6 @@ CREATE TABLE `report_attachments` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `reviews`
---
-
-DROP TABLE IF EXISTS `reviews`;
 CREATE TABLE `reviews` (
   `review_id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
@@ -857,13 +564,6 @@ CREATE TABLE `reviews` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `review_reports`
---
-
-DROP TABLE IF EXISTS `review_reports`;
 CREATE TABLE `review_reports` (
   `report_id` bigint(20) UNSIGNED NOT NULL,
   `reporter_user_id` int(11) NOT NULL,
@@ -878,13 +578,6 @@ CREATE TABLE `review_reports` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `showcases`
---
-
-DROP TABLE IF EXISTS `showcases`;
 CREATE TABLE `showcases` (
   `post_id` bigint(20) UNSIGNED NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -902,13 +595,6 @@ CREATE TABLE `showcases` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `showcase_images`
---
-
-DROP TABLE IF EXISTS `showcase_images`;
 CREATE TABLE `showcase_images` (
   `image_id` bigint(20) UNSIGNED NOT NULL,
   `post_id` bigint(20) UNSIGNED NOT NULL,
@@ -919,13 +605,6 @@ CREATE TABLE `showcase_images` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `subscription_plans`
---
-
-DROP TABLE IF EXISTS `subscription_plans`;
 CREATE TABLE `subscription_plans` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `plan_key` varchar(255) NOT NULL,
@@ -943,13 +622,6 @@ CREATE TABLE `subscription_plans` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `termination_proof`
---
-
-DROP TABLE IF EXISTS `termination_proof`;
 CREATE TABLE `termination_proof` (
   `proof_id` int(11) NOT NULL,
   `termination_id` int(11) NOT NULL,
@@ -957,13 +629,6 @@ CREATE TABLE `termination_proof` (
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `users`
---
-
-DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `user_id` int(11) NOT NULL,
   `username` varchar(50) NOT NULL,
@@ -971,7 +636,7 @@ CREATE TABLE `users` (
   `password_hash` varchar(255) NOT NULL,
   `OTP_hash` varchar(255) DEFAULT NULL,
   `bio` text DEFAULT NULL,
-  `user_type` enum('contractor','property_owner','both') NOT NULL,
+  `user_type` enum('property_owner','both','owner_staff') NOT NULL,
   `preferred_role` enum('contractor','owner') DEFAULT NULL,
   `first_name` varchar(100) NOT NULL,
   `middle_name` varchar(100) DEFAULT NULL,
@@ -980,13 +645,6 @@ CREATE TABLE `users` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `user_activity_logs`
---
-
-DROP TABLE IF EXISTS `user_activity_logs`;
 CREATE TABLE `user_activity_logs` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `activity_type` enum('user_registered','failed_login_attempt','project_reported','profile_updated','password_reset','email_verified','account_status_changed') NOT NULL,
@@ -998,13 +656,6 @@ CREATE TABLE `user_activity_logs` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `user_reports`
---
-
-DROP TABLE IF EXISTS `user_reports`;
 CREATE TABLE `user_reports` (
   `report_id` int(11) NOT NULL,
   `reporter_user_id` int(11) NOT NULL,
@@ -1015,126 +666,74 @@ CREATE TABLE `user_reports` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `valid_ids`
---
-
-DROP TABLE IF EXISTS `valid_ids`;
 CREATE TABLE `valid_ids` (
   `id` int(11) NOT NULL,
   `valid_id_name` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Indexes for dumped tables
---
 
---
--- Indexes for table `admin_activity_logs`
---
 ALTER TABLE `admin_activity_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_admin_created` (`admin_id`,`created_at`);
 
---
--- Indexes for table `admin_notification_preferences`
---
 ALTER TABLE `admin_notification_preferences`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_admin_setting` (`admin_id`,`setting_key`),
   ADD KEY `idx_admin_pref_admin` (`admin_id`);
 
---
--- Indexes for table `admin_sent_notifications`
---
 ALTER TABLE `admin_sent_notifications`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_asn_admin` (`admin_id`),
   ADD KEY `idx_asn_sent` (`sent_at`);
 
---
--- Indexes for table `admin_users`
---
 ALTER TABLE `admin_users`
   ADD PRIMARY KEY (`admin_id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`);
 
---
--- Indexes for table `ai_prediction_logs`
---
 ALTER TABLE `ai_prediction_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `project_id` (`project_id`);
 
---
--- Indexes for table `bids`
---
 ALTER TABLE `bids`
   ADD PRIMARY KEY (`bid_id`),
   ADD UNIQUE KEY `unique_project_contractor` (`project_id`,`contractor_id`),
   ADD KEY `contractor_id` (`contractor_id`);
 
---
--- Indexes for table `bid_files`
---
 ALTER TABLE `bid_files`
   ADD PRIMARY KEY (`file_id`),
   ADD KEY `bid_id` (`bid_id`);
 
---
--- Indexes for table `content_reports`
---
 ALTER TABLE `content_reports`
   ADD PRIMARY KEY (`report_id`),
   ADD KEY `fk_content_reports_reporter` (`reporter_user_id`),
   ADD KEY `fk_content_reports_reviewer` (`reviewed_by_user_id`);
 
---
--- Indexes for table `contractors`
---
 ALTER TABLE `contractors`
   ADD PRIMARY KEY (`contractor_id`),
   ADD KEY `fk_contractor_owner` (`owner_id`);
 
---
--- Indexes for table `contractor_staff`
---
 ALTER TABLE `contractor_staff`
   ADD PRIMARY KEY (`staff_id`),
   ADD KEY `fk_staff_company` (`contractor_id`),
   ADD KEY `fk_staff_owner` (`owner_id`);
 
---
--- Indexes for table `contractor_types`
---
 ALTER TABLE `contractor_types`
   ADD PRIMARY KEY (`type_id`),
   ADD UNIQUE KEY `type_name` (`type_name`);
 
---
--- Indexes for table `contract_terminations`
---
 ALTER TABLE `contract_terminations`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_terminations_project` (`project_id`),
   ADD KEY `fk_terminations_contractor` (`contractor_id`),
   ADD KEY `fk_terminations_owner` (`owner_id`);
 
---
--- Indexes for table `conversations`
---
 ALTER TABLE `conversations`
   ADD PRIMARY KEY (`conversation_id`),
   ADD KEY `conversations_sender_id_index` (`sender_id`),
   ADD KEY `conversations_receiver_id_index` (`receiver_id`),
   ADD KEY `conversations_status_index` (`status`);
 
---
--- Indexes for table `disputes`
---
 ALTER TABLE `disputes`
   ADD PRIMARY KEY (`dispute_id`),
   ADD KEY `disputes_ibfk_1` (`project_id`),
@@ -1143,17 +742,11 @@ ALTER TABLE `disputes`
   ADD KEY `disputes_ibfk_4` (`milestone_id`),
   ADD KEY `milestone_item_item_milestone_item_id_foreign` (`milestone_item_id`);
 
---
--- Indexes for table `dispute_files`
---
 ALTER TABLE `dispute_files`
   ADD PRIMARY KEY (`file_id`),
   ADD UNIQUE KEY `storage_path` (`storage_path`),
   ADD KEY `dispute_id` (`dispute_id`);
 
---
--- Indexes for table `downpayment_payments`
---
 ALTER TABLE `downpayment_payments`
   ADD PRIMARY KEY (`dp_payment_id`),
   ADD KEY `idx_dp_project` (`project_id`),
@@ -1161,58 +754,37 @@ ALTER TABLE `downpayment_payments`
   ADD KEY `idx_dp_status` (`payment_status`),
   ADD KEY `fk_dp_contractor` (`contractor_user_id`);
 
---
--- Indexes for table `item_files`
---
 ALTER TABLE `item_files`
   ADD PRIMARY KEY (`file_id`),
   ADD KEY `item_id` (`item_id`);
 
---
--- Indexes for table `messages`
---
 ALTER TABLE `messages`
   ADD PRIMARY KEY (`message_id`),
   ADD KEY `conversation_id` (`conversation_id`),
   ADD KEY `messages_from_sender_index` (`from_sender`);
 
---
--- Indexes for table `message_attachments`
---
 ALTER TABLE `message_attachments`
   ADD PRIMARY KEY (`attachment_id`),
   ADD KEY `message_id` (`message_id`);
 
---
--- Indexes for table `milestones`
---
 ALTER TABLE `milestones`
   ADD PRIMARY KEY (`milestone_id`),
   ADD KEY `project_id` (`project_id`),
   ADD KEY `contractor_id` (`contractor_id`),
   ADD KEY `plan_id` (`plan_id`);
 
---
--- Indexes for table `milestone_date_histories`
---
 ALTER TABLE `milestone_date_histories`
   ADD PRIMARY KEY (`id`),
   ADD KEY `milestone_date_histories_item_id_index` (`item_id`),
   ADD KEY `milestone_date_histories_extension_id_index` (`extension_id`),
   ADD KEY `fk_milestone_date_histories_changed_by` (`changed_by`);
 
---
--- Indexes for table `milestone_items`
---
 ALTER TABLE `milestone_items`
   ADD PRIMARY KEY (`item_id`),
   ADD UNIQUE KEY `idx_item_id_unique` (`item_id`),
   ADD KEY `idx_milestone_id` (`milestone_id`),
   ADD KEY `idx_item_status` (`item_status`);
 
---
--- Indexes for table `milestone_item_updates`
---
 ALTER TABLE `milestone_item_updates`
   ADD PRIMARY KEY (`id`),
   ADD KEY `milestone_item_updates_milestone_item_id_index` (`milestone_item_id`),
@@ -1220,9 +792,6 @@ ALTER TABLE `milestone_item_updates`
   ADD KEY `milestone_item_updates_project_update_id_status_index` (`project_update_id`,`status`),
   ADD KEY `fk_milestone_item_updates_approved_by` (`approved_by`);
 
---
--- Indexes for table `milestone_payments`
---
 ALTER TABLE `milestone_payments`
   ADD PRIMARY KEY (`payment_id`),
   ADD KEY `item_id` (`item_id`),
@@ -1230,9 +799,6 @@ ALTER TABLE `milestone_payments`
   ADD KEY `owner_id` (`owner_id`),
   ADD KEY `fk_payment_contractor` (`contractor_id`);
 
---
--- Indexes for table `notifications`
---
 ALTER TABLE `notifications`
   ADD PRIMARY KEY (`notification_id`),
   ADD UNIQUE KEY `idx_dedup` (`user_id`,`dedup_key`),
@@ -1240,15 +806,9 @@ ALTER TABLE `notifications`
   ADD KEY `idx_user_read` (`user_id`,`is_read`),
   ADD KEY `idx_user_created` (`user_id`,`created_at`);
 
---
--- Indexes for table `occupations`
---
 ALTER TABLE `occupations`
   ADD PRIMARY KEY (`id`);
 
---
--- Indexes for table `payment_adjustment_logs`
---
 ALTER TABLE `payment_adjustment_logs`
   ADD PRIMARY KEY (`log_id`),
   ADD KEY `payment_adjustment_logs_project_id_index` (`project_id`),
@@ -1257,26 +817,17 @@ ALTER TABLE `payment_adjustment_logs`
   ADD KEY `payment_adjustment_logs_payment_id_index` (`payment_id`),
   ADD KEY `fk_payment_adjustment_milestone` (`milestone_id`);
 
---
--- Indexes for table `payment_plans`
---
 ALTER TABLE `payment_plans`
   ADD PRIMARY KEY (`plan_id`),
   ADD KEY `project_id` (`project_id`),
   ADD KEY `contractor_id` (`contractor_id`);
 
---
--- Indexes for table `personal_access_tokens`
---
 ALTER TABLE `personal_access_tokens`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   ADD KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   ADD KEY `personal_access_tokens_expires_at_index` (`expires_at`);
 
---
--- Indexes for table `platform_payments`
---
 ALTER TABLE `platform_payments`
   ADD PRIMARY KEY (`platform_payment_id`),
   ADD KEY `project_id` (`project_id`),
@@ -1285,9 +836,6 @@ ALTER TABLE `platform_payments`
   ADD KEY `approved_by` (`approved_by`),
   ADD KEY `platform_payments_subscriptionplanid_foreign` (`subscriptionPlanId`);
 
---
--- Indexes for table `post_reports`
---
 ALTER TABLE `post_reports`
   ADD PRIMARY KEY (`report_id`),
   ADD KEY `post_reports_reviewed_by_user_id_foreign` (`reviewed_by_user_id`),
@@ -1295,24 +843,15 @@ ALTER TABLE `post_reports`
   ADD KEY `cr_reporter_idx` (`reporter_user_id`),
   ADD KEY `pr_post_idx` (`post_type`,`post_id`);
 
---
--- Indexes for table `progress`
---
 ALTER TABLE `progress`
   ADD PRIMARY KEY (`progress_id`),
   ADD KEY `fk_progress_milestone_item` (`milestone_item_id`),
   ADD KEY `progress_submitted_by_owner_idx` (`submitted_by_owner_id`);
 
---
--- Indexes for table `progress_files`
---
 ALTER TABLE `progress_files`
   ADD PRIMARY KEY (`file_id`),
   ADD KEY `fk_progress_files_progress_id` (`progress_id`);
 
---
--- Indexes for table `projects`
---
 ALTER TABLE `projects`
   ADD PRIMARY KEY (`project_id`),
   ADD KEY `fk_projects_type_id` (`type_id`),
@@ -1321,24 +860,15 @@ ALTER TABLE `projects`
   ADD KEY `projects_status_idx` (`project_status`),
   ADD KEY `projects_type_id_idx` (`type_id`);
 
---
--- Indexes for table `project_files`
---
 ALTER TABLE `project_files`
   ADD PRIMARY KEY (`file_id`),
   ADD KEY `project_id` (`project_id`);
 
---
--- Indexes for table `project_relationships`
---
 ALTER TABLE `project_relationships`
   ADD PRIMARY KEY (`rel_id`),
   ADD KEY `fk_projectrel_owner` (`owner_id`),
   ADD KEY `fk_projectrel_contractor` (`selected_contractor_id`);
 
---
--- Indexes for table `project_updates`
---
 ALTER TABLE `project_updates`
   ADD PRIMARY KEY (`extension_id`),
   ADD KEY `project_extensions_project_id_index` (`project_id`),
@@ -1346,25 +876,16 @@ ALTER TABLE `project_updates`
   ADD KEY `fk_project_updates_contractor` (`contractor_user_id`),
   ADD KEY `fk_project_updates_owner` (`owner_user_id`);
 
---
--- Indexes for table `property_owners`
---
 ALTER TABLE `property_owners`
   ADD PRIMARY KEY (`owner_id`),
   ADD KEY `fk_owner_user` (`user_id`),
   ADD KEY `fk_owner_occupation` (`occupation_id`),
   ADD KEY `fk_owner_valid_id` (`valid_id_id`);
 
---
--- Indexes for table `report_attachments`
---
 ALTER TABLE `report_attachments`
   ADD PRIMARY KEY (`attachment_id`),
   ADD KEY `report_attachments_report_type_report_id_index` (`report_type`,`report_id`);
 
---
--- Indexes for table `reviews`
---
 ALTER TABLE `reviews`
   ADD PRIMARY KEY (`review_id`),
   ADD UNIQUE KEY `reviews_reviewer_project_unique` (`reviewer_user_id`,`project_id`),
@@ -1373,9 +894,6 @@ ALTER TABLE `reviews`
   ADD KEY `reviewee_user_id` (`reviewee_user_id`),
   ADD KEY `reviews_reviewee_rating_idx` (`reviewee_user_id`,`rating`);
 
---
--- Indexes for table `review_reports`
---
 ALTER TABLE `review_reports`
   ADD PRIMARY KEY (`report_id`),
   ADD KEY `review_reports_reporter_user_id_index` (`reporter_user_id`),
@@ -1383,9 +901,6 @@ ALTER TABLE `review_reports`
   ADD KEY `review_reports_status_index` (`status`),
   ADD KEY `fk_review_reports_reviewer` (`reviewed_by_user_id`);
 
---
--- Indexes for table `showcases`
---
 ALTER TABLE `showcases`
   ADD PRIMARY KEY (`post_id`),
   ADD KEY `pp_user_id_idx` (`user_id`),
@@ -1394,38 +909,23 @@ ALTER TABLE `showcases`
   ADD KEY `pp_highlight_idx` (`is_highlighted`,`highlighted_at`),
   ADD KEY `pp_linked_project_idx` (`linked_project_id`);
 
---
--- Indexes for table `showcase_images`
---
 ALTER TABLE `showcase_images`
   ADD PRIMARY KEY (`image_id`),
   ADD KEY `ppi_post_id_idx` (`post_id`);
 
---
--- Indexes for table `subscription_plans`
---
 ALTER TABLE `subscription_plans`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `subscription_plans_plan_key_unique` (`plan_key`);
 
---
--- Indexes for table `termination_proof`
---
 ALTER TABLE `termination_proof`
   ADD PRIMARY KEY (`proof_id`),
   ADD KEY `fk_proof_termination_link` (`termination_id`);
 
---
--- Indexes for table `users`
---
 ALTER TABLE `users`
   ADD PRIMARY KEY (`user_id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`);
 
---
--- Indexes for table `user_activity_logs`
---
 ALTER TABLE `user_activity_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `ual_type_idx` (`activity_type`),
@@ -1433,385 +933,199 @@ ALTER TABLE `user_activity_logs`
   ADD KEY `ual_created_idx` (`created_at`),
   ADD KEY `ual_read_idx` (`is_read`);
 
---
--- Indexes for table `user_reports`
---
 ALTER TABLE `user_reports`
   ADD PRIMARY KEY (`report_id`),
   ADD KEY `fk_user_reports_reporter` (`reporter_user_id`),
   ADD KEY `fk_user_reports_reported` (`reported_user_id`);
 
---
--- Indexes for table `valid_ids`
---
 ALTER TABLE `valid_ids`
   ADD PRIMARY KEY (`id`);
 
---
--- AUTO_INCREMENT for dumped tables
---
 
---
--- AUTO_INCREMENT for table `admin_activity_logs`
---
 ALTER TABLE `admin_activity_logs`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `admin_notification_preferences`
---
 ALTER TABLE `admin_notification_preferences`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `admin_sent_notifications`
---
 ALTER TABLE `admin_sent_notifications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `ai_prediction_logs`
---
 ALTER TABLE `ai_prediction_logs`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `bids`
---
 ALTER TABLE `bids`
   MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `bid_files`
---
 ALTER TABLE `bid_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `content_reports`
---
 ALTER TABLE `content_reports`
   MODIFY `report_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `contractors`
---
 ALTER TABLE `contractors`
   MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `contractor_staff`
---
 ALTER TABLE `contractor_staff`
   MODIFY `staff_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `contractor_types`
---
 ALTER TABLE `contractor_types`
   MODIFY `type_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `contract_terminations`
---
 ALTER TABLE `contract_terminations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `conversations`
---
 ALTER TABLE `conversations`
   MODIFY `conversation_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `disputes`
---
 ALTER TABLE `disputes`
   MODIFY `dispute_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `dispute_files`
---
 ALTER TABLE `dispute_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `downpayment_payments`
---
 ALTER TABLE `downpayment_payments`
   MODIFY `dp_payment_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `item_files`
---
 ALTER TABLE `item_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `messages`
---
 ALTER TABLE `messages`
   MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `message_attachments`
---
 ALTER TABLE `message_attachments`
   MODIFY `attachment_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `milestones`
---
 ALTER TABLE `milestones`
   MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `milestone_date_histories`
---
 ALTER TABLE `milestone_date_histories`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `milestone_item_updates`
---
+ALTER TABLE `milestone_items`
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT;
+
 ALTER TABLE `milestone_item_updates`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `milestone_payments`
---
 ALTER TABLE `milestone_payments`
   MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `notifications`
---
 ALTER TABLE `notifications`
   MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `occupations`
---
 ALTER TABLE `occupations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `payment_adjustment_logs`
---
 ALTER TABLE `payment_adjustment_logs`
   MODIFY `log_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `payment_plans`
---
 ALTER TABLE `payment_plans`
   MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `personal_access_tokens`
---
 ALTER TABLE `personal_access_tokens`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `platform_payments`
---
 ALTER TABLE `platform_payments`
   MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `post_reports`
---
 ALTER TABLE `post_reports`
   MODIFY `report_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `progress`
---
 ALTER TABLE `progress`
   MODIFY `progress_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `progress_files`
---
 ALTER TABLE `progress_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `projects`
---
 ALTER TABLE `projects`
   MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `project_files`
---
 ALTER TABLE `project_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `project_relationships`
---
 ALTER TABLE `project_relationships`
   MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `project_updates`
---
 ALTER TABLE `project_updates`
   MODIFY `extension_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `property_owners`
---
 ALTER TABLE `property_owners`
   MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `report_attachments`
---
 ALTER TABLE `report_attachments`
   MODIFY `attachment_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `reviews`
---
 ALTER TABLE `reviews`
   MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `review_reports`
---
 ALTER TABLE `review_reports`
   MODIFY `report_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `showcases`
---
 ALTER TABLE `showcases`
   MODIFY `post_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `showcase_images`
---
 ALTER TABLE `showcase_images`
   MODIFY `image_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `subscription_plans`
---
 ALTER TABLE `subscription_plans`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `termination_proof`
---
 ALTER TABLE `termination_proof`
   MODIFY `proof_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `users`
---
 ALTER TABLE `users`
   MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `user_activity_logs`
---
 ALTER TABLE `user_activity_logs`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `user_reports`
---
 ALTER TABLE `user_reports`
   MODIFY `report_id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `valid_ids`
---
 ALTER TABLE `valid_ids`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
---
--- Constraints for dumped tables
---
 
---
--- Constraints for table `admin_activity_logs`
---
 ALTER TABLE `admin_activity_logs`
   ADD CONSTRAINT `fk_admin_activity_logs_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin_users` (`admin_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `admin_notification_preferences`
---
 ALTER TABLE `admin_notification_preferences`
   ADD CONSTRAINT `fk_admin_notification_preferences_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin_users` (`admin_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `admin_sent_notifications`
---
 ALTER TABLE `admin_sent_notifications`
   ADD CONSTRAINT `fk_admin_sent_notifications_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin_users` (`admin_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `ai_prediction_logs`
---
 ALTER TABLE `ai_prediction_logs`
   ADD CONSTRAINT `fk_ai_logs_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `bids`
---
 ALTER TABLE `bids`
   ADD CONSTRAINT `bids_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `bids_ibfk_2` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `bid_files`
---
 ALTER TABLE `bid_files`
   ADD CONSTRAINT `bid_files_ibfk_1` FOREIGN KEY (`bid_id`) REFERENCES `bids` (`bid_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `content_reports`
---
 ALTER TABLE `content_reports`
   ADD CONSTRAINT `fk_content_reports_reporter` FOREIGN KEY (`reporter_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_content_reports_reviewer` FOREIGN KEY (`reviewed_by_user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `contractors`
---
 ALTER TABLE `contractors`
   ADD CONSTRAINT `fk_contractor_owner` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `contractor_staff`
---
 ALTER TABLE `contractor_staff`
   ADD CONSTRAINT `fk_staff_company` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_staff_owner` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `contract_terminations`
---
 ALTER TABLE `contract_terminations`
   ADD CONSTRAINT `fk_terminations_contractor` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_terminations_owner` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_terminations_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `conversations`
---
 ALTER TABLE `conversations`
   ADD CONSTRAINT `conversations_receiver_id_foreign` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `conversations_sender_id_foreign` FOREIGN KEY (`sender_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `disputes`
---
 ALTER TABLE `disputes`
   ADD CONSTRAINT `disputes_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `disputes_ibfk_2` FOREIGN KEY (`raised_by_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
@@ -1819,76 +1133,43 @@ ALTER TABLE `disputes`
   ADD CONSTRAINT `disputes_ibfk_4` FOREIGN KEY (`milestone_id`) REFERENCES `milestones` (`milestone_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `milestone_item_item_milestone_item_id_foreign` FOREIGN KEY (`milestone_item_id`) REFERENCES `milestone_items` (`item_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `dispute_files`
---
 ALTER TABLE `dispute_files`
   ADD CONSTRAINT `dispute_files_ibfk_1` FOREIGN KEY (`dispute_id`) REFERENCES `disputes` (`dispute_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `downpayment_payments`
---
 ALTER TABLE `downpayment_payments`
   ADD CONSTRAINT `fk_dp_contractor` FOREIGN KEY (`contractor_user_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `item_files`
---
 ALTER TABLE `item_files`
   ADD CONSTRAINT `item_files_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `milestone_items` (`item_id`);
 
---
--- Constraints for table `messages`
---
 ALTER TABLE `messages`
   ADD CONSTRAINT `messages_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`conversation_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `message_attachments`
---
 ALTER TABLE `message_attachments`
   ADD CONSTRAINT `fk_message_attachments_message_id` FOREIGN KEY (`message_id`) REFERENCES `messages` (`message_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `milestones`
---
 ALTER TABLE `milestones`
   ADD CONSTRAINT `milestones_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `milestones_ibfk_2` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `milestones_ibfk_3` FOREIGN KEY (`plan_id`) REFERENCES `payment_plans` (`plan_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `milestone_date_histories`
---
 ALTER TABLE `milestone_date_histories`
   ADD CONSTRAINT `fk_milestone_date_histories_changed_by` FOREIGN KEY (`changed_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_milestone_date_histories_extension` FOREIGN KEY (`extension_id`) REFERENCES `project_updates` (`extension_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `milestone_item_updates`
---
 ALTER TABLE `milestone_item_updates`
   ADD CONSTRAINT `fk_milestone_item_updates_approved_by` FOREIGN KEY (`approved_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_milestone_item_updates_project_update` FOREIGN KEY (`project_update_id`) REFERENCES `project_updates` (`extension_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `milestone_payments`
---
 ALTER TABLE `milestone_payments`
   ADD CONSTRAINT `fk_payment_contractor` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `milestone_payments_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `milestone_items` (`item_id`),
   ADD CONSTRAINT `milestone_payments_ibfk_3` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
   ADD CONSTRAINT `milestone_payments_ibfk_4` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`);
 
---
--- Constraints for table `notifications`
---
 ALTER TABLE `notifications`
   ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
 
---
--- Constraints for table `payment_adjustment_logs`
---
 ALTER TABLE `payment_adjustment_logs`
   ADD CONSTRAINT `fk_payment_adjustment_milestone` FOREIGN KEY (`milestone_id`) REFERENCES `milestones` (`milestone_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_payment_adjustment_payment` FOREIGN KEY (`payment_id`) REFERENCES `milestone_payments` (`payment_id`) ON DELETE SET NULL,
@@ -1896,16 +1177,10 @@ ALTER TABLE `payment_adjustment_logs`
   ADD CONSTRAINT `fk_payment_adjustment_source_item` FOREIGN KEY (`source_item_id`) REFERENCES `milestone_items` (`item_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_payment_adjustment_target_item` FOREIGN KEY (`target_item_id`) REFERENCES `milestone_items` (`item_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `payment_plans`
---
 ALTER TABLE `payment_plans`
   ADD CONSTRAINT `payment_plans_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
   ADD CONSTRAINT `payment_plans_ibfk_2` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`);
 
---
--- Constraints for table `platform_payments`
---
 ALTER TABLE `platform_payments`
   ADD CONSTRAINT `platform_payments_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
   ADD CONSTRAINT `platform_payments_ibfk_2` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`),
@@ -1913,108 +1188,63 @@ ALTER TABLE `platform_payments`
   ADD CONSTRAINT `platform_payments_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `admin_users` (`admin_id`),
   ADD CONSTRAINT `platform_payments_subscriptionplanid_foreign` FOREIGN KEY (`subscriptionPlanId`) REFERENCES `subscription_plans` (`id`) ON DELETE SET NULL;
 
---
--- Constraints for table `post_reports`
---
 ALTER TABLE `post_reports`
   ADD CONSTRAINT `post_reports_reporter_user_id_foreign` FOREIGN KEY (`reporter_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `post_reports_reviewed_by_user_id_foreign` FOREIGN KEY (`reviewed_by_user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `progress`
---
 ALTER TABLE `progress`
   ADD CONSTRAINT `fk_progress_milestone_item` FOREIGN KEY (`milestone_item_id`) REFERENCES `milestone_items` (`item_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_progress_submitted_by_owner` FOREIGN KEY (`submitted_by_owner_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `progress_files`
---
 ALTER TABLE `progress_files`
   ADD CONSTRAINT `fk_progress_files_progress_id` FOREIGN KEY (`progress_id`) REFERENCES `progress` (`progress_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `projects`
---
 ALTER TABLE `projects`
   ADD CONSTRAINT `fk_projects_relationship_id` FOREIGN KEY (`relationship_id`) REFERENCES `project_relationships` (`rel_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_projects_type_id` FOREIGN KEY (`type_id`) REFERENCES `contractor_types` (`type_id`);
 
---
--- Constraints for table `project_files`
---
 ALTER TABLE `project_files`
   ADD CONSTRAINT `project_files_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`);
 
---
--- Constraints for table `project_relationships`
---
 ALTER TABLE `project_relationships`
   ADD CONSTRAINT `fk_projectrel_contractor` FOREIGN KEY (`selected_contractor_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_projectrel_owner` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`);
 
---
--- Constraints for table `project_updates`
---
 ALTER TABLE `project_updates`
   ADD CONSTRAINT `fk_project_updates_contractor` FOREIGN KEY (`contractor_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_project_updates_owner` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `property_owners`
---
 ALTER TABLE `property_owners`
   ADD CONSTRAINT `fk_owner_occupation` FOREIGN KEY (`occupation_id`) REFERENCES `occupations` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_owner_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_owner_valid_id` FOREIGN KEY (`valid_id_id`) REFERENCES `valid_ids` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
---
--- Constraints for table `reviews`
---
 ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
   ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`reviewer_user_id`) REFERENCES `users` (`user_id`),
   ADD CONSTRAINT `reviews_ibfk_3` FOREIGN KEY (`reviewee_user_id`) REFERENCES `users` (`user_id`);
 
---
--- Constraints for table `review_reports`
---
 ALTER TABLE `review_reports`
   ADD CONSTRAINT `fk_review_reports_reporter` FOREIGN KEY (`reporter_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_review_reports_review` FOREIGN KEY (`review_id`) REFERENCES `reviews` (`review_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_review_reports_reviewer` FOREIGN KEY (`reviewed_by_user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `showcases`
---
 ALTER TABLE `showcases`
   ADD CONSTRAINT `fk_showcases_project` FOREIGN KEY (`linked_project_id`) REFERENCES `projects` (`project_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_showcases_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `project_posts_linked_project_id_foreign` FOREIGN KEY (`linked_project_id`) REFERENCES `projects` (`project_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `project_posts_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `showcase_images`
---
 ALTER TABLE `showcase_images`
   ADD CONSTRAINT `fk_showcase_images_post` FOREIGN KEY (`post_id`) REFERENCES `showcases` (`post_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `project_post_images_post_id_foreign` FOREIGN KEY (`post_id`) REFERENCES `showcases` (`post_id`) ON DELETE CASCADE;
 
---
--- Constraints for table `termination_proof`
---
 ALTER TABLE `termination_proof`
   ADD CONSTRAINT `fk_proof_termination_link` FOREIGN KEY (`termination_id`) REFERENCES `contract_terminations` (`id`) ON DELETE CASCADE;
 
---
--- Constraints for table `user_activity_logs`
---
 ALTER TABLE `user_activity_logs`
   ADD CONSTRAINT `fk_user_activity_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
---
--- Constraints for table `user_reports`
---
 ALTER TABLE `user_reports`
   ADD CONSTRAINT `fk_user_reports_reported` FOREIGN KEY (`reported_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_user_reports_reporter` FOREIGN KEY (`reporter_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,

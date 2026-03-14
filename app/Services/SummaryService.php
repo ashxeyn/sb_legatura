@@ -222,7 +222,7 @@ class SummaryService
         }
 
         $project = DB::table('projects as p')
-            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
             ->leftJoin('users as ou', 'po.user_id', '=', 'ou.user_id')
             ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
@@ -359,7 +359,7 @@ class SummaryService
             'current_budget'       => $currentBudget,
             'payment_mode'         => $paymentMode,
             'downpayment'          => $downpayment,
-            'downpayment_cleared'  => milestoneService::isDownpaymentCleared($projectId),
+            'downpayment_cleared'  => \App\Services\MilestoneService::isDownpaymentCleared($projectId),
             'total_milestones'     => $totalMilestones,
             'completed_milestones' => $completedMilestones,
             'total_paid'           => $totalPaid,

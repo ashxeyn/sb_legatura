@@ -300,6 +300,98 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
+  // Toggle project summary inside completed modal
+  window.toggleCompletedProjectSummary = async function(projectId) {
+    const section = document.getElementById('completedProjectSummarySection');
+    const content = document.getElementById('completedProjectSummaryContent');
+    const label = document.getElementById('completedSummaryToggleLabel');
+    if (!section) return;
+
+    const isHidden = section.classList.contains('hidden');
+    section.classList.toggle('hidden');
+    if (label) label.textContent = isHidden ? 'Hide Project Summary' : 'View Project Summary';
+
+    if (isHidden && content && content.dataset.loaded !== 'true') {
+      const id = projectId || window.currentProjectId;
+      if (!id) return;
+      try {
+        const res = await fetch(`/admin/project-management/${id}/summary`);
+        const result = await res.json();
+        if (result.success && result.html) {
+          content.innerHTML = result.html;
+          content.dataset.loaded = 'true';
+        } else {
+          content.innerHTML = `<p class="text-sm text-red-500 text-center py-4">${result.message || 'Failed to load summary.'}</p>`;
+        }
+      } catch (e) {
+        content.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error loading summary.</p>';
+      }
+    }
+  };
+
+  // Toggle project summary inside halted modal
+  window.toggleHaltedProjectSummary = async function(projectId) {
+    const section = document.getElementById('haltedProjectSummarySection');
+    const content = document.getElementById('haltedProjectSummaryContent');
+    const label = document.getElementById('haltedSummaryToggleLabel');
+    if (!section) return;
+
+    const isHidden = section.classList.contains('hidden');
+    section.classList.toggle('hidden');
+    if (label) label.textContent = isHidden ? 'Hide Project Summary' : 'View Project Summary';
+
+    if (isHidden && content && content.dataset.loaded !== 'true') {
+      if (!projectId) return;
+      try {
+        const res = await fetch(`/admin/project-management/${projectId}/summary`);
+        const result = await res.json();
+        if (result.success && result.html) {
+          content.innerHTML = result.html;
+          content.dataset.loaded = 'true';
+        } else {
+          content.innerHTML = `<p class="text-sm text-red-500 text-center py-4">${result.message || 'Failed to load summary.'}</p>`;
+        }
+      } catch (e) {
+        content.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error loading summary.</p>';
+      }
+    }
+  };
+
+  // Show standalone project summary modal (for in_progress / terminated)
+  window.showProjectSummaryModal = async function(projectId) {
+    const modal = document.getElementById('projectSummaryModal');
+    const content = document.getElementById('psmBody');
+    if (!modal || !content) return;
+
+    modal.classList.remove('hidden');
+    content.innerHTML = '<div class="flex items-center justify-center py-16"><p class="text-sm text-gray-400">Loading summary…</p></div>';
+
+    try {
+      const res = await fetch(`/admin/project-management/${projectId}/summary`);
+      const result = await res.json();
+      if (result.success && result.html) {
+        content.innerHTML = result.html;
+      } else {
+        content.innerHTML = `<p class="text-sm text-red-500 text-center py-8">${result.message || 'Failed to load summary.'}</p>`;
+      }
+    } catch (e) {
+      content.innerHTML = '<p class="text-sm text-red-500 text-center py-8">Error loading summary.</p>';
+    }
+  };
+
+  window.hideProjectSummaryModal = function() {
+    const modal = document.getElementById('projectSummaryModal');
+    if (modal) modal.classList.add('hidden');
+  };
+
+  // Toggle collapsible sections inside projectSummaryContent partial
+  window.psmToggle = function(sectionId, chevronId) {
+    const section = document.getElementById(sectionId);
+    const chevron = document.getElementById(chevronId);
+    if (section) section.classList.toggle('hidden');
+    if (chevron) chevron.classList.toggle('rotate-180');
+  };
+
   // Open Halted Project Modal
   // Replaced with AJAX-based server-side rendering
   async function openHaltedProjectModal(data) {
@@ -588,6 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Show open project modal with server-side rendered content
   window.showOpenProjectModal = async function(projectId) {
+    window.currentOpenProjectId = projectId;
     try {
       const response = await fetch(`/admin/project-management/${projectId}/open-details`);
       const result = await response.json();
@@ -3367,3 +3460,361 @@ window.confirmBulkAdjustment = async function() {
     `;
   }
 };
+
+// ── Change Bidder ──────────────────────────────────────────────────────────────
+
+function _changeBidderNotify(message, type) {
+  const notification = document.createElement('div');
+  notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-[70] transition-all duration-300 transform translate-x-full ${
+    type === 'success' ? 'bg-green-500' : 'bg-red-500'
+  }`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => { notification.style.transform = 'translateX(0)'; }, 10);
+  setTimeout(() => {
+    notification.style.transform = 'translateX(150%)';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+let _changeBidderProjectId = null;
+let _changeBidderBidId = null;
+
+window.showChangeBidderModal = function(projectId, bidId, contractorName) {
+  _changeBidderProjectId = projectId;
+  _changeBidderBidId = bidId;
+
+  const nameEl = document.getElementById('changeBidderContractorName');
+  if (nameEl) nameEl.textContent = contractorName;
+
+  const modal = document.getElementById('changeBidderModal');
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.hideChangeBidderModal = function() {
+  const modal = document.getElementById('changeBidderModal');
+  if (modal) modal.classList.add('hidden');
+  _changeBidderProjectId = null;
+  _changeBidderBidId = null;
+};
+
+window.confirmChangeBidder = async function() {
+  if (!_changeBidderProjectId || !_changeBidderBidId) return;
+
+  const btn = document.getElementById('confirmChangeBidderBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Saving...';
+  }
+
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    const response = await fetch(`/admin/project-management/${_changeBidderProjectId}/change-bidder`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken
+      },
+      body: JSON.stringify({ bid_id: _changeBidderBidId })
+    });
+
+    const rawText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(rawText);
+    } catch (e) {
+      _changeBidderNotify('Server returned unexpected response.', 'error');
+      return;
+    }
+
+    if (result.success) {
+      _changeBidderNotify('Bidder changed successfully', 'success');
+      const projectId = _changeBidderProjectId;
+      hideChangeBidderModal();
+      hideBiddingModal();
+      if (typeof window.refreshProjectsTable === 'function') {
+        window.refreshProjectsTable();
+      }
+      if (projectId) {
+        setTimeout(() => window.showOpenProjectModal(projectId), 400);
+      }
+    } else {
+      _changeBidderNotify(result.message || 'Failed to change bidder', 'error');
+    }
+  } catch (error) {
+    console.error('Error changing bidder:', error);
+    _changeBidderNotify('An error occurred while changing bidder', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fi fi-rr-refresh text-sm"></i> Confirm Change';
+    }
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROJECT SUMMARY MODAL (mirrors mobile projectSummary.tsx)
+// Used for in_progress and terminated projects
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Show the standalone project summary modal (for in_progress / terminated)
+ */
+window.showProjectSummaryModal = async function(projectId) {
+  const modal = document.getElementById('projectSummaryModal');
+  if (!modal) return;
+
+  // Show modal with loading state
+  modal.classList.remove('hidden');
+
+  try {
+    const response = await fetch(`/admin/project-management/${projectId}/summary`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    });
+    const result = await response.json();
+
+    if (result.success && result.html) {
+      const body = document.getElementById('psmBody');
+      if (body) body.innerHTML = result.html;
+    } else {
+      const body = document.getElementById('psmBody');
+      if (body) body.innerHTML = '<p class="text-center text-red-500 py-8 text-sm">Failed to load project summary.</p>';
+    }
+  } catch (err) {
+    console.error('Error loading project summary:', err);
+    const body = document.getElementById('psmBody');
+    if (body) body.innerHTML = '<p class="text-center text-red-500 py-8 text-sm">An error occurred while loading the summary.</p>';
+  }
+};
+
+/**
+ * Hide the standalone project summary modal
+ */
+window.hideProjectSummaryModal = function() {
+  const modal = document.getElementById('projectSummaryModal');
+  if (modal) modal.classList.add('hidden');
+};
+
+/**
+ * Toggle collapsible sections inside the summary content
+ */
+window.psmToggle = function(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (!section) return;
+
+  const isHidden = section.classList.contains('hidden');
+  section.classList.toggle('hidden', !isHidden);
+
+  // Rotate chevron on the parent button
+  const btn = section.previousElementSibling;
+  if (btn) {
+    const chevron = btn.querySelector('.psm-chevron');
+    if (chevron) {
+      chevron.classList.toggle('rotate-180', !isHidden);
+    }
+  }
+};
+
+// ── Completed modal: toggle project summary section ──────────────────────────
+
+window.toggleCompletedProjectSummary = async function() {
+  const section = document.getElementById('completedProjectSummarySection');
+  const label   = document.getElementById('completedSummaryToggleLabel');
+  if (!section) return;
+
+  const isHidden = section.classList.contains('hidden');
+
+  if (isHidden) {
+    section.classList.remove('hidden');
+    if (label) label.textContent = 'Hide Project Summary';
+
+    // Load content if not yet loaded
+    const content = document.getElementById('completedProjectSummaryContent');
+    if (content && content.querySelector('p.text-gray-400')) {
+      const projectId = window.currentProjectId || document.getElementById('completedProjectModal')?.dataset?.projectId;
+      if (projectId) {
+        try {
+          const response = await fetch(`/admin/project-management/${projectId}/summary`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+          });
+          const result = await response.json();
+          if (result.success && result.html) {
+            content.innerHTML = result.html;
+          } else {
+            content.innerHTML = '<p class="text-center text-red-500 py-4 text-sm">Failed to load summary.</p>';
+          }
+        } catch (err) {
+          content.innerHTML = '<p class="text-center text-red-500 py-4 text-sm">Error loading summary.</p>';
+        }
+      }
+    }
+  } else {
+    section.classList.add('hidden');
+    if (label) label.textContent = 'View Project Summary';
+  }
+};
+
+// ── Halted modal: toggle project summary section ─────────────────────────────
+
+window.toggleHaltedProjectSummary = async function(projectId) {
+  const section = document.getElementById('haltedProjectSummarySection');
+  const label   = document.getElementById('haltedSummaryToggleLabel');
+  if (!section) return;
+
+  const isHidden = section.classList.contains('hidden');
+
+  if (isHidden) {
+    section.classList.remove('hidden');
+    if (label) label.textContent = 'Hide Project Summary';
+
+    // Load content if not yet loaded
+    const content = document.getElementById('haltedProjectSummaryContent');
+    if (content && content.querySelector('p.text-gray-400')) {
+      const pid = projectId || window.currentProjectId;
+      if (pid) {
+        try {
+          const response = await fetch(`/admin/project-management/${pid}/summary`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+          });
+          const result = await response.json();
+          if (result.success && result.html) {
+            content.innerHTML = result.html;
+          } else {
+            content.innerHTML = '<p class="text-center text-red-500 py-4 text-sm">Failed to load summary.</p>';
+          }
+        } catch (err) {
+          content.innerHTML = '<p class="text-center text-red-500 py-4 text-sm">Error loading summary.</p>';
+        }
+      }
+    }
+  } else {
+    section.classList.add('hidden');
+    if (label) label.textContent = 'View Project Summary';
+  }
+};
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROJECT SUMMARY MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Toggle a collapsible section inside the project summary modal.
+ */
+function psmToggle(contentId, chevronId) {
+  const content = document.getElementById(contentId);
+  const chevron = document.getElementById(chevronId);
+  if (!content) return;
+  const isHidden = content.classList.contains('hidden');
+  content.classList.toggle('hidden', !isHidden);
+  if (chevron) chevron.classList.toggle('rotate-180', isHidden);
+}
+
+/**
+ * Open the project summary modal and load content via AJAX.
+ */
+async function showProjectSummaryModal(projectId) {
+  const modal    = document.getElementById('projectSummaryModal');
+  const body     = document.getElementById('psmBody');
+  const errorEl  = null;   // error shown inline in body
+  const loadEl   = null;   // loading spinner already in psmBody default state
+
+  if (!modal || !body) return;
+
+  // Reset state — show spinner
+  modal.classList.remove('hidden');
+  body.innerHTML = `
+    <div class="flex items-center justify-center py-12">
+      <div class="text-center">
+        <svg class="w-10 h-10 text-gray-300 mx-auto mb-3 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <p class="text-sm text-gray-500">Loading summary…</p>
+      </div>
+    </div>`;
+
+  try {
+    const res = await fetch(`/admin/project-management/${projectId}/summary`, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+      },
+    });
+
+    const html = await res.text();
+
+    if (!res.ok) {
+      body.innerHTML = `<div class="p-6 text-center text-red-600 font-semibold">Server error (${res.status}). Please try again.</div>`;
+      return;
+    }
+
+    body.innerHTML = html;
+  } catch (err) {
+    body.innerHTML = `<div class="p-6 text-center text-red-600 font-semibold">Failed to load summary. Please try again.</div>`;
+    console.error('Project summary fetch error:', err);
+  }
+}
+
+/**
+ * Close the project summary modal.
+ */
+function hideProjectSummaryModal() {
+  const modal = document.getElementById('projectSummaryModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Toggle the inline summary section inside the completed project modal.
+ */
+async function toggleCompletedProjectSummary(projectId) {
+  const section   = document.getElementById('completedProjectSummarySection');
+  const content   = document.getElementById('completedProjectSummaryContent');
+  const btnLabel  = document.getElementById('completedSummaryToggleLabel');
+  if (!section) return;
+
+  const isHidden = section.classList.contains('hidden');
+  section.classList.toggle('hidden', !isHidden);
+  if (btnLabel) btnLabel.textContent = isHidden ? 'Hide Project Summary' : 'View Project Summary';
+
+  // Load content on first open
+  if (isHidden && content && content.dataset.loaded !== '1') {
+    content.dataset.loaded = '1';
+    try {
+      const res  = await fetch(`/admin/project-management/${projectId}/summary`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+      });
+      content.innerHTML = res.ok ? await res.text() : `<p class="text-sm text-red-500 text-center py-4">Failed to load summary.</p>`;
+    } catch (e) {
+      content.innerHTML = `<p class="text-sm text-red-500 text-center py-4">Failed to load summary.</p>`;
+    }
+  }
+}
+
+/**
+ * Toggle the inline summary section inside the halted project modal.
+ */
+async function toggleHaltedProjectSummary(projectId) {
+  const section   = document.getElementById('haltedProjectSummarySection');
+  const content   = document.getElementById('haltedProjectSummaryContent');
+  const btnLabel  = document.getElementById('haltedSummaryToggleLabel');
+  if (!section) return;
+
+  const isHidden = section.classList.contains('hidden');
+  section.classList.toggle('hidden', !isHidden);
+  if (btnLabel) btnLabel.textContent = isHidden ? 'Hide Project Summary' : 'View Project Summary';
+
+  // Load content on first open
+  if (isHidden && content && content.dataset.loaded !== '1') {
+    content.dataset.loaded = '1';
+    try {
+      const res  = await fetch(`/admin/project-management/${projectId}/summary`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+      });
+      content.innerHTML = res.ok ? await res.text() : `<p class="text-sm text-red-500 text-center py-4">Failed to load summary.</p>`;
+    } catch (e) {
+      content.innerHTML = `<p class="text-sm text-red-500 text-center py-4">Failed to load summary.</p>`;
+    }
+  }
+}

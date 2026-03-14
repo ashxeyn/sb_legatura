@@ -152,12 +152,28 @@
                       <button onclick="showBidStatusModal({{ $bid->bid_id }})" class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition" title="View Bid Details">
                         <i class="fi fi-rr-eye text-sm"></i>
                       </button>
+                      @if(empty($project->selected_contractor_id))
+                      {{-- No contractor selected yet: allow accept/reject --}}
                       <button onclick="showAcceptBidModal({{ $bid->bid_id }})" class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition" title="Accept Bid">
                         <i class="fi fi-rr-check text-sm"></i>
                       </button>
                       <button onclick="showRejectBidModal({{ $bid->bid_id }})" class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Reject Bid">
                         <i class="fi fi-rr-cross text-sm"></i>
                       </button>
+                      @elseif(!$project->milestone_count || $project->milestone_count == 0)
+                      {{-- Contractor selected but no milestones yet: allow changing to this bidder --}}
+                      @if($bid->contractor_id != $project->selected_contractor_id)
+                      <button onclick="showChangeBidderModal({{ $project->project_id }}, {{ $bid->bid_id }}, '{{ addslashes($bid->contractor_name ?? 'Unknown') }}')"
+                        class="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition text-xs font-semibold flex items-center gap-1" title="Select as New Bidder">
+                        <i class="fi fi-rr-refresh text-xs"></i>
+                        Select
+                      </button>
+                      @else
+                      <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                        <i class="fi fi-rr-check text-xs"></i> Selected
+                      </span>
+                      @endif
+                      @endif
                     </div>
                   </td>
                 </tr>
