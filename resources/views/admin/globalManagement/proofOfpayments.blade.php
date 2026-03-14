@@ -21,6 +21,11 @@
   <style>
     @keyframes _fi_spin { to { transform: rotate(360deg); } }
     .fi-spin { animation: _fi_spin .7s linear infinite; display: inline-block; }
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0.5; cursor: pointer;
+      filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+    }
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   </style>
 </head>
 
@@ -32,7 +37,7 @@
     <main class="flex-1">
 
       {{-- Standard topnav — NO filter injected here --}}
-      @include('admin.layouts.topnav', ['pageTitle' => 'Proof of Payments'])
+      @include('admin.layouts.topnav', ['pageTitle' => 'Proof of Payments', 'searchPlaceholder' => 'Search project or contractor...'])
 
       <div class="p-6 lg:p-7">
 
@@ -113,43 +118,54 @@
 
         <form id="paymentsFilterForm" method="GET" action="{{ route('admin.globalManagement.proofOfpayments') }}">
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3.5 mb-5 flex flex-wrap items-center gap-2.5">
-            <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[260px]">
+            <div class="flex flex-wrap items-center gap-2.5 flex-1">
               <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                 <i class="fi fi-rr-filter text-[12px]"></i>
                 <span>Filter By</span>
               </div>
 
-              <div class="relative flex-1 min-w-[220px] max-w-sm">
-                <input id="paymentsSearch" name="search" type="text"
-                  placeholder="Search project or contractor..."
-                  value="{{ request('search') }}"
-                  class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none">
-                <i class="fi fi-rr-search absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none"></i>
+              <!-- Date From -->
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                </div>
+                <input type="date" id="dateFrom" name="date_from" value="{{ request('date_from') }}"
+                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
               </div>
-            </div>
 
-            <div class="ml-auto flex flex-wrap items-center justify-end gap-2.5 w-full sm:w-auto">
-              <div class="relative">
+              <span class="text-gray-300 font-bold text-lg">→</span>
+
+              <!-- Date To -->
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                </div>
+                <input type="date" id="dateTo" name="date_to" value="{{ request('date_to') }}"
+                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+              </div>
+
+              <!-- Status Filter -->
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                  <i class="fi fi-rr-filter text-white text-sm leading-none"></i>
+                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Status</span>
+                </div>
                 <select id="paymentsStatusFilter" name="status"
-                  class="appearance-none rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 pr-9 text-sm text-gray-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none">
+                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none min-w-[150px] border-0">
                   <option value="">All Status</option>
                   <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>Pending</option>
                   <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Completed</option>
                   <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Invalid</option>
                 </select>
-                <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none"></i>
               </div>
-
-              <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
-                Filter
-              </button>
-
-              @if(request('search') || request('status'))
-                <a href="{{ route('admin.globalManagement.proofOfpayments') }}" class="clear-payments-filters inline-flex items-center justify-center rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
-                  Clear
-                </a>
-              @endif
             </div>
+
+            <button type="button" id="resetPaymentsFilter" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+              <i class="fi fi-rr-rotate-left"></i>
+              <span>Reset Filter</span>
+            </button>
           </div>
         </form>
 
@@ -171,15 +187,15 @@
     <div id="pendingPaymentModal" class="fixed inset-0 z-[100] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
       <div class="relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col">
-        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-indigo-50 via-blue-50 to-cyan-50 border-b flex-shrink-0">
+        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 border-b border-orange-600 text-white flex-shrink-0">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow"><i class="fi fi-ss-bolt text-white text-base"></i></div>
+            <div class="w-9 h-9 rounded-xl bg-white bg-opacity-20 flex items-center justify-center shadow"><i class="fi fi-ss-bolt text-white text-base"></i></div>
             <div>
-              <h3 class="text-[15px] font-bold text-gray-800 leading-tight">Proof of Payment (Pending)</h3>
-              <p class="text-[10px] text-gray-500">Awaiting verification</p>
+              <h3 class="text-[15px] font-bold text-white leading-tight">Proof of Payment (Pending)</h3>
+              <p class="text-[10px] text-orange-100">Awaiting verification</p>
             </div>
           </div>
-          <button data-close-modal class="p-1.5 rounded-xl hover:bg-white/80 text-gray-500 hover:text-gray-700 transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
+          <button data-close-modal class="p-1.5 rounded-xl hover:bg-white/20 text-white/80 hover:text-white transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
         </div>
         <div id="pp-loading" class="py-8 text-center text-gray-400 flex-shrink-0">
           <i class="fi fi-rr-spinner text-2xl fi-spin block mb-2.5"></i><p class="text-sm">Loading payment details…</p>
@@ -255,12 +271,12 @@
     <div id="confirmApproveModal" class="fixed inset-0 z-[110] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
       <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-        <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-b border-emerald-700">
+        <div class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white border-b border-green-600">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center border border-white/20"><i class="fi fi-ss-question text-white text-lg"></i></div>
             <div>
               <h4 class="text-base font-semibold leading-tight">Approve Payment?</h4>
-              <p class="text-[11px] text-emerald-50">Confirm approval for this payment proof.</p>
+              <p class="text-[11px] text-green-50">Confirm approval for this payment proof.</p>
             </div>
           </div>
         </div>
@@ -270,7 +286,7 @@
         </div>
         <div class="px-8 pb-8 flex items-center justify-center gap-4">
           <button data-close-modal class="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-100">Cancel</button>
-          <button id="confirmApproveBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold text-sm hover:from-green-600 hover:to-emerald-700 shadow">Yes, Approve</button>
+          <button id="confirmApproveBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold text-sm hover:from-green-600 hover:to-green-700 shadow">Yes, Approve</button>
         </div>
       </div>
     </div>
@@ -279,12 +295,12 @@
     <div id="confirmRejectModal" class="fixed inset-0 z-[110] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
       <div class="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-        <div class="px-6 py-4 bg-gradient-to-r from-rose-600 to-red-600 text-white border-b border-rose-700">
+        <div class="px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white border-b border-red-600">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center border border-white/20"><i class="fi fi-ss-question text-white text-lg"></i></div>
             <div>
               <h4 class="text-base font-semibold leading-tight">Reject Payment?</h4>
-              <p class="text-[11px] text-rose-50">Confirm invalidation of this payment proof.</p>
+              <p class="text-[11px] text-red-50">Confirm invalidation of this payment proof.</p>
             </div>
           </div>
         </div>
@@ -298,7 +314,7 @@
         </div>
         <div class="px-8 pb-8 flex items-center justify-center gap-4">
           <button data-close-modal class="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-100">Cancel</button>
-          <button id="confirmRejectBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-semibold text-sm hover:from-red-700 hover:to-rose-700 shadow">Yes, Reject</button>
+          <button id="confirmRejectBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold text-sm hover:from-red-600 hover:to-red-700 shadow">Yes, Reject</button>
         </div>
       </div>
     </div>
@@ -307,12 +323,12 @@
     <div id="completedPaymentModal" class="fixed inset-0 z-[100] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
       <div class="relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col">
-        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 border-b border-emerald-700 text-white flex-shrink-0">
+        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-green-500 to-green-600 border-b border-green-600 text-white flex-shrink-0">
           <div class="flex items-center gap-2.5">
             <div class="w-9 h-9 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shadow"><i class="fi fi-sr-check-circle text-white text-base"></i></div>
             <div>
               <h3 class="text-[15px] font-bold leading-tight">Proof of Payment (Completed)</h3>
-              <p class="text-[10px] text-emerald-50">Verified transaction details</p>
+              <p class="text-[10px] text-green-50">Verified transaction details</p>
             </div>
           </div>
           <button data-close-modal class="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
@@ -390,7 +406,7 @@
     <div id="editPaymentModal" class="fixed inset-0 z-[100] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
       <div class="relative bg-white w-full max-w-lg mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-amber-600 to-orange-600 border-b border-amber-700 text-white">
+        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 border-b border-orange-600 text-white">
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-lg bg-white/20 border border-white/20 flex items-center justify-center"><i class="fi fi-rr-edit text-white text-sm"></i></div>
             <h3 class="text-[15px] font-semibold leading-tight">Edit Payment Details</h3>
@@ -553,35 +569,30 @@
           <h3 class="text-sm font-bold text-gray-800 mb-1.5">Delete Payment</h3>
           <p class="text-[11px] text-gray-600 leading-relaxed mb-2.5">Permanently delete this payment record? This action cannot be undone.</p>
 
-          <div class="text-left bg-red-50 border border-red-200 rounded-md p-2 space-y-1.5">
+          <div class="text-left bg-red-50 border border-red-200 rounded-md p-2 space-y-1.5 mb-2.5">
             <div class="flex items-center justify-between text-[11px]"><span class="text-gray-600">Payment ID</span><span id="delete-payment-id" class="font-semibold text-gray-800">#—</span></div>
             <div class="flex items-center justify-between text-[11px]"><span class="text-gray-600">Project</span><span id="delete-project" class="font-semibold text-gray-800 max-w-[120px] truncate text-right">—</span></div>
             <div class="flex items-center justify-between text-[11px]"><span class="text-gray-600">Contractor</span><span id="delete-contractor" class="font-semibold text-gray-800 max-w-[120px] truncate text-right">—</span></div>
             <div class="flex items-center justify-between text-[11px]"><span class="text-gray-600">Amount</span><span id="delete-amount" class="font-semibold text-red-600">—</span></div>
           </div>
+
+          <div class="text-left">
+            <label class="block text-[11px] font-semibold text-gray-700 mb-1">Reason for deletion <span class="text-red-500">*</span></label>
+            <textarea id="deletePaymentReason" rows="3"
+              class="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-[11px] text-gray-700 focus:ring-2 focus:ring-red-300 focus:border-red-400 focus:outline-none resize-none transition"
+              placeholder="Enter reason for deleting this payment..."></textarea>
+            <p id="deletePaymentReasonError" class="text-[10px] text-red-500 mt-0.5 hidden">Reason is required.</p>
+          </div>
         </div>
 
         <div class="px-3 pb-3 space-y-1.5">
-          <button id="confirmDeletePaymentBtn" class="w-full px-3 py-1.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-md transition-all text-[11px] font-semibold shadow-sm hover:shadow-md transform hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-1">
+          <button id="confirmDeletePaymentBtn" class="w-full px-3 py-1.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-md transition-all text-[11px] font-semibold shadow-sm active:scale-95 flex items-center justify-center gap-1">
             <i class="fi fi-rr-trash"></i>
             <span>Delete</span>
           </button>
-          <button id="cancelDeletePaymentBtn" class="w-full px-3 py-1.5 border-2 border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-all text-[11px] font-semibold hover:border-gray-400 hover:shadow-sm transform hover:scale-[1.01] active:scale-95">
+          <button id="cancelDeletePaymentBtn" class="w-full px-3 py-1.5 border-2 border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-all text-[11px] font-semibold active:scale-95">
             Cancel
           </button>
-        </div>
-      </div>
-    </div>
-
-    {{-- DELETE PAYMENT FINAL CONFIRMATION --}}
-    <div id="deletePaymentFinalModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[120] p-2">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5 text-center relative transform transition-all duration-300 scale-95 opacity-0 modal-content-final">
-        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-3"><i class="fi fi-rr-trash text-red-600 text-xl"></i></div>
-        <h3 class="text-sm font-bold text-gray-800 mb-1">Confirm Deletion</h3>
-        <p class="text-gray-600 text-[11px] mb-4">This will permanently delete the payment record.</p>
-        <div class="space-y-2">
-          <button id="confirmDeletePaymentFinalBtn" class="w-full px-3 py-1.5 rounded-md bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold text-[11px] hover:from-red-600 hover:to-red-700 shadow transition flex items-center justify-center gap-1.5"><i class="fi fi-rr-trash text-[10px]"></i> Delete</button>
-          <button id="cancelDeletePaymentFinalBtn" class="w-full px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 font-semibold text-[11px] hover:bg-gray-50 transition">Cancel</button>
         </div>
       </div>
     </div>
@@ -595,7 +606,7 @@
     var METHOD_LABELS = { cash:'Cash', check:'Check', bank_transfer:'Bank Transfer', online_payment:'Online Payment' };
     var filterForm = document.getElementById('paymentsFilterForm');
     var paymentsTableWrap = document.getElementById('paymentsTableWrap');
-    var searchInput = document.getElementById('paymentsSearch');
+    var searchInput = document.getElementById('topNavSearch');
     var statusFilter = document.getElementById('paymentsStatusFilter');
     var searchTimer = null;
 
@@ -678,6 +689,10 @@
       var parsed = new URL(url, window.location.origin);
       if(searchInput)searchInput.value=parsed.searchParams.get('search')||'';
       if(statusFilter)statusFilter.value=parsed.searchParams.get('status')||'';
+      var dateFrom=document.getElementById('dateFrom');
+      var dateTo=document.getElementById('dateTo');
+      if(dateFrom)dateFrom.value=parsed.searchParams.get('date_from')||'';
+      if(dateTo)dateTo.value=parsed.searchParams.get('date_to')||'';
     }
 
     function buildFilterUrl(){
@@ -685,9 +700,13 @@
       var params = new URLSearchParams(window.location.search);
       var searchValue = searchInput ? searchInput.value.trim() : '';
       var statusValue = statusFilter ? statusFilter.value : '';
+      var dateFrom = document.getElementById('dateFrom');
+      var dateTo = document.getElementById('dateTo');
 
       if(searchValue)params.set('search',searchValue);else params.delete('search');
       if(statusValue)params.set('status',statusValue);else params.delete('status');
+      if(dateFrom && dateFrom.value)params.set('date_from',dateFrom.value);else params.delete('date_from');
+      if(dateTo && dateTo.value)params.set('date_to',dateTo.value);else params.delete('date_to');
       params.delete('page');
 
       url.search = params.toString();
@@ -772,6 +791,24 @@
       });
     }
 
+    var resetPaymentsBtn = document.getElementById('resetPaymentsFilter');
+    if(resetPaymentsBtn){
+      resetPaymentsBtn.addEventListener('click',function(){
+        if(searchInput) searchInput.value='';
+        if(statusFilter) statusFilter.value='';
+        var dateFrom = document.getElementById('dateFrom');
+        var dateTo = document.getElementById('dateTo');
+        if(dateFrom) dateFrom.value='';
+        if(dateTo) dateTo.value='';
+        fetchPaymentsTable(filterForm ? filterForm.action : window.location.pathname);
+      });
+    }
+
+    var dateFromInput = document.getElementById('dateFrom');
+    var dateToInput = document.getElementById('dateTo');
+    if(dateFromInput) dateFromInput.addEventListener('change', function(){ fetchPaymentsTable(buildFilterUrl()); });
+    if(dateToInput) dateToInput.addEventListener('change', function(){ fetchPaymentsTable(buildFilterUrl()); });
+
     window.addEventListener('popstate',function(){
       fetchPaymentsTable(window.location.href,false);
     });
@@ -820,6 +857,10 @@
         document.getElementById('delete-project').textContent=deleteBtn.dataset.project||'—';
         document.getElementById('delete-contractor').textContent=deleteBtn.dataset.contractor||'—';
         document.getElementById('delete-amount').textContent=deleteBtn.dataset.amount||'—';
+        var reasonEl=document.getElementById('deletePaymentReason');
+        var errorEl=document.getElementById('deletePaymentReasonError');
+        if(reasonEl)reasonEl.value='';
+        if(errorEl)errorEl.classList.add('hidden');
         openModal('deletePaymentModal');
       }
     });
@@ -992,64 +1033,42 @@
 
     // DELETE
     var _deleteId=null;
-    
-    function openDeleteFinalConfirm(){
-      var modal=document.getElementById('deletePaymentFinalModal');
-      var content=modal.querySelector('.modal-content-final');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(function(){
-        content.classList.remove('scale-95','opacity-0');
-        content.classList.add('scale-100','opacity-100');
-      },10);
-    }
-    
-    function closeDeleteFinalConfirm(){
-      var modal=document.getElementById('deletePaymentFinalModal');
-      var content=modal.querySelector('.modal-content-final');
-      content.classList.add('scale-95','opacity-0');
-      content.classList.remove('scale-100','opacity-100');
-      setTimeout(function(){
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      },310);
-    }
-    
+
     document.getElementById('cancelDeletePaymentBtn').addEventListener('click',function(){closeModal('deletePaymentModal');});
     document.getElementById('confirmDeletePaymentBtn').addEventListener('click',function(){
       if(!_deleteId)return;
-      closeModal('deletePaymentModal');
-      setTimeout(function(){
-        openDeleteFinalConfirm();
-      },150);
-    });
-    
-    document.getElementById('cancelDeletePaymentFinalBtn').addEventListener('click',function(){
-      if(!_deleteId)return;
-      closeDeleteFinalConfirm();
-      setTimeout(function(){
-        openModal('deletePaymentModal');
-      },310);
-    });
-    
-    document.getElementById('confirmDeletePaymentFinalBtn').addEventListener('click',function(){
-      if(!_deleteId)return;var btn=this;btn.disabled=true;btn.innerHTML='<i class="fi fi-rr-spinner fi-spin"></i>&nbsp;Deleting…';
-      fetch('/admin/global-management/proof-of-payments/'+_deleteId,{method:'DELETE',headers:{'X-CSRF-TOKEN':CSRF}})
+      var reasonEl=document.getElementById('deletePaymentReason');
+      var errorEl=document.getElementById('deletePaymentReasonError');
+      var reason=reasonEl?reasonEl.value.trim():'';
+      if(!reason){
+        errorEl.classList.remove('hidden');
+        reasonEl.focus();
+        return;
+      }
+      errorEl.classList.add('hidden');
+      var btn=this;
+      btn.disabled=true;
+      btn.innerHTML='<i class="fi fi-rr-spinner fi-spin"></i>&nbsp;Deleting…';
+      fetch('/admin/global-management/proof-of-payments/'+_deleteId,{
+        method:'DELETE',
+        headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json'},
+        body:JSON.stringify({reason:reason})
+      })
         .then(function(r){return r.json();})
         .then(function(res){
           if(res.success){
-            showToastAndClose('Payment record deleted.','success','deletePaymentFinalModal');
+            showToastAndClose('Payment record deleted.','success','deletePaymentModal');
             setTimeout(function(){location.reload();},SUCCESS_RELOAD_DELAY);
           }else{
-            showToastAndClose(res.message||'Failed.','error','deletePaymentFinalModal');
+            showToast(res.message||'Failed.','error');
             btn.disabled=false;
-            btn.innerHTML='<i class="fi fi-rr-trash text-[10px]"></i> Delete';
+            btn.innerHTML='<i class="fi fi-rr-trash"></i>&nbsp;Delete';
           }
         })
         .catch(function(){
-          showToastAndClose('Request failed.','error','deletePaymentFinalModal');
+          showToast('Request failed.','error');
           btn.disabled=false;
-          btn.innerHTML='<i class="fi fi-rr-trash text-[10px]"></i> Delete';
+          btn.innerHTML='<i class="fi fi-rr-trash"></i>&nbsp;Delete';
         });
     });
 

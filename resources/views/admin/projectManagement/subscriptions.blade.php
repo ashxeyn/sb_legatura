@@ -229,13 +229,19 @@
             </div>
 
             <!-- Plan Type Filter -->
-            <select id="filterPlanType"
-              class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
-              <option value="">All Plan Types</option>
-              @foreach($allPlanKeys as $key)
-                <option value="{{ $key }}" {{ request('plan_type') === $key ? 'selected' : '' }}>{{ ucfirst($key) }}</option>
-              @endforeach
-            </select>
+            <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+              <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                <i class="fi fi-rr-filter text-white text-sm leading-none"></i>
+                <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Plan Type</span>
+              </div>
+              <select id="filterPlanType"
+                class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none min-w-[150px] border-0">
+                <option value="">All Plan Types</option>
+                @foreach($allPlanKeys as $key)
+                  <option value="{{ $key }}" {{ request('plan_type') === $key ? 'selected' : '' }}>{{ ucfirst($key) }}</option>
+                @endforeach
+              </select>
+            </div>
           </div>
 
           <button id="resetFilterBtn" class="reset-filter-btn flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
@@ -553,7 +559,7 @@
       <div
         class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 edit-subscription-panel">
         <!-- Header -->
-        <div class="sticky top-0 z-10 bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-orange-500 to-orange-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <i class="fi fi-rr-edit text-white text-sm"></i>
@@ -641,7 +647,7 @@
               Cancel
             </button>
             <button type="submit"
-              class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition font-semibold shadow-md hover:shadow-lg active:scale-95 text-xs">
+              class="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition font-semibold shadow-md hover:shadow-lg active:scale-95 text-xs">
               Save Changes
             </button>
           </div>
@@ -655,7 +661,7 @@
       <div
         class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 delete-subscription-panel">
         <!-- Header -->
-        <div class="sticky top-0 z-10 bg-gradient-to-r from-red-600 to-red-500 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-red-500 to-red-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <i class="fi fi-rr-trash text-white text-sm"></i>
@@ -693,7 +699,7 @@
           <button id="cancelDeleteSubscriptionBtn"
             class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
           <button id="confirmDeleteSubscriptionBtn"
-            class="px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+          class="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
             <i class="fi fi-rr-trash text-xs"></i>Delete
           </button>
         </div>
@@ -706,7 +712,7 @@
       <div
         class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 row-edit-subscription-panel">
         <!-- Header -->
-        <div class="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-orange-500 to-orange-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <i class="fi fi-rr-edit text-white text-sm"></i>
@@ -775,7 +781,7 @@
             <button type="button" id="rowEditCancelBtn"
               class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
             <button type="submit"
-              class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+              class="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
               <i class="fi fi-rr-check text-xs"></i>Save
             </button>
           </div>
@@ -789,7 +795,7 @@
       <div
         class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 deactivate-subscription-panel">
         <!-- Header -->
-        <div class="sticky top-0 z-10 bg-gradient-to-r from-red-600 to-orange-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-red-500 to-red-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <i class="fi fi-rr-ban text-white text-sm"></i>
@@ -838,7 +844,7 @@
             <button type="button" id="cancelDeactivateSubscriptionBtn"
               class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
             <button type="submit" id="confirmDeactivateSubscriptionBtn"
-              class="px-4 py-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+              class="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
               <i class="fi fi-rr-ban text-xs"></i>Deactivate
             </button>
           </div>
@@ -851,7 +857,7 @@
       <div
         class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 reactivate-subscription-panel">
         <!-- Header -->
-        <div class="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 to-green-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-green-500 to-green-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <i class="fi fi-rr-undo text-white text-sm"></i>
@@ -889,7 +895,7 @@
           <button type="button" id="cancelReactivateSubscriptionBtn"
             class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
           <button type="button" id="confirmReactivateSubscriptionBtn"
-            class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+            class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
             <i class="fi fi-rr-undo text-xs"></i>Reactivate Now
           </button>
         </div>
@@ -902,7 +908,7 @@
       <div
         class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 view-subscription-panel">
         <!-- Header -->
-        <div class="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-orange-500 to-orange-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <i class="fi fi-rr-eye text-white text-sm"></i>
@@ -910,7 +916,7 @@
             <h2 class="text-sm sm:text-base font-bold text-white">Subscription Details</h2>
           </div>
           <button id="closeViewSubscriptionBtn"
-            class="text-white hover:text-blue-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            class="text-white hover:text-orange-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
             <i class="fi fi-rr-cross text-lg"></i>
           </button>
         </div>

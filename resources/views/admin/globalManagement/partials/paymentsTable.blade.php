@@ -2,18 +2,6 @@
     $hasFilters = request('search') || request('status');
 @endphp
 
-@if($hasFilters)
-<div class="px-4 py-2.5 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2 text-xs text-indigo-700">
-    <i class="fi fi-rr-filter"></i>
-    <span>
-        Showing <strong>{{ $payments->total() }}</strong> result(s)
-        @if(request('search')) for "<strong>{{ request('search') }}</strong>"@endif
-        @if(request('status')) with status "<strong>{{ request('status') }}</strong>"@endif
-    </span>
-    <a href="{{ route('admin.globalManagement.proofOfpayments') }}" class="clear-payments-filters ml-auto text-[11px] font-semibold text-indigo-600 hover:underline">Clear filters</a>
-</div>
-@endif
-
 <div class="overflow-hidden">
     <table class="w-full table-fixed">
         <thead>
@@ -79,9 +67,9 @@
                         <button class="action-btn view-btn btn-view w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all active:scale-95" title="View" data-id="{{ $payment->payment_id }}" data-status="{{ $payment->payment_status }}">
                             <i class="fi fi-rr-eye text-[13px] leading-none"></i>
                         </button>
-                        <button class="action-btn edit-btn btn-edit w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-orange-100 hover:shadow-sm hover:border-orange-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Edit" data-id="{{ $payment->payment_id }}" data-project="{{ $payment->project_title }}" data-method="{{ $payment->payment_type }}" data-amount="{{ $payment->amount }}" data-status="{{ $payment->payment_status }}" data-txn="{{ $payment->transaction_number }}" data-reason="{{ $payment->reason }}">
+                        {{-- <button class="action-btn edit-btn btn-edit w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-orange-100 hover:shadow-sm hover:border-orange-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Edit" data-id="{{ $payment->payment_id }}" data-project="{{ $payment->project_title }}" data-method="{{ $payment->payment_type }}" data-amount="{{ $payment->amount }}" data-status="{{ $payment->payment_status }}" data-txn="{{ $payment->transaction_number }}" data-reason="{{ $payment->reason }}">
                             <i class="fi fi-rr-pencil text-[13px] leading-none"></i>
-                        </button>
+                        </button> --}}
                         <button class="action-btn delete-btn btn-delete w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Delete" data-id="{{ $payment->payment_id }}" data-project="{{ $payment->project_title }}" data-contractor="{{ $payment->company_name }}" data-amount="₱{{ number_format($payment->amount, 2) }}">
                             <i class="fi fi-rr-trash text-[13px] leading-none"></i>
                         </button>

@@ -458,8 +458,8 @@ class globalManagementController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('p.project_title', 'like', "%{$search}%")
                     ->orWhere('c.company_name', 'like', "%{$search}%")
-                    ->orWhere('u.first_name', 'like', "%{$search}%")
-                    ->orWhere('u.last_name', 'like', "%{$search}%");
+                    ->orWhere('owner_u.first_name', 'like', "%{$search}%")
+                    ->orWhere('owner_u.last_name', 'like', "%{$search}%");
             });
         }
 
@@ -870,11 +870,17 @@ class globalManagementController extends Controller
     /**
      * Soft-delete a payment record.
      */
-    public function deletePayment($id)
+    public function deletePayment($id, Request $request)
     {
+        $reason = $request->input('reason');
+
         $deleted = DB::table('milestone_payments')
             ->where('payment_id', $id)
-            ->update(['payment_status' => 'deleted', 'updated_at' => now()]);
+            ->update([
+                'payment_status' => 'deleted',
+                'reason' => $reason,
+                'updated_at' => now()
+            ]);
 
         if ($deleted) {
             AdminActivityLog::log('payment_deleted', ['payment_id' => $id]);

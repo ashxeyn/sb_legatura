@@ -132,11 +132,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (urlParams.get('compose') === '1') {
         const recipientId = urlParams.get('recipient_id');
         const recipientName = urlParams.get('recipient_name');
+        // Store in sessionStorage then redirect to clean URL so refresh won't re-trigger
         if (recipientId) {
-            // Wait a moment for DOM to be ready, then open compose modal
+            sessionStorage.setItem('pendingCompose', JSON.stringify({ recipientId, recipientName }));
+        }
+        window.location.replace(window.location.pathname);
+        return; // stop further execution — page will reload clean
+    }
+
+    // Check sessionStorage for a pending compose (set by the redirect above)
+    const pendingCompose = sessionStorage.getItem('pendingCompose');
+    if (pendingCompose) {
+        sessionStorage.removeItem('pendingCompose'); // consume immediately — won't survive refresh
+        const { recipientId } = JSON.parse(pendingCompose);
+        if (recipientId) {
             setTimeout(() => {
                 showComposeModal().then(() => {
-                    // Find and select the recipient
                     const recipient = availableUsers?.find(u => u.id == recipientId);
                     if (recipient) {
                         selectRecipient(recipient.id);
@@ -418,32 +429,32 @@ function renderConversations(conversations) {
              data-receiver-name="${conv.other_user.name}"
              data-receiver-avatar="${conv.other_user.avatar}"
              data-receiver-type="${conv.other_user.type}">
-            <div class="flex items-start gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
+            <div class="flex items-center gap-2.5 cursor-pointer px-3 py-2.5 transition">
                 <div class="relative flex-shrink-0 avatar-container" data-initials="${initials}">
                     <img src="${conv.other_user.avatar}"
                          alt="${conv.other_user.name}"
-                         class="w-12 h-12 rounded-full object-cover avatar-img"
+                         class="w-8 h-8 rounded-full object-cover avatar-img"
                          onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-fallback')?.style.display='flex';">
-                    <div class="avatar-fallback w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm hidden">
+                    <div class="avatar-fallback w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-[10px] hidden">
                         ${initials}
                     </div>
                     ${conv.other_user.online ? '<span class="avatar-status online"></span>' : '<span class="avatar-status offline"></span>'}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-start justify-between mb-1">
-                        <div class="flex items-center gap-2">
-                            <h4 class="conversation-name font-semibold text-gray-800 truncate">${conv.other_user.name}</h4>
-                            ${conv.is_flagged ? '<i class="fi fi-sr-flag text-amber-500 text-xs"></i>' : ''}
-                            ${(conv.status === 'suspended' || conv.is_suspended) ? '<i class="fi fi-sr-ban text-red-500 text-xs"></i>' : ''}
-                            ${(conv.no_suspends && conv.no_suspends > 0) ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" title="Offense count">${conv.no_suspends}x</span>` : ''}
+                    <div class="flex items-center justify-between gap-1 mb-0.5">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <h4 class="conversation-name text-xs font-semibold text-gray-800 truncate">${conv.other_user.name}</h4>
+                            ${conv.is_flagged ? '<i class="fi fi-sr-flag text-amber-500 text-[10px] flex-shrink-0"></i>' : ''}
+                            ${(conv.status === 'suspended' || conv.is_suspended) ? '<i class="fi fi-sr-ban text-red-500 text-[10px] flex-shrink-0"></i>' : ''}
+                            ${(conv.no_suspends && conv.no_suspends > 0) ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700 flex-shrink-0" title="Offense count">${conv.no_suspends}x</span>` : ''}
                         </div>
-                        <span class="text-xs text-gray-400 flex-shrink-0 relative-time" data-timestamp="${conv.last_message.sent_at_timestamp}">${formatRelativeTime(conv.last_message.sent_at_timestamp)}</span>
+                        <span class="text-[10px] text-gray-400 flex-shrink-0 relative-time" data-timestamp="${conv.last_message.sent_at_timestamp}">${formatRelativeTime(conv.last_message.sent_at_timestamp)}</span>
                     </div>
-                    <p class="text-xs text-gray-500 mb-1">${conv.other_user.type}</p>
-                    <div class="flex items-center justify-between">
-                        <p class="conversation-preview text-sm text-gray-600 truncate flex-1">${conv.last_message.content}</p>
-                        ${conv.unread_count > 0 ? `<span class="unread-badge ml-2">${conv.unread_count}</span>` : ''}
+                    <div class="flex items-center justify-between gap-1">
+                        <p class="conversation-preview text-[11px] text-gray-500 truncate flex-1">${conv.last_message.content}</p>
+                        ${conv.unread_count > 0 ? `<span class="unread-badge ml-1">${conv.unread_count}</span>` : ''}
                     </div>
+                    <p class="text-[10px] text-gray-400 mt-0.5">${conv.other_user.type}</p>
                 </div>
             </div>
         </div>
@@ -2669,13 +2680,22 @@ function toast(message, type = 'info') {
         error: 'bg-red-500'
     };
 
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
+    const el = document.createElement('div');
+    el.className = `fixed top-5 right-5 ${colors[type]} text-white px-4 py-2.5 rounded-md shadow-lg z-[9999] text-xs font-semibold transition-all duration-300 translate-x-0 opacity-100`;
+    el.style.transform = 'translateX(0)';
+    el.textContent = message;
+    document.body.appendChild(el);
+
+    // Slide in from right
+    el.animate([
+        { opacity: 0, transform: 'translateX(20px)' },
+        { opacity: 1, transform: 'translateX(0)' }
+    ], { duration: 250, easing: 'ease-out', fill: 'forwards' });
 
     setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
+        el.animate([
+            { opacity: 1, transform: 'translateX(0)' },
+            { opacity: 0, transform: 'translateX(20px)' }
+        ], { duration: 250, easing: 'ease-in', fill: 'forwards' }).onfinish = () => el.remove();
     }, 3000);
 }
