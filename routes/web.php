@@ -31,6 +31,14 @@ Route::prefix('admin/notifications')
         // Page (already exists — keep your existing view route)
         // Route::get('/', [AdminController::class, 'notificationSettings']);
     
+        // Dropdown API
+        Route::get('/', [\App\Http\Controllers\Admin\adminNotificationController::class, 'index'])
+            ->name('admin.notifications.index');
+        Route::get('/unread-count', [\App\Http\Controllers\Admin\adminNotificationController::class, 'unreadCount'])
+            ->name('admin.notifications.unreadCount');
+        Route::post('/read', [\App\Http\Controllers\Admin\adminNotificationController::class, 'markAsRead'])
+            ->name('admin.notifications.read');
+
         // Users list for targeted send dropdown
         Route::get('/users', [\App\Http\Controllers\AdminController::class, 'getUsersForNotification']);
 

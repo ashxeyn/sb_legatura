@@ -172,13 +172,142 @@
     // ================= Notifications Dropdown (global) =================
     const notificationBell = document.getElementById('notificationBell');
     const notificationDropdown = document.getElementById('notificationDropdown');
-    const clearNotifications = document.getElementById('clearNotifications');
+    const markNotificationsRead = document.getElementById('markNotificationsRead');
     const notificationList = document.getElementById('notificationList');
+    const notificationUnreadCount = document.getElementById('notificationUnreadCount');
+    let currentNotificationIds = [];
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderRelativeTime(dateString) {
+        if (!dateString) return '-';
+        const then = new Date(dateString).getTime();
+        if (Number.isNaN(then)) return dateString;
+        const diffMs = Date.now() - then;
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 1) return 'just now';
+        if (diffMin < 60) return diffMin + ' min ago';
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24) return diffHr + ' hr ago';
+        const diffDay = Math.floor(diffHr / 24);
+        if (diffDay < 7) return diffDay + ' day' + (diffDay > 1 ? 's' : '') + ' ago';
+        return new Date(dateString).toLocaleString();
+    }
+
+    function iconForType(type) {
+        const map = {
+            user_registered: ['fi fi-ss-user-add', 'bg-indigo-100 text-indigo-600'],
+            failed_login_attempt: ['fi fi-ss-exclamation', 'bg-red-100 text-red-700'],
+            project_reported: ['fi fi-ss-warning', 'bg-yellow-100 text-yellow-700'],
+            profile_updated: ['fi fi-ss-user-pen', 'bg-blue-100 text-blue-700'],
+            password_reset: ['fi fi-ss-key', 'bg-purple-100 text-purple-700'],
+            email_verified: ['fi fi-ss-check-circle', 'bg-green-100 text-green-700'],
+            account_status_changed: ['fi fi-ss-shield-check', 'bg-orange-100 text-orange-700']
+        };
+        return map[type] || ['fi fi-ss-bell', 'bg-gray-100 text-gray-600'];
+    }
+
+    function renderNotificationRows(rows) {
+        if (!notificationList) return;
+        currentNotificationIds = rows.map(item => item.id).filter(Boolean);
+
+        if (!rows.length) {
+            notificationList.innerHTML = '<li class="px-4 py-4 text-sm text-gray-500">No notifications found.</li>';
+            return;
+        }
+
+        notificationList.innerHTML = rows.map(item => {
+            const icon = iconForType(item.activity_type);
+            const unreadBadge = item.is_read
+                ? '<span class="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">Read</span>'
+                : '<span class="inline-block px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Unread</span>';
+
+            const userName = item.user && item.user.name ? item.user.name : 'Unknown User';
+            const sourceLabel = item.source === 'mobile' ? 'Mobile' : 'Web';
+
+            return '<li class="px-4 py-3 hover:bg-gray-50 transition" data-id="' + item.id + '">' +
+                '<div class="flex items-start gap-3">' +
+                '<div class="w-8 h-8 rounded-full ' + icon[1] + ' flex items-center justify-center">' +
+                '<i class="' + icon[0] + '"></i>' +
+                '</div>' +
+                '<div class="flex-1 min-w-0">' +
+                '<p class="text-sm font-semibold text-gray-800 truncate">' + escapeHtml(item.title) + '</p>' +
+                '<p class="text-xs text-gray-700 mt-0.5">' + escapeHtml(item.message) + '</p>' +
+                '<p class="text-xs text-gray-500 mt-1">User: ' + escapeHtml(userName) + ' • Source: ' + escapeHtml(sourceLabel) + '</p>' +
+                '<p class="text-xs text-gray-500">' + escapeHtml(renderRelativeTime(item.created_at)) + '</p>' +
+                '</div>' +
+                unreadBadge +
+                '</div>' +
+                '</li>';
+        }).join('');
+    }
+
+    function renderUnreadCount(count) {
+        if (!notificationUnreadCount) return;
+        if (!count || count < 1) {
+            notificationUnreadCount.classList.add('hidden');
+            notificationUnreadCount.classList.remove('flex');
+            notificationUnreadCount.textContent = '0';
+            return;
+        }
+        notificationUnreadCount.textContent = String(Math.min(99, count));
+        notificationUnreadCount.classList.remove('hidden');
+        notificationUnreadCount.classList.add('flex');
+    }
+
+    async function fetchNotifications() {
+        try {
+            const res = await fetch('/admin/notifications?limit=5', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            if (!res.ok) return;
+            const payload = await res.json();
+            if (!payload || !payload.success) return;
+            const rows = payload.data?.notifications || [];
+            const unreadCount = payload.data?.unread_count || 0;
+            renderNotificationRows(rows);
+            renderUnreadCount(unreadCount);
+        } catch {
+            // Keep dropdown non-blocking if API is unavailable.
+        }
+    }
+
+    async function markNotificationsAsRead(all = true) {
+        const ids = all ? [] : currentNotificationIds;
+        try {
+            await fetch('/admin/notifications/read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ all, ids })
+            });
+            fetchNotifications();
+        } catch {
+            // Silent fail for UX continuity.
+        }
+    }
 
     if (notificationBell && notificationDropdown) {
         notificationBell.addEventListener('click', function (e) {
             e.stopPropagation();
             notificationDropdown.classList.toggle('hidden');
+            fetchNotifications();
         });
 
         // Close on outside click
@@ -195,13 +324,17 @@
             }
         });
 
-        // Clear notifications (simple UX demo)
-        if (clearNotifications && notificationList) {
-            clearNotifications.addEventListener('click', function (e) {
+        // Mark all notifications as read.
+        if (markNotificationsRead) {
+            markNotificationsRead.addEventListener('click', function (e) {
                 e.preventDefault();
-                notificationList.innerHTML = '<li class="px-4 py-3"><p class="text-sm text-gray-500">No notifications</p></li>';
+                markNotificationsAsRead(true);
             });
         }
+
+        // Polling fallback for near real-time updates.
+        fetchNotifications();
+        setInterval(fetchNotifications, 8000);
     }
     // =============== End Notifications Dropdown ===============
 

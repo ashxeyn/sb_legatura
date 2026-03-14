@@ -47,7 +47,11 @@ class UserActivityLogger
                 $meta['ip'] = Request::ip();
             }
 
-            DB::table('user_activity_logs')->insert([
+            if (!isset($meta['source'])) {
+                $meta['source'] = self::detectSource();
+            }
+
+            $activityId = DB::table('user_activity_logs')->insertGetId([
                 'activity_type' => $activityType,
                 'user_id'       => $userId,
                 'subject_id'    => $subjectId,
@@ -56,6 +60,13 @@ class UserActivityLogger
                 'is_read'       => 0,
                 'created_at'    => now(),
             ]);
+
+            self::recordAdminNotificationGeneration(
+                $activityType,
+                $activityId,
+                $userId,
+                $meta
+            );
         } catch (\Throwable $e) {
             // Never let logging crash the main request
             Log::warning('UserActivityLogger::log failed: ' . $e->getMessage());
@@ -149,5 +160,83 @@ class UserActivityLogger
         $meta = ['new_status' => $newStatus];
         if ($reason) $meta['reason'] = $reason;
         self::log(self::ACCOUNT_STATUS_CHANGED, $userId, null, null, $meta);
+    }
+
+    private static function detectSource(): string
+    {
+        $explicit = Request::header('X-Client-Source') ?: Request::header('X-App-Platform');
+        if (is_string($explicit) && trim($explicit) !== '') {
+            $value = strtolower(trim($explicit));
+            if (str_contains($value, 'mobile') || str_contains($value, 'android') || str_contains($value, 'ios')) {
+                return 'mobile';
+            }
+        }
+
+        $userAgent = strtolower((string) Request::header('User-Agent', ''));
+        if (
+            str_contains($userAgent, 'okhttp') ||
+            str_contains($userAgent, 'flutter') ||
+            str_contains($userAgent, 'dart') ||
+            str_contains($userAgent, 'android') ||
+            str_contains($userAgent, 'iphone')
+        ) {
+            return 'mobile';
+        }
+
+        return 'web';
+    }
+
+    private static function recordAdminNotificationGeneration(string $activityType, int $activityId, ?int $userId, array $meta): void
+    {
+        try {
+            $source = strtolower((string) ($meta['source'] ?? 'web'));
+            $adminIds = DB::table('admin_users')
+                ->where('is_active', 1)
+                ->pluck('admin_id')
+                ->all();
+
+            if (empty($adminIds)) {
+                return;
+            }
+
+            $prefRows = DB::table('admin_notification_preferences')
+                ->whereIn('admin_id', $adminIds)
+                ->where('setting_key', $activityType)
+                ->get(['admin_id', 'is_enabled']);
+
+            $prefMap = [];
+            foreach ($prefRows as $row) {
+                $prefMap[$row->admin_id] = (bool) $row->is_enabled;
+            }
+
+            $now = now();
+            $ip = Request::ip();
+            $rows = [];
+
+            foreach ($adminIds as $adminId) {
+                if (array_key_exists($adminId, $prefMap) && $prefMap[$adminId] === false) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'admin_id' => $adminId,
+                    'action' => 'user_activity_notification_generated',
+                    'details' => json_encode([
+                        'activity_type' => $activityType,
+                        'activity_id' => $activityId,
+                        'user_id' => $userId,
+                        'source' => $source,
+                    ]),
+                    'ip_address' => $ip,
+                    'created_at' => $now,
+                ];
+            }
+
+            if (!empty($rows)) {
+                DB::table('admin_activity_logs')->insert($rows);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('UserActivityLogger::recordAdminNotificationGeneration failed: ' . $e->getMessage());
+        }
     }
 }
