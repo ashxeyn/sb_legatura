@@ -95,7 +95,7 @@ interface CheckProfileProps {
 }
 
 // Tab options
-type TabType = 'portfolio' | 'reviews' | 'about';
+type TabType = 'portfolio' | 'highlights' | 'reviews' | 'about';
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
@@ -247,6 +247,7 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
 
   // Posts (showcase only — no automatic project listing)
   const showcasePosts       = profile?.posts?.showcase_posts ?? [];
+  const highlightedPosts    = showcasePosts.filter((p: any) => !!p.is_highlighted);
   const totalPortfolioItems = showcasePosts.length;
 
   // Handle highlight toggle
@@ -400,9 +401,10 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   // About
   const contractorAbout = profile?.about?.contractor;
 
-  // Tabs (3 tabs)
+  // Tabs (4 tabs)
   const tabs: { key: TabType; label: string; count?: number }[] = [
     { key: 'portfolio', label: 'Portfolio', count: totalPortfolioItems || undefined },
+    { key: 'highlights', label: 'Highlights' },
     { key: 'reviews', label: 'Reviews', count: totalReviews || undefined },
     { key: 'about', label: 'About' },
   ];
@@ -779,8 +781,156 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     </View>
   );
 
+  const renderHighlightsTab = () => {
+    return (
+      <View style={styles.tabContent}>
+        {/* Add Showcase button (only on own profile) */}
+        {isOwnProfile && (
+          <TouchableOpacity
+            style={styles.addShowcaseBtn}
+            onPress={() => setShowCreateShowcase(true)}
+            activeOpacity={0.8}
+          >
+            <Feather name="plus-circle" size={18} color={BRAND} />
+            <Text style={styles.addShowcaseBtnText}>Add Highlighted Post</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Showcase Posts */}
+        {highlightedPosts.length > 0 ? (
+          highlightedPosts.map((post) => {
+            const isHighlighted = !!post.is_highlighted;
+            return (
+              <TouchableOpacity
+                key={`sp-${post.post_id}`}
+                style={styles.socialPostCard}
+                activeOpacity={0.85}
+                onPress={() => {
+                  setActivePostMenuId(null);
+                  setSelectedShowcasePost(post);
+                }}
+              >
+                {/* Header: contractor avatar + name + date + menu */}
+                <View style={styles.postCardHeader}>
+                  <View style={styles.postOwnerInfo}>
+                    <ImageFallback
+                      uri={logoUrl || undefined}
+                      defaultImage={defaultContractorAvatar}
+                      style={styles.postOwnerAvatar}
+                      resizeMode="cover"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                        <Text style={styles.postOwnerName} numberOfLines={1}>{displayName}</Text>
+                        {post.linked_project_id && (
+                          <>
+                            <Text style={{ color: '#999', fontSize: 13 }}>—</Text>
+                            <MaterialIcons name="label" size={14} color="#1565C0" />
+                            <Text style={{ fontSize: 13, color: '#1565C0', fontWeight: '600' }} numberOfLines={1}>
+                              {post.linked_project_title || 'Linked project'}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                      <Text style={styles.postOwnerDate}>
+                        Posted {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* ⋮ menu */}
+                  <View style={styles.postMenuWrap}>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        openShowcaseCardMenu(post.post_id);
+                      }}
+                      activeOpacity={0.7}
+                      disabled={highlightingPostId === post.post_id}
+                      style={styles.postMenuButton}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialIcons name="more-vert" size={20} color="#4B5563" />
+                    </TouchableOpacity>
+
+                    {activePostMenuId === post.post_id && (
+                      <View style={styles.postMenuDropdown}>
+                        {isOwnProfile && (
+                          <TouchableOpacity
+                            style={styles.postMenuItem}
+                            onPress={(e) => {
+                              e.stopPropagation?.();
+                              setActivePostMenuId(null);
+                              handleToggleHighlight(post.post_id, isHighlighted);
+                            }}
+                          >
+                            <Text style={styles.postMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={styles.postMenuItem}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            setActivePostMenuId(null);
+                            openReportReasons(post.post_id);
+                          }}
+                        >
+                          <Text style={styles.postMenuDangerText}>Report</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Title */}
+                {post.title ? <Text style={styles.postTitleText}>{post.title}</Text> : null}
+
+                {/* Content */}
+                <Text style={styles.postContentText} numberOfLines={3}>{post.content}</Text>
+
+                {/* Images collage */}
+                {post.images && post.images.length > 0 ? (
+                  <View style={styles.fbCollageWrap}>
+                    {renderFbCollage(post.images.map((i: any) => resolveImageUrl(i.file_path)).filter(Boolean), post)}
+                  </View>
+                ) : null}
+
+                {/* Location or spacer */}
+                {post.location ? (
+                  <View style={[styles.postDetailRow, { paddingHorizontal: 16, marginTop: 8, marginBottom: 14 }]}>
+                    <MaterialIcons name="location-on" size={16} color="#666666" />
+                    <Text style={styles.postDetailText}>{post.location}</Text>
+                  </View>
+                ) : (
+                  <View style={{ height: 14 }} />
+                )}
+              </TouchableOpacity>
+            );
+          })
+        ) : !loading ? (
+          <View style={styles.emptyState}>
+            <MaterialIcons name="photo-library" size={48} color="#d1d5db" />
+            <Text style={styles.emptyTitle}>No highlighted posts yet</Text>
+            <Text style={styles.emptySubtext}>
+              {isOwnProfile
+                ? 'Tap \"Add Highlighted Post\" to highlight your completed work.'
+                : 'This contractor hasn\'t showcased any work yet.'}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Services Offered */}
+      </View>
+    );
+  };
+
+
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'highlights':
+        return renderHighlightsTab();
+      case 'highlights':
+        return renderHighlightsTab();
       case 'portfolio':
         return renderPortfolioTab();
       case 'reviews':
@@ -953,7 +1103,7 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
             {tabs.map((tab) => {
               const active = activeTab === tab.key;
               const iconMap: Record<TabType, string> = {
-                portfolio: 'grid', reviews: 'star', about: 'info',
+                portfolio: 'grid', highlights: 'star', reviews: 'star', about: 'info',
               };
               return (
                 <TouchableOpacity

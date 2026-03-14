@@ -11,7 +11,8 @@ import {
   Animated,
   Platform,
   ScrollView,
-  Dimensions
+  Dimensions,
+  ActivityIndicator
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,7 +30,7 @@ interface ProfileData {
 }
 
 const { width } = Dimensions.get('window');
-const COVER_HEIGHT = 180;
+const COVER_HEIGHT = Math.round((width - 48) * (9 / 16));
 
 export default function ProfilePictureScreen({
   onBackPress,
@@ -206,12 +207,17 @@ export default function ProfilePictureScreen({
   }, [scaleAnim]);
 
 
-  const handleContinue = useCallback(() => {
-    const profileData: ProfileData = {
-      profileImageUri: profileImage || undefined,
-      coverImageUri: coverImage || undefined,
-    };
-    onComplete(profileData);
+  const handleContinue = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const profileData: ProfileData = {
+        profileImageUri: profileImage || undefined,
+        coverImageUri: coverImage || undefined,
+      };
+      await Promise.resolve(onComplete(profileData));
+    } finally {
+      setIsLoading(false);
+    }
   }, [profileImage, coverImage, onComplete]);
 
   const handleSkip = useCallback(() => {
@@ -223,7 +229,14 @@ export default function ProfilePictureScreen({
         {
           text: 'Skip',
           style: 'destructive',
-          onPress: onSkip
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await Promise.resolve(onSkip());
+            } finally {
+              setIsLoading(false);
+            }
+          }
         }
       ]
     );
@@ -393,12 +406,16 @@ export default function ProfilePictureScreen({
           disabled={isLoading}
           activeOpacity={0.8}
         >
-          <Text style={[
-            styles.continueButtonText,
-            (profileImage || coverImage) && styles.continueButtonTextActive
-          ]}>
-            Continue
-          </Text>
+          {isLoading ? (
+            <ActivityIndicator color={(profileImage || coverImage) ? "#FFFFFF" : "#9CA3AF"} />
+          ) : (
+            <Text style={[
+              styles.continueButtonText,
+              (profileImage || coverImage) && styles.continueButtonTextActive
+            ]}>
+              Continue
+            </Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity

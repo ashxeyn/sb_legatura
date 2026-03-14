@@ -112,7 +112,7 @@ interface UserData {
   last_name?: string;
   profile_pic?: string;
   cover_photo?: string;
-  user_type?: 'property_owner' | 'contractor' | 'both' | 'staff';
+  user_type?: 'property_owner' | 'contractor' | 'both' | 'staff' | 'owner_staff';
   // Contractor-specific fields
   company_name?: string;
   contractor_type?: string;
@@ -280,7 +280,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // retain that cache even while switching back to owner.
   const isStaffContext = useMemo(() => {
     const rawType = String(userData?.user_type || '').toLowerCase();
-    return rawType === 'staff';
+    return rawType === 'staff' || rawType === 'owner_staff';
   }, [userData?.user_type]);
 
   // Resolve effective user type: prefer explicit userData.user_type when available
@@ -297,7 +297,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
     const rawType = userData?.user_type || userType;
     // Staff users operate in contractor context
-    if (rawType === 'staff' || rawType === 'contractor') {
+    if (rawType === 'staff' || rawType === 'owner_staff' || rawType === 'contractor') {
       return 'contractor';
     }
     return rawType === 'property_owner' || rawType === 'both' ? 'property_owner' : userType;
@@ -2123,8 +2123,10 @@ const renderProfileContent = () => {
         <ViewProfileScreen
           key={viewProfileRefreshKey}
           onBack={() => setProfileSubScreen(null)}
+          activeRole={effectiveUserType}
           userData={{
             ...userData,
+            preferred_role: effectiveUserType,
             profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
             cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
           }}

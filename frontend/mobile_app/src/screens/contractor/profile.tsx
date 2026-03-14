@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -151,7 +152,7 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
               if (logo) setCompanyLogo(logo);
               if (banner) setCompanyBanner(banner);
             }
-            const status = dataRoot?.verification_status ?? payload?.verification_status ?? null;
+            const status = contractorPayload?.verification_status ?? null;
             if (status === 'approved') setContractorVerified(true);
             else if (contractorVerifiedProp) setContractorVerified(true);
           }
@@ -305,6 +306,11 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
                 ? `${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Member'
                 : companyName || userData?.company_name || 'Company Name'}
             </Text>
+            {isOwner && companyName && (
+              <Text style={styles.ownerNameSubtitle}>
+                Account owner: {`${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Member'}
+              </Text>
+            )}
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>
             <Text style={styles.userEmail}>{userData?.email || 'contractor@example.com'}</Text>
 
@@ -354,13 +360,14 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E5E5' },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#333333' },
   profileCard: { backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 16, borderRadius: 10, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 3 },
-  coverPhotoContainer: { height: 100, backgroundColor: '#E5E7EB', overflow: 'hidden' },
+  coverPhotoContainer: { height: Math.round((Dimensions.get('window').width - 32) * (9 / 16)), backgroundColor: '#E5E7EB', overflow: 'hidden' },
   coverPhoto: { width: '100%', height: '100%' },
   profileInfoContainer: { alignItems: 'center', paddingBottom: 20, marginTop: -50 },
   avatarContainer: { position: 'relative' },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4, borderColor: '#FFFFFF' },
   editAvatarButton: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#333333', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFFFFF' },
   companyName: { fontSize: 22, fontWeight: 'bold', color: '#333333', marginTop: 12, textAlign: 'center', paddingHorizontal: 20 },
+  ownerNameSubtitle: { fontSize: 13, color: '#666666', marginTop: 4, textAlign: 'center', paddingHorizontal: 20, fontStyle: 'italic' },
   userName: { fontSize: 14, color: '#1877F2', marginTop: 2 },
   userEmail: { fontSize: 14, color: '#666666', marginTop: 4 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 },

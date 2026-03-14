@@ -202,8 +202,9 @@ class AuthService
             $propertyOwnerApproved = false;
             try {
                 $contractorApproved = DB::table('contractors')
-                    ->where('user_id', $user->user_id)
-                    ->where('verification_status', 'approved')
+                    ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                    ->where('property_owners.user_id', $user->user_id)
+                    ->where('contractors.verification_status', 'approved')
                     ->first();
             } catch (\Exception $e) {
                 \Log::warning('contractors lookup failed: ' . $e->getMessage());
@@ -231,7 +232,7 @@ class AuthService
 
             if ($user->user_type === 'admin') {
                 $isVerified = true;
-            } elseif ($user->user_type === 'staff') {
+            } elseif ($user->user_type === 'owner_staff') {
                 // Staff members (contractor team members) - verify via contractor_staff and parent contractor
                 \Log::info('Staff user detected, checking contractor_staff table', ['user_id' => $user->user_id]);
                 $staffOwnerId = DB::table('property_owners')->where('user_id', $user->user_id)->value('owner_id');

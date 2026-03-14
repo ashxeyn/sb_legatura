@@ -151,14 +151,28 @@ class ProfileService
      */
     private function getPostsTab(int $userId, string $role, bool $isOwner): array
     {
-        // Showcase posts from showcases table
+        // Showcase posts from showcases table with user information
         $query = DB::table('showcases as pp')
+            ->join('users as u', 'pp.user_id', '=', 'u.user_id')
+            ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('contractors as c', 'po.owner_id', '=', 'c.owner_id')
             ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
+            ->leftJoin('project_relationships as pr', 'lp.relationship_id', '=', 'pr.rel_id')
+            ->leftJoin('milestones as ms', function ($join) {
+                $join->on('ms.project_id', '=', 'lp.project_id')
+                     ->on('ms.contractor_id', '=', 'pr.selected_contractor_id')
+                     ->where('ms.setup_status', '=', 'approved');
+            })
             ->where('pp.user_id', $userId)
             ->select(
                 'pp.*',
+                'u.username', 'po.profile_pic as profile_pic', 'u.user_type',
+                'c.company_name', 'c.company_logo',
+                'u.first_name as owner_first_name',
+                'u.last_name as owner_last_name',
                 'lp.project_title as linked_project_title',
                 'lp.project_status as linked_project_status',
+                'ms.milestone_name as linked_milestone_name',
                 DB::raw("'social' as source")
             );
 
@@ -170,7 +184,20 @@ class ProfileService
 
         $showcasePosts = $query
             ->orderByDesc('pp.created_at')
-            ->get();
+            ->get()
+            ->map(function ($p) {
+                // Set display_name based on user type
+                if (!empty($p->company_name)) {
+                    $p->display_name = $p->company_name;
+                } elseif (!empty($p->owner_first_name)) {
+                    $p->display_name = trim($p->owner_first_name . ' ' . ($p->owner_last_name ?? ''));
+                } else {
+                    $p->display_name = $p->username;
+                }
+                // Set avatar based on user type
+                $p->avatar = !empty($p->company_name) ? ($p->company_logo ?? null) : ($p->profile_pic ?? null);
+                return $p;
+            });
 
         // Attach images to each showcase post
         if ($showcasePosts->isNotEmpty()) {

@@ -27,6 +27,7 @@ import { auth_service } from '../../services/auth_service';
 import { profile_service } from '../../services/profile_service';
 import { highlightService } from '../../services/highlightService';
 import { post_service } from '../../services/post_service';
+import { role_service } from '../../services/role_service';
 import { useContractorAuth } from '../../hooks/useContractorAuth';
 import ShowcasePostDetail from './showcasePostDetail';
 import ReportPostModal from '../../components/reportPostModal';
@@ -497,10 +498,36 @@ const ProjectCardSkeleton = () => (
 );
 
 // Main Component
-export default function ViewProfileScreen({ onBack, userData, userToken, initialTab }) {
+export default function ViewProfileScreen({ onBack, userData, userToken, initialTab, activeRole }) {
   const insets = useSafeAreaInsets();
   const { hasFullAccess: hasFullContractorAccess } = useContractorAuth();
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'Posts');
+
+  // Derive the initial role from the prop, or fall back to userData fields
+  const deriveInitialRole = (): string | null => {
+    if (activeRole) return String(activeRole).toLowerCase();
+    
+    const ut = String(userData?.user_type || '').toLowerCase();
+    const pr = String(userData?.preferred_role || '').toLowerCase();
+    
+    // Priority: preferred_role > user_type
+    if (pr) {
+      if (pr.includes('contractor')) return 'contractor';
+      if (pr.includes('owner') || pr.includes('property')) return 'owner';
+    }
+    
+    // Fallback to user_type
+    if (ut === 'contractor') return 'contractor';
+    if (ut === 'both') return 'contractor'; // default for 'both' accounts to show contractor tabs
+    if (ut === 'staff' || ut === 'owner_staff') return 'contractor';
+    if (ut === 'property_owner' || ut === 'owner') return 'owner';
+    
+    return ut || null;
+  };
+
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (initialTab) return initialTab;
+    return 'Posts';
+  });
   const [isUploading, setIsUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -528,7 +555,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const [rating, setRating] = useState<number | null>(null);
   const [projectsDone, setProjectsDone] = useState<number>(0);
   const [ongoingProjects, setOngoingProjects] = useState<number>(0);
-  const [activeRoleState, setActiveRoleState] = useState<string | null>(null);
+  const [activeRoleState, setActiveRoleState] = useState<string | null>(() => deriveInitialRole());
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [initialImageIndex, setInitialImageIndex] = useState<number>(0);
   const [showCreateShowcase, setShowCreateShowcase] = useState(false);
@@ -540,16 +567,52 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const [reviewMenuOpenId, setReviewMenuOpenId] = useState<string | number | null>(null);
   const [reportingReview, setReportingReview] = useState<Review | null>(null);
 
+  // ── Fetch the user's ACTUAL current role from the server on mount ──────
+  // This is the authoritative source; props may be stale (e.g. user_type is
+  // 'property_owner' but current_role on the server is 'contractor').
+  useEffect(() => {
+    let mounted = true;
+    const syncRole = async () => {
+      try {
+        const res = await role_service.get_current_role();
+        console.log('[viewProfile] role_service response:', JSON.stringify(res));
+        if (!mounted) return;
+        if (res?.success) {
+          const data = (res as any).data || (res as any);
+          const roleVal = data.current_role || data.role || '';
+          const v = String(roleVal).toLowerCase();
+          if (v.includes('contractor')) {
+            setActiveRoleState('contractor');
+            // If the role response also includes contractor data, seed contractorInfo
+            // so the company name shows immediately without waiting for fetchProfile.
+            const contractorPayload = data.contractor || (res as any).contractor || null;
+            if (contractorPayload && contractorPayload.company_name) {
+              console.log('[viewProfile] seeding contractorInfo from role response:', contractorPayload.company_name);
+              setContractorInfo(contractorPayload);
+            }
+          } else if (v.includes('owner') || v.includes('property')) {
+            setActiveRoleState('owner');
+          }
+        }
+      } catch (e) {
+        console.warn('[viewProfile] role sync failed, keeping prop-based role', e);
+      }
+    };
+    syncRole();
+    return () => { mounted = false; };
+  }, []);
+
   const tabs = useMemo<TabType[]>(() => {
-    if (activeRoleState === 'contractor') return ['Portfolio', 'Highlights', 'Reviews', 'About'];
-    return ['Posts', 'Projects', 'Reviews', 'About'];
-  }, [activeRoleState]);
+    if (activeRoleState === 'contractor') return ['Posts', 'Highlights', 'Reviews', 'About'];
+    if (userState?.user_type === 'both') return ['Posts', 'Highlights', 'Reviews', 'About'];
+    return ['Posts', 'Highlights', 'Reviews', 'About'];
+  }, [activeRoleState, userState?.user_type]);
 
   useEffect(() => {
     if (!tabs.includes(activeTab)) {
       setActiveTab(tabs[0]);
     }
-  }, [activeRoleState, activeTab]);
+  }, [activeRoleState, userState?.user_type, activeTab]);
 
   // Loading states
   const [loading, setLoading] = useState({
@@ -568,54 +631,74 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   // Memoized values
   const userId = useMemo(() => userState?.user_id, [userState?.user_id]);
 
-  const displayName = useMemo(() => {
-    // Staff: always show their own name from the users table
-    if (userState?.user_type === 'staff') {
+  // ── Contractor-side name values ─────────────────────────────────────────
+  // True when we should render the CONTRACTOR profile header.
+  // Guard: activeRoleState === 'contractor' OR the API already returned contractorInfo
+  // so we never show the wrong name just because activeRoleState resolved late.
+  const isContractorView = useMemo(() => {
+    if (activeRoleState === 'contractor') return true;
+    if (contractorInfo?.company_name) return true;
+    const ut = String(userState?.user_type || '').toLowerCase();
+    return ut === 'contractor' || ut === 'staff' || ut === 'owner_staff';
+  }, [activeRoleState, contractorInfo?.company_name, userState?.user_type]);
+
+  // Primary display: company name (falls back to personal name when no company)
+  const contractorDisplayName = useMemo(() => {
+    if (contractorInfo?.company_name) return contractorInfo.company_name;
+    // Staff or contractor without company: show personal name
+    const fn = userState?.first_name || '';
+    const mn = (userState as any)?.middle_name || '';
+    const ln = userState?.last_name || '';
+    return `${fn}${mn ? ' ' + mn : ''}${ln ? ' ' + ln : ''}`.trim() || userState?.username || 'Company Name';
+  }, [contractorInfo, userState]);
+
+  // Subtitle: the account owner's personal name — only shown when a company name is the main display
+  const contractorOwnerPersonalName = useMemo(() => {
+    if (!contractorInfo?.company_name) return null;
+    const fn = userState?.first_name || '';
+    const ln = userState?.last_name || '';
+    return `${fn}${ln ? ' ' + ln : ''}`.trim() || null;
+  }, [contractorInfo?.company_name, userState?.first_name, userState?.last_name]);
+
+  // ── Owner-side name value ────────────────────────────────────────────────
+  const ownerDisplayName = useMemo(() => {
+    if (userState?.user_type === 'staff' || userState?.user_type === 'owner_staff') {
       const fn = userState?.first_name || '';
-      const mn = userState?.middle_name || '';
+      const mn = (userState as any)?.middle_name || '';
       const ln = userState?.last_name || '';
-      const full = `${fn}${mn ? ' ' + mn : ''}${ln ? ' ' + ln : ''}`.trim();
-      return full || userState?.username || 'Staff';
+      return `${fn}${mn ? ' ' + mn : ''}${ln ? ' ' + ln : ''}`.trim() || userState?.username || 'Staff';
     }
-
-    // Contractors: prefer company name when viewing as contractor
-    if (activeRoleState === 'contractor' && contractorInfo && contractorInfo.company_name) {
-      return contractorInfo.company_name;
-    }
-
-    // Primary source for personal names: users table (`userState`).
-    // Use first/middle/last from `users` when available.
     const ufn = userState?.first_name || '';
-    const umn = userState?.middle_name || '';
+    const umn = (userState as any)?.middle_name || '';
     const uln = userState?.last_name || '';
     if (ufn || umn || uln) {
       return `${ufn}${umn ? ' ' + umn : ''}${uln ? ' ' + uln : ''}`.trim() || userState?.username || 'Member';
     }
-
-    // Fallback to ownerInfo if users table doesn't have name fields populated
     if (ownerInfo) {
       const { first_name = '', middle_name = '', last_name = '' } = ownerInfo;
-      const ownerFull = `${first_name}${middle_name ? ' ' + middle_name : ''}${last_name ? ' ' + last_name : ''}`.trim();
-      if (ownerFull) return ownerFull;
+      const full = `${first_name}${middle_name ? ' ' + middle_name : ''}${last_name ? ' ' + last_name : ''}`.trim();
+      if (full) return full;
     }
-
     return userState?.username || 'Member';
-  }, [activeRoleState, contractorInfo, ownerInfo, userState]);
+  }, [contractorInfo, ownerInfo, userState]);
+
+  // Unified alias (for legacy references elsewhere in the file)
+  const displayName = isContractorView ? contractorDisplayName : ownerDisplayName;
 
   // Role-aware bio: read from the table that corresponds to the user's current preferred role.
   // Contractor role → contractors.bio, Owner role (or unknown) → property_owners.bio
   const userBio = useMemo(() => {
-    if (activeRoleState === 'contractor') {
+    if (isContractorView) {
       return contractorInfo?.bio || '';
     }
     return ownerInfo?.bio || userState?.bio || '';
-  }, [activeRoleState, contractorInfo?.bio, ownerInfo?.bio, userState?.bio]);
+  }, [isContractorView, contractorInfo?.bio, ownerInfo?.bio, userState?.bio]);
 
   const filteredProjects = useMemo(() => projects.filter(p => (p.project_status || '').toLowerCase() !== 'pending'), [projects]);
 
   const canManageContractorShowcase = useMemo(() => {
     if (activeRoleState !== 'contractor') return false;
-    if (userState?.user_type !== 'staff') return true;
+    if (userState?.user_type !== 'staff' && userState?.user_type !== 'owner_staff') return true;
     return hasFullContractorAccess;
   }, [activeRoleState, userState?.user_type, hasFullContractorAccess]);
 
@@ -719,6 +802,8 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
       console.log('[viewProfile] resolved profileUrl:', getStorageUrl(profilePic), 'resolved coverUrl:', getStorageUrl(coverPhoto));
       console.log('[viewProfile] userState.user_type:', userState?.user_type, 'activeRoleState:', activeRoleState);
       console.log('[viewProfile] ownerInfo.profile_pic:', ownerInfo?.profile_pic, 'contractorInfo.company_logo:', contractorInfo?.company_logo);
+      console.log('[viewProfile] contractorInfo:', contractorInfo);
+      console.log('[viewProfile] contractorInfo.company_name:', contractorInfo?.company_name);
     } catch (e) { /* no-op */ }
   }, [profilePic, coverPhoto, userState?.user_type, activeRoleState, ownerInfo, contractorInfo]);
 
@@ -745,15 +830,28 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
       const preferredLower = (userState?.preferred_role || '').toString().toLowerCase();
       let resolvedRole: string | null = null;
 
-      if (userTypeLower === 'both') {
-        if (activeRoleState) resolvedRole = activeRoleState;
-        else if (preferredLower && preferredLower.indexOf('contractor') !== -1) resolvedRole = 'contractor';
-        else if (preferredLower && (preferredLower.indexOf('owner') !== -1 || preferredLower.indexOf('property') !== -1)) resolvedRole = 'owner';
-        else resolvedRole = 'owner';
-      } else if (userTypeLower === 'staff') {
+      // Always check activeRoleState first
+      if (activeRoleState) {
+        resolvedRole = activeRoleState;
+      }
+      // Then check preferred_role (this is the key fix!)
+      else if (preferredLower && preferredLower.indexOf('contractor') !== -1) {
         resolvedRole = 'contractor';
+      }
+      else if (preferredLower && (preferredLower.indexOf('owner') !== -1 || preferredLower.indexOf('property') !== -1)) {
+        resolvedRole = 'owner';
+      }
+      // Then check user_type
+      else if (userTypeLower === 'both') {
+        resolvedRole = 'owner'; // default for both
+      } else if (userTypeLower === 'staff' || userTypeLower === 'owner_staff') {
+        resolvedRole = 'contractor';
+      } else if (userTypeLower === 'contractor') {
+        resolvedRole = 'contractor';
+      } else if (userTypeLower === 'property_owner' || userTypeLower === 'owner') {
+        resolvedRole = 'owner';
       } else {
-        resolvedRole = userTypeLower || null;
+        resolvedRole = userTypeLower || 'owner';
       }
 
       if (resolvedRole && !activeRoleState) {
@@ -774,10 +872,12 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             ...data.owner,
             ...(data.address_display ? { address_display: data.address_display } : {})
           });
-          setContractorInfo(null);
         }
+        // Always set contractor info if available, regardless of role
         if (data.contractor) {
           setContractorInfo(data.contractor);
+        } else {
+          setContractorInfo(null);
         }
         if (Array.isArray(data.representatives) && data.representatives.length) {
           setContractorReps(data.representatives);
@@ -788,8 +888,22 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         }
         if (typeof data.projects_done !== 'undefined') setProjectsDone(Number(data.projects_done));
         if (typeof data.ongoing_projects !== 'undefined') setOngoingProjects(Number(data.ongoing_projects));
-        if (data.role) {
-          setActiveRoleState(String(data.role));
+        
+        // Update activeRoleState based on API response
+        // Priority: current_role > data.role > user.preferred_role > resolved role
+        let finalRole = activeRoleState;
+        if (data.current_role) {
+          finalRole = String(data.current_role).toLowerCase();
+        } else if (data.role) {
+          finalRole = String(data.role).toLowerCase();
+        } else if (data.user?.preferred_role) {
+          const pr = String(data.user.preferred_role).toLowerCase();
+          if (pr.includes('contractor')) finalRole = 'contractor';
+          else if (pr.includes('owner') || pr.includes('property')) finalRole = 'owner';
+        }
+        
+        if (finalRole && finalRole !== activeRoleState) {
+          setActiveRoleState(finalRole);
         }
         if (data.occupation_name) {
           setOccupationName(data.occupation_name);
@@ -814,7 +928,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           const contractorBanner = data.contractor && (data.contractor.company_banner || data.contractor.cover_photo);
 
           const roleFromResponse = (data.role || '').toString().toLowerCase();
-          const isStaff = (data.user?.user_type || '').toString().toLowerCase() === 'staff';
+          const isStaff = (data.user?.user_type || '').toString().toLowerCase() === 'staff' || (data?.user?.user_type || '').toString().toLowerCase() === 'owner_staff';
 
           let candidateProfile;
           let candidateCover;
@@ -1290,7 +1404,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                   const contractorLogo = d.contractor && (d.contractor.company_logo || d.contractor.profile_pic);
                   const contractorBanner = d.contractor && (d.contractor.company_banner || d.contractor.cover_photo);
                   const roleFromResponse = (d.role || '').toString().toLowerCase();
-                  const isStaff = (d.user?.user_type || '').toString().toLowerCase() === 'staff';
+                  const isStaff = (d.user?.user_type || '').toString().toLowerCase() === 'staff' || (d.user?.user_type || '').toString().toLowerCase() === 'owner_staff';
                   let candidateProfile;
                   let candidateCover;
                   if (isStaff) {
@@ -1387,10 +1501,10 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   }, [fetchProfile]);
 
   useEffect(() => {
-    if (activeRoleState === 'contractor') {
+    if (activeRoleState === 'contractor' || userState?.user_type === 'both') {
       fetchShowcasePosts();
     }
-  }, [activeRoleState, fetchShowcasePosts]);
+  }, [activeRoleState, userState?.user_type, fetchShowcasePosts]);
 
   useEffect(() => {
     const projectTabs = ['Posts', 'Projects', 'Portfolio', 'Highlights'];
@@ -1431,7 +1545,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
               resizeMode="cover"
             />
           )}
-          {userState?.user_type !== 'staff' && (
+          {userState?.user_type !== 'staff' && userState?.user_type !== 'owner_staff' && (
           <TouchableOpacity
             style={styles.editCoverBtn}
             onPress={() => pickImage('cover')}
@@ -1443,6 +1557,15 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         </View>
 
         <View style={styles.profileInfoContainer}>
+          {console.log('[viewProfile RENDER]', {
+            isContractorView,
+            activeRoleState,
+            contractorCompanyName: contractorInfo?.company_name,
+            contractorDisplayName,
+            contractorOwnerPersonalName,
+            ownerDisplayName,
+            userType: userState?.user_type,
+          })}
           <View style={styles.avatarWrapper}>
             {previewProfileUri ? (
               <Image source={{ uri: previewProfileUri }} style={styles.avatarImg} resizeMode="cover" />
@@ -1454,7 +1577,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                 resizeMode="cover"
               />
             )}
-            {userState?.user_type !== 'staff' && (
+            {userState?.user_type !== 'staff' && userState?.user_type !== 'owner_staff' && (
             <TouchableOpacity
               style={styles.editAvatarBtn}
               onPress={() => pickImage('profile')}
@@ -1465,21 +1588,70 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             )}
           </View>
 
-          <Text style={styles.profileName}>{displayName}</Text>
+          {/* ── CONTRACTOR side: company name → owner name subtitle ── */}
+          {isContractorView ? (
+            <>
+              {/* Company / Business name — primary */}
+              <Text
+                style={styles.profileName}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+              >
+                {contractorDisplayName}
+              </Text>
 
-          {userState?.username && (
-            <Text style={styles.username}>@{userState.username}</Text>
+              {/* Account owner personal name — shown only when company name is the main display */}
+              {contractorOwnerPersonalName ? (
+                <Text style={styles.ownerNameSubtitle}>
+                  Account owner: {contractorOwnerPersonalName}
+                </Text>
+              ) : null}
+
+              {/* @username handle */}
+              {userState?.username ? (
+                <Text style={styles.username}>@{userState.username}</Text>
+              ) : null}
+
+              {/* Badge row: contractor type */}
+              {contractorInfo?.contractor_type ? (
+                <View style={styles.contractorBadgeRow}>
+                  <View style={styles.contractorTypeBadge}>
+                    <MaterialIcons name="build" size={13} color="#42B883" />
+                    <Text style={styles.contractorTypeText}>{contractorInfo.contractor_type}</Text>
+                  </View>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            /* ── OWNER side: personal name only ── */
+            <>
+              <Text
+                style={styles.profileName}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+              >
+                {ownerDisplayName}
+              </Text>
+
+              {userState?.username ? (
+                <Text style={styles.username}>@{userState.username}</Text>
+              ) : null}
+            </>
           )}
 
+          {/* ── Rating & location row ── */}
           <View style={styles.ratingLocationRow}>
             <MaterialIcons name="star" size={16} color={COLORS.star} />
             <Text style={styles.ratingText}>{rating !== null ? rating.toFixed(1) : '0'} Rating</Text>
             <Text style={styles.dotSeparator}>•</Text>
-            <Text style={styles.locationText}>{
-              activeRoleState === 'contractor' ? contractorCity : userCity
-            }</Text>
+            <Text style={styles.locationText}>
+              {isContractorView ? contractorCity : userCity}
+            </Text>
           </View>
 
+          {/* ── Stats grid ── */}
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{rating !== null ? rating.toFixed(1) : '0'}</Text>
@@ -1497,11 +1669,12 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             </View>
           </View>
 
-          {userBio && (
+          {/* ── Bio ── */}
+          {userBio ? (
             <Text style={styles.profileBio} numberOfLines={3}>
               {userBio}
             </Text>
-          )}
+          ) : null}
         </View>
       </View>
 
@@ -1528,6 +1701,12 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   );
 
   const renderPostsTab = () => {
+    // For contractors: show showcase posts
+    if (activeRoleState === 'contractor') {
+      return renderPortfolioTab();
+    }
+
+    // For owners: show project posts
     const postInputBar = canManageContractorShowcase ? (
       <TouchableOpacity
         style={styles.postInputRow}
@@ -2287,6 +2466,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const renderContent = () => {
     switch (activeTab) {
       case 'Posts':
+        return renderPostsTab();
       case 'Portfolio':
         return renderPortfolioTab();
       case 'Projects':
@@ -2494,6 +2674,33 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginTop: 12,
     textAlign: 'center',
+  },
+  ownerNameSubtitle: {
+    fontSize: 13,
+    color: '#666666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  contractorBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  contractorTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    gap: 6,
+  },
+  contractorTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#42B883',
   },
   username: {
     fontSize: 14,
@@ -3519,3 +3726,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+
+
