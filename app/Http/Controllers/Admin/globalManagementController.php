@@ -243,6 +243,28 @@ class globalManagementController extends Controller
 
         if ($deleted) {
             AdminActivityLog::log('review_deleted', ['review_id' => $id, 'reason' => $request->deletion_reason]);
+
+            try {
+                $review = DB::table('reviews as r')
+                    ->join('users as u', 'r.reviewer_user_id', '=', 'u.user_id')
+                    ->join('projects as p', 'r.project_id', '=', 'p.project_id')
+                    ->select('u.email', 'u.username', 'p.project_title')
+                    ->where('r.review_id', $id)
+                    ->first();
+
+                if ($review && !empty($review->email)) {
+                    Mail::raw(
+                        "Dear {$review->username},\n\n" .
+                        "Your review for the project \"{$review->project_title}\" has been removed by the admin.\n\n" .
+                        "Reason: {$request->deletion_reason}\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($review->email)->subject('Review Removed - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send review deleted email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Review successfully deleted.']);
         }
 
@@ -339,6 +361,33 @@ class globalManagementController extends Controller
 
         if ($updated !== false) {
             AdminActivityLog::log('bid_updated', ['bid_id' => $id, 'status' => $status]);
+
+            try {
+                $bid = DB::table('bids')
+                    ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                    ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                    ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
+                    ->where('bids.bid_id', $id)
+                    ->first();
+
+                if ($bid && !empty($bid->company_email)) {
+                    $changes = [];
+                    if ($status) $changes[] = "Status: {$status}";
+                    if ($request->input('proposed_cost')) $changes[] = "Proposed Cost: PHP " . number_format($request->input('proposed_cost'), 2);
+                    if ($request->input('contractor_notes')) $changes[] = "Notes updated";
+
+                    Mail::raw(
+                        "Dear {$bid->company_name},\n\n" .
+                        "Your bid for the project \"{$bid->project_title}\" has been updated by the admin.\n\n" .
+                        (count($changes) ? "Changes:\n" . implode("\n", $changes) . "\n\n" : '') .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($bid->company_email)->subject('Bid Updated by Admin - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send bid updated email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Bid updated successfully.']);
         }
 
@@ -519,6 +568,28 @@ class globalManagementController extends Controller
 
         if ($updated) {
             AdminActivityLog::log('bid_approved', ['bid_id' => $id]);
+
+            try {
+                $bid = DB::table('bids')
+                    ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                    ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                    ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
+                    ->where('bids.bid_id', $id)
+                    ->first();
+
+                if ($bid && !empty($bid->company_email)) {
+                    Mail::raw(
+                        "Dear {$bid->company_name},\n\n" .
+                        "Your bid for the project \"{$bid->project_title}\" has been approved by the admin.\n\n" .
+                        "Please log in to the app to proceed.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($bid->company_email)->subject('Bid Approved - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send bid approved email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Bid approved']);
         }
 
@@ -541,6 +612,28 @@ class globalManagementController extends Controller
 
         if ($updated) {
             AdminActivityLog::log('bid_rejected', ['bid_id' => $id, 'reason' => $reason]);
+
+            try {
+                $bid = DB::table('bids')
+                    ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                    ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                    ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
+                    ->where('bids.bid_id', $id)
+                    ->first();
+
+                if ($bid && !empty($bid->company_email)) {
+                    Mail::raw(
+                        "Dear {$bid->company_name},\n\n" .
+                        "Your bid for the project \"{$bid->project_title}\" has been rejected by the admin.\n\n" .
+                        "Reason: {$reason}\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($bid->company_email)->subject('Bid Rejected - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send bid rejected email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Bid rejected']);
         }
 
@@ -673,6 +766,40 @@ class globalManagementController extends Controller
 
             AdminActivityLog::log('payment_verified', ['payment_id' => $id, 'amount' => $payment->amount ?? null]);
 
+            // Notify owner and contractor
+            try {
+                $paymentInfo = DB::table('milestone_payments as mp')
+                    ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                    ->leftJoin('users as owner_u', 'po.user_id', '=', 'owner_u.user_id')
+                    ->leftJoin('contractors as c', 'mp.contractor_id', '=', 'c.contractor_id')
+                    ->leftJoin('projects as p', 'mp.project_id', '=', 'p.project_id')
+                    ->select('owner_u.email as owner_email', 'po.first_name as owner_name', 'c.company_email', 'c.company_name', 'p.project_title', 'mp.amount')
+                    ->where('mp.payment_id', $id)
+                    ->first();
+
+                if ($paymentInfo) {
+                    $amount = 'PHP ' . number_format($paymentInfo->amount, 2);
+                    if (!empty($paymentInfo->owner_email)) {
+                        Mail::raw(
+                            "Dear {$paymentInfo->owner_name},\n\n" .
+                            "Your payment of {$amount} for the project \"{$paymentInfo->project_title}\" has been verified and approved by the admin.\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($paymentInfo->owner_email)->subject('Payment Verified - Legatura')
+                        );
+                    }
+                    if (!empty($paymentInfo->company_email)) {
+                        Mail::raw(
+                            "Dear {$paymentInfo->company_name},\n\n" .
+                            "A payment of {$amount} for the project \"{$paymentInfo->project_title}\" has been verified and approved by the admin.\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($paymentInfo->company_email)->subject('Payment Verified - Legatura')
+                        );
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send payment verified email: ' . $e->getMessage());
+            }
+
             // Build response message based on allocation status
             $message = 'Payment approved.';
             if ($allocation['status'] === 'overpaid') {
@@ -711,6 +838,29 @@ class globalManagementController extends Controller
 
         if ($updated) {
             AdminActivityLog::log('payment_rejected', ['payment_id' => $id, 'reason' => $reason]);
+
+            try {
+                $paymentInfo = DB::table('milestone_payments as mp')
+                    ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                    ->leftJoin('users as owner_u', 'po.user_id', '=', 'owner_u.user_id')
+                    ->leftJoin('projects as p', 'mp.project_id', '=', 'p.project_id')
+                    ->select('owner_u.email as owner_email', 'po.first_name as owner_name', 'p.project_title', 'mp.amount')
+                    ->where('mp.payment_id', $id)
+                    ->first();
+
+                if ($paymentInfo && !empty($paymentInfo->owner_email)) {
+                    Mail::raw(
+                        "Dear {$paymentInfo->owner_name},\n\n" .
+                        "Your payment of PHP " . number_format($paymentInfo->amount, 2) . " for the project \"{$paymentInfo->project_title}\" has been rejected by the admin.\n\n" .
+                        "Reason: {$reason}\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($paymentInfo->owner_email)->subject('Payment Rejected - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send payment rejected email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Payment rejected.']);
         }
 
@@ -728,6 +878,29 @@ class globalManagementController extends Controller
 
         if ($deleted) {
             AdminActivityLog::log('payment_deleted', ['payment_id' => $id]);
+
+            try {
+                $paymentInfo = DB::table('milestone_payments as mp')
+                    ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                    ->leftJoin('users as owner_u', 'po.user_id', '=', 'owner_u.user_id')
+                    ->leftJoin('projects as p', 'mp.project_id', '=', 'p.project_id')
+                    ->select('owner_u.email as owner_email', 'po.first_name as owner_name', 'p.project_title', 'mp.amount')
+                    ->where('mp.payment_id', $id)
+                    ->first();
+
+                if ($paymentInfo && !empty($paymentInfo->owner_email)) {
+                    Mail::raw(
+                        "Dear {$paymentInfo->owner_name},\n\n" .
+                        "Your payment record of PHP " . number_format($paymentInfo->amount, 2) . " for the project \"{$paymentInfo->project_title}\" has been deleted by the admin.\n\n" .
+                        "If you believe this is an error, please contact our support team.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($paymentInfo->owner_email)->subject('Payment Record Deleted - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send payment deleted email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Payment deleted.']);
         }
 
@@ -788,6 +961,28 @@ class globalManagementController extends Controller
 
         if ($approved) {
             AdminActivityLog::log('posting_approved', ['project_id' => $id]);
+
+            try {
+                $posting = DB::table('projects')
+                    ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                    ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                    ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->select('users.email', 'property_owners.first_name', 'projects.project_title')
+                    ->where('projects.project_id', $id)
+                    ->first();
+
+                if ($posting && !empty($posting->email)) {
+                    Mail::raw(
+                        "Dear {$posting->first_name},\n\n" .
+                        "Your project posting \"{$posting->project_title}\" has been approved by the admin and is now visible to contractors.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($posting->email)->subject('Project Posting Approved - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send posting approved email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Posting approved']);
         }
 
@@ -806,6 +1001,29 @@ class globalManagementController extends Controller
 
         if ($rejected) {
             AdminActivityLog::log('posting_rejected', ['project_id' => $id, 'reason' => $reason]);
+
+            try {
+                $posting = DB::table('projects')
+                    ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                    ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                    ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->select('users.email', 'property_owners.first_name', 'projects.project_title')
+                    ->where('projects.project_id', $id)
+                    ->first();
+
+                if ($posting && !empty($posting->email)) {
+                    Mail::raw(
+                        "Dear {$posting->first_name},\n\n" .
+                        "Your project posting \"{$posting->project_title}\" has been rejected by the admin.\n\n" .
+                        "Reason: {$reason}\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($posting->email)->subject('Project Posting Rejected - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send posting rejected email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Posting rejected']);
         }
 

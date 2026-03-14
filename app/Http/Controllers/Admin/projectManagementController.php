@@ -66,6 +66,32 @@ class projectManagementController extends Controller
         $notes = $request->input('notes', null);
         disputeClass::resolveDispute($id, $notes);
         AdminActivityLog::log('dispute_resolved', ['dispute_id' => $id]);
+
+        try {
+            $row = DB::table('disputes')
+                ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+                ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
+                ->select(
+                    'reporter.email as reporter_email',
+                    'accused.email as accused_email',
+                    'disputes.title'
+                )
+                ->where('disputes.dispute_id', $id)
+                ->first();
+
+            $body = "The dispute \"{$row->title}\" has been marked as resolved by the admin." .
+                    ($notes ? "\n\nNotes: {$notes}" : '');
+
+            if ($row && !empty($row->reporter_email)) {
+                Mail::raw($body, fn($m) => $m->to($row->reporter_email)->subject('Dispute Resolved - Legatura'));
+            }
+            if ($row && !empty($row->accused_email)) {
+                Mail::raw($body, fn($m) => $m->to($row->accused_email)->subject('Dispute Resolved - Legatura'));
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to send dispute resolved email: ' . $e->getMessage());
+        }
+
         return back()->with('success', 'Dispute resolved.');
     }
 
@@ -603,6 +629,23 @@ class projectManagementController extends Controller
             if ($owner) {
                 $model = new propertyOwnerClass();
                 $model->suspendOwner($owner->owner_id, $suspensionReason, $duration, $suspensionUntil);
+
+                try {
+                    $user = DB::table('users')->where('user_id', $userId)->first();
+                    if ($user && !empty($user->email)) {
+                        Mail::raw(
+                            "Dear {$user->username},\n\n" .
+                            "A penalty has been applied to your account due to a dispute resolution.\n\n" .
+                            "Reason: {$suspensionReason}\n" .
+                            "Duration: {$duration}\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($user->email)->subject('Account Penalty Applied - Legatura')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send penalty email: ' . $e->getMessage());
+                }
+
                 return true;
             }
         }
@@ -614,6 +657,23 @@ class projectManagementController extends Controller
                 if ($contractor) {
                     $model = new contractorClass();
                     $model->suspendContractor($contractor->contractor_id, $suspensionReason, $duration, $suspensionUntil);
+
+                    try {
+                        $user = DB::table('users')->where('user_id', $userId)->first();
+                        if ($user && !empty($user->email)) {
+                            Mail::raw(
+                                "Dear {$contractor->company_name},\n\n" .
+                                "A penalty has been applied to your contractor account due to a dispute resolution.\n\n" .
+                                "Reason: {$suspensionReason}\n" .
+                                "Duration: {$duration}\n\n" .
+                                "Best regards,\nLegatura",
+                                fn($m) => $m->to($user->email)->subject('Account Penalty Applied - Legatura')
+                            );
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send penalty email: ' . $e->getMessage());
+                    }
+
                     if ($userType === 'contractor') {
                         return true;
                     }
@@ -664,6 +724,31 @@ class projectManagementController extends Controller
             ];
             subscriptionClass::addPlan($data);
             AdminActivityLog::log('subscription_plan_created', ['name' => $data['name']]);
+
+            // Notify all active subscribers
+            try {
+                $subscribers = DB::table('platform_payments')
+                    ->join('property_owners', 'platform_payments.owner_id', '=', 'property_owners.owner_id')
+                    ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->where('platform_payments.payment_status', 'active')
+                    ->select('users.email', 'property_owners.first_name')
+                    ->distinct()
+                    ->get();
+
+                foreach ($subscribers as $sub) {
+                    if (empty($sub->email)) continue;
+                    Mail::raw(
+                        "Dear {$sub->first_name},\n\n" .
+                        "A new subscription plan \"{$data['name']}\" is now available on Legatura.\n\n" .
+                        "Log in to the app to view the details.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($sub->email)->subject('New Subscription Plan Available - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send new plan email: ' . $e->getMessage());
+            }
+
             return response()->json(['status' => 'success', 'message' => 'Subscription plan created successfully.', 'data' => $data], 201);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Failed to create subscription plan: ' . $e->getMessage()], 500);
@@ -682,6 +767,31 @@ class projectManagementController extends Controller
             ];
             subscriptionClass::updatePlan($id, $data);
             AdminActivityLog::log('subscription_plan_updated', ['plan_id' => $id, 'name' => $data['name']]);
+
+            // Notify subscribers on this plan
+            try {
+                $subscribers = DB::table('platform_payments')
+                    ->join('property_owners', 'platform_payments.owner_id', '=', 'property_owners.owner_id')
+                    ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->where('platform_payments.plan_id', $id)
+                    ->where('platform_payments.payment_status', 'active')
+                    ->select('users.email', 'property_owners.first_name')
+                    ->get();
+
+                foreach ($subscribers as $sub) {
+                    if (empty($sub->email)) continue;
+                    Mail::raw(
+                        "Dear {$sub->first_name},\n\n" .
+                        "Your subscription plan \"{$data['name']}\" has been updated by the admin.\n\n" .
+                        "Log in to the app to view the updated details.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($sub->email)->subject('Subscription Plan Updated - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send plan updated email: ' . $e->getMessage());
+            }
+
             return response()->json(['status' => 'success', 'message' => 'Subscription plan updated successfully.', 'data' => $data]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Failed to update subscription plan: ' . $e->getMessage()], 500);
@@ -692,6 +802,34 @@ class projectManagementController extends Controller
     {
         try {
             $request->validate(['reason' => 'required|string|max:255']);
+            // Notify affected subscribers before deleting
+            try {
+                $plan = DB::table('subscription_plans')->where('plan_id', $id)->first();
+                $planName = $plan->name ?? "Plan #{$id}";
+
+                $subscribers = DB::table('platform_payments')
+                    ->join('property_owners', 'platform_payments.owner_id', '=', 'property_owners.owner_id')
+                    ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->where('platform_payments.plan_id', $id)
+                    ->where('platform_payments.payment_status', 'active')
+                    ->select('users.email', 'property_owners.first_name')
+                    ->get();
+
+                foreach ($subscribers as $sub) {
+                    if (empty($sub->email)) continue;
+                    Mail::raw(
+                        "Dear {$sub->first_name},\n\n" .
+                        "The subscription plan \"{$planName}\" has been discontinued by the admin.\n\n" .
+                        "Reason: {$request->reason}\n\n" .
+                        "Please log in to the app to select a new plan.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($sub->email)->subject('Subscription Plan Discontinued - Legatura')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send plan deleted email: ' . $e->getMessage());
+            }
+
             subscriptionClass::deletePlan($id, $request->reason);
             AdminActivityLog::log('subscription_plan_deleted', ['plan_id' => $id, 'reason' => $request->reason]);
             return response()->json(['status' => 'success', 'message' => 'Subscription plan deleted successfully.']);
@@ -852,6 +990,45 @@ class projectManagementController extends Controller
             $projectModel = new \App\Models\admin\projectClass();
             $result       = $projectModel->acceptBid($bidId);
             AdminActivityLog::log('bid_accepted', ['bid_id' => $bidId]);
+
+            if ($result['success']) {
+                try {
+                    $bid = DB::table('bids')
+                        ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                        ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                        ->leftJoin('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                        ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name', 'users.email as owner_email', 'property_owners.first_name as owner_name')
+                        ->where('bids.bid_id', $bidId)
+                        ->first();
+
+                    if ($bid) {
+                        // Email contractor
+                        if (!empty($bid->company_email)) {
+                            \Illuminate\Support\Facades\Mail::raw(
+                                "Dear {$bid->company_name},\n\n" .
+                                "Congratulations! Your bid for the project \"{$bid->project_name}\" has been accepted by the admin.\n\n" .
+                                "Please log in to the app to proceed.\n\n" .
+                                "Best regards,\nLegatura",
+                                fn($m) => $m->to($bid->company_email)->subject('Bid Accepted - Legatura')
+                            );
+                        }
+                        // Email owner
+                        if (!empty($bid->owner_email)) {
+                            \Illuminate\Support\Facades\Mail::raw(
+                                "Dear {$bid->owner_name},\n\n" .
+                                "A bid for your project \"{$bid->project_name}\" has been accepted. The contractor {$bid->company_name} has been selected.\n\n" .
+                                "Please log in to the app for more details.\n\n" .
+                                "Best regards,\nLegatura",
+                                fn($m) => $m->to($bid->owner_email)->subject('Bid Accepted for Your Project - Legatura')
+                            );
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send bid accepted email: ' . $e->getMessage());
+                }
+            }
+
             return response()->json($result);
         } catch (\Exception $e) {
             \Log::error('Error accepting bid: ' . $e->getMessage());
@@ -880,6 +1057,30 @@ class projectManagementController extends Controller
             $projectModel = new \App\Models\admin\projectClass();
             $result       = $projectModel->rejectBid($bidId, $reason);
             AdminActivityLog::log('bid_rejected_by_admin', ['bid_id' => $bidId, 'reason' => $reason]);
+
+            if ($result['success']) {
+                try {
+                    $bid = DB::table('bids')
+                        ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                        ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name')
+                        ->where('bids.bid_id', $bidId)
+                        ->first();
+
+                    if ($bid && !empty($bid->company_email)) {
+                        \Illuminate\Support\Facades\Mail::raw(
+                            "Dear {$bid->company_name},\n\n" .
+                            "We regret to inform you that your bid for the project \"{$bid->project_name}\" has been rejected by the admin.\n\n" .
+                            ($reason ? "Reason: {$reason}\n\n" : '') .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($bid->company_email)->subject('Bid Rejected - Legatura')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send bid rejected email: ' . $e->getMessage());
+                }
+            }
+
             return response()->json($result);
         } catch (\Exception $e) {
             \Log::error('Error rejecting bid: ' . $e->getMessage());
@@ -895,11 +1096,52 @@ class projectManagementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Bid ID is required.'], 422);
             }
 
+            // Fetch old contractor before the change
+            $oldBid = DB::table('bids')
+                ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name')
+                ->where('bids.project_id', $projectId)
+                ->where('bids.bid_status', 'accepted')
+                ->first();
+
             $projectModel = new \App\Models\admin\projectClass();
             $result = $projectModel->changeBidder($projectId, $bidId);
 
             if ($result['success']) {
                 AdminActivityLog::log('bidder_changed', ['project_id' => $projectId, 'new_bid_id' => $bidId]);
+
+                try {
+                    // Email old contractor
+                    if ($oldBid && !empty($oldBid->company_email)) {
+                        \Illuminate\Support\Facades\Mail::raw(
+                            "Dear {$oldBid->company_name},\n\n" .
+                            "Please be informed that you have been removed as the selected bidder for the project \"{$oldBid->project_name}\" by the admin.\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($oldBid->company_email)->subject('Bidder Change Notice - Legatura')
+                        );
+                    }
+
+                    // Email new contractor
+                    $newBid = DB::table('bids')
+                        ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                        ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name')
+                        ->where('bids.bid_id', $bidId)
+                        ->first();
+
+                    if ($newBid && !empty($newBid->company_email)) {
+                        \Illuminate\Support\Facades\Mail::raw(
+                            "Dear {$newBid->company_name},\n\n" .
+                            "Congratulations! You have been selected as the new bidder for the project \"{$newBid->project_name}\" by the admin.\n\n" .
+                            "Please log in to the app to proceed.\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($newBid->company_email)->subject('You Have Been Selected as Bidder - Legatura')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send bidder change email: ' . $e->getMessage());
+                }
             }
 
             return response()->json($result);

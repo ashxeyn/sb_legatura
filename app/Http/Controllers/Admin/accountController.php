@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use Throwable;
@@ -403,6 +404,21 @@ class accountController extends Controller
                 'email'        => $request->input('email'),
             ]);
 
+            try {
+                Mail::raw(
+                    "Dear {$request->input('first_name')},\n\n" .
+                    "Your admin account on Legatura has been created.\n\n" .
+                    "Login credentials:\n" .
+                    "Username: {$request->input('username')}\n" .
+                    "Password: {$request->input('password')}\n\n" .
+                    "Please change your password after logging in.\n\n" .
+                    "Best regards,\nLegatura",
+                    fn($m) => $m->to($request->input('email'))->subject('Admin Account Created - Legatura')
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send admin creation email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Admin account created successfully.']);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
@@ -451,6 +467,21 @@ class accountController extends Controller
                 'email'           => $payload['email'],
             ]);
 
+            try {
+                $body = "Dear {$payload['first_name']},\n\n" .
+                    "Your admin account on Legatura has been updated by a super admin.\n\n" .
+                    "Updated details:\n" .
+                    "Name: {$payload['first_name']} {$payload['last_name']}\n" .
+                    "Username: {$payload['username']}\n" .
+                    ($request->filled('password') ? "Password has been reset. Please log in with your new password.\n" : '') .
+                    "\nIf you did not expect this change, please contact your administrator.\n\n" .
+                    "Best regards,\nLegatura";
+
+                Mail::raw($body, fn($m) => $m->to($payload['email'])->subject('Admin Account Updated - Legatura'));
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send admin update email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Admin account updated successfully.']);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
@@ -479,6 +510,20 @@ class accountController extends Controller
                 'deleted_admin_id' => $id,
                 'email'            => $member->email ?? '',
             ]);
+
+            try {
+                if (!empty($member->email)) {
+                    Mail::raw(
+                        "Dear {$member->first_name},\n\n" .
+                        "Your admin account on Legatura has been deactivated by a super admin.\n\n" .
+                        "If you believe this is an error, please contact your administrator.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($member->email)->subject('Admin Account Deactivated - Legatura')
+                    );
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send admin deletion email: ' . $e->getMessage());
+            }
 
             return response()->json(['success' => true, 'message' => 'Admin account deactivated.']);
         } catch (\Throwable $e) {

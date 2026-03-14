@@ -200,6 +200,27 @@ class userManagementController extends authController
             $contractorModel = new contractorClass();
             $result = $contractorModel->addContractor($data);
 
+            // Send credentials email
+            try {
+                $toEmail = $result['email'] ?? ($data['company_email'] ?? null);
+                $username = $result['username'] ?? null;
+                if ($toEmail) {
+                    \Illuminate\Support\Facades\Mail::raw(
+                        "Your contractor account has been successfully created by the admin.\n\n" .
+                        "Login with:\n" .
+                        "Username: " . ($username ?? 'N/A') . "\n" .
+                        "Password: owner123@!\n\n" .
+                        "Please change your password after logging in.\n\n" .
+                        "Best regards,\nLegatura",
+                        function ($message) use ($toEmail) {
+                            $message->to($toEmail)->subject('Contractor Account Created - Legatura');
+                        }
+                    );
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send contractor creation email: ' . $e->getMessage());
+            }
+
             return response()->json(['success' => true, 'message' => 'Contractor added successfully']);
 
         } catch (\Exception $e) {
@@ -317,6 +338,25 @@ class userManagementController extends authController
 
             // Call Model
             $contractorModel->editContractor($id, $data);
+
+            // Notify contractor of profile update
+            try {
+                $user = DB::table('users')->where('user_id', $id)->first();
+                $companyName = $data['company_name'] ?? ($existing->company_name ?? 'your company');
+                if ($user && !empty($user->email)) {
+                    \Illuminate\Support\Facades\Mail::raw(
+                        "Dear {$companyName},\n\n" .
+                        "Your contractor profile has been updated by the admin.\n\n" .
+                        "If you did not expect this change, please contact our support team.\n\n" .
+                        "Best regards,\nLegatura",
+                        function ($message) use ($user) {
+                            $message->to($user->email)->subject('Contractor Profile Updated - Legatura');
+                        }
+                    );
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send contractor update email: ' . $e->getMessage());
+            }
 
             return response()->json(['success' => true, 'message' => 'Contractor updated successfully']);
 
@@ -457,6 +497,24 @@ class userManagementController extends authController
             // Call Model to Update
             $propertyOwnerModel = new propertyOwnerClass();
             $propertyOwnerModel->editPropertyOwner($validated['user_id'], $validated);
+
+            // Notify user of profile update
+            try {
+                $user = DB::table('users')->where('user_id', $validated['user_id'])->first();
+                if ($user && !empty($user->email)) {
+                    \Illuminate\Support\Facades\Mail::raw(
+                        "Dear {$validated['first_name']},\n\n" .
+                        "Your property owner profile has been updated by the admin.\n\n" .
+                        "If you did not expect this change, please contact our support team.\n\n" .
+                        "Best regards,\nLegatura",
+                        function ($message) use ($user) {
+                            $message->to($user->email)->subject('Profile Updated - Legatura');
+                        }
+                    );
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send profile update email: ' . $e->getMessage());
+            }
 
             return response()->json(['success' => true, 'message' => 'Property Owner updated successfully']);
 

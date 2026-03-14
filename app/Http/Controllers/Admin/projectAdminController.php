@@ -178,6 +178,43 @@ class projectAdminController extends Controller
             'created_at'=>now()
         ]);
         AdminActivityLog::log('contractor_assigned', ['project_id' => $projectId, 'contractor_id' => $contractorId]);
+
+        try {
+            $project = DB::table('projects')->where('project_id', $projectId)->first();
+            $projectName = $project->project_name ?? "Project #{$projectId}";
+
+            // Email contractor
+            $contractorOwner = DB::table('property_owners')->where('owner_id', $contractor->owner_id)->first();
+            $contractorUser  = $contractorOwner ? DB::table('users')->where('user_id', $contractorOwner->user_id)->first() : null;
+            if ($contractorUser && !empty($contractorUser->email)) {
+                \Illuminate\Support\Facades\Mail::raw(
+                    "Dear {$contractor->company_name},\n\n" .
+                    "You have been assigned to the project \"{$projectName}\" by the admin.\n\n" .
+                    "Please log in to the app to proceed.\n\n" .
+                    "Best regards,\nLegatura",
+                    fn($m) => $m->to($contractorUser->email)->subject('Assigned to Project - Legatura')
+                );
+            }
+
+            // Email owner
+            if ($project) {
+                $rel = DB::table('project_relationships')->where('rel_id', $project->relationship_id ?? null)->first();
+                $ownerRecord = $rel ? DB::table('property_owners')->where('owner_id', $rel->owner_id)->first() : null;
+                $ownerUser   = $ownerRecord ? DB::table('users')->where('user_id', $ownerRecord->user_id)->first() : null;
+                if ($ownerUser && !empty($ownerUser->email)) {
+                    \Illuminate\Support\Facades\Mail::raw(
+                        "Dear {$ownerRecord->first_name},\n\n" .
+                        "A contractor ({$contractor->company_name}) has been assigned to your project \"{$projectName}\" by the admin.\n\n" .
+                        "Please log in to the app for more details.\n\n" .
+                        "Best regards,\nLegatura",
+                        fn($m) => $m->to($ownerUser->email)->subject('Contractor Assigned to Your Project - Legatura')
+                    );
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send contractor assigned email: ' . $e->getMessage());
+        }
+
         return back()->with('success','Contractor assigned.');
     }
 
