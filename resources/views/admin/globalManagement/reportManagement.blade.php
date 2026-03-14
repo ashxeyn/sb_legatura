@@ -148,6 +148,7 @@
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Target</th>
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason / Subject</th>
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Admin Action</th>
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Submitted</th>
                                         <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                                     </tr>
@@ -180,6 +181,7 @@
                                                 @endphp
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $statColors[$report->status] ?? 'bg-gray-100 text-gray-700 border-gray-200' }}">{{ strtoupper(str_replace('_', ' ', $report->status)) }}</span>
                                             </td>
+                                            <td class="px-6 py-4 text-sm text-gray-700">{{ $report->admin_action ?? '-' }}</td>
                                             <td class="px-6 py-4 text-sm text-gray-500">{{ $report->created_at ? \Carbon\Carbon::parse($report->created_at)->format('M d, Y') : '-' }}</td>
                                             <td class="px-6 py-4 text-center">
                                                 <button class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition view-report-btn"
@@ -192,7 +194,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="px-6 py-12 text-center text-gray-500 text-sm">No moderation cases found.</td>
+                                            <td colspan="10" class="px-6 py-12 text-center text-gray-500 text-sm">No moderation cases found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -436,6 +438,107 @@
                             </div>
                         </div>
 
+                        {{-- Dispute Workflow Context (only shown for dispute cases) --}}
+                        <div id="disputeWorkflowSection" class="hidden border-t border-gray-200 pt-6">
+                            <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fi fi-sr-briefcase text-indigo-600"></i>
+                                Dispute Workflow
+                            </h4>
+
+                            <div id="disputeWorkflowBanner" class="rounded-xl border px-4 py-3 bg-gray-50 border-gray-200 mb-4">
+                                <p class="text-sm font-semibold text-gray-800" id="disputeWorkflowTitle">Case Workflow</p>
+                                <p class="text-xs text-gray-600 mt-1" id="disputeWorkflowMessage">Follow the dispute workflow steps to complete this case.</p>
+                            </div>
+
+                            <div id="disputeInformationHierarchy" class="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+                                <h5 class="text-sm font-bold text-gray-700 uppercase mb-3">Dispute Information</h5>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Subject</label>
+                                        <p class="text-sm text-gray-800" id="disputeSubjectField">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Requested Action</label>
+                                        <p class="text-sm text-gray-800" id="disputeRequestedActionField">-</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Description</label>
+                                    <p class="text-sm text-gray-700 whitespace-pre-line" id="disputeDescriptionField">-</p>
+                                </div>
+
+                                <div class="mt-4">
+                                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Initial Proofs</label>
+                                    <div id="disputeInitialProofsList" class="space-y-2 text-sm text-gray-700"></div>
+                                </div>
+
+                                <div class="mt-4 border-t border-gray-200 pt-4">
+                                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Resubmitted Report Panel</label>
+                                    <div id="disputeResubmittedPanel" class="space-y-2 text-sm text-gray-700"></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-gradient-to-br from-gray-50 to-indigo-50 rounded-xl border border-gray-200 p-5 space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Related Project</label>
+                                        <p class="text-sm font-semibold text-gray-800" id="disputeProjectTitle">-</p>
+                                        <p class="text-xs text-gray-500" id="disputeProjectId">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Project Status</label>
+                                        <p class="text-sm font-semibold text-gray-800" id="disputeProjectStatus">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Property Owner</label>
+                                        <p class="text-sm text-gray-700" id="disputeProjectOwner">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Contractor</label>
+                                        <p class="text-sm text-gray-700" id="disputeProjectContractor">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Budget</label>
+                                        <p class="text-sm text-gray-700" id="disputeProjectBudget">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Timeline</label>
+                                        <p class="text-sm text-gray-700" id="disputeProjectTimeline">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Required Action</label>
+                                        <p class="text-sm text-gray-700" id="disputeRequiredAction">-</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Action State</label>
+                                        <p class="text-sm text-gray-700" id="disputeActionState">-</p>
+                                    </div>
+                                </div>
+
+                                <div id="disputeProjectActionForm" class="hidden border-t border-gray-200 pt-4 space-y-3">
+                                    <p class="text-sm text-gray-700">This action will halt the project, resolve the dispute automatically, and record <span class="font-semibold">Admin Action: Halted</span>.</p>
+                                    <div class="flex items-center justify-end">
+                                        <button id="btnApplyDisputeProjectAction" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                            Halt Project
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="disputeResolvedProjectActions" class="hidden border-t border-gray-200 pt-4 space-y-3">
+                                    <label class="text-xs font-semibold text-gray-500 uppercase block">Post-Resolution Project Decision</label>
+                                    <p class="text-sm text-gray-700">This dispute is resolved and the project is halted. Choose the next project action.</p>
+                                    <div class="flex items-center justify-end gap-3">
+                                        <button id="btnResumeDisputeProject" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                            Resume Project
+                                        </button>
+                                        <button id="btnTerminateDisputeProject" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                            Terminate Project
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Admin Notes (shown for already-resolved reports) --}}
                         <div id="modalAdminNotesWrap" class="hidden border-t border-gray-200 pt-4">
                             <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Admin Resolution Notes</label>
@@ -460,18 +563,18 @@
                                         <i class="fi fi-rr-cross-small mr-1"></i> Dismiss
                                     </button>
                                     <button id="btnConfirmReport" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                                        <i class="fi fi-rr-check mr-1"></i> Resolve Case
+                                        <i class="fi fi-rr-check mr-1"></i> Approve Report
                                     </button>
                                 </div>
                                 <div id="modalDisputeActionBtns" class="hidden items-center gap-3">
                                     <button id="btnReviewDispute" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                                        <i class="fi fi-rr-eye mr-1"></i> Mark Under Review
+                                        <i class="fi fi-rr-eye mr-1"></i> Move to Under Review
                                     </button>
                                     <button id="btnRejectDispute" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
                                         <i class="fi fi-rr-cross-small mr-1"></i> Dismiss
                                     </button>
                                     <button id="btnResolveDispute" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                                        <i class="fi fi-rr-check mr-1"></i> Resolve Case
+                                        <i class="fi fi-rr-check mr-1"></i> Approve
                                     </button>
                                 </div>
                                 <div id="modalDirectActionBtns" class="hidden items-center gap-3">
@@ -492,6 +595,137 @@
             </div>
 
             {{-- ════════════════════════════════════════════════════════════
+                 DISPUTE PROJECT DECISION MODAL
+                 ════════════════════════════════════════════════════════════ --}}
+            <div id="disputeProjectDecisionModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+                <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                    <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                    <i class="fi fi-sr-briefcase text-white text-xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-white" id="disputeProjectDecisionTitle">Confirm Project Decision</h3>
+                            </div>
+                            <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="flex items-start gap-4 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg">
+                            <i class="fi fi-rr-info-circle text-indigo-600 text-xl mt-0.5"></i>
+                            <div class="flex-1">
+                                <p class="text-sm text-indigo-900 font-semibold mb-1" id="disputeProjectDecisionLabel">Proceed with selected project decision</p>
+                                <p class="text-xs text-indigo-800">This action is final and will be logged in the admin audit trail.</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Admin Reason *</label>
+                            <textarea id="disputeProjectDecisionReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Provide reason for this decision..."></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Project Remarks (Optional)</label>
+                            <textarea id="disputeProjectDecisionRemarks" rows="2" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Optional internal remarks..."></textarea>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+                            <button id="confirmDisputeProjectDecisionBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ════════════════════════════════════════════════════════════
+                 DISPUTE WARNING MODAL (NON-HALT TYPES)
+                 ════════════════════════════════════════════════════════════ --}}
+            <div id="disputeWarningModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+                <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                    <div class="px-6 py-5 bg-gradient-to-r from-amber-600 to-orange-600">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                    <i class="fi fi-sr-bell text-white text-xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-white">Warn Reported User</h3>
+                            </div>
+                            <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-5">
+                        <div class="flex items-start gap-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+                            <i class="fi fi-rr-info-circle text-amber-600 text-xl mt-0.5"></i>
+                            <div class="flex-1">
+                                <p class="text-sm text-amber-900 font-semibold mb-1">Warning will be sent to the reported user via in-app notification and email.</p>
+                                <p class="text-xs text-amber-800">Dispute status will be set to Resolved only after both sends are successful.</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Warning Message *</label>
+                            <textarea id="disputeWarningMessage" rows="5" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-300 focus:border-amber-300 transition resize-none" placeholder="Enter warning message to send to the reported user..."></textarea>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+                            <button id="confirmDisputeWarningBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                Send Warning & Approve
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ════════════════════════════════════════════════════════════
+                 DISPUTE HALT CONFIRMATION MODAL
+                 ════════════════════════════════════════════════════════════ --}}
+            <div id="disputeHaltConfirmModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+                <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                    <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                    <i class="fi fi-sr-briefcase text-white text-xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-white">Halt Project?</h3>
+                            </div>
+                            <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="flex items-start gap-4 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg">
+                            <i class="fi fi-rr-info-circle text-indigo-600 text-xl mt-0.5"></i>
+                            <div class="flex-1">
+                                <p class="text-sm text-indigo-900 font-semibold mb-1">This will halt the linked project and resolve this dispute.</p>
+                                <p class="text-xs text-indigo-800">The system will store <span class="font-semibold">Admin Action = Halted</span> after confirmation.</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Reason for Halting *</label>
+                            <textarea id="disputeHaltReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Explain why this project is being halted..."></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Project Remarks (Optional)</label>
+                            <textarea id="disputeHaltRemarks" rows="2" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Optional internal remarks..."></textarea>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+                            <button id="confirmDisputeHaltBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                                Confirm Halt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ════════════════════════════════════════════════════════════
                  RESOLUTION ACTION MODAL (AFTER CASE IS RESOLVED)
                  ════════════════════════════════════════════════════════════ --}}
             <div id="resolutionActionModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
@@ -504,7 +738,7 @@
                                 </div>
                                 <div>
                                     <h3 class="text-xl font-bold text-white">Resolution Action</h3>
-                                    <p class="text-indigo-100 text-sm">Apply post-resolution action to the reported user.</p>
+                                    <p class="text-indigo-100 text-sm">Approve this case and apply the sanction in one step.</p>
                                 </div>
                             </div>
                             <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
@@ -527,6 +761,10 @@
                         </div>
 
                         <div>
+                            <div id="resolutionApprovalPrompt" class="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-900">
+                                Are you sure you want to approve this report?
+                            </div>
+
                             <label class="block text-sm font-semibold text-gray-800 mb-3">Action Type *</label>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <label class="relative cursor-pointer">
@@ -567,7 +805,7 @@
                         <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
                             <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
                             <button id="confirmResolutionActionBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                                Confirm
+                                Confirm Approval
                             </button>
                         </div>
                     </div>

@@ -40,8 +40,6 @@
 (function () {
     let currentUserId = null;
     let currentUserType = null; // 'contractor' or 'property_owner'
-    let isAcceptSubmitting = false;
-    let isRejectSubmitting = false;
 
     // Helper functions
     function setText(id, value) {
@@ -78,156 +76,192 @@
         }
     }
 
-    // Document viewer functions (owner/contractor files)
-    function openDocViewer(src) {
-        console.log('openDocViewer called with src=', src);
-        const modal = document.getElementById('docViewerModal');
-        const img = document.getElementById('docViewerImg');
-        const iframe = document.getElementById('docViewerIframe');
-        if (!modal) return;
+    // Universal File Viewer (UFV) – same design as Progress Feed
+    (function () {
+        const ufvModal     = document.getElementById('ufvModal');
+        const ufvFileName  = document.getElementById('ufvFileName');
+        const ufvCounter   = document.getElementById('ufvCounter');
+        const ufvDownload  = document.getElementById('ufvDownload');
+        const ufvViewport  = document.getElementById('ufvViewport');
+        const ufvFilmstrip = document.getElementById('ufvFilmstrip');
+        const ufvPrev      = document.getElementById('ufvPrev');
+        const ufvNext      = document.getElementById('ufvNext');
+        const ufvClose     = document.getElementById('ufvClose');
 
-        // mark viewer active
-        _docViewerActive = true;
-        // clear any previous object url reference
-        _docViewerObjectUrl = null;
+        let ufvCurrentFiles = [];
+        let ufvCurrentIndex = 0;
 
-        // Normalize and trim src, convert to absolute URL if needed
-        src = (src || '').toString().trim();
-        if (!src || src === '#') {
-            showNotification('No document available', 'error');
-            return;
+        function fileTypeFromName(name) {
+            if (!name) return 'other';
+            const ext = (name.split('.').pop() || '').toLowerCase();
+            const IMG_EXT   = ['jpg','jpeg','png','gif','webp','bmp','svg','heic','ico'];
+            const PDF_EXT   = ['pdf'];
+            const VIDEO_EXT = ['mp4','webm','mov','avi','mkv','m4v'];
+            const AUDIO_EXT = ['mp3','wav','ogg','flac','aac','m4a'];
+            if (IMG_EXT.includes(ext))   return 'image';
+            if (PDF_EXT.includes(ext))   return 'pdf';
+            if (VIDEO_EXT.includes(ext)) return 'video';
+            if (AUDIO_EXT.includes(ext)) return 'audio';
+            return 'other';
         }
 
-        function toAbsolute(u) {
-            if (!u) return u;
-            u = u.toString().trim();
-            if (u.startsWith('http://') || u.startsWith('https://')) return u;
-            if (u.startsWith('//')) return window.location.protocol + u;
-            if (u.startsWith('/')) return window.location.origin + u;
-            return window.location.origin + '/' + u;
+        function resolveUrl(path) {
+            if (!path) return '';
+            if (path.startsWith('http') || path.startsWith('//') || path.startsWith('/')) return path;
+            return '/storage/' + path;
         }
 
-        const abs = toAbsolute(src);
-        const lower = abs.split('?')[0].split('.').pop().toLowerCase();
-        const imgExts = ['jpg','jpeg','png','gif','webp','bmp'];
+        function renderUFV() {
+            if (!ufvCurrentFiles.length) return;
+            const f     = ufvCurrentFiles[ufvCurrentIndex];
+            const name  = f.original_name || f.file_path || '';
+            const url   = resolveUrl(f.file_path);
+            const type  = fileTypeFromName(name || url);
+            const total = ufvCurrentFiles.length;
 
-        // Reset previous sources
-        if (img) {
-            img.src = '';
-            img.classList.add('hidden');
-        }
-        if (iframe) {
-            iframe.src = '';
-            iframe.classList.add('hidden');
-        }
+            if (ufvFileName) ufvFileName.textContent = name || '';
+            if (ufvCounter)  ufvCounter.textContent  = (ufvCurrentIndex + 1) + ' / ' + total;
+            if (ufvDownload) { ufvDownload.href = url; ufvDownload.download = name || ''; }
 
-        if (imgExts.includes(lower)) {
-            if (img) {
-                // Try fetching the image first to inspect HTTP status and get blob
-                fetch(abs, { method: 'GET' })
-                    .then((res) => {
-                        console.log('fetch result for', abs, res.status);
-                        if (!res.ok) {
-                            throw new Error('HTTP ' + res.status);
-                        }
-                        return res.blob();
-                    })
-                    .then((blob) => {
-                        const objectUrl = URL.createObjectURL(blob);
-                        // remember current object url so we can revoke it on close
-                        _docViewerObjectUrl = objectUrl;
-                        img.onload = function () {
-                            console.log('docViewer image loaded (blob):', abs);
-                            // revoke after short delay to allow render
-                            setTimeout(() => {
-                                try { URL.revokeObjectURL(objectUrl); } catch (e) {}
-                                if (_docViewerObjectUrl === objectUrl) _docViewerObjectUrl = null;
-                            }, 10000);
-                        };
-                        img.onerror = function (e) {
-                            console.error('docViewer image failed to render blob:', abs, e);
-                            if (!_docViewerActive) {
-                                console.log('Ignored image onerror after viewer closed');
-                                return;
-                            }
-                            showNotification('Failed to load image', 'error');
-                        };
-                        img.src = objectUrl;
-                        img.classList.remove('hidden');
-                    })
-                    .catch((err) => {
-                        console.error('Failed to fetch image:', abs, err);
-                        if (!_docViewerActive) {
-                            console.log('Ignored fetch error after viewer closed:', err);
-                            return;
-                        }
-                        showNotification('Failed to load image (' + err.message + ')', 'error');
-                    });
+            if (ufvPrev) ufvPrev.style.visibility = total > 1 ? 'visible' : 'hidden';
+            if (ufvNext) ufvNext.style.visibility = total > 1 ? 'visible' : 'hidden';
+
+            let html = '';
+            if (type === 'image') {
+                html = `<img src="${url}" alt="${name || ''}" class="ufv-image" loading="lazy">`;
+            } else if (type === 'pdf') {
+                html = `<iframe src="${url}" class="ufv-iframe" title="${name || ''}"></iframe>`;
+            } else if (type === 'video') {
+                html = `<video class="ufv-video" controls><source src="${url}"></video>`;
+            } else if (type === 'audio') {
+                html = `<div class="ufv-audio-wrap">
+                          <i class="fi fi-rr-music ufv-media-icon"></i>
+                          <p class="ufv-media-name">${name || ''}</p>
+                          <audio controls class="ufv-audio"><source src="${url}"></audio>
+                        </div>`;
+            } else {
+                // For unknown types, just render as an image instead of a download-only fallback
+                html = `<img src="${url}" alt="${name || ''}" class="ufv-image" loading="lazy">`;
             }
-        } else {
-            if (iframe) {
-                iframe.onload = function () {
-                    console.log('docViewer iframe loaded:', abs);
-                };
-                iframe.onerror = function () {
-                    console.error('docViewer iframe failed to load:', abs);
-                    if (!_docViewerActive) {
-                        console.log('Ignored iframe error after viewer closed');
-                        return;
+
+            if (ufvViewport) ufvViewport.innerHTML = html;
+
+            if (ufvFilmstrip) {
+                let filmHtml = '';
+                ufvCurrentFiles.forEach((ff, i) => {
+                    const fName = ff.original_name || ff.file_path || '';
+                    const fType = fileTypeFromName(fName);
+                    const fUrl  = resolveUrl(ff.file_path);
+                    filmHtml += `<div class="ufv-film-thumb${i === ufvCurrentIndex ? ' ufv-film-active' : ''}" data-ufv-idx="${i}">`;
+                    if (fType === 'image') {
+                        filmHtml += `<img src="${fUrl}" alt="" loading="lazy">`;
+                    } else {
+                        const e2 = (fName.split('.').pop() || '').toUpperCase().slice(0,4);
+                        filmHtml += `<i class="fi fi-rr-file ufv-film-icon"></i><span class="ufv-film-ext">${e2}</span>`;
                     }
-                    showNotification('Failed to load document', 'error');
-                };
-                iframe.src = abs;
-                iframe.classList.remove('hidden');
+                    filmHtml += '</div>';
+                });
+                ufvFilmstrip.innerHTML = filmHtml;
+
+                ufvFilmstrip.querySelectorAll('.ufv-film-thumb').forEach((el) => {
+                    el.addEventListener('click', function () {
+                        ufvCurrentIndex = parseInt(el.dataset.ufvIdx, 10) || 0;
+                        renderUFV();
+                    });
+                });
             }
         }
 
-        // Show modal
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        document.body.style.overflow = 'hidden';
-    }
+        function openUFV(files, startIndex) {
+            ufvCurrentFiles = Array.isArray(files)
+                ? files.map((f) => (typeof f === 'string' ? { file_path: f, original_name: f.split('/').pop() } : f))
+                : [{ file_path: files, original_name: (files && files.split ? files.split('/').pop() : '') }];
+            ufvCurrentIndex = Math.max(0, Math.min(startIndex || 0, ufvCurrentFiles.length - 1));
+            renderUFV();
+            if (ufvModal) {
+                ufvModal.classList.remove('hidden');
+                ufvModal.classList.add('flex');
+            }
+            document.body.style.overflow = 'hidden';
+        }
 
-    function closeDocViewer() {
-        const modal = document.getElementById('docViewerModal');
-        const img = document.getElementById('docViewerImg');
-        const iframe = document.getElementById('docViewerIframe');
-        if (!modal) return;
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        // clear handlers and sources to avoid late callbacks
-        if (img) {
-            try { img.onload = null; } catch (e) {}
-            try { img.onerror = null; } catch (e) {}
-            try { img.src = ''; } catch (e) {}
+        function closeUFV() {
+            if (ufvModal) {
+                ufvModal.classList.add('hidden');
+                ufvModal.classList.remove('flex');
+            }
+            if (ufvViewport)  ufvViewport.innerHTML  = '';
+            if (ufvFilmstrip) ufvFilmstrip.innerHTML = '';
+            ufvCurrentFiles = [];
+            ufvCurrentIndex = 0;
+            document.body.style.overflow = 'auto';
         }
-        if (iframe) {
-            try { iframe.onload = null; } catch (e) {}
-            try { iframe.onerror = null; } catch (e) {}
-            try { iframe.src = ''; } catch (e) {}
-        }
-        // revoke any object URL we created for the viewer
-        if (_docViewerObjectUrl) {
-            try { URL.revokeObjectURL(_docViewerObjectUrl); } catch (e) {}
-            _docViewerObjectUrl = null;
-        }
-        // mark viewer inactive so late errors are ignored
-        _docViewerActive = false;
-        document.body.style.overflow = 'auto';
-    }
 
-    // Delegate clicks on elements with class 'viewer-link' to open the doc viewer
-    document.addEventListener('click', function (e) {
-        const trigger = e.target.closest('.viewer-link');
-        if (trigger) {
+        if (ufvPrev) ufvPrev.addEventListener('click', () => {
+            if (ufvCurrentFiles.length > 1) {
+                ufvCurrentIndex = (ufvCurrentIndex - 1 + ufvCurrentFiles.length) % ufvCurrentFiles.length;
+                renderUFV();
+            }
+        });
+        if (ufvNext) ufvNext.addEventListener('click', () => {
+            if (ufvCurrentFiles.length > 1) {
+                ufvCurrentIndex = (ufvCurrentIndex + 1) % ufvCurrentFiles.length;
+                renderUFV();
+            }
+        });
+        if (ufvClose) ufvClose.addEventListener('click', closeUFV);
+        if (ufvModal) {
+            ufvModal.addEventListener('click', (e) => {
+                if (e.target === ufvModal) closeUFV();
+            });
+        }
+        document.addEventListener('keydown', (e) => {
+            const isOpen = ufvModal && !ufvModal.classList.contains('hidden');
+            if (e.key === 'Escape' && isOpen) { closeUFV(); return; }
+            if (!isOpen) return;
+            if (e.key === 'ArrowLeft' && ufvCurrentFiles.length > 1) {
+                ufvCurrentIndex = (ufvCurrentIndex - 1 + ufvCurrentFiles.length) % ufvCurrentFiles.length;
+                renderUFV();
+            }
+            if (e.key === 'ArrowRight' && ufvCurrentFiles.length > 1) {
+                ufvCurrentIndex = (ufvCurrentIndex + 1) % ufvCurrentFiles.length;
+                renderUFV();
+            }
+        });
+
+        // Helper for external callers (e.g., viewer-link)
+        window.openImageModal = function (urlOrFiles, titleOrIndex) {
+            if (Array.isArray(urlOrFiles)) {
+                openUFV(urlOrFiles, typeof titleOrIndex === 'number' ? titleOrIndex : 0);
+            } else if (typeof urlOrFiles === 'object' && urlOrFiles !== null) {
+                openUFV([urlOrFiles], 0);
+            } else {
+                const fileObj = {
+                    file_path: urlOrFiles,
+                    original_name:
+                        typeof titleOrIndex === 'string' && titleOrIndex
+                            ? titleOrIndex
+                            : (urlOrFiles ? urlOrFiles.split('/').pop() : '')
+                };
+                openUFV([fileObj], 0);
+            }
+        };
+
+        window.closeImageModal = closeUFV;
+
+        // Delegate clicks on elements with class 'viewer-link' to UFV
+        document.addEventListener('click', function (e) {
+            const trigger = e.target.closest('.viewer-link');
+            if (!trigger) return;
             e.preventDefault();
             const src = trigger.dataset.docSrc || trigger.href || '#';
-            console.log('viewer-link clicked:', { id: trigger.id, datasetDocSrc: trigger.dataset.docSrc, href: trigger.href, src });
-            openDocViewer(src);
-        }
-    });
-
-    document.getElementById('docViewerCloseBtn')?.addEventListener('click', closeDocViewer);
+            if (!src || src === '#') {
+                showNotification('No document available', 'error');
+                return;
+            }
+            openImageModal(src, trigger.id || 'Document');
+        });
+    })();
 
     function setInitials(name) {
         return (name || "")
@@ -257,13 +291,13 @@
     // Notification helper (matches propertyOwner style)
     function showNotification(message, type = "success") {
         const notification = document.createElement("div");
-        notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
+        notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
             type === "success" ? "bg-green-500" : "bg-red-500"
-        } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
+        } text-white font-semibold flex items-center gap-3`;
         notification.innerHTML = `
       <i class="fi fi-rr-${
           type === "success" ? "check-circle" : "cross-circle"
-      } text-base"></i>
+      } text-2xl"></i>
       <span>${message}</span>
     `;
         document.body.appendChild(notification);
@@ -285,53 +319,20 @@
     const ownerModal = document.getElementById("ownerVerificationModal");
     const acceptModal = document.getElementById("acceptConfirmModal");
     const rejectModal = document.getElementById("rejectConfirmModal");
-    const acceptConfirmBtn = document.getElementById("acceptConfirmBtn");
+
+    // Reject flow elements & state
     const acceptCancelBtn = document.getElementById("acceptCancelBtn");
-    const rejectConfirmBtn = document.getElementById("rejectConfirmBtn");
     const rejectCancelBtn = document.getElementById("rejectCancelBtn");
+    const rejectConfirmBtn = document.getElementById("rejectConfirmBtn");
     const rejectReasonInput = document.getElementById("rejectReasonInput");
     const rejectReasonError = document.getElementById("rejectReasonError");
-
-    function setControlDisabled(control, disabled) {
-        if (!control) return;
-        control.disabled = disabled;
-        control.classList.toggle("opacity-70", disabled);
-        control.classList.toggle("cursor-not-allowed", disabled);
-    }
-
-    function setButtonLoading(button, loading, loadingLabel) {
-        if (!button) return;
-
-        if (loading) {
-            if (!button.dataset.originalHtml) {
-                button.dataset.originalHtml = button.innerHTML;
-            }
-
-            button.innerHTML = `
-              <span class="inline-flex items-center justify-center gap-2">
-                <span class="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
-                <span>${loadingLabel}</span>
-              </span>
-            `;
-            setControlDisabled(button, true);
-            return;
-        }
-
-        if (button.dataset.originalHtml) {
-            button.innerHTML = button.dataset.originalHtml;
-        }
-        setControlDisabled(button, false);
-    }
-
-    function setAcceptLoading(loading) {
-        setButtonLoading(acceptConfirmBtn, loading, "Approving...");
-        setControlDisabled(acceptCancelBtn, loading);
-    }
+    let isRejectSubmitting = false;
 
     function setRejectLoading(loading) {
-        setButtonLoading(rejectConfirmBtn, loading, "Rejecting...");
-        setControlDisabled(rejectCancelBtn, loading);
-        setControlDisabled(rejectReasonInput, loading);
+        if (rejectConfirmBtn) {
+            rejectConfirmBtn.disabled = loading;
+            rejectConfirmBtn.textContent = loading ? "Rejecting..." : "Confirm Reject";
+        }
     }
 
     // Close Buttons
@@ -342,7 +343,11 @@
         .getElementById("poCloseBtn")
         ?.addEventListener("click", () => toggleModal(ownerModal, false));
     acceptCancelBtn?.addEventListener("click", () => toggleModal(acceptModal, false));
-    rejectCancelBtn?.addEventListener("click", () => toggleModal(rejectModal, false));
+    rejectCancelBtn?.addEventListener("click", () => {
+        toggleModal(rejectModal, false);
+        const cbx = document.getElementById("tagResubmissionCheckbox");
+        if (cbx) cbx.checked = false;
+    });
 
     // Open Modal Logic
     function toggleModal(modal, show) {
@@ -459,15 +464,31 @@
             setText("poContactLine", "N/A");
             return;
         }
-        setText("poFullName", `${profile.first_name} ${profile.last_name}`);
+        // first_name, middle_name, last_name come from users table
+        const fullName = [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" ") || user.username || "N/A";
+        setText("poFullName", fullName);
         setText(
             "poContactLine",
-            `${user.email} • ${profile.phone_number || "N/A"}`
+            `${user.email || "N/A"} • ${profile.phone_number || "N/A"}`
         );
-        setText(
-            "poInitials",
-            setInitials(`${profile.first_name} ${profile.last_name}`)
-        );
+
+        // handle avatar: show profile_pic if present, otherwise initials
+        const avatarImg = document.getElementById("poAvatarImg");
+        const initialsEl = document.getElementById("poInitials");
+        if (avatarImg && initialsEl) {
+            if (profile.profile_pic) {
+                avatarImg.src = `/storage/${profile.profile_pic}`;
+                avatarImg.classList.remove("hidden");
+                initialsEl.classList.add("hidden");
+            } else {
+                avatarImg.src = "";
+                avatarImg.classList.add("hidden");
+                initialsEl.classList.remove("hidden");
+                setText("poInitials", setInitials(fullName));
+            }
+        } else {
+            setText("poInitials", setInitials(fullName));
+        }
 
         setText("poUsername", user.username);
         setText("poEmail", user.email);
@@ -525,28 +546,25 @@
 
     acceptBtns.forEach((btn) =>
         btn?.addEventListener("click", () => {
+            toggleModal(contractorModal, false);
+            toggleModal(ownerModal, false);
             toggleModal(acceptModal, true);
         })
     );
 
     rejectBtns.forEach((btn) =>
         btn?.addEventListener("click", () => {
+            toggleModal(contractorModal, false);
+            toggleModal(ownerModal, false);
             toggleModal(rejectModal, true);
         })
     );
 
     // Confirm Actions
-    acceptConfirmBtn?.addEventListener("click", async () => {
-            if (isAcceptSubmitting) return;
-
-            if (!currentUserId) {
-                showNotification("No verification request selected.", "error");
-                return;
-            }
-
-            isAcceptSubmitting = true;
-            setAcceptLoading(true);
-
+    document
+        .getElementById("acceptConfirmBtn")
+        ?.addEventListener("click", async () => {
+            if (!currentUserId) return;
             try {
                 const response = await fetch(
                     `/api/admin/users/verification-requests/${currentUserId}/approve`,
@@ -592,9 +610,6 @@
             } catch (error) {
                 console.error(error);
                 showNotification("An error occurred.", "error");
-            } finally {
-                setAcceptLoading(false);
-                isAcceptSubmitting = false;
             }
         });
 
@@ -605,15 +620,17 @@
                 showNotification("No verification request selected.", "error");
                 return;
             }
-            const reason = rejectReasonInput?.value.trim() || "";
+            const rawReason = rejectReasonInput?.value.trim() || "";
             const errorEl = rejectReasonError;
 
-            if (!reason || reason.length < 10) {
-                errorEl.textContent = reason.length === 0 ? "Reason is required." : "Reason must be at least 10 characters.";
+            if (!rawReason || rawReason.length < 10) {
+                errorEl.textContent = rawReason.length === 0 ? "Reason is required." : "Reason must be at least 10 characters.";
                 errorEl.classList.remove("hidden");
-                showNotification(errorEl.textContent, "error");
                 return;
             }
+
+            const tagResubmission = document.getElementById("tagResubmissionCheckbox")?.checked;
+            const reason = tagResubmission ? `RESUBMISSION: ${rawReason}` : rawReason;
 
             isRejectSubmitting = true;
             setRejectLoading(true);
@@ -654,25 +671,24 @@
 
                     showNotification("Verification rejected successfully!", "success");
                     if (rejectReasonInput) rejectReasonInput.value = "";
+                    const cbx = document.getElementById("tagResubmissionCheckbox");
+                    if (cbx) cbx.checked = false;
                     errorEl.classList.add("hidden");
                 } else {
-                    const err = await response.json().catch(() => null);
+                    const err = await response.json();
                     showNotification(
-                        err?.message || "Failed to reject user.",
+                        err.message || "Failed to reject user.",
                         "error"
                     );
                 }
             } catch (error) {
                 console.error(error);
                 showNotification("An error occurred.", "error");
-            } finally {
-                setRejectLoading(false);
-                isRejectSubmitting = false;
             }
         });
 
     // Clear error when user starts typing
-    rejectReasonInput?.addEventListener("input", () => {
-        rejectReasonError?.classList.add("hidden");
+    document.getElementById("rejectReasonInput")?.addEventListener("input", () => {
+        document.getElementById("rejectReasonError")?.classList.add("hidden");
     });
 })();

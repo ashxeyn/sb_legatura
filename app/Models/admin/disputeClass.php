@@ -26,12 +26,9 @@ class disputeClass
             )
             ->orderBy('disputes.created_at', 'desc');
 
-        // Basic filters (optional)
-        // status filter mapping
         if (isset($filters['status']) && $filters['status'] !== 'all') {
             $status = $filters['status'];
             if ($status === 'pending') {
-                // some databases use 'open' while others use 'pending' — accept both
                 $query->whereIn('disputes.dispute_status', ['pending', 'open']);
             } elseif ($status === 'disputes') {
                 $query->whereIn('disputes.dispute_status', ['under_review', 'escalated']);
@@ -50,7 +47,6 @@ class disputeClass
             });
         }
 
-        // date filters
         if (!empty($filters['date_from'])) {
             $query->whereDate('disputes.created_at', '>=', $filters['date_from']);
         }
@@ -58,7 +54,6 @@ class disputeClass
             $query->whereDate('disputes.created_at', '<=', $filters['date_to']);
         }
 
-        // sorting
         if (!empty($filters['sort'])) {
             if ($filters['sort'] === 'date') {
                 $query->orderBy('disputes.created_at', 'desc');
@@ -72,16 +67,15 @@ class disputeClass
 
     public static function getCounts()
     {
-        $total = DB::table('disputes')->count();
-        // Count pending as either 'open' or 'pending' to be compatible with different seeds
+        $total   = DB::table('disputes')->count();
         $pending = DB::table('disputes')->whereIn('dispute_status', ['open', 'pending'])->count();
-        $active = DB::table('disputes')->whereIn('dispute_status', ['under_review', 'escalated'])->count();
+        $active  = DB::table('disputes')->whereIn('dispute_status', ['under_review', 'escalated'])->count();
         $resolved = DB::table('disputes')->where('dispute_status', 'resolved')->count();
 
         return [
-            'total' => $total,
-            'pending' => $pending,
-            'active' => $active,
+            'total'    => $total,
+            'pending'  => $pending,
+            'active'   => $active,
             'resolved' => $resolved
         ];
     }
@@ -98,11 +92,8 @@ class disputeClass
     }
 
     /**
-     * Get open halt-type disputes for a specific project
-     * Used when admin is halting a project - must select which dispute triggered the halt
-     *
-     * @param int $projectId
-     * @return \Illuminate\Support\Collection
+     * Get open halt-type disputes for a specific project.
+     * Used when admin is halting a project to select which dispute triggered the halt.
      */
     public static function getOpenHaltDisputesForProject($projectId)
     {
@@ -140,9 +131,9 @@ class disputeClass
     public static function paginateAll($perPage = 20)
     {
         return DB::table('disputes')
-            ->leftJoin('projects','disputes.project_id','=','projects.project_id')
-            ->select('disputes.*','projects.project_title')
-            ->orderBy('disputes.created_at','desc')
+            ->leftJoin('projects', 'disputes.project_id', '=', 'projects.project_id')
+            ->select('disputes.*', 'projects.project_title')
+            ->orderBy('disputes.created_at', 'desc')
             ->paginate($perPage);
     }
 
@@ -156,13 +147,13 @@ class disputeClass
         return DB::table('disputes')->where('dispute_id', $disputeId)->update([
             'dispute_status' => $status,
             'admin_response' => $adminResponse,
-            'resolved_at' => ($status === 'resolved' || $status === 'closed') ? now() : null
+            'resolved_at'   => ($status === 'resolved' || $status === 'closed') ? now() : null
         ]);
     }
 
     public static function getWeeklyChange()
     {
-        $now = now();
+        $now           = now();
         $thisWeekStart = $now->copy()->subDays(7);
         $lastWeekStart = $now->copy()->subDays(14);
 
@@ -178,30 +169,80 @@ class disputeClass
         return [
             'thisWeek' => $thisWeekCount,
             'lastWeek' => $lastWeekCount,
-            'percent' => $percent
+            'percent'  => $percent
+        ];
+    }
+
+    /**
+     * NEW: Fetch the project linked to a dispute, along with dispute meta needed
+     * to determine which action buttons to show in the Case Details panel.
+     */
+    public static function getLinkedProjectForDispute($disputeId)
+    {
+        $dispute = DB::table('disputes')
+            ->where('dispute_id', $disputeId)
+            ->select('project_id', 'dispute_type', 'dispute_status')
+            ->first();
+
+        if (!$dispute || !$dispute->project_id) {
+            return null;
+        }
+
+        $project = DB::table('projects')
+            ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+            ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->select(
+                'projects.project_id',
+                'projects.project_title',
+                'projects.project_status',
+                'projects.previous_status',
+                'projects.property_type',
+                'projects.project_location',
+                'projects.to_finish',
+                'projects.budget_range_min',
+                'projects.budget_range_max',
+                'projects.stat_reason',
+                DB::raw("CONCAT(owner_users.first_name, ' ', owner_users.last_name) as owner_name"),
+                'owner_users.email as owner_email',
+                'contractors.company_name as contractor_name',
+                'contractors.company_email as contractor_email'
+            )
+            ->where('projects.project_id', $dispute->project_id)
+            ->first();
+
+        if (!$project) {
+            return null;
+        }
+
+        return [
+            'project'        => $project,
+            'dispute_type'   => $dispute->dispute_type,
+            'dispute_status' => $dispute->dispute_status,
         ];
     }
 
     public static function getDisputeDetails($id)
     {
-        // fetch dispute with reporter and against user and project
         $dispute = DB::table('disputes')
             ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
             ->leftJoin('property_owners as reporter_po', 'reporter.user_id', '=', 'reporter_po.user_id')
             ->leftJoin('users as accused', 'disputes.against_user_id', '=', 'accused.user_id')
             ->leftJoin('projects', 'disputes.project_id', '=', 'projects.project_id')
-            ->select('disputes.*',
+            ->select(
+                'disputes.*',
                 'reporter.username as reporter_username',
                 'reporter_po.profile_pic as reporter_profile_pic',
                 'accused.username as against_username',
                 'accused.user_type as against_user_type',
-                'projects.project_title')
+                'projects.project_title'
+            )
             ->where('disputes.dispute_id', $id)
             ->first();
 
         if (!$dispute) return null;
 
-        // initial proofs from dispute_files (include uploaded_at for display)
         $initialProofs = collect();
         if (Schema::hasTable('dispute_files')) {
             $initialProofs = DB::table('dispute_files')
@@ -210,22 +251,20 @@ class disputeClass
                 ->get()
                 ->map(function ($r) {
                     $path = $r->storage_path ?? ($r->file_path ?? null);
-                    // Normalize storage path for frontend: strip possible prefixes and ensure relative path under storage/
                     if ($path) {
-                        $path = preg_replace('#^\\/?storage/app/public/#i', '', $path);
-                        $path = preg_replace('#^\\/?public/#i', '', $path);
-                        $path = preg_replace('#^\\/?storage/#i', '', $path);
+                        $path = preg_replace('#^\/?storage/app/public/#i', '', $path);
+                        $path = preg_replace('#^\/?public/#i', '', $path);
+                        $path = preg_replace('#^\/?storage/#i', '', $path);
                         $path = ltrim($path, "/\\");
                     }
                     return (object) [
-                        'file_name' => $r->file_name ?? null,
-                        'file_path' => $path,
+                        'file_name'   => $r->file_name ?? null,
+                        'file_path'   => $path,
                         'uploaded_at' => $r->uploaded_at ?? null
                     ];
                 });
         }
 
-        // messages between parties (if table exists)
         $messages = collect();
         if (Schema::hasTable('dispute_messages')) {
             $messages = DB::table('dispute_messages')
@@ -234,7 +273,6 @@ class disputeClass
                 ->get();
         }
 
-        // Resubmissions / progress entries linked by milestone_item_id -> progress.milestone_item_id
         $resubmissions = collect();
         if (!empty($dispute->milestone_item_id) && Schema::hasTable('progress')) {
             $progressRows = DB::table('progress')
@@ -252,9 +290,9 @@ class disputeClass
                         ->map(function ($f) {
                             $path = $f->file_path ?? null;
                             if ($path) {
-                                $path = preg_replace('#^\\/?storage/app/public/#i', '', $path);
-                                $path = preg_replace('#^\\/?public/#i', '', $path);
-                                $path = preg_replace('#^\\/?storage/#i', '', $path);
+                                $path = preg_replace('#^\/?storage/app/public/#i', '', $path);
+                                $path = preg_replace('#^\/?public/#i', '', $path);
+                                $path = preg_replace('#^\/?storage/#i', '', $path);
                                 $path = ltrim($path, "/\\");
                             }
                             return (object) [
@@ -264,7 +302,6 @@ class disputeClass
                         });
                 }
 
-                // derive project_id via milestone_item -> milestone -> project
                 $projectId = null;
                 if (Schema::hasTable('milestone_items')) {
                     $milestoneId = DB::table('milestone_items')->where('item_id', $p->milestone_item_id)->value('milestone_id');
@@ -274,19 +311,18 @@ class disputeClass
                 }
 
                 $resubmissions->push([
-                    'progress_id' => $p->progress_id,
-                    'progress_status' => $p->progress_status ?? null,
-                    'submitted_at' => $p->submitted_at ?? null,
+                    'progress_id'       => $p->progress_id,
+                    'progress_status'   => $p->progress_status ?? null,
+                    'submitted_at'      => $p->submitted_at ?? null,
                     'milestone_item_id' => $p->milestone_item_id ?? null,
-                    'project_id' => $projectId,
-                    'files' => $files
+                    'project_id'        => $projectId,
+                    'files'             => $files
                 ]);
             }
         }
 
-        // Determine latest resubmission status/date (if any)
-        $latest_status = null;
-        $latest_date = null;
+        $latest_status     = null;
+        $latest_date       = null;
         $latest_project_id = null;
         if (!empty($dispute->milestone_item_id) && Schema::hasTable('progress')) {
             $latest = DB::table('progress')
@@ -296,8 +332,7 @@ class disputeClass
                 ->first();
             if ($latest) {
                 $latest_status = $latest->progress_status ?? null;
-                $latest_date = $latest->updated_at ?? $latest->submitted_at ?? null;
-                // resolve project id via milestone_item -> milestone -> project
+                $latest_date   = $latest->updated_at ?? $latest->submitted_at ?? null;
                 if (!empty($latest->milestone_item_id) && Schema::hasTable('milestone_items')) {
                     $milestoneId = DB::table('milestone_items')->where('item_id', $latest->milestone_item_id)->value('milestone_id');
                     if ($milestoneId && Schema::hasTable('milestones')) {
@@ -309,41 +344,38 @@ class disputeClass
 
         $resolution = [
             'admin_response' => $dispute->admin_response ?? null,
-            'resolved_at' => $dispute->resolved_at ?? null
+            'resolved_at'    => $dispute->resolved_at ?? null
         ];
 
-        // Map subject/requested_action: some schemas may have 'title' or 'subject'
         $subject = $dispute->title ?? ($dispute->subject ?? null);
 
         return [
-            // compatibility: include original dispute and common keys expected by existing frontend
-            'dispute' => $dispute,
-            'evidence' => $initialProofs,
+            'dispute'       => $dispute,
+            'evidence'      => $initialProofs,
             'progressReports' => $resubmissions,
-            'header' => [
-                'reporter_name' => $dispute->reporter_username ?? null,
-                'against_name' => $dispute->against_username ?? null,
+            'header'        => [
+                'reporter_name'   => $dispute->reporter_username ?? null,
+                'against_name'    => $dispute->against_username ?? null,
                 'against_user_id' => $dispute->against_user_id ?? null,
                 'against_user_type' => $dispute->against_user_type ?? null,
-                'dispute_type' => $dispute->dispute_type ?? null,
-                'date_submitted' => $dispute->created_at ?? null,
-                'dispute_status' => $dispute->dispute_status ?? null,
-                'project_title' => $dispute->project_title ?? null
+                'dispute_type'    => $dispute->dispute_type ?? null,
+                'date_submitted'  => $dispute->created_at ?? null,
+                'dispute_status'  => $dispute->dispute_status ?? null,
+                'project_title'   => $dispute->project_title ?? null
             ],
-            'content' => [
-                'subject' => $subject,
-                'dispute_desc' => $dispute->dispute_desc ?? null,
+            'content'       => [
+                'subject'          => $subject,
+                'dispute_desc'     => $dispute->dispute_desc ?? null,
                 'requested_action' => $dispute->requested_action ?? null
             ],
-            'initial_proofs' => $initialProofs,
-            'resubmissions' => $resubmissions,
-            // top-level convenience keys for frontend mapping
-            'reporter_name' => $dispute->reporter_username ?? null,
-            'latest_resubmission_status' => $latest_status,
-            'latest_resubmission_date' => $latest_date,
+            'initial_proofs'   => $initialProofs,
+            'resubmissions'    => $resubmissions,
+            'reporter_name'    => $dispute->reporter_username ?? null,
+            'latest_resubmission_status'     => $latest_status,
+            'latest_resubmission_date'       => $latest_date,
             'latest_resubmission_project_id' => $latest_project_id,
-            'messages' => $messages,
-            'resolution' => $resolution
+            'messages'    => $messages,
+            'resolution'  => $resolution
         ];
     }
 }

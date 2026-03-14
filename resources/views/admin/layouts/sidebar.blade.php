@@ -120,6 +120,13 @@ User card reads from session('user').
           of Projects</a>
         <a href="{{ route('admin.globalManagement.bidManagement') }}"
           class="submenu-link {{ request()->routeIs('admin.globalManagement.bidManagement') ? 'active' : '' }}">Bid Management</a>
+        <a href="{{ route('admin.projectManagement.disputesReports') }}"
+         class="submenu-link {{ request()->routeIs('admin.projectManagement.disputesReports') ? 'active' : '' }}">Disputes/Reports</a>
+        <a href="{{ route('admin.projectManagement.messages') }}"
+          class="submenu-link {{ request()->routeIs('admin.projectManagement.messages') ? 'active' : '' }}">Messages</a>
+        <a href="{{ route('admin.projectManagement.subscriptions') }}"
+          class="submenu-link {{ request()->routeIs('admin.projectManagement.subscriptions') ? 'active' : '' }}">Subscriptions
+          & Boosts</a>
         <a href="{{ route('admin.projectManagement.showcaseManagement') }}"
           class="submenu-link {{ request()->routeIs('admin.projectManagement.showcaseManagement') ? 'active' : '' }}">Showcase</a>
         <a href="{{ route('admin.progressFeed') }}"

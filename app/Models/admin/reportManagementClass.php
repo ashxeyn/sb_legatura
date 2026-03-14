@@ -124,6 +124,7 @@ class reportManagementClass
                 'target' => self::resolveCaseTarget($row),
                 'reason' => $row->reason ?? '-',
                 'status' => $row->status ?? 'pending',
+                'admin_action' => $row->admin_action ?? null,
                 'created_at' => $row->created_at,
             ];
         });
@@ -167,6 +168,10 @@ class reportManagementClass
 
         // Post Reports
         if (Schema::hasTable('post_reports')) {
+            $postAdminActionSelect = Schema::hasColumn('post_reports', 'admin_action')
+                ? DB::raw('post_reports.admin_action as admin_action')
+                : DB::raw('NULL as admin_action');
+
             $postReports = DB::table('post_reports')
                 ->leftJoin('users as reporter', 'post_reports.reporter_user_id', '=', 'reporter.user_id')
                 ->select(
@@ -177,6 +182,7 @@ class reportManagementClass
                     'post_reports.reason',
                     'post_reports.details',
                     'post_reports.status',
+                    $postAdminActionSelect,
                     'post_reports.admin_notes',
                     'post_reports.reviewed_at',
                     'post_reports.created_at',
@@ -192,6 +198,10 @@ class reportManagementClass
 
         // Review Reports
         if (Schema::hasTable('review_reports')) {
+            $reviewAdminActionSelect = Schema::hasColumn('review_reports', 'admin_action')
+                ? DB::raw('review_reports.admin_action as admin_action')
+                : DB::raw('NULL as admin_action');
+
             $reviewReports = DB::table('review_reports')
                 ->leftJoin('users as reporter', 'review_reports.reporter_user_id', '=', 'reporter.user_id')
                 ->leftJoin('reviews', 'review_reports.review_id', '=', 'reviews.review_id')
@@ -203,6 +213,7 @@ class reportManagementClass
                     'review_reports.reason',
                     'review_reports.details',
                     'review_reports.status',
+                    $reviewAdminActionSelect,
                     'review_reports.admin_notes',
                     'review_reports.reviewed_at',
                     'review_reports.created_at',
@@ -218,6 +229,10 @@ class reportManagementClass
 
         // Content Reports
         if (Schema::hasTable('content_reports')) {
+            $contentAdminActionSelect = Schema::hasColumn('content_reports', 'admin_action')
+                ? DB::raw('content_reports.admin_action as admin_action')
+                : DB::raw('NULL as admin_action');
+
             $contentReports = DB::table('content_reports')
                 ->leftJoin('users as reporter', 'content_reports.reporter_user_id', '=', 'reporter.user_id')
                 ->select(
@@ -228,6 +243,7 @@ class reportManagementClass
                     'content_reports.reason',
                     'content_reports.details',
                     'content_reports.status',
+                    $contentAdminActionSelect,
                     'content_reports.admin_notes',
                     'content_reports.reviewed_at',
                     'content_reports.created_at',
@@ -243,6 +259,10 @@ class reportManagementClass
 
         // User-to-user Reports
         if (Schema::hasTable('user_reports')) {
+            $userAdminActionSelect = Schema::hasColumn('user_reports', 'admin_action')
+                ? DB::raw('user_reports.admin_action as admin_action')
+                : DB::raw('NULL as admin_action');
+
             $userReports = DB::table('user_reports')
                 ->leftJoin('users as reporter', 'user_reports.reporter_user_id', '=', 'reporter.user_id')
                 ->select(
@@ -253,6 +273,7 @@ class reportManagementClass
                     'user_reports.reason',
                     'user_reports.description as details',
                     'user_reports.status',
+                    $userAdminActionSelect,
                     DB::raw('NULL as admin_notes'),
                     DB::raw('NULL as reviewed_at'),
                     'user_reports.created_at',
@@ -285,6 +306,9 @@ class reportManagementClass
                         WHEN disputes.dispute_status = 'cancelled' THEN 'dismissed'
                         ELSE disputes.dispute_status
                     END as status"),
+                    (Schema::hasColumn('disputes', 'admin_action')
+                        ? DB::raw('disputes.admin_action as admin_action')
+                        : DB::raw('NULL as admin_action')),
                     'disputes.admin_response as admin_notes',
                     'disputes.resolved_at as reviewed_at',
                     'disputes.created_at',
@@ -418,7 +442,7 @@ class reportManagementClass
     /**
      * Update report status (for moderation actions)
      */
-    public static function updateReportStatus($source, $reportId, $status, $adminNotes = null, $adminUserId = null)
+    public static function updateReportStatus($source, $reportId, $status, $adminNotes = null, $adminUserId = null, $adminAction = null)
     {
         $table = self::getTableForSource($source);
         if (!$table) return false;
@@ -439,15 +463,24 @@ class reportManagementClass
             if (in_array($status, ['resolved', 'dismissed'])) {
                 $data['resolved_at'] = now();
             }
+            if ($adminAction !== null && Schema::hasColumn('disputes', 'admin_action')) {
+                $data['admin_action'] = $adminAction;
+            }
         } elseif ($source === 'user') {
             // user_reports schema only tracks status and core report fields.
             $data = ['status' => $status];
+            if ($adminAction !== null && Schema::hasColumn('user_reports', 'admin_action')) {
+                $data['admin_action'] = $adminAction;
+            }
         } else {
             $data = ['status' => $status];
             if ($adminNotes !== null) $data['admin_notes'] = $adminNotes;
             if ($adminUserId !== null) $data['reviewed_by_user_id'] = $adminUserId;
             if (in_array($status, ['resolved', 'dismissed'])) {
                 $data['reviewed_at'] = now();
+            }
+            if ($adminAction !== null && Schema::hasColumn($table, 'admin_action')) {
+                $data['admin_action'] = $adminAction;
             }
             $data['updated_at'] = now();
         }
@@ -758,8 +791,10 @@ class reportManagementClass
                 $result['respondent'] = $detail['header']['against_name'] ?? null;
                 $result['project_title'] = $detail['header']['project_title'] ?? null;
                 $result['evidence_files'] = $detail['initial_proofs'] ?? [];
+                $result['resubmissions'] = $detail['resubmissions'] ?? [];
             } else {
                 $result['evidence_files'] = [];
+                $result['resubmissions'] = [];
             }
         }
 
@@ -1109,9 +1144,14 @@ class reportManagementClass
      */
     public static function adminHidePost($postId, $reason = 'Removed by admin (direct action)')
     {
-        DB::table('showcases')
+        $updated = DB::table('showcases')
             ->where('post_id', $postId)
+            ->where('status', '!=', 'deleted')
             ->update(['status' => 'deleted']);
+
+        if (!$updated) {
+            return false;
+        }
 
         // Notify the post owner
         $post = DB::table('showcases')->where('post_id', $postId)->first();
@@ -1126,12 +1166,17 @@ class reportManagementClass
 
     public static function adminHideReview($reviewId, $reason = 'Removed by admin (direct action)')
     {
-        DB::table('reviews')
+        $updated = DB::table('reviews')
             ->where('review_id', $reviewId)
+            ->where('is_deleted', '!=', 1)
             ->update([
                 'is_deleted' => 1,
                 'deletion_reason' => $reason,
             ]);
+
+        if (!$updated) {
+            return false;
+        }
 
         // Notify the reviewer
         $review = DB::table('reviews')->where('review_id', $reviewId)->first();
@@ -1146,9 +1191,14 @@ class reportManagementClass
 
     public static function adminHideProject($projectId, $reason = 'Removed by admin (direct action)')
     {
-        DB::table('projects')
+        $updated = DB::table('projects')
             ->where('project_id', $projectId)
+            ->where('project_status', '!=', 'deleted_post')
             ->update(['project_status' => 'deleted_post']);
+
+        if (!$updated) {
+            return false;
+        }
 
         $ownerUserId = DB::table('projects')
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
@@ -1172,9 +1222,14 @@ class reportManagementClass
 
     public static function adminUnhidePost($postId, $reason = 'Restored by admin (direct action)')
     {
-        DB::table('showcases')
+        $updated = DB::table('showcases')
             ->where('post_id', $postId)
+            ->where('status', 'deleted')
             ->update(['status' => 'approved']);
+
+        if (!$updated) {
+            return false;
+        }
 
         $post = DB::table('showcases')->where('post_id', $postId)->first();
         if ($post && $post->user_id) {
@@ -1193,9 +1248,14 @@ class reportManagementClass
 
     public static function adminUnhideProject($projectId, $reason = 'Restored by admin (direct action)')
     {
-        DB::table('projects')
+        $updated = DB::table('projects')
             ->where('project_id', $projectId)
+            ->where('project_status', 'deleted_post')
             ->update(['project_status' => 'open']);
+
+        if (!$updated) {
+            return false;
+        }
 
         $ownerUserId = DB::table('projects')
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
@@ -1219,12 +1279,17 @@ class reportManagementClass
 
     public static function adminUnhideReview($reviewId, $reason = 'Restored by admin (direct action)')
     {
-        DB::table('reviews')
+        $updated = DB::table('reviews')
             ->where('review_id', $reviewId)
+            ->where('is_deleted', 1)
             ->update([
                 'is_deleted' => 0,
                 'deletion_reason' => null,
             ]);
+
+        if (!$updated) {
+            return false;
+        }
 
         $review = DB::table('reviews')->where('review_id', $reviewId)->first();
         if ($review && $review->reviewer_user_id) {

@@ -1046,7 +1046,7 @@ class globalManagementController extends Controller
     }
 
     /**
-     * Apply resolution action after a case has already been resolved.
+     * Apply moderation approval with sanction in one step.
      */
     public function applyResolutionAction(Request $request, $source, $id)
     {
@@ -1054,6 +1054,13 @@ class globalManagementController extends Controller
         $reason = trim((string) $request->input('reason', ''));
         $reportedUserId = (int) $request->input('reported_user_id', 0);
         $banUntil = $request->input('ban_until');
+
+        $adminActionLabel = match ($actionType) {
+            'warning' => 'Warned',
+            'temporary_ban' => 'Temporarily Banned',
+            'permanent_ban' => 'Permanently Banned',
+            default => null,
+        };
 
         if (!in_array($actionType, ['warning', 'temporary_ban', 'permanent_ban'], true)) {
             return response()->json(['success' => false, 'message' => 'Invalid resolution action'], 422);
@@ -1067,7 +1074,7 @@ class globalManagementController extends Controller
             return response()->json(['success' => false, 'message' => 'Ban end date is required for temporary bans'], 422);
         }
 
-        // Guard: resolution action is only valid on resolved cases.
+        // Disputes keep their own dedicated resolution workflow.
         if ($source === 'dispute') {
             $currentStatus = DB::table('disputes')->where('dispute_id', $id)->value('dispute_status');
             if ($currentStatus !== 'resolved') {
@@ -1087,8 +1094,8 @@ class globalManagementController extends Controller
             }
 
             $currentStatus = DB::table($table)->where('report_id', $id)->value('status');
-            if ($currentStatus !== 'resolved') {
-                return response()->json(['success' => false, 'message' => 'Case must be resolved before applying a resolution action'], 422);
+            if ($currentStatus === null) {
+                return response()->json(['success' => false, 'message' => 'Case not found'], 404);
             }
         }
 
@@ -1107,6 +1114,23 @@ class globalManagementController extends Controller
 
         try {
             DB::beginTransaction();
+
+            if ($source !== 'dispute') {
+                $adminId = session('admin_user_id');
+                reportManagementClass::updateReportStatus(
+                    $source,
+                    $id,
+                    'resolved',
+                    $reason,
+                    $adminId,
+                    $adminActionLabel
+                );
+
+                // Review/showcase/project reports are hidden on approval.
+                if (in_array($source, ['post', 'content', 'review'], true)) {
+                    reportManagementClass::hideContent($source, $id);
+                }
+            }
 
             if ($actionType === 'warning') {
                 reportManagementClass::notifyUser(
@@ -1134,6 +1158,7 @@ class globalManagementController extends Controller
                 'report_id' => $id,
                 'reported_user_id' => $reportedUserId,
                 'action_type' => $actionType,
+                'admin_action' => $adminActionLabel,
                 'ban_until' => $banUntil,
             ]);
 
@@ -1209,11 +1234,11 @@ class globalManagementController extends Controller
      */
     public function adminDirectAction(Request $request)
     {
-          $actionType = $request->input('action_type'); // suspend_user, hide/unhide post/project/review
-        $targetId   = $request->input('target_id');
-          $reason     = trim((string) $request->input('reason', ''));
+                $actionType = $request->input('action_type'); // suspend_user, hide/unhide post/project/review
+                $targetId = (int) $request->input('target_id');
+                $reason = trim((string) $request->input('reason', ''));
 
-        if (empty($actionType) || empty($targetId)) {
+                if (empty($actionType) || $targetId <= 0) {
             return response()->json(['success' => false, 'message' => 'Action type and target ID are required'], 422);
         }
 
@@ -1226,6 +1251,7 @@ class globalManagementController extends Controller
         }
 
         $adminId = session('user')->admin_id ?? null;
+        $targetType = null;
 
         try {
             DB::beginTransaction();
@@ -1275,57 +1301,98 @@ class globalManagementController extends Controller
                     'suspension_until' => $suspensionUntil,
                     'reason' => $reason,
                 ]);
+                $targetType = 'user';
 
             } elseif ($actionType === 'hide_post') {
-                reportManagementClass::adminHidePost($targetId, $reason);
+                $updated = reportManagementClass::adminHidePost($targetId, $reason);
+                if (!$updated) {
+                    return response()->json(['success' => false, 'message' => 'Showcase post not found or already hidden'], 404);
+                }
 
                 AdminActivityLog::log('admin_direct_hide_post', [
                     'post_id' => $targetId,
                     'reason' => $reason,
                 ]);
+                $targetType = 'showcase';
 
             } elseif ($actionType === 'hide_project') {
-                reportManagementClass::adminHideProject($targetId, $reason);
+                $updated = reportManagementClass::adminHideProject($targetId, $reason);
+                if (!$updated) {
+                    return response()->json(['success' => false, 'message' => 'Project post not found or already hidden'], 404);
+                }
 
                 AdminActivityLog::log('admin_direct_hide_project', [
                     'project_id' => $targetId,
                     'reason' => $reason,
                 ]);
+                $targetType = 'project';
 
             } elseif ($actionType === 'hide_review') {
-                reportManagementClass::adminHideReview($targetId, $reason);
+                $updated = reportManagementClass::adminHideReview($targetId, $reason);
+                if (!$updated) {
+                    return response()->json(['success' => false, 'message' => 'Review not found or already hidden'], 404);
+                }
 
                 AdminActivityLog::log('admin_direct_hide_review', [
                     'review_id' => $targetId,
                     'reason' => $reason,
                 ]);
+                $targetType = 'review';
 
             } elseif ($actionType === 'unhide_post') {
-                reportManagementClass::adminUnhidePost($targetId, $reason);
+                $updated = reportManagementClass::adminUnhidePost($targetId, $reason);
+                if (!$updated) {
+                    return response()->json(['success' => false, 'message' => 'Showcase post not found or already visible'], 404);
+                }
 
                 AdminActivityLog::log('admin_direct_unhide_post', [
                     'post_id' => $targetId,
                     'reason' => $reason,
                 ]);
+                $targetType = 'showcase';
 
             } elseif ($actionType === 'unhide_project') {
-                reportManagementClass::adminUnhideProject($targetId, $reason);
+                $updated = reportManagementClass::adminUnhideProject($targetId, $reason);
+                if (!$updated) {
+                    return response()->json(['success' => false, 'message' => 'Project post not found or already visible'], 404);
+                }
 
                 AdminActivityLog::log('admin_direct_unhide_project', [
                     'project_id' => $targetId,
                     'reason' => $reason,
                 ]);
+                $targetType = 'project';
 
             } elseif ($actionType === 'unhide_review') {
-                reportManagementClass::adminUnhideReview($targetId, $reason);
+                $updated = reportManagementClass::adminUnhideReview($targetId, $reason);
+                if (!$updated) {
+                    return response()->json(['success' => false, 'message' => 'Review not found or already visible'], 404);
+                }
 
                 AdminActivityLog::log('admin_direct_unhide_review', [
                     'review_id' => $targetId,
                     'reason' => $reason,
                 ]);
+                $targetType = 'review';
 
             } else {
                 return response()->json(['success' => false, 'message' => 'Invalid action type'], 422);
+            }
+
+            if (Schema::hasTable('admin_direct_actions')) {
+                DB::table('admin_direct_actions')->insert([
+                    'admin_id' => $adminId,
+                    'action_type' => $actionType,
+                    'target_type' => $targetType,
+                    'target_id' => $targetId,
+                    'reason' => $reason,
+                    'metadata' => json_encode([
+                        'ip_address' => $request->ip(),
+                        'user_agent' => (string) $request->header('User-Agent', ''),
+                    ]),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
 
             DB::commit();

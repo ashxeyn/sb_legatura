@@ -1415,13 +1415,17 @@ class userManagementController extends authController
             }
 
             $reason = $validated['reason'];
+            $isResubmission = str_starts_with($reason, 'RESUBMISSION:');
+            $cleanReason = $isResubmission ? trim(substr($reason, strlen('RESUBMISSION:'))) : $reason;
 
             // In-app notification
             NotificationService::create(
                 (int) $id,
                 'project_update',
-                'Account Verification Rejected',
-                "Your {$roleLabel} account verification has been rejected. Reason: {$reason}",
+                $isResubmission ? 'Account Verification — Resubmission Required' : 'Account Verification Rejected',
+                $isResubmission
+                    ? "Your {$roleLabel} account requires resubmission of documents. Reason: {$cleanReason}. Please log in and resubmit."
+                    : "Your {$roleLabel} account verification has been rejected. Reason: {$cleanReason}",
                 'high',
                 null,
                 null,
@@ -1430,15 +1434,23 @@ class userManagementController extends authController
 
             // Email notification
             if (!empty($user->email)) {
-                $emailMessage = "Dear {$firstName},\n\n";
-                $emailMessage .= "We regret to inform you that your {$roleLabel} account verification on Legatura has been rejected.\n\n";
-                $emailMessage .= "Reason: {$reason}\n\n";
-                $emailMessage .= "You may update your documents and resubmit for verification. If you have questions, please contact our support team.\n\n";
-                $emailMessage .= "Best regards,\nThe Legatura Team";
+                if ($isResubmission) {
+                    $emailMessage = "Dear {$firstName},\n\n";
+                    $emailMessage .= "Upon reviewing your signup documents, your {$roleLabel} account is subjected to resubmission of documents.\n\n";
+                    $emailMessage .= "Reason: {$cleanReason}\n\n";
+                    $emailMessage .= "Please log in to the app and resubmit your documents.\n\n";
+                    $emailMessage .= "Best regards,\nLegatura";
+                    $emailSubject = 'Legatura - Resubmission of Documents Required';
+                } else {
+                    $emailMessage = "Dear {$firstName},\n\n";
+                    $emailMessage .= "Sorry, your {$roleLabel} account verification on Legatura has been rejected.\n\n";
+                    $emailMessage .= "Reason: {$cleanReason}\n\n";
+                    $emailMessage .= "Best regards,\nLegatura";
+                    $emailSubject = 'Legatura - Account Verification Rejected';
+                }
 
-                Mail::raw($emailMessage, function ($mailMsg) use ($user) {
-                    $mailMsg->to($user->email)
-                        ->subject('Legatura - Account Verification Rejected');
+                Mail::raw($emailMessage, function ($mailMsg) use ($user, $emailSubject) {
+                    $mailMsg->to($user->email)->subject($emailSubject);
                 });
             }
         } catch (\Throwable $e) {

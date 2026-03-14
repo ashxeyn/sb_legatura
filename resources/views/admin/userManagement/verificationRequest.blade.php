@@ -362,6 +362,14 @@
                 placeholder="e.g., Incomplete PCAB details or mismatched IDs."></textarea>
               <p id="rejectReasonError" class="mt-1 text-xs text-red-600 hidden">Reason is required.</p>
             </div>
+            <div class="flex items-start gap-2 pt-1">
+              <input type="checkbox" id="tagResubmissionCheckbox"
+                class="mt-0.5 h-3.5 w-3.5 rounded border-gray-300 text-orange-500 focus:ring-orange-400 cursor-pointer flex-shrink-0">
+              <label for="tagResubmissionCheckbox" class="text-[11px] text-gray-700 cursor-pointer leading-relaxed">
+                Tag for Resubmission
+                <span class="block text-[10px] text-gray-400 mt-0.5">User will be asked to log in and resubmit their documents instead of a full rejection.</span>
+              </label>
+            </div>
           </div>
           <div class="px-3 pb-3 space-y-1.5">
             <button id="rejectConfirmBtn"

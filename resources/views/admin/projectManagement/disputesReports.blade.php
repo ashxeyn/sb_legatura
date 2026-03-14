@@ -465,6 +465,78 @@
               </div>
             </div>
 
+            <!-- Project Action Context (shown when case has a linked project) -->
+            <div id="sectionProjectContext" class="hidden border-t pt-6">
+              <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fi fi-sr-briefcase text-indigo-600"></i>
+                Related Project Details
+              </h4>
+
+              <div class="bg-gradient-to-br from-gray-50 to-indigo-50 rounded-xl border border-gray-200 p-5 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Project</label>
+                    <p class="text-sm font-semibold text-gray-800" id="modalLinkedProjectTitle">-</p>
+                    <p class="text-xs text-gray-500" id="modalLinkedProjectId">-</p>
+                  </div>
+                  <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Current Status</label>
+                    <p class="text-sm font-semibold text-gray-800" id="modalLinkedProjectStatus">-</p>
+                  </div>
+                  <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Property Owner</label>
+                    <p class="text-sm text-gray-700" id="modalLinkedProjectOwner">-</p>
+                  </div>
+                  <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Contractor</label>
+                    <p class="text-sm text-gray-700" id="modalLinkedProjectContractor">-</p>
+                  </div>
+                  <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Budget</label>
+                    <p class="text-sm text-gray-700" id="modalLinkedProjectBudget">-</p>
+                  </div>
+                  <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Timeline</label>
+                    <p class="text-sm text-gray-700" id="modalLinkedProjectTimeline">-</p>
+                  </div>
+                </div>
+
+                <div id="modalProjectActionWrap" class="hidden border-t border-gray-200 pt-4 space-y-3">
+                  <label class="text-xs font-semibold text-gray-500 uppercase block">Required Case Action</label>
+                  <p class="text-sm text-gray-700" id="modalProjectActionHint">-</p>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Action Reason *</label>
+                    <textarea id="modalProjectActionReason" rows="3" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Provide action reason (for example: why this project should be halted)..."></textarea>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Project Remarks (Optional)</label>
+                    <textarea id="modalProjectRemarks" rows="2" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Additional internal remarks for this project action..."></textarea>
+                  </div>
+
+                  <div class="flex items-center justify-end">
+                    <button id="modalProjectActionBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                      Apply Project Action
+                    </button>
+                  </div>
+                </div>
+
+                <div id="modalResolvedProjectActions" class="hidden border-t border-gray-200 pt-4 space-y-3">
+                  <label class="text-xs font-semibold text-gray-500 uppercase block">Post-Resolution Project Decision</label>
+                  <p class="text-sm text-gray-700">This dispute is resolved and the project is halted. Choose the final project outcome.</p>
+                  <div class="flex items-center justify-end gap-3">
+                    <button id="modalResumeProjectBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                      Resume Project
+                    </button>
+                    <button id="modalTerminateProjectBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                      Terminate Project
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Action Containers -->
             <div class="flex items-center justify-between gap-3 pt-6 border-t border-gray-200">
               <div class="flex items-center gap-2 text-xs text-gray-500">
@@ -491,6 +563,49 @@
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Project Decision Confirmation Modal -->
+      <div id="projectDecisionModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+          <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <i class="fi fi-sr-briefcase text-white text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white" id="projectDecisionTitle">Confirm Project Decision</h3>
+              </div>
+              <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+            </div>
+          </div>
+          <div class="p-6 space-y-5">
+            <div class="flex items-start gap-4 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg">
+              <i class="fi fi-rr-info-circle text-indigo-600 text-xl mt-0.5"></i>
+              <div class="flex-1">
+                <p class="text-sm text-indigo-900 font-semibold mb-1" id="projectDecisionLabel">Proceed with selected project decision</p>
+                <p class="text-xs text-indigo-800">This action will be logged and applied immediately.</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-800 mb-2">Admin Reason *</label>
+              <textarea id="projectDecisionReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Provide reason for this decision..."></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-800 mb-2">Project Remarks (Optional)</label>
+              <textarea id="projectDecisionRemarks" rows="2" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none" placeholder="Optional internal remarks..."></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+              <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+              <button id="confirmProjectDecisionBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                Confirm
+              </button>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@
     "use strict";
 
     // ── State ──
-    let currentReport = null; // { id, source, status, reported_user_id }
+    let currentReport = null; // { id, source, status, reported_user_id, required_action, action_completed, project_id }
     let currentDirectPreviewItem = null; // { type, id, item }
     let moderationCurrentPage = 1;
     let moderationLastPage = 1;
@@ -168,6 +168,40 @@
         return {};
     }
 
+    function inferDisputeRequiredAction(report) {
+        const disputeType = String(report.reason || report.dispute_type || "").toLowerCase();
+        const requestedAction = String(report.requested_action || "").toLowerCase();
+        if (disputeType === "halt" || requestedAction.includes("halt")) {
+            return "halt_project";
+        }
+        return null;
+    }
+
+    function isDisputeProjectActionCompleted(report) {
+        const projectStatus = String(report?.evidence?.data?.project?.project_status || "").toLowerCase();
+        const requiredAction = inferDisputeRequiredAction(report);
+        if (!requiredAction) return true;
+        if (requiredAction === "halt_project") return projectStatus === "halt";
+        return false;
+    }
+
+    async function fetchLinkedDisputeProject(disputeId) {
+        const res = await fetch(
+            `/admin/project-management/disputes/${encodeURIComponent(disputeId)}/linked-project`,
+            { headers: { "X-Requested-With": "XMLHttpRequest" } }
+        );
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+            throw new Error(json.message || "Failed to load linked project details");
+        }
+        return json.data || null;
+    }
+
+    function formatProjectStatusLabel(status) {
+        const s = String(status || "").toLowerCase();
+        return s ? s.replace(/_/g, " ").toUpperCase() : "-";
+    }
+
     function toggleResolutionActionDate() {
         const type = document.querySelector('input[name="resolutionActionType"]:checked')?.value || "warning";
         const dateWrap = document.getElementById("resolutionBanUntilWrap");
@@ -219,6 +253,17 @@
             currentReport.reported_user_id = normalizeUserId(json.reported_user_id) || currentReport.reported_user_id;
 
             populateResolutionActionModal(json.profile);
+
+            const promptEl = document.getElementById("resolutionApprovalPrompt");
+            if (promptEl) {
+                if (currentReport.source === "review" || currentReport.content_type === "review") {
+                    promptEl.textContent = "Are you sure you want to hide this review?";
+                } else if (currentReport.source === "post" || currentReport.source === "content") {
+                    promptEl.textContent = "Are you sure you want to hide this post?";
+                } else {
+                    promptEl.textContent = "Are you sure you want to approve this report?";
+                }
+            }
 
             const modal = document.getElementById("resolutionActionModal");
             if (modal) {
@@ -293,7 +338,7 @@
         if (!tbody) return;
 
         if (!reports.length) {
-            tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-12 text-center text-gray-500 text-sm">No moderation cases found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-12 text-center text-gray-500 text-sm">No moderation cases found.</td></tr>`;
             return;
         }
 
@@ -310,6 +355,7 @@
                     <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${escapeHtml(r.target || "")}">${escapeHtml(r.target || "-")}</td>
                     <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${escapeHtml(r.reason || "")}">${escapeHtml(r.reason || "-")}</td>
                     <td class="px-6 py-4">${getStatusBadge(r.status)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-700">${escapeHtml(r.admin_action || "-")}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${date}</td>
                     <td class="px-6 py-4 text-center">
                         <button class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition view-report-btn" data-id="${r.case_ref_id}" data-source="${r.source}" data-case-type="${r.case_type}">
@@ -374,6 +420,7 @@
         document.getElementById("evidenceContainer").innerHTML =
             '<div class="text-center text-gray-400 text-sm py-4">Loading evidence...</div>';
         document.getElementById("modalAdminNotesWrap").classList.add("hidden");
+        document.getElementById("disputeWorkflowSection")?.classList.add("hidden");
 
         const viewModal = document.getElementById("viewReportModal");
         if (viewModal) {
@@ -398,8 +445,27 @@
                 source: source,
                 case_type: caseType || (source === "dispute" ? "dispute" : "report"),
                 status: r.status,
+                content_type: String(r.content_type || "").toLowerCase(),
+                dispute_type: String(r.dispute_type || r.reason || "").toLowerCase(),
                 reported_user_id: inferReportedUserId(r),
+                required_action: source === "dispute" ? inferDisputeRequiredAction(r) : null,
+                action_completed: source === "dispute" ? isDisputeProjectActionCompleted(r) : true,
+                project_id: r?.evidence?.data?.project?.project_id || null,
             };
+
+            if (source !== "dispute" && String(r.status || "").toLowerCase() === "pending") {
+                await autoMoveCaseToUnderReview(source, reportId);
+                r.status = "under_review";
+                currentReport.status = "under_review";
+            }
+
+            if (source === "dispute" && String(r.status || "").toLowerCase() === "pending") {
+                const moved = await autoMoveDisputeToUnderReview(reportId);
+                if (moved) {
+                    r.status = "under_review";
+                    currentReport.status = "under_review";
+                }
+            }
 
             // Populate fields
             document.getElementById("modalCaseId").textContent = `Case #${reportId} — ${source.charAt(0).toUpperCase() + source.slice(1)}`;
@@ -436,12 +502,59 @@
                 : r.evidence;
             renderEvidence(evidencePayload);
 
+            if (source === "dispute") {
+                await renderDisputeWorkflow(r);
+            }
+
             // Show/hide action buttons based on status
             configureCaseActionButtons(source, r.status);
         } catch (e) {
             console.error(e);
             toast("Error loading report details", "error");
         }
+    }
+
+    async function autoMoveCaseToUnderReview(source, reportId) {
+        try {
+            const res = await fetch(
+                `/admin/global-management/report-management/${encodeURIComponent(source)}/${encodeURIComponent(reportId)}/status`,
+                {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        status: "under_review",
+                        admin_notes: "Automatically moved to under review when viewed by admin.",
+                    }),
+                }
+            );
+            const json = await res.json();
+            if (json.success) {
+                fetchReports();
+            }
+        } catch (error) {
+            console.warn("Auto under-review update failed:", error);
+        }
+    }
+
+    async function autoMoveDisputeToUnderReview(disputeId) {
+        try {
+            const res = await fetch(
+                `/admin/project-management/disputes/${encodeURIComponent(disputeId)}/approve`,
+                {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({}),
+                }
+            );
+            const json = await res.json();
+            if (json.success) {
+                fetchReports();
+                return true;
+            }
+        } catch (error) {
+            console.warn("Auto dispute under-review update failed:", error);
+        }
+        return false;
     }
 
     function configureCaseActionButtons(source, status) {
@@ -452,6 +565,7 @@
         const reviewBtn = document.getElementById("btnReviewDispute");
         const resolveBtn = document.getElementById("btnResolveDispute");
         const rejectBtn = document.getElementById("btnRejectDispute");
+        const disputeWorkflowSection = document.getElementById("disputeWorkflowSection");
 
         const actionable = status === "pending" || status === "under_review";
 
@@ -465,9 +579,19 @@
                 disputeBtns.classList.toggle("hidden", !actionable);
                 disputeBtns.classList.toggle("flex", actionable);
             }
+            if (disputeWorkflowSection) {
+                const shouldShowWorkflow = status === "under_review" || status === "resolved" || status === "dismissed";
+                disputeWorkflowSection.classList.toggle("hidden", !shouldShowWorkflow);
+            }
 
             if (reviewBtn) reviewBtn.classList.toggle("hidden", status !== "pending");
-            if (resolveBtn) resolveBtn.classList.toggle("hidden", !actionable);
+            if (resolveBtn) {
+                const canResolve = status === "under_review" && !!(currentReport?.action_completed);
+                resolveBtn.classList.toggle("hidden", status !== "under_review");
+                resolveBtn.disabled = !canResolve;
+                resolveBtn.classList.toggle("opacity-60", !canResolve);
+                resolveBtn.title = canResolve ? "" : "Complete the required project action first.";
+            }
             if (rejectBtn) rejectBtn.classList.toggle("hidden", !actionable);
             return;
         }
@@ -480,11 +604,14 @@
             directBtns.classList.add("hidden");
             directBtns.classList.remove("flex");
         }
+        if (disputeWorkflowSection) {
+            disputeWorkflowSection.classList.add("hidden");
+        }
         if (reportBtns) {
             reportBtns.classList.toggle("hidden", !actionable);
         }
         if (underReviewBtn) {
-            underReviewBtn.classList.toggle("hidden", status !== "pending");
+            underReviewBtn.classList.add("hidden");
         }
     }
 
@@ -685,6 +812,224 @@
         container.innerHTML = html || '<div class="text-center text-gray-400 text-sm py-4">No evidence available.</div>';
     }
 
+    async function renderDisputeWorkflow(report) {
+        const section = document.getElementById("disputeWorkflowSection");
+        if (!section) return;
+
+        let project = report?.evidence?.data?.project || null;
+        try {
+            const linked = await fetchLinkedDisputeProject(currentReport?.id || report?.report_id);
+            if (linked?.project) {
+                project = linked.project;
+                if (report?.evidence?.data) report.evidence.data.project = project;
+            }
+        } catch (err) {
+            console.warn("Linked project fetch failed:", err);
+        }
+
+        const requiredAction = inferDisputeRequiredAction(report);
+        const actionCompleted = isDisputeProjectActionCompleted(report);
+        const status = String(report?.status || "").toLowerCase();
+
+        const projectTitleEl = document.getElementById("disputeProjectTitle");
+        const projectIdEl = document.getElementById("disputeProjectId");
+        const projectStatusEl = document.getElementById("disputeProjectStatus");
+        const projectOwnerEl = document.getElementById("disputeProjectOwner");
+        const projectContractorEl = document.getElementById("disputeProjectContractor");
+        const projectBudgetEl = document.getElementById("disputeProjectBudget");
+        const projectTimelineEl = document.getElementById("disputeProjectTimeline");
+        const requiredActionEl = document.getElementById("disputeRequiredAction");
+        const actionStateEl = document.getElementById("disputeActionState");
+        const disputeSubjectField = document.getElementById("disputeSubjectField");
+        const disputeRequestedActionField = document.getElementById("disputeRequestedActionField");
+        const disputeDescriptionField = document.getElementById("disputeDescriptionField");
+        const disputeInitialProofsList = document.getElementById("disputeInitialProofsList");
+        const disputeResubmittedPanel = document.getElementById("disputeResubmittedPanel");
+        const actionForm = document.getElementById("disputeProjectActionForm");
+        const actionBtn = document.getElementById("btnApplyDisputeProjectAction");
+        const resolvedActionsWrap = document.getElementById("disputeResolvedProjectActions");
+        const resumeBtn = document.getElementById("btnResumeDisputeProject");
+        const terminateBtn = document.getElementById("btnTerminateDisputeProject");
+
+        if (projectTitleEl) projectTitleEl.textContent = project?.project_title || "No linked project";
+        if (projectIdEl) projectIdEl.textContent = project?.project_id ? `Project ID: ${project.project_id}` : "-";
+        if (projectStatusEl) {
+            projectStatusEl.textContent = formatProjectStatusLabel(project?.project_status);
+        }
+        if (projectOwnerEl) projectOwnerEl.textContent = project?.owner_name || "-";
+        if (projectContractorEl) projectContractorEl.textContent = project?.contractor_name || "Not assigned";
+        if (projectBudgetEl) {
+            const min = project?.budget_range_min;
+            const max = project?.budget_range_max;
+            projectBudgetEl.textContent = (min != null && max != null)
+                ? `PHP ${Number(min).toLocaleString()} - PHP ${Number(max).toLocaleString()}`
+                : "-";
+        }
+        if (projectTimelineEl) projectTimelineEl.textContent = project?.to_finish ? `${project.to_finish} days` : "-";
+
+        if (requiredActionEl) {
+            requiredActionEl.textContent = requiredAction === "halt_project"
+                ? "Halt Project"
+                : "No project action required";
+        }
+
+        if (actionStateEl) {
+            if (!requiredAction) {
+                actionStateEl.textContent = "Not required";
+            } else if (actionCompleted) {
+                actionStateEl.textContent = "Completed";
+            } else {
+                actionStateEl.textContent = "Pending";
+            }
+        }
+
+        if (disputeSubjectField) {
+            disputeSubjectField.textContent = report?.dispute_subject || report?.reason || "-";
+        }
+        if (disputeRequestedActionField) {
+            disputeRequestedActionField.textContent = report?.requested_action || "-";
+        }
+        if (disputeDescriptionField) {
+            disputeDescriptionField.textContent = report?.details || "-";
+        }
+        if (disputeInitialProofsList) {
+            const proofs = Array.isArray(report?.evidence_files) ? report.evidence_files : [];
+            disputeInitialProofsList.innerHTML = proofs.length
+                ? proofs
+                    .map((file) => {
+                        const name = escapeHtml(file?.file_name || "Initial proof");
+                        const path = file?.file_path ? toStorageUrl(file.file_path) : "#";
+                        return `<a href="${path}" target="_blank" class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:border-indigo-300 hover:bg-indigo-50 transition"><span>${name}</span><i class="fi fi-rr-arrow-up-right-from-square text-gray-400"></i></a>`;
+                    })
+                    .join("")
+                : '<p class="text-sm text-gray-500">No initial proofs uploaded.</p>';
+        }
+        if (disputeResubmittedPanel) {
+            const resubmissions = Array.isArray(report?.resubmissions) ? report.resubmissions : [];
+            disputeResubmittedPanel.innerHTML = resubmissions.length
+                ? resubmissions
+                    .map((entry) => {
+                        const statusText = escapeHtml(String(entry?.progress_status || "Unknown").replace(/_/g, " "));
+                        const dateText = entry?.submitted_at ? formatDisplayDate(entry.submitted_at, true) : "No submission date";
+                        const files = Array.isArray(entry?.files) ? entry.files : [];
+                        const fileLinks = files.length
+                            ? `<div class="mt-2 space-y-1">${files
+                                .map((file) => {
+                                    const name = escapeHtml(file?.file_name || "Attachment");
+                                    const path = file?.file_path ? toStorageUrl(file.file_path) : "#";
+                                    return `<a href="${path}" target="_blank" class="block text-xs text-indigo-700 hover:underline">${name}</a>`;
+                                })
+                                .join("")}</div>`
+                            : '<p class="text-xs text-gray-500 mt-1">No attached files.</p>';
+
+                        return `<div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"><p class="text-sm font-semibold text-gray-800">Status: ${statusText}</p><p class="text-xs text-gray-600">Submitted: ${escapeHtml(dateText)}</p>${fileLinks}</div>`;
+                    })
+                    .join("")
+                : '<p class="text-sm text-gray-500">No resubmitted progress reports found.</p>';
+        }
+
+        const normalizedProjectStatus = String(project?.project_status || "").toLowerCase();
+        const canApplyAction =
+            requiredAction === "halt_project" &&
+            status === "under_review" &&
+            !actionCompleted &&
+            ["in_progress", "bidding_closed", "in progress", "bidding closed", "open"].includes(normalizedProjectStatus);
+
+        const canDecideResolvedProject =
+            status === "resolved" &&
+            String(project?.project_status || "").toLowerCase() === "halt";
+
+        if (actionForm) {
+            actionForm.classList.toggle("hidden", !requiredAction || status !== "under_review");
+        }
+
+        if (resolvedActionsWrap) {
+            resolvedActionsWrap.classList.toggle("hidden", !canDecideResolvedProject);
+        }
+
+        if (resumeBtn) resumeBtn.onclick = () => openDisputeProjectDecisionModal("resume_project");
+        if (terminateBtn) terminateBtn.onclick = () => openDisputeProjectDecisionModal("terminate_project");
+
+        if (actionBtn) {
+            actionBtn.disabled = !canApplyAction;
+            actionBtn.classList.toggle("opacity-60", !canApplyAction);
+            actionBtn.textContent = actionCompleted
+                ? "Required Action Completed"
+                : (requiredAction === "halt_project" ? "Halt Project" : "Apply Required Action");
+        }
+
+        if (currentReport) {
+            currentReport.required_action = requiredAction;
+            currentReport.action_completed = actionCompleted;
+            currentReport.project_id = project?.project_id || null;
+        }
+
+        const banner = document.getElementById("disputeWorkflowBanner");
+        const title = document.getElementById("disputeWorkflowTitle");
+        const message = document.getElementById("disputeWorkflowMessage");
+        if (banner && title && message) {
+            banner.className = "rounded-xl border px-4 py-3";
+            if (status === "pending") {
+                banner.classList.add("bg-amber-50", "border-amber-200");
+                title.textContent = "Step 1: Move Case to Under Review";
+                message.textContent = "Start by moving this dispute to Under Review.";
+            } else if (status === "under_review" && requiredAction && !actionCompleted) {
+                banner.classList.add("bg-indigo-50", "border-indigo-200");
+                title.textContent = "Step 2: Apply Required Project Action";
+                message.textContent = "Complete the required project action in this modal before resolving.";
+            } else if (status === "under_review") {
+                banner.classList.add("bg-emerald-50", "border-emerald-200");
+                title.textContent = "Step 3: Approve Dispute";
+                message.textContent = "Required actions are complete. You can now approve this dispute.";
+            } else if (status === "resolved") {
+                if (canDecideResolvedProject) {
+                    banner.classList.add("bg-indigo-50", "border-indigo-200");
+                    title.textContent = "Final Project Decision Needed";
+                    message.textContent = "Project is halted. Choose Resume or Terminate in this modal.";
+                } else {
+                    banner.classList.add("bg-gray-50", "border-gray-200");
+                    title.textContent = "Case Closed";
+                    message.textContent = "This dispute has been resolved.";
+                }
+            } else if (status === "dismissed") {
+                banner.classList.add("bg-red-50", "border-red-200");
+                title.textContent = "Case Dismissed";
+                message.textContent = "This dispute was dismissed.";
+            } else {
+                banner.classList.add("bg-gray-50", "border-gray-200");
+                title.textContent = "Case Workflow";
+                message.textContent = "Follow the dispute workflow steps to complete this case.";
+            }
+        }
+    }
+
+    function openDisputeProjectDecisionModal(actionType) {
+        if (!currentReport || currentReport.source !== "dispute") return;
+
+        const modal = document.getElementById("disputeProjectDecisionModal");
+        const title = document.getElementById("disputeProjectDecisionTitle");
+        const label = document.getElementById("disputeProjectDecisionLabel");
+        const reason = document.getElementById("disputeProjectDecisionReason");
+        const remarks = document.getElementById("disputeProjectDecisionRemarks");
+
+        if (!modal) return;
+
+        modal.dataset.action = actionType;
+        if (title) {
+            title.textContent = actionType === "resume_project" ? "Resume Project?" : "Terminate Project?";
+        }
+        if (label) {
+            label.textContent = actionType === "resume_project"
+                ? "This will resume the halted project and continue project progress."
+                : "This will permanently terminate the halted project.";
+        }
+        if (reason) reason.value = "";
+        if (remarks) remarks.value = "";
+
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+    }
+
     function escapeHtml(str) {
         const div = document.createElement("div");
         div.textContent = str || "";
@@ -782,31 +1127,7 @@
             return;
         }
 
-        try {
-            const res = await fetch(
-                `/admin/global-management/report-management/${encodeURIComponent(currentReport.source)}/${encodeURIComponent(currentReport.id)}/status`,
-                {
-                    method: "POST",
-                    headers: getHeaders(),
-                    body: JSON.stringify({ status: "resolved", admin_notes: "Resolved by admin from Global Report Management." }),
-                }
-            );
-            const json = await res.json();
-            if (!json.success) {
-                toast(json.message || "Failed to resolve case", "error");
-                return;
-            }
-
-            currentReport.status = "resolved";
-            document.getElementById("modalStatus").innerHTML = getStatusBadge("resolved");
-            fetchReports();
-
-            closeAllModals();
-            await openResolutionActionModal();
-        } catch (e) {
-            console.error(e);
-            toast("Error resolving case", "error");
-        }
+        await openResolutionActionModal();
     });
 
     function populateSuspensionModal(profile) {
@@ -953,7 +1274,7 @@
     // MODAL CLOSE HELPERS
     // ══════════════════════════════════════════════════════
     function closeAllModals() {
-        ["viewReportModal", "dismissConfirmModal", "suspensionModal", "resolutionActionModal", "hidePostModal", "hideReviewModal", "removeReviewModal"].forEach((id) => {
+        ["viewReportModal", "dismissConfirmModal", "disputeProjectDecisionModal", "disputeHaltConfirmModal", "disputeWarningModal", "suspensionModal", "resolutionActionModal", "hidePostModal", "hideReviewModal", "removeReviewModal"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) { el.classList.add("hidden"); el.classList.remove("flex"); }
         });
@@ -987,8 +1308,8 @@
     });
 
     document.getElementById("confirmResolutionActionBtn")?.addEventListener("click", async function () {
-        if (!currentReport || currentReport.status !== "resolved") {
-            toast("Resolve the case first before applying a resolution action", "error");
+        if (!currentReport) {
+            toast("No active case selected", "error");
             return;
         }
 
@@ -1036,7 +1357,8 @@
                 return;
             }
 
-            toast("Resolution action applied successfully", "success");
+            currentReport.status = "resolved";
+            toast("Report approved and action applied successfully", "success");
             closeAllModals();
             fetchReports();
         } catch (e) {
@@ -1109,12 +1431,196 @@
 
     document.getElementById("btnResolveDispute")?.addEventListener("click", async () => {
         if (!currentReport || currentReport.source !== "dispute") return;
+
+        const disputeType = String(currentReport.dispute_type || "").toLowerCase();
+        const needsWarningModal = ["payment", "delay", "quality", "others"].includes(disputeType);
+
+        if (needsWarningModal) {
+            const warningModal = document.getElementById("disputeWarningModal");
+            const warningMessage = document.getElementById("disputeWarningMessage");
+            if (warningMessage) warningMessage.value = "";
+            if (warningModal) {
+                warningModal.classList.remove("hidden");
+                warningModal.classList.add("flex");
+            }
+            return;
+        }
+
         await performDisputeAction("resolve");
     });
 
     document.getElementById("btnRejectDispute")?.addEventListener("click", async () => {
         if (!currentReport || currentReport.source !== "dispute") return;
-        await performDisputeAction("reject");
+        document.getElementById("dismissReason").value = "";
+        const modal = document.getElementById("dismissConfirmModal");
+        if (modal) { modal.classList.remove("hidden"); modal.classList.add("flex"); }
+    });
+
+    document.getElementById("btnApplyDisputeProjectAction")?.addEventListener("click", async () => {
+        if (!currentReport || currentReport.source !== "dispute") return;
+        if (currentReport.required_action !== "halt_project") {
+            toast("No project action is required for this dispute.", "error");
+            return;
+        }
+
+        const modal = document.getElementById("disputeHaltConfirmModal");
+        const reason = document.getElementById("disputeHaltReason");
+        const remarks = document.getElementById("disputeHaltRemarks");
+        if (reason) reason.value = "";
+        if (remarks) remarks.value = "";
+        if (modal) {
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+    });
+
+    document.getElementById("confirmDisputeHaltBtn")?.addEventListener("click", async function () {
+        if (!currentReport || currentReport.source !== "dispute") return;
+
+        const reason = document.getElementById("disputeHaltReason")?.value?.trim() || "";
+        const remarks = document.getElementById("disputeHaltRemarks")?.value?.trim() || "";
+        if (reason.length < 10) {
+            toast("Please provide at least 10 characters for the halt reason", "error");
+            return;
+        }
+
+        this.disabled = true;
+        const original = this.textContent;
+        this.textContent = "Processing...";
+
+        try {
+            const res = await fetch(
+                `/admin/project-management/disputes/${encodeURIComponent(currentReport.id)}/project-action`,
+                {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        action: "halt_project",
+                        halt_reason: reason,
+                        project_remarks: remarks,
+                    }),
+                }
+            );
+            const json = await res.json();
+            if (!json.success) {
+                toast(json.message || "Failed to halt project", "error");
+                return;
+            }
+
+            toast("Project halted and dispute resolved", "success");
+            const haltModal = document.getElementById("disputeHaltConfirmModal");
+            haltModal?.classList.add("hidden");
+            haltModal?.classList.remove("flex");
+            await openViewModal("dispute", currentReport.id, "dispute");
+            fetchReports();
+        } catch (e) {
+            console.error(e);
+            toast("Error halting project", "error");
+        } finally {
+            this.disabled = false;
+            this.textContent = original;
+        }
+    });
+
+    document.getElementById("confirmDisputeWarningBtn")?.addEventListener("click", async function () {
+        if (!currentReport || currentReport.source !== "dispute") return;
+
+        const warningMessage = document.getElementById("disputeWarningMessage")?.value?.trim() || "";
+        if (warningMessage.length < 10) {
+            toast("Please provide at least 10 characters for the warning message", "error");
+            return;
+        }
+
+        this.disabled = true;
+        const original = this.textContent;
+        this.textContent = "Sending...";
+
+        try {
+            const res = await fetch(
+                `/admin/project-management/disputes/${encodeURIComponent(currentReport.id)}/finalize`,
+                {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        notes: warningMessage,
+                        warning_message: warningMessage,
+                    }),
+                }
+            );
+
+            const json = await res.json();
+            if (!json.success) {
+                toast(json.message || "Failed to send warning and approve dispute", "error");
+                return;
+            }
+
+            toast("Warning sent and dispute approved successfully", "success");
+            const warningModal = document.getElementById("disputeWarningModal");
+            warningModal?.classList.add("hidden");
+            warningModal?.classList.remove("flex");
+            closeAllModals();
+            fetchReports();
+        } catch (e) {
+            console.error(e);
+            toast("Error sending dispute warning", "error");
+        } finally {
+            this.disabled = false;
+            this.textContent = original;
+        }
+    });
+
+    document.getElementById("confirmDisputeProjectDecisionBtn")?.addEventListener("click", async function () {
+        if (!currentReport || currentReport.source !== "dispute") return;
+
+        const modal = document.getElementById("disputeProjectDecisionModal");
+        const actionType = modal?.dataset?.action || "";
+        if (!["resume_project", "terminate_project"].includes(actionType)) {
+            toast("Invalid project decision action", "error");
+            return;
+        }
+
+        const reason = document.getElementById("disputeProjectDecisionReason")?.value?.trim() || "";
+        const remarks = document.getElementById("disputeProjectDecisionRemarks")?.value?.trim() || "";
+        if (reason.length < 10) {
+            toast("Please provide at least 10 characters for admin reason", "error");
+            return;
+        }
+
+        this.disabled = true;
+        const original = this.textContent;
+        this.textContent = "Processing...";
+
+        try {
+            const res = await fetch(
+                `/admin/project-management/disputes/${encodeURIComponent(currentReport.id)}/project-action`,
+                {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        action: actionType,
+                        action_reason: reason,
+                        project_remarks: remarks,
+                    }),
+                }
+            );
+            const json = await res.json();
+            if (!json.success) {
+                toast(json.message || "Failed to apply project decision", "error");
+                return;
+            }
+
+            toast(actionType === "resume_project" ? "Project resumed successfully" : "Project terminated successfully", "success");
+            modal?.classList.add("hidden");
+            modal?.classList.remove("flex");
+            await openViewModal("dispute", currentReport.id, "dispute");
+            fetchReports();
+        } catch (e) {
+            console.error(e);
+            toast("Error applying project decision", "error");
+        } finally {
+            this.disabled = false;
+            this.textContent = original;
+        }
     });
 
     async function performDisputeAction(action) {
@@ -1128,8 +1634,6 @@
             url = `/admin/project-management/disputes/${encodeURIComponent(currentReport.id)}/approve`;
         } else if (action === "resolve") {
             url = `/admin/project-management/disputes/${encodeURIComponent(currentReport.id)}/finalize`;
-        } else {
-            url = `/admin/project-management/disputes/${encodeURIComponent(currentReport.id)}/reject`;
         }
 
         try {
@@ -1144,17 +1648,18 @@
                 return;
             }
 
-            if (action === "resolve") {
-                currentReport.status = "resolved";
-                toast("Dispute resolved successfully", "success");
+            if (action === "review") {
+                toast("Dispute moved to under review", "success");
+                await openViewModal("dispute", currentReport.id, "dispute");
+            } else if (action === "resolve") {
+                toast("Dispute approved successfully", "success");
                 closeAllModals();
-                await openResolutionActionModal();
-            } else {
-                toast(action === "reject" ? "Dispute dismissed successfully" : "Dispute moved under review", "success");
-                closeAllModals();
+                fetchReports();
             }
 
-            fetchReports();
+            if (action !== "resolve") {
+                fetchReports();
+            }
         } catch (e) {
             console.error(e);
             toast("Error processing dispute action", "error");
