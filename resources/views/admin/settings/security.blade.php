@@ -165,6 +165,16 @@
               <label class="text-xs text-gray-500 font-medium whitespace-nowrap">To</label>
               <input type="date" id="myLogDateTo" class="border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none text-gray-600">
             </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500 font-medium whitespace-nowrap">Action</label>
+              <select id="myLogActionFilter" class="border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none text-gray-600 bg-white min-w-[150px]">
+                <option value="">All Actions</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2 min-w-[220px]">
+              <label class="text-xs text-gray-500 font-medium whitespace-nowrap">Search</label>
+              <input type="text" id="myLogSearch" placeholder="Action, details, IP..." class="border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none text-gray-600 w-full">
+            </div>
             <button id="myLogResetBtn" class="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition">Reset</button>
           </div>
           <div class="overflow-x-auto rounded-xl border border-gray-100">
@@ -181,6 +191,13 @@
                 <tr><td colspan="4" class="px-5 py-8 text-center text-gray-400">Loading logs...</td></tr>
               </tbody>
             </table>
+          </div>
+          <div class="flex items-center justify-between mt-4">
+            <p id="myLogPageMeta" class="text-xs text-gray-400">Showing 0-0</p>
+            <div class="flex items-center gap-2">
+              <button id="myLogPrevBtn" class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Previous</button>
+              <button id="myLogNextBtn" class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Next</button>
+            </div>
           </div>
         </div>
 
@@ -242,6 +259,16 @@
               <label class="text-xs text-gray-500 font-medium whitespace-nowrap">To</label>
               <input type="date" id="teamLogDateTo" class="border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none text-gray-600">
             </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500 font-medium whitespace-nowrap">Action</label>
+              <select id="teamLogActionFilter" class="border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none text-gray-600 bg-white min-w-[150px]">
+                <option value="">All Actions</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2 min-w-[220px]">
+              <label class="text-xs text-gray-500 font-medium whitespace-nowrap">Search</label>
+              <input type="text" id="teamLogSearch" placeholder="Admin, action, details, IP..." class="border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-400 focus:outline-none text-gray-600 w-full">
+            </div>
             <button id="teamLogResetBtn" class="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition">Reset</button>
             <button id="refreshTeamLogBtn" class="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium transition">
               <i class="fi fi-sr-refresh" style="font-size:.7rem"></i> Refresh
@@ -262,6 +289,13 @@
                 <tr><td colspan="5" class="px-5 py-10 text-center text-gray-400">Loading activity...</td></tr>
               </tbody>
             </table>
+          </div>
+          <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+            <p id="teamLogPageMeta" class="text-xs text-gray-400">Showing 0-0</p>
+            <div class="flex items-center gap-2">
+              <button id="teamLogPrevBtn" class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Previous</button>
+              <button id="teamLogNextBtn" class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Next</button>
+            </div>
           </div>
         </div>
       </div>{{-- /tab-team --}}

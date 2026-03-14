@@ -201,25 +201,50 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Personal Activity Log rendering (4 columns: Action, Details, IP, Date) ---
+  const LOGS_PER_PAGE = 5;
   let allMyLogs = [];
+  let myLogsPage = 1;
   function renderMyLogs(logs) {
     allMyLogs = Array.isArray(logs) ? logs : [];
+    myLogsPage = 1;
+    populateActionFilter(allMyLogs, 'myLogActionFilter');
     applyMyLogFilter();
   }
   function applyMyLogFilter() {
     const from = document.getElementById('myLogDateFrom').value;
     const to   = document.getElementById('myLogDateTo').value;
+    const action = document.getElementById('myLogActionFilter').value;
+    const term = (document.getElementById('myLogSearch').value || '').trim().toLowerCase();
     let filtered = allMyLogs;
     if (from) filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) >= from);
     if (to)   filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) <= to);
+    if (action) filtered = filtered.filter(l => (l.action || '') === action);
+    if (term) {
+      filtered = filtered.filter(l => {
+        const detailText = (() => { try { return JSON.stringify(JSON.parse(l.details || '{}')); } catch { return String(l.details || ''); } })();
+        const haystack = [l.action || '', detailText, l.ip_address || '', l.created_at || ''].join(' ').toLowerCase();
+        return haystack.includes(term);
+      });
+    }
     const tbody   = document.getElementById('activityTableBody');
     const countEl = document.getElementById('logCount');
+    const pageMeta = document.getElementById('myLogPageMeta');
+    const prevBtn = document.getElementById('myLogPrevBtn');
+    const nextBtn = document.getElementById('myLogNextBtn');
     countEl.textContent = filtered.length ? filtered.length + ' records' : '0 records';
+    const totalPages = Math.max(1, Math.ceil(filtered.length / LOGS_PER_PAGE));
+    if (myLogsPage > totalPages) myLogsPage = totalPages;
+    const startIdx = (myLogsPage - 1) * LOGS_PER_PAGE;
+    const pageRows = filtered.slice(startIdx, startIdx + LOGS_PER_PAGE);
+    prevBtn.disabled = myLogsPage <= 1;
+    nextBtn.disabled = myLogsPage >= totalPages;
+
     if (!filtered.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="px-5 py-10 text-center text-gray-400 text-sm">' + (allMyLogs.length ? 'No logs match the selected date range.' : 'No activity recorded yet. Actions like editing your profile or changing your password will appear here.') + '</td></tr>';
+      pageMeta.textContent = 'Showing 0-0 of 0';
       return;
     }
-    tbody.innerHTML = filtered.map(function(log) {
+    tbody.innerHTML = pageRows.map(function(log) {
       return '<tr class="border-t border-gray-50 hover:bg-gray-50/60 transition">'
         + '<td class="px-5 py-3">' + badgeFor(log.action) + '</td>'
         + '<td class="px-5 py-3 text-gray-500 text-xs max-w-xs">' + prettyDetails(log.details) + '</td>'
@@ -227,6 +252,18 @@ document.addEventListener('DOMContentLoaded', () => {
         + '<td class="px-5 py-3 text-xs text-gray-400">' + formatDate(log.created_at) + '</td>'
         + '</tr>';
     }).join('');
+    pageMeta.textContent = 'Showing ' + (startIdx + 1) + '-' + (startIdx + pageRows.length) + ' of ' + filtered.length;
+  }
+
+  function populateActionFilter(logs, selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const prev = select.value || '';
+    const actions = [...new Set((logs || []).map(l => l.action).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">All Actions</option>' + actions.map(a => '<option value="' + esc(a) + '">' + esc(a.replace(/_/g, ' ')) + '</option>').join('');
+    if (actions.includes(prev)) {
+      select.value = prev;
+    }
   }
 
   // --- Profile edit modal ---
@@ -387,6 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Columns: Admin Name, Action, Details, IP Address, Date & Time.
   // =========================================================
   let allTeamLogs = [];
+  let teamLogsPage = 1;
   async function loadTeamActivity() {
     const teamCountEl = document.getElementById('teamLogCount');
     const tbody = document.getElementById('teamActivityBody');
@@ -396,19 +434,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (redirect) { window.location.href = '/login'; return; }
     if (!ok || !data.success) { tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-6 text-center text-red-400">' + esc(data.message) + '</td></tr>'; teamCountEl.textContent = 'error'; return; }
     allTeamLogs = Array.isArray(data.data.logs) ? data.data.logs : [];
+    teamLogsPage = 1;
+    populateActionFilter(allTeamLogs, 'teamLogActionFilter');
     applyTeamLogFilter();
   }
   function applyTeamLogFilter() {
     const from = document.getElementById('teamLogDateFrom').value;
     const to   = document.getElementById('teamLogDateTo').value;
+    const action = document.getElementById('teamLogActionFilter').value;
+    const term = (document.getElementById('teamLogSearch').value || '').trim().toLowerCase();
     let filtered = allTeamLogs;
     if (from) filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) >= from);
     if (to)   filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) <= to);
+    if (action) filtered = filtered.filter(l => (l.action || '') === action);
+    if (term) {
+      filtered = filtered.filter(l => {
+        const detailText = (() => { try { return JSON.stringify(JSON.parse(l.details || '{}')); } catch { return String(l.details || ''); } })();
+        const haystack = [l.admin_name || '', l.admin_id || '', l.action || '', detailText, l.ip_address || '', l.created_at || ''].join(' ').toLowerCase();
+        return haystack.includes(term);
+      });
+    }
     const teamCountEl = document.getElementById('teamLogCount');
     const tbody = document.getElementById('teamActivityBody');
+    const pageMeta = document.getElementById('teamLogPageMeta');
+    const prevBtn = document.getElementById('teamLogPrevBtn');
+    const nextBtn = document.getElementById('teamLogNextBtn');
     teamCountEl.textContent = filtered.length ? filtered.length + ' records' : '0 records';
-    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-10 text-center text-gray-400 text-sm">' + (allTeamLogs.length ? 'No logs match the selected date range.' : 'No team activity recorded yet.') + '</td></tr>'; return; }
-    tbody.innerHTML = filtered.map(function(log) {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / LOGS_PER_PAGE));
+    if (teamLogsPage > totalPages) teamLogsPage = totalPages;
+    const startIdx = (teamLogsPage - 1) * LOGS_PER_PAGE;
+    const pageRows = filtered.slice(startIdx, startIdx + LOGS_PER_PAGE);
+    prevBtn.disabled = teamLogsPage <= 1;
+    nextBtn.disabled = teamLogsPage >= totalPages;
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-10 text-center text-gray-400 text-sm">' + (allTeamLogs.length ? 'No logs match the selected filters.' : 'No team activity recorded yet.') + '</td></tr>';
+      pageMeta.textContent = 'Showing 0-0 of 0';
+      return;
+    }
+    tbody.innerHTML = pageRows.map(function(log) {
       return '<tr class="border-t border-gray-50 hover:bg-gray-50/50 transition">'
         + '<td class="px-5 py-3 font-medium text-gray-700">' + esc((log.admin_name || '').trim() || log.admin_id) + '</td>'
         + '<td class="px-5 py-3">' + badgeFor(log.action) + '</td>'
@@ -417,22 +480,37 @@ document.addEventListener('DOMContentLoaded', () => {
         + '<td class="px-5 py-3 text-xs text-gray-400">' + formatDate(log.created_at) + '</td>'
         + '</tr>';
     }).join('');
+    pageMeta.textContent = 'Showing ' + (startIdx + 1) + '-' + (startIdx + pageRows.length) + ' of ' + filtered.length;
   }
 
   // --- Date filter listeners ---
   document.getElementById('myLogDateFrom').addEventListener('change', applyMyLogFilter);
   document.getElementById('myLogDateTo').addEventListener('change', applyMyLogFilter);
+  document.getElementById('myLogActionFilter').addEventListener('change', () => { myLogsPage = 1; applyMyLogFilter(); });
+  document.getElementById('myLogSearch').addEventListener('input', () => { myLogsPage = 1; applyMyLogFilter(); });
+  document.getElementById('myLogPrevBtn').addEventListener('click', () => { if (myLogsPage > 1) { myLogsPage--; applyMyLogFilter(); } });
+  document.getElementById('myLogNextBtn').addEventListener('click', () => { myLogsPage++; applyMyLogFilter(); });
   document.getElementById('myLogResetBtn').addEventListener('click', () => {
     document.getElementById('myLogDateFrom').value = '';
     document.getElementById('myLogDateTo').value   = '';
+    document.getElementById('myLogActionFilter').value = '';
+    document.getElementById('myLogSearch').value = '';
+    myLogsPage = 1;
     applyMyLogFilter();
   });
 
   document.getElementById('teamLogDateFrom').addEventListener('change', applyTeamLogFilter);
   document.getElementById('teamLogDateTo').addEventListener('change', applyTeamLogFilter);
+  document.getElementById('teamLogActionFilter').addEventListener('change', () => { teamLogsPage = 1; applyTeamLogFilter(); });
+  document.getElementById('teamLogSearch').addEventListener('input', () => { teamLogsPage = 1; applyTeamLogFilter(); });
+  document.getElementById('teamLogPrevBtn').addEventListener('click', () => { if (teamLogsPage > 1) { teamLogsPage--; applyTeamLogFilter(); } });
+  document.getElementById('teamLogNextBtn').addEventListener('click', () => { teamLogsPage++; applyTeamLogFilter(); });
   document.getElementById('teamLogResetBtn').addEventListener('click', () => {
     document.getElementById('teamLogDateFrom').value = '';
     document.getElementById('teamLogDateTo').value   = '';
+    document.getElementById('teamLogActionFilter').value = '';
+    document.getElementById('teamLogSearch').value = '';
+    teamLogsPage = 1;
     applyTeamLogFilter();
   });
 

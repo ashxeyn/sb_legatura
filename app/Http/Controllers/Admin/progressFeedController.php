@@ -40,18 +40,28 @@ class progressFeedController extends Controller
             'mi.sequence_order',
             'm.milestone_id',
             DB::raw("COALESCE(m.milestone_name, 'Milestone') as milestone_name"),
-            'proj.project_id',
-            'proj.project_title',
-            DB::raw("COALESCE(cu.user_id, ou.user_id) as contractor_user_id"),
-            DB::raw("COALESCE(cu.username, ou.username) as contractor_username"),
-            DB::raw("COALESCE(c.company_logo, cpo.profile_pic, opo.profile_pic) as contractor_pic"),
+            DB::raw('COALESCE(proj.project_id, m.project_id) as project_id'),
+            DB::raw("COALESCE(proj.project_title, CONCAT('Project #', m.project_id)) as project_title"),
+            DB::raw("COALESCE(cu.user_id, mu.user_id, ou.user_id, su.user_id, p.submitted_by_owner_id) as contractor_user_id"),
+            DB::raw("COALESCE(
+                NULLIF(TRIM(cu.username), ''),
+                NULLIF(TRIM(mu.username), ''),
+                NULLIF(TRIM(ou.username), ''),
+                NULLIF(TRIM(su.username), ''),
+                CONCAT('contractor_', COALESCE(m.contractor_id, p.progress_id))
+            ) as contractor_username"),
+            DB::raw("COALESCE(c.company_logo, cpo.profile_pic, mpo.profile_pic, opo.profile_pic, spo.profile_pic) as contractor_pic"),
             DB::raw("COALESCE(
                 NULLIF(TRIM(c.company_name), ''),
                 NULLIF(TRIM(CONCAT(COALESCE(cu.first_name, ''), ' ', COALESCE(cu.last_name, ''))), ''),
                 NULLIF(TRIM(cu.username), ''),
+                NULLIF(TRIM(CONCAT(COALESCE(mu.first_name, ''), ' ', COALESCE(mu.last_name, ''))), ''),
+                NULLIF(TRIM(mu.username), ''),
                 NULLIF(TRIM(CONCAT(COALESCE(ou.first_name, ''), ' ', COALESCE(ou.last_name, ''))), ''),
                 NULLIF(TRIM(ou.username), ''),
-                'Unknown'
+                NULLIF(TRIM(CONCAT(COALESCE(su.first_name, ''), ' ', COALESCE(su.last_name, ''))), ''),
+                NULLIF(TRIM(su.username), ''),
+                CONCAT('Contractor #', COALESCE(m.contractor_id, p.progress_id))
             ) as contractor_name"),
         ];
 
@@ -62,19 +72,26 @@ class progressFeedController extends Controller
         // Join chain:
         // 1. progress → milestone_items → milestones → projects
         // 2. projects → project_relationships (via relationship_id)
-        // 3. Try contractor lookup via project_relationships.selected_contractor_id
+        // 3. Resolve contractor via milestones.contractor_id (schema source of truth)
         // 4. Contractor's owner → property_owners → users (contractor user)
         // 5. Fallback: project_relationships.owner_id → property_owners → users (project owner)
         $query = DB::table('progress as p')
             ->join('milestone_items as mi', 'p.milestone_item_id', '=', 'mi.item_id')
             ->join('milestones as m',        'mi.milestone_id', '=', 'm.milestone_id')
-            ->join('projects as proj',       'm.project_id', '=', 'proj.project_id')
-            ->leftJoin('project_relationships as pr', 'proj.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('projects as proj',   'm.project_id', '=', 'proj.project_id')
+            ->leftJoin('project_relationships as pr', function ($join) {
+                $join->on('proj.relationship_id', '=', 'pr.rel_id')
+                    ->orOn('m.project_id', '=', 'pr.rel_id');
+            })
+            ->leftJoin('contractors as c', 'm.contractor_id', '=', 'c.contractor_id')
             ->leftJoin('property_owners as cpo', 'c.owner_id', '=', 'cpo.owner_id')
             ->leftJoin('users as cu', 'cpo.user_id', '=', 'cu.user_id')
+            ->leftJoin('users as mu', 'm.contractor_id', '=', 'mu.user_id')
+            ->leftJoin('property_owners as mpo', 'mu.user_id', '=', 'mpo.user_id')
             ->leftJoin('property_owners as opo', 'pr.owner_id', '=', 'opo.owner_id')
-            ->leftJoin('users as ou', 'opo.user_id', '=', 'ou.user_id');
+            ->leftJoin('users as ou', 'opo.user_id', '=', 'ou.user_id')
+            ->leftJoin('users as su', 'p.submitted_by_owner_id', '=', 'su.user_id')
+            ->leftJoin('property_owners as spo', 'su.user_id', '=', 'spo.user_id');
 
         $query->select($selectCols)
             ->orderBy('p.submitted_at', 'desc');
@@ -147,9 +164,7 @@ class progressFeedController extends Controller
     public function contractors()
     {
         $companies = DB::table('contractors as c')
-            ->join('project_relationships as pr', 'pr.selected_contractor_id', '=', 'c.contractor_id')
-            ->join('projects as proj', 'proj.relationship_id', '=', 'pr.rel_id')
-            ->join('milestones as m', 'm.project_id', '=', 'proj.project_id')
+            ->join('milestones as m', 'm.contractor_id', '=', 'c.contractor_id')
             ->join('milestone_items as mi', 'mi.milestone_id', '=', 'm.milestone_id')
             ->join('progress as p', 'p.milestone_item_id', '=', 'mi.item_id')
             ->whereNotNull('c.company_name')
