@@ -40,9 +40,8 @@
 (function () {
     let currentUserId = null;
     let currentUserType = null; // 'contractor' or 'property_owner'
-    // Doc viewer state to avoid showing late errors after the modal is closed
-    let _docViewerActive = false;
-    let _docViewerObjectUrl = null;
+    let isAcceptSubmitting = false;
+    let isRejectSubmitting = false;
 
     // Helper functions
     function setText(id, value) {
@@ -258,13 +257,13 @@
     // Notification helper (matches propertyOwner style)
     function showNotification(message, type = "success") {
         const notification = document.createElement("div");
-        notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
+        notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
             type === "success" ? "bg-green-500" : "bg-red-500"
-        } text-white font-semibold flex items-center gap-3`;
+        } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
         notification.innerHTML = `
       <i class="fi fi-rr-${
           type === "success" ? "check-circle" : "cross-circle"
-      } text-2xl"></i>
+      } text-base"></i>
       <span>${message}</span>
     `;
         document.body.appendChild(notification);
@@ -286,6 +285,54 @@
     const ownerModal = document.getElementById("ownerVerificationModal");
     const acceptModal = document.getElementById("acceptConfirmModal");
     const rejectModal = document.getElementById("rejectConfirmModal");
+    const acceptConfirmBtn = document.getElementById("acceptConfirmBtn");
+    const acceptCancelBtn = document.getElementById("acceptCancelBtn");
+    const rejectConfirmBtn = document.getElementById("rejectConfirmBtn");
+    const rejectCancelBtn = document.getElementById("rejectCancelBtn");
+    const rejectReasonInput = document.getElementById("rejectReasonInput");
+    const rejectReasonError = document.getElementById("rejectReasonError");
+
+    function setControlDisabled(control, disabled) {
+        if (!control) return;
+        control.disabled = disabled;
+        control.classList.toggle("opacity-70", disabled);
+        control.classList.toggle("cursor-not-allowed", disabled);
+    }
+
+    function setButtonLoading(button, loading, loadingLabel) {
+        if (!button) return;
+
+        if (loading) {
+            if (!button.dataset.originalHtml) {
+                button.dataset.originalHtml = button.innerHTML;
+            }
+
+            button.innerHTML = `
+              <span class="inline-flex items-center justify-center gap-2">
+                <span class="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
+                <span>${loadingLabel}</span>
+              </span>
+            `;
+            setControlDisabled(button, true);
+            return;
+        }
+
+        if (button.dataset.originalHtml) {
+            button.innerHTML = button.dataset.originalHtml;
+        }
+        setControlDisabled(button, false);
+    }
+
+    function setAcceptLoading(loading) {
+        setButtonLoading(acceptConfirmBtn, loading, "Approving...");
+        setControlDisabled(acceptCancelBtn, loading);
+    }
+
+    function setRejectLoading(loading) {
+        setButtonLoading(rejectConfirmBtn, loading, "Rejecting...");
+        setControlDisabled(rejectCancelBtn, loading);
+        setControlDisabled(rejectReasonInput, loading);
+    }
 
     // Close Buttons
     document
@@ -294,12 +341,8 @@
     document
         .getElementById("poCloseBtn")
         ?.addEventListener("click", () => toggleModal(ownerModal, false));
-    document
-        .getElementById("acceptCancelBtn")
-        ?.addEventListener("click", () => toggleModal(acceptModal, false));
-    document
-        .getElementById("rejectCancelBtn")
-        ?.addEventListener("click", () => toggleModal(rejectModal, false));
+    acceptCancelBtn?.addEventListener("click", () => toggleModal(acceptModal, false));
+    rejectCancelBtn?.addEventListener("click", () => toggleModal(rejectModal, false));
 
     // Open Modal Logic
     function toggleModal(modal, show) {
@@ -482,25 +525,28 @@
 
     acceptBtns.forEach((btn) =>
         btn?.addEventListener("click", () => {
-            toggleModal(contractorModal, false);
-            toggleModal(ownerModal, false);
             toggleModal(acceptModal, true);
         })
     );
 
     rejectBtns.forEach((btn) =>
         btn?.addEventListener("click", () => {
-            toggleModal(contractorModal, false);
-            toggleModal(ownerModal, false);
             toggleModal(rejectModal, true);
         })
     );
 
     // Confirm Actions
-    document
-        .getElementById("acceptConfirmBtn")
-        ?.addEventListener("click", async () => {
-            if (!currentUserId) return;
+    acceptConfirmBtn?.addEventListener("click", async () => {
+            if (isAcceptSubmitting) return;
+
+            if (!currentUserId) {
+                showNotification("No verification request selected.", "error");
+                return;
+            }
+
+            isAcceptSubmitting = true;
+            setAcceptLoading(true);
+
             try {
                 const response = await fetch(
                     `/api/admin/users/verification-requests/${currentUserId}/approve`,
@@ -546,21 +592,31 @@
             } catch (error) {
                 console.error(error);
                 showNotification("An error occurred.", "error");
+            } finally {
+                setAcceptLoading(false);
+                isAcceptSubmitting = false;
             }
         });
 
-    document
-        .getElementById("rejectConfirmBtn")
-        ?.addEventListener("click", async () => {
-            if (!currentUserId) return;
-            const reason = document.getElementById("rejectReasonInput").value.trim();
-            const errorEl = document.getElementById("rejectReasonError");
+    rejectConfirmBtn?.addEventListener("click", async () => {
+            if (isRejectSubmitting) return;
+
+            if (!currentUserId) {
+                showNotification("No verification request selected.", "error");
+                return;
+            }
+            const reason = rejectReasonInput?.value.trim() || "";
+            const errorEl = rejectReasonError;
 
             if (!reason || reason.length < 10) {
                 errorEl.textContent = reason.length === 0 ? "Reason is required." : "Reason must be at least 10 characters.";
                 errorEl.classList.remove("hidden");
+                showNotification(errorEl.textContent, "error");
                 return;
             }
+
+            isRejectSubmitting = true;
+            setRejectLoading(true);
 
             try {
                 const response = await fetch(
@@ -597,23 +653,26 @@
                     }
 
                     showNotification("Verification rejected successfully!", "success");
-                    document.getElementById("rejectReasonInput").value = "";
+                    if (rejectReasonInput) rejectReasonInput.value = "";
                     errorEl.classList.add("hidden");
                 } else {
-                    const err = await response.json();
+                    const err = await response.json().catch(() => null);
                     showNotification(
-                        err.message || "Failed to reject user.",
+                        err?.message || "Failed to reject user.",
                         "error"
                     );
                 }
             } catch (error) {
                 console.error(error);
                 showNotification("An error occurred.", "error");
+            } finally {
+                setRejectLoading(false);
+                isRejectSubmitting = false;
             }
         });
 
     // Clear error when user starts typing
-    document.getElementById("rejectReasonInput")?.addEventListener("input", () => {
-        document.getElementById("rejectReasonError")?.classList.add("hidden");
+    rejectReasonInput?.addEventListener("input", () => {
+        rejectReasonError?.classList.add("hidden");
     });
 })();

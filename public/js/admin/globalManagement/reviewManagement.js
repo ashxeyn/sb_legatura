@@ -79,8 +79,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // Set reviewer name in modal
             document.getElementById('deleteModalReviewerName').textContent = reviewerName;
 
-            // Clear previous reason
+            // Clear previous reason and errors
             document.getElementById('deletionReason').value = '';
+            clearDeleteReviewErrors();
 
             // Show modal
             deleteModal.classList.remove('hidden');
@@ -102,15 +103,37 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Show delete review errors
+    function showDeleteReviewErrors(errors) {
+        const errorAlert = document.getElementById('deleteReviewErrorAlert');
+        const errorList = document.getElementById('deleteReviewErrorList');
+        
+        errorList.innerHTML = '';
+        errors.forEach(error => {
+            const li = document.createElement('li');
+            li.textContent = error;
+            errorList.appendChild(li);
+        });
+        
+        errorAlert.classList.remove('hidden');
+    }
+
+    // Clear delete review errors
+    function clearDeleteReviewErrors() {
+        const errorAlert = document.getElementById('deleteReviewErrorAlert');
+        errorAlert.classList.add('hidden');
+    }
+
     // Confirm delete
     document.getElementById('confirmDelete').addEventListener('click', function () {
         var reason = document.getElementById('deletionReason').value.trim();
 
+        // Clear previous errors
+        clearDeleteReviewErrors();
+
         if (!reason) {
-            var textarea = document.getElementById('deletionReason');
-            textarea.classList.remove('border-gray-200');
-            textarea.classList.add('border-red-500');
-            textarea.focus();
+            showDeleteReviewErrors(['Please provide a reason for deletion']);
+            document.getElementById('deletionReason').focus();
             return;
         }
 
@@ -186,6 +209,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     tableBody.innerHTML = data.reviews_html;
                     // Re-initialize View/Delete button listeners for new rows
                     rebindActionButtons();
+                    // Attach pagination listeners for page navigation
+                    attachPaginationListeners();
 
                     // Hide/Show pagination based on results
                     const paginationWrap = document.getElementById('paginationWrap');
@@ -250,6 +275,40 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function attachPaginationListeners() {
+        // Attach click listeners to pagination links
+        document.querySelectorAll('.review-page-link').forEach(function (link) {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const url = this.href;
+                
+                // Fetch data for the clicked page
+                fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.reviews_html) {
+                            tableBody.innerHTML = data.reviews_html;
+                            rebindActionButtons();
+                            attachPaginationListeners(); // Re-attach for new pagination links
+                            
+                            // Update pagination controls
+                            const paginationWrap = document.getElementById('paginationWrap');
+                            if (paginationWrap && data.pagination_html) {
+                                paginationWrap.innerHTML = data.pagination_html;
+                                attachPaginationListeners(); // Re-attach for updated pagination
+                            }
+                        }
+                        
+                        // Update browser history
+                        window.history.pushState({}, '', url);
+                    })
+                    .catch(error => console.error('Error loading page:', error));
+            });
+        });
+    }
+
     // Input listeners for filters
     let searchTimeout;
     if (searchInput) {
@@ -287,11 +346,11 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            } text-white font-semibold flex items-center gap-3`;
+        notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
 
         notification.innerHTML = `
-            <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-2xl"></i>
+            <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-base"></i>
             <span>${message}</span>
         `;
 
@@ -345,5 +404,41 @@ document.addEventListener('DOMContentLoaded', function () {
             container.appendChild(svg);
         }
     }
+
+    /**
+     * Prepend a new review row to the table (new data appears first)
+     */
+    function prependReview(reviewRowHTML) {
+        if (!tableBody || !reviewRowHTML) return;
+
+        // Create a temporary container to parse the HTML
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = reviewRowHTML.trim();
+        var newRow = tempDiv.firstElementChild;
+
+        if (newRow) {
+            // Prepend to table body
+            tableBody.insertAdjacentHTML('afterbegin', newRow.outerHTML);
+            
+            // Re-bind event handlers to the new row
+            var newButton = tableBody.querySelector('.view-review-btn, .delete-review-btn');
+            if (newButton && newButton.parentElement.parentElement === tableBody.firstElementChild) {
+                rebindActionButtons();
+            }
+
+            // Optional: Show a brief highlight animation on the new row
+            var firstRow = tableBody.firstElementChild;
+            if (firstRow) {
+                firstRow.style.backgroundColor = '#fef3c7';
+                setTimeout(function() {
+                    firstRow.style.transition = 'background-color 1s ease-in-out';
+                    firstRow.style.backgroundColor = '';
+                }, 100);
+            }
+        }
+    }
+
+    // Initialize pagination listeners on page load
+    attachPaginationListeners();
 
 });

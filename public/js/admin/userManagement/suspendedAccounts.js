@@ -152,19 +152,7 @@ function attachReactivateListeners() {
 	}
 
 	function showToast(message, type='default'){
-		let container = document.getElementById('saToastContainer');
-		if(!container){
-			container = document.createElement('div');
-			container.id = 'saToastContainer';
-			container.className = 'fixed bottom-4 right-4 z-[80] space-y-2';
-			document.body.appendChild(container);
-		}
-		const color = type==='success' ? 'bg-emerald-600' : type==='info' ? 'bg-indigo-600' : 'bg-gray-900';
-		const t = document.createElement('div');
-		t.className = `${color} text-white text-sm px-3 py-2 rounded-lg shadow-lg animate-[fadeIn_.2s_ease]`;
-		t.textContent = message;
-		container.appendChild(t);
-		setTimeout(()=>{ t.style.transition='opacity .2s'; t.style.opacity='0'; setTimeout(()=>t.remove(), 200); }, 1800);
+		showNotification(message, type === 'error' ? 'error' : 'success');
 	}
 
 	function renderDocs(docs){
@@ -316,10 +304,10 @@ function attachReactivateListeners() {
 
 				openReactivateSuccess();
 			}else{
-				showToast('Unable to reactivate. Please try again');
+				showToast('Unable to reactivate. Please try again', 'error');
 			}
 		}catch(e){
-			showToast('Network error. Please try again');
+			showToast('Network error. Please try again', 'error');
 		}
 		finally{
 			btn.disabled = false; btn.classList.remove('opacity-90','cursor-wait'); btn.innerHTML = original;
@@ -423,9 +411,9 @@ function attachReactivateListeners() {
 		reRepSection?.classList.remove('hidden');
 	});
 
-	reSubmit?.addEventListener('click', ()=>{
+		reSubmit?.addEventListener('click', ()=>{
 		const name = document.getElementById('saRECompanyName')?.value?.trim();
-		if(!name){ showToast('Company name is required'); return; }
+		if(!name){ showToast('Company name is required', 'error'); return; }
 		reSubmit.disabled = true; const original = reSubmit.innerHTML; reSubmit.classList.add('opacity-90','cursor-wait');
 		reSubmit.innerHTML = `
 			<svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -483,9 +471,7 @@ function attachReactivateListeners() {
 	function el(id){ return document.getElementById(id); }
 	function chip(text){ const span = document.createElement('span'); span.className='px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs'; span.textContent=text; return span; }
 	function showToast(message){
-		let c = document.getElementById('saToastContainer');
-		if(!c){ c = document.createElement('div'); c.id='saToastContainer'; c.className='fixed bottom-4 right-4 z-[80] space-y-2'; document.body.appendChild(c); }
-		const t = document.createElement('div'); t.className='bg-gray-900 text-white text-sm px-3 py-2 rounded-lg shadow-lg'; t.textContent=message; c.appendChild(t); setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .2s'; setTimeout(()=>t.remove(),200); }, 1500);
+		showNotification(message, 'success');
 	}
 	function renderDocs(docs){
 		const wrap = el('saODocs'); if(!wrap) return;
@@ -592,11 +578,10 @@ function attachReactivateListeners() {
 	closeBtn?.addEventListener('click', close);
 	cancelBtn?.addEventListener('click', close);
 
-	submitBtn?.addEventListener('click', ()=>{
+		submitBtn?.addEventListener('click', ()=>{
 		const first = document.getElementById('saREOwnerFirst')?.value?.trim();
 		if(!first){
-
-			if(typeof showToast==='function') showToast('First name is required');
+			showNotification('First name is required', 'error');
 			return;
 		}
 		submitBtn.disabled = true; const original = submitBtn.innerHTML; submitBtn.classList.add('opacity-90','cursor-wait');
@@ -858,12 +843,13 @@ function confirmReactivateSuspendedAccount() {
 }
 
 function showNotification(message, type = 'success') {
+	const tone = type === 'error' ? 'error' : 'success';
 	const notification = document.createElement('div');
-	notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
-		type === 'success' ? 'bg-green-500' : 'bg-red-500'
-	} text-white font-semibold flex items-center gap-3`;
+	notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
+		tone === 'success' ? 'bg-green-500' : 'bg-red-500'
+	} text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
 	notification.innerHTML = `
-		<i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-2xl"></i>
+		<i class="fi fi-rr-${tone === 'success' ? 'check-circle' : 'cross-circle'} text-base"></i>
 		<span>${message}</span>
 	`;
 	document.body.appendChild(notification);

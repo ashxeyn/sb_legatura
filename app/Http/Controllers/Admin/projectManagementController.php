@@ -30,7 +30,7 @@ class projectManagementController extends Controller
         $verification = $request->query('verification');
         $progress = $request->query('progress');
 
-        $projects = projectClass::getAllProjects($search, $dateFrom, $dateTo, $verification, $progress, 15);
+        $projects = projectClass::getAllProjects($search, $dateFrom, $dateTo, $verification, $progress, 10);
 
         if ($request->ajax()) {
             return response()->json([

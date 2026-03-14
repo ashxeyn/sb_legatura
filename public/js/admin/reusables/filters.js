@@ -218,7 +218,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function attachPaginationListeners() {
         // Target pagination links inside the wrappers
         const paginationLinks = document.querySelectorAll(
-            "#contractorsTableWrap .pagination a, #ownersTableWrap .pagination a, #staffTableWrap .pagination a, #projectsTableWrap .pagination a"
+            "#contractorsTableWrap .pagination a, #ownersTableWrap .pagination a, #ownersTableWrap .posting-page-link, #projectsTableWrap .pagination a"
         );
         paginationLinks.forEach((link) => {
             link.addEventListener("click", function (e) {

@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
-
 use App\Http\Controllers\authController;
 use App\Models\user;
 use App\Models\admin\propertyOwnerClass;
@@ -561,7 +560,7 @@ class userManagementController extends authController
         $dateTo = $request->query('date_to');
 
         $contractorModel = new contractorClass();
-        $contractors = $contractorModel->getContractors($search, null, $dateFrom, $dateTo);
+        $contractors = $contractorModel->getContractors($search, null, $dateFrom, $dateTo, 10);
 
         if ($request->ajax()) {
             return response()->json([
@@ -1216,6 +1215,8 @@ class userManagementController extends authController
             'contractors.created_at as request_date',
             'contractors.company_name'
         )
+            ->orderBy('contractors.created_at', 'desc')
+            ->orderBy('contractors.contractor_id', 'desc')
             ->paginate(10, ['*'], 'contractors_page');
 
         // Fetch pending property owners
@@ -1247,6 +1248,8 @@ class userManagementController extends authController
             'users.first_name',
             'users.last_name'
         )
+            ->orderBy('property_owners.created_at', 'desc')
+            ->orderBy('property_owners.owner_id', 'desc')
             ->paginate(10, ['*'], 'owners_page');
 
         if ($request->ajax()) {
@@ -1663,7 +1666,7 @@ class userManagementController extends authController
     private function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $page = 1, $onlyEligible = false)
     {
         $model = new propertyOwnerClass();
-        return $model->getPropertyOwners($search, $status, $dateFrom, $dateTo, 15, $page, $onlyEligible);
+        return $model->getPropertyOwners($search, $status, $dateFrom, $dateTo, 10, $page, $onlyEligible);
     }
 
 
@@ -1675,6 +1678,8 @@ class userManagementController extends authController
     {
         return DB::table('contractors')
             ->where('verification_status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('contractor_id', 'desc')
             ->get();
     }
 
@@ -1685,6 +1690,8 @@ class userManagementController extends authController
     {
         return DB::table('property_owners')
             ->where('verification_status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('owner_id', 'desc')
             ->get();
     }
 
@@ -1870,7 +1877,7 @@ class userManagementController extends authController
         $status = $request->input('status');
 
         $contractorModel = new contractorClass();
-        $contractors = $contractorModel->getContractors($search, $status);
+        $contractors = $contractorModel->getContractors($search, $status, null, null, 10);
 
         return response()->json($contractors);
     }

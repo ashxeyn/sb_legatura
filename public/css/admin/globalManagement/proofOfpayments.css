@@ -2,260 +2,54 @@
 .stat-card {
   position: relative;
   overflow: hidden;
-  transform: translateY(0);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 100%;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-2px);
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
-  pointer-events: none;
-}
-
-/* Number Animation */
-.stat-card h2 {
-  animation: countUp 1s ease-out;
-}
-
-@keyframes countUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Progress Bar Animation */
-.stat-card .h-1 > div {
-  animation: progressBar 2s ease-out;
-}
-
-@keyframes progressBar {
-  from {
-    width: 0;
-  }
-}
-
-/* Icon Container Animation */
-.stat-card .bg-blue-100,
-.stat-card .bg-orange-100,
-.stat-card .bg-red-100,
-.stat-card .bg-green-100 {
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover .bg-blue-100 {
-  transform: rotate(10deg) scale(1.1);
-  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
-}
-
-.stat-card:hover .bg-orange-100 {
-  transform: rotate(10deg) scale(1.1);
-  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3);
-}
-
-.stat-card:hover .bg-red-100 {
-  transform: rotate(10deg) scale(1.1);
-  box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
-}
-
-.stat-card:hover .bg-green-100 {
-  transform: rotate(10deg) scale(1.1);
-  box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3);
-}
-
-/* Icon Animation */
-.stat-card i {
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover i {
-  transform: scale(1.2);
-}
-
-/* Percentage Badge Animation */
-.stat-card .rounded-full {
-  transition: all 0.3s ease;
-  animation: badgePulse 2s ease-in-out infinite;
-}
-
-@keyframes badgePulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.stat-card:hover .rounded-full {
-  animation: none;
-  transform: scale(1.1);
-}
-
-/* Arrow Icon Animation */
-.stat-card .fi-sr-arrow-small-up,
-.stat-card .fi-sr-arrow-small-down {
-  animation: arrowBounce 1.5s ease-in-out infinite;
-}
-
-@keyframes arrowBounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-/* Card Glow Effect */
-.stat-card::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s ease, height 0.6s ease;
-  pointer-events: none;
-}
-
-.stat-card:hover::after {
-  width: 500px;
-  height: 500px;
-}
-
-/* Number Color Pulse */
-.stat-number {
-  animation: numberGlow 3s ease-in-out infinite;
-}
-
-@keyframes numberGlow {
-  0%, 100% {
-    text-shadow: 0 0 5px rgba(249, 115, 22, 0.3);
-  }
-  50% {
-    text-shadow: 0 0 20px rgba(249, 115, 22, 0.5), 0 0 30px rgba(249, 115, 22, 0.3);
-  }
-}
-
-/* Progress Bar Pulse */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-/* Card Border Animation */
-.stat-card {
-  border-left-width: 4px;
-  transition: border-left-width 0.3s ease;
-}
-
-.stat-card:hover {
-  border-left-width: 8px;
-}
-
-/* Stagger Animation for Cards */
-.stat-card:nth-child(1) {
-  animation: slideInUp 0.5s ease-out 0.1s backwards;
-}
-
-.stat-card:nth-child(2) {
-  animation: slideInUp 0.5s ease-out 0.2s backwards;
-}
-
-.stat-card:nth-child(3) {
-  animation: slideInUp 0.5s ease-out 0.3s backwards;
-}
-
-.stat-card:nth-child(4) {
-  animation: slideInUp 0.5s ease-out 0.4s backwards;
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Weekly Text Animation */
-.stat-card p:last-of-type {
-  animation: fadeIn 1s ease-out 0.5s backwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Responsive Design Enhancements */
-@media (max-width: 768px) {
-  .stat-card {
-    padding: 1.25rem;
-  }
-  
-  .stat-card h2 {
-    font-size: 2rem;
-  }
-}
-
-/* Card Shadow Gradient on Hover */
-.stat-card.border-blue-500:hover {
-  box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.3);
-}
-
-.stat-card.border-orange-500:hover {
-  box-shadow: 0 20px 40px -10px rgba(249, 115, 22, 0.3);
-}
-
-.stat-card.border-red-500:hover {
-  box-shadow: 0 20px 40px -10px rgba(239, 68, 68, 0.3);
-}
-
-.stat-card.border-green-500:hover {
-  box-shadow: 0 20px 40px -10px rgba(34, 197, 94, 0.3);
-}
-
-/* Interactive Number Hover */
-.stat-number {
+.stat-card .stat-number {
   cursor: default;
-  transition: all 0.3s ease;
+  line-height: 1;
+  transition: color 0.18s ease;
+}
+
+.stat-card .stat-badge,
+.stat-card .stat-icon-wrap,
+.stat-card .stat-progress > div {
+  transition: background-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.stat-card .stat-badge {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.stat-card .stat-icon-wrap {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 
 .stat-card:hover .stat-number {
-  transform: scale(1.05);
-  color: #ea580c;
+  color: #c2410c;
 }
 
-/* Progress Bar Specific Colors */
+.stat-card.border-blue-500:hover {
+  box-shadow: 0 12px 24px -22px rgba(59, 130, 246, 0.7);
+}
+
+.stat-card.border-orange-500:hover {
+  box-shadow: 0 12px 24px -22px rgba(249, 115, 22, 0.7);
+}
+
+.stat-card.border-red-500:hover {
+  box-shadow: 0 12px 24px -22px rgba(239, 68, 68, 0.7);
+}
+
+.stat-card.border-green-500:hover {
+  box-shadow: 0 12px 24px -22px rgba(34, 197, 94, 0.7);
+}
+
 .stat-card .bg-blue-500 {
   background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
 }
@@ -270,6 +64,12 @@
 
 .stat-card .bg-green-500 {
   background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
+}
+
+@media (max-width: 768px) {
+  .stat-card:hover {
+    transform: none;
+  }
 }
 
 /* ===== Table Styles ===== */
@@ -346,6 +146,18 @@
 .overflow-x-auto::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
 .overflow-x-auto::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 10px; }
 .overflow-x-auto::-webkit-scrollbar-thumb:hover { background: #a5b4fc; }
+
+/* Hidden modal scrollbars while keeping scroll behavior */
+.modal-scroll-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.modal-scroll-hidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
 
 /* Table header styling */
 thead tr {
@@ -560,6 +372,19 @@ td.font-semibold {
   cursor: not-allowed;
 }
 .form-input::placeholder { color: #9ca3af; }
+
+#editPaymentModal .form-group { gap: 6px; }
+
+#editPaymentModal .form-label {
+  font-size: 12px;
+  color: #4b5563;
+  letter-spacing: 0.02em;
+}
+
+#editPaymentModal .form-input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
+}
 
 /* Edit file items */
 .edit-file-item {

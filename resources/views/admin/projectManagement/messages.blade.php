@@ -48,7 +48,7 @@
     window.Echo = new Echo({
         broadcaster: 'pusher',
         key: '{{ env("PUSHER_APP_KEY") }}',
-        cluster: '{{ env("PUSHER_APP_CLUSTER", 'mt1') }}',
+        cluster: '{{ env("PUSHER_APP_CLUSTER", "mt1") }}',
         forceTLS: true,
         encrypted: true,
         authEndpoint: '/broadcasting/auth',

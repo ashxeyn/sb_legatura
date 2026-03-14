@@ -8,9 +8,9 @@
     document.body.appendChild(handle);
 
     const stored = localStorage.getItem('legatura_sidebar_width');
-    const minWidth = 180;
+    const minWidth = 160;
     const maxWidth = 520;
-    const defaultWidth = aside.getBoundingClientRect().width || 288;
+    const defaultWidth = aside.getBoundingClientRect().width || 208;
     let sidebarWidth = stored ? parseInt(stored, 10) : defaultWidth;
 
     function applyWidth(w) {
@@ -304,6 +304,22 @@
     }
 
     if (notificationBell && notificationDropdown) {
+        const openNotificationDropdown = () => {
+            notificationDropdown.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                notificationDropdown.classList.add('is-open');
+            });
+        };
+
+        const closeNotificationDropdown = () => {
+            notificationDropdown.classList.remove('is-open');
+            window.setTimeout(() => {
+                if (!notificationDropdown.classList.contains('is-open')) {
+                    notificationDropdown.classList.add('hidden');
+                }
+            }, 180);
+        };
+
         notificationBell.addEventListener('click', function (e) {
             e.stopPropagation();
             notificationDropdown.classList.toggle('hidden');
@@ -313,14 +329,14 @@
         // Close on outside click
         document.addEventListener('click', function (e) {
             if (!notificationDropdown.contains(e.target) && !notificationBell.contains(e.target)) {
-                notificationDropdown.classList.add('hidden');
+                closeNotificationDropdown();
             }
         });
 
         // ESC to close
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
-                notificationDropdown.classList.add('hidden');
+                closeNotificationDropdown();
             }
         });
 
@@ -345,7 +361,23 @@
     if (userMenuBtn && userMenuDropdown) {
         userMenuBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            userMenuDropdown.classList.toggle('hidden');
+            e.preventDefault();
+            
+            // Toggle visibility
+            const isHidden = userMenuDropdown.classList.contains('hidden');
+            
+            if (isHidden) {
+                // Position the dropdown next to the button
+                const rect = userMenuBtn.getBoundingClientRect();
+                userMenuDropdown.style.left = (rect.right + -20) + 'px'; // 8px gap from button
+                userMenuDropdown.style.top = (rect.top - 120) + 'px'; // Move up 40px for better positioning
+                
+                // Show dropdown
+                userMenuDropdown.classList.remove('hidden');
+            } else {
+                // Hide dropdown
+                userMenuDropdown.classList.add('hidden');
+            }
         });
 
         document.addEventListener('click', function (e) {

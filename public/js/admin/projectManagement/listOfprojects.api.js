@@ -178,7 +178,51 @@
         }
     });
 
+    // =====================================================
+    // AJAX PAGINATION HANDLERS
+    // =====================================================
+    
+    async function attachPaginationListeners() {
+        const paginationLinks = document.querySelectorAll('.project-page-link');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const url = this.href;
+                
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    const data = await response.json();
+                    
+                    // Update the table wrapper with new HTML
+                    const tableWrapper = document.getElementById('projectsTableWrapper');
+                    if (tableWrapper && data.html) {
+                        tableWrapper.innerHTML = data.html;
+                        
+                        // Re-attach pagination listeners for new page links
+                        attachPaginationListeners();
+                    }
+                    
+                    // Update browser history
+                    window.history.pushState({}, '', url);
+                    
+                } catch (error) {
+                    console.error('Error loading page:', error);
+                }
+            });
+        });
+    }
+
     // initial load
     loadProjects();
+    
+    // Attach pagination listeners
+    attachPaginationListeners();
 
 })();

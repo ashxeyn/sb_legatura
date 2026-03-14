@@ -73,29 +73,63 @@ tbody tr:last-child::after {
 
 /* Action Buttons */
 .action-btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   position: relative;
   overflow: hidden;
   transition: all 0.2s ease;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .action-btn i {
   font-size: 16px;
 }
 
+/* Compact variant used by dense owner table */
+.compact-action-btn.action-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.compact-action-btn.action-btn i {
+  font-size: 13px;
+}
+
 .action-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
 }
 
 .action-btn:active {
   transform: translateY(0);
 }
+
+/* Action button colour variants */
+.action-btn--view {
+  background: #eef2ff;
+  color: #3b82f6;
+  border-color: #e0e7ff;
+}
+.action-btn--view:hover { background: #e0e7ff; }
+
+.action-btn--edit {
+  background: #fff7ed;
+  color: #f97316;
+  border-color: #fed7aa;
+}
+.action-btn--edit:hover { background: #fed7aa; }
+
+.action-btn--delete {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+.action-btn--delete:hover { background: #fecaca; }
 
 /* Badge Styles for Numbers */
 .inline-flex.items-center.justify-center.w-8.h-8.rounded-full {
@@ -137,8 +171,37 @@ button[class*="from-orange-500"]:hover::before {
   cursor: pointer;
 }
 
+#propertyOwnersTable tr:hover {
+  background: linear-gradient(90deg, #eef2ff 0%, #e0e7ff 100%);
+}
+
 #propertyOwnersTable tr.bg-indigo-50 {
   background: linear-gradient(90deg, #eef2ff 0%, #e0e7ff 100%);
+}
+
+/* Row fade-in animation on load */
+#propertyOwnersTable tr {
+  animation: fadeInOwnerRow 0.5s ease-out backwards;
+}
+
+#propertyOwnersTable tr:nth-child(1) { animation-delay: 0.1s; }
+#propertyOwnersTable tr:nth-child(2) { animation-delay: 0.15s; }
+#propertyOwnersTable tr:nth-child(3) { animation-delay: 0.2s; }
+#propertyOwnersTable tr:nth-child(4) { animation-delay: 0.25s; }
+#propertyOwnersTable tr:nth-child(5) { animation-delay: 0.3s; }
+#propertyOwnersTable tr:nth-child(6) { animation-delay: 0.35s; }
+#propertyOwnersTable tr:nth-child(7) { animation-delay: 0.4s; }
+#propertyOwnersTable tr:nth-child(8) { animation-delay: 0.45s; }
+
+@keyframes fadeInOwnerRow {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Loading State (for future use) */
@@ -216,8 +279,17 @@ html {
     height: 32px;
   }
 
+  .compact-action-btn.action-btn {
+    width: 30px;
+    height: 30px;
+  }
+
   .action-btn i {
     font-size: 14px;
+  }
+
+  .compact-action-btn.action-btn i {
+    font-size: 13px;
   }
 
   .w-10.h-10.rounded-full {
@@ -409,12 +481,6 @@ button:focus {
 /* Modal Backdrop Blur Animation */
 #addPropertyOwnerModal.hidden {
   pointer-events: none;
-}
-
-/* Close Button Hover Effect */
-#closeModalBtn:hover {
-  transform: rotate(90deg);
-  transition: transform 0.3s ease;
 }
 
 /* View Modal Styles */

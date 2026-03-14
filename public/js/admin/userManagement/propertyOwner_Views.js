@@ -37,6 +37,47 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const ownerProfileUpload = document.getElementById('ownerProfileUpload');
+    const ownerProfileImg = document.getElementById('ownerProfileImg');
+    const ownerProfileInitials = document.getElementById('ownerProfileInitials');
+    const ownerCoverUpload = document.getElementById('ownerCoverUpload');
+    const ownerCoverImg = document.getElementById('ownerCoverImg');
+    const ownerCoverPlaceholder = document.getElementById('ownerCoverPlaceholder');
+
+    if (ownerProfileUpload && ownerProfileImg) {
+        ownerProfileUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                ownerProfileImg.src = event.target.result;
+                ownerProfileImg.classList.remove('hidden');
+                if (ownerProfileInitials) {
+                    ownerProfileInitials.classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (ownerCoverUpload && ownerCoverImg) {
+        ownerCoverUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                ownerCoverImg.src = event.target.result;
+                ownerCoverImg.classList.remove('hidden');
+                if (ownerCoverPlaceholder) {
+                    ownerCoverPlaceholder.classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
     const suspendBtn = document.getElementById('suspendPropertyOwnerBtn');
     const suspendModal = document.getElementById('suspendAccountModal');
     const suspendModalContent = suspendModal ? suspendModal.querySelector('.modal-content') : null;
@@ -125,11 +166,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
+        notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
             type === 'success' ? 'bg-green-500' : 'bg-red-500'
-        } text-white font-semibold flex items-center gap-3`;
+        } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
         notification.innerHTML = `
-            <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-2xl"></i>
+            <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-base"></i>
             <span>${message}</span>
         `;
         document.body.appendChild(notification);

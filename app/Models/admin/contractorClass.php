@@ -180,7 +180,10 @@ class contractorClass extends Model
             $query->whereDate('contractors.created_at', '<=', $dateTo);
         }
 
-        return $query->orderBy('contractors.created_at', 'desc')->paginate($perPage);
+        return $query
+            ->orderBy('contractors.created_at', 'desc')
+            ->orderBy('contractors.contractor_id', 'desc')
+            ->paginate($perPage);
     }
 
     // Get contractor details by ID with owner and type information

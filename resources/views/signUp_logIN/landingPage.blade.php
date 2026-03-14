@@ -55,6 +55,12 @@
                 <li><a href="#contact">Contact</a></li>
             </ul>
         </nav>
+        <div class="mobile-menu-footer">
+            <button type="button" class="mobile-download-cta" id="mobileDownloadBtn">
+                <i class="ri-smartphone-line"></i>
+                Download App
+            </button>
+        </div>
     </div>
 
    <section class="hero">
@@ -323,7 +329,7 @@
 
             <!-- Bottom: Full-width Video -->
             <div class="video-frame mx-auto">
-                <iframe id="legatura-video" src="https://geo.dailymotion.com/player.html?video=xa1gf72&api=postMessage&queue-enable=false&queue-autoplay-next=false&sharing-enable=false&ui-start-screen-info=false" allow="autoplay; fullscreen; picture-in-picture; web-share" allowfullscreen frameborder="0"></iframe>
+                <iframe id="legatura-video" src="https://geo.dailymotion.com/player.html?video=xa1gf72&api=postMessage&autoplay=0&queue-enable=false&queue-autoplay-next=false&sharing-enable=false&ui-start-screen-info=false" allow="fullscreen; picture-in-picture; web-share" allowfullscreen frameborder="0"></iframe>
             </div>
 
             <!-- Modern Separator (below video) -->
@@ -448,11 +454,11 @@
             <div class="mb-16 lg:mb-32">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
                     <div class="mvp-text-col">
-                        <div class="flex items-center gap-3 mb-5">
-                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#fff7ed;">
-                                <i class="ri-search-line" style="font-size:1.5rem; color:#EC7E00;"></i>
+                        <div class="mvp-title-card mb-5" style="--card-accent:#EC7E00;">
+                            <div class="mvp-title-card-icon" style="background:#fff7ed;">
+                                <i class="ri-search-line" style="color:#EC7E00;"></i>
                             </div>
-                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Smart Contractor Discovery</h3>
+                            <h3 class="mvp-title-card-text" style="color:#1a1a1a;">Smart Contractor Discovery</h3>
                         </div>
                         <p class="text-base lg:text-lg mb-6" style="color:#525252;">
                             Find the perfect contractor for your project with our advanced matching algorithm. All contractors are
@@ -487,11 +493,6 @@
                 </div>
             </div>
 
-            <!-- Separator -->
-            <div class="separator-container my-6 lg:my-10">
-                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
-            </div>
-
             <!-- MVP 2: Project Management -->
             <div class="mb-16 lg:mb-32">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
@@ -503,11 +504,11 @@
                         </div>
                     </div>
                     <div class="mvp-text-col order-1 lg:order-2">
-                        <div class="flex items-center gap-3 mb-5">
-                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#eff6ff;">
-                                <i class="ri-file-list-3-line" style="font-size:1.5rem; color:#2563eb;"></i>
+                        <div class="mvp-title-card mb-5" style="--card-accent:#2563eb;">
+                            <div class="mvp-title-card-icon" style="background:#eff6ff;">
+                                <i class="ri-file-list-3-line" style="color:#2563eb;"></i>
                             </div>
-                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Complete Project Management</h3>
+                            <h3 class="mvp-title-card-text" style="color:#1a1a1a;">Complete Project Management</h3>
                         </div>
                         <p class="text-base lg:text-lg mb-6" style="color:#525252;">
                             Track every aspect of your construction project from start to finish. Monitor progress, manage timelines,
@@ -535,20 +536,15 @@
                 </div>
             </div>
 
-            <!-- Separator -->
-            <div class="separator-container my-6 lg:my-10">
-                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
-            </div>
-
             <!-- MVP 3: Reviews & Trust System -->
             <div class="mb-16 lg:mb-32">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
                     <div class="mvp-text-col">
-                        <div class="flex items-center gap-3 mb-5">
-                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#fefce8;">
-                                <i class="ri-star-line" style="font-size:1.5rem; color:#ca8a04;"></i>
+                        <div class="mvp-title-card mb-5" style="--card-accent:#ca8a04;">
+                            <div class="mvp-title-card-icon" style="background:#fefce8;">
+                                <i class="ri-star-line" style="color:#ca8a04;"></i>
                             </div>
-                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Transparent Review System</h3>
+                            <h3 class="mvp-title-card-text" style="color:#1a1a1a;">Transparent Review System</h3>
                         </div>
                         <p class="text-base lg:text-lg mb-6" style="color:#525252;">
                             Make informed decisions with our comprehensive review and rating system. Every review is verified and
@@ -583,11 +579,6 @@
                 </div>
             </div>
 
-            <!-- Separator -->
-            <div class="separator-container my-6 lg:my-10">
-                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
-            </div>
-
             <!-- MVP 4: Secure Payments -->
             <div class="mb-16 lg:mb-32">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
@@ -599,11 +590,11 @@
                         </div>
                     </div>
                     <div class="mvp-text-col order-1 lg:order-2">
-                        <div class="flex items-center gap-3 mb-5">
-                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#f0fdf4;">
-                                <i class="ri-shield-check-line" style="font-size:1.5rem; color:#16a34a;"></i>
+                        <div class="mvp-title-card mb-5" style="--card-accent:#16a34a;">
+                            <div class="mvp-title-card-icon" style="background:#f0fdf4;">
+                                <i class="ri-shield-check-line" style="color:#16a34a;"></i>
                             </div>
-                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Secure Payment Protection</h3>
+                            <h3 class="mvp-title-card-text" style="color:#1a1a1a;">Secure Payment Protection</h3>
                         </div>
                         <p class="text-base lg:text-lg mb-6" style="color:#525252;">
                             Your money is protected with our escrow system. Payments are released only when milestones are completed
@@ -631,20 +622,15 @@
                 </div>
             </div>
 
-            <!-- Separator -->
-            <div class="separator-container my-6 lg:my-10">
-                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
-            </div>
-
             <!-- MVP 5: Communication Hub -->
             <div class="mb-8 lg:mb-20">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
                     <div class="mvp-text-col">
-                        <div class="flex items-center gap-3 mb-5">
-                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#faf5ff;">
-                                <i class="ri-message-2-line" style="font-size:1.5rem; color:#9333ea;"></i>
+                        <div class="mvp-title-card mb-5" style="--card-accent:#9333ea;">
+                            <div class="mvp-title-card-icon" style="background:#faf5ff;">
+                                <i class="ri-message-2-line" style="color:#9333ea;"></i>
                             </div>
-                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Seamless Communication</h3>
+                            <h3 class="mvp-title-card-text" style="color:#1a1a1a;">Seamless Communication</h3>
                         </div>
                         <p class="text-base lg:text-lg mb-6" style="color:#525252;">
                             Stay connected with your project team through integrated messaging, video calls, and file sharing.
@@ -794,7 +780,7 @@
                 Get in touch with us for any inquiries or support
             </p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-8 lg:px-16 text-left">
-                <div class="contact-card p-6 rounded-lg">
+                <a href="mailto:legatura.info.official@gmail.com" id="contactEmailLink" class="contact-card contact-card-link p-6 rounded-lg">
                     <div class="contact-header">
                         <div class="contact-icon">
                             <i class="ri-mail-line"></i>
@@ -804,8 +790,8 @@
                     <p class="text-sm md:text-base" style="color:#404040;">
                         legatura.info.official@gmail.com
                     </p>
-                </div>
-                <div class="contact-card p-6 rounded-lg">
+                </a>
+                <div class="contact-card p-6 rounded-lg" id="contactPhoneCard">
                     <div class="contact-header">
                         <div class="contact-icon">
                             <i class="ri-phone-line"></i>
@@ -840,6 +826,65 @@
         </div>
     </footer>
     </div><!-- /.main-content -->
+
+    <!-- ── Download App Modal ──────────────────────────────────────────── -->
+    <div id="downloadModal" class="download-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="downloadModalTitle">
+        <div class="download-modal-card">
+            <button type="button" class="download-modal-close" id="downloadModalClose" aria-label="Close">
+                <i class="ri-close-line"></i>
+            </button>
+
+            <div class="download-modal-body">
+
+                <!-- Header -->
+                <div class="download-modal-header">
+                    <div class="download-modal-icon-wrap">
+                        <i class="ri-smartphone-line"></i>
+                    </div>
+                    <h2 id="downloadModalTitle" class="download-modal-title">Download the App</h2>
+                    <p class="download-modal-subtitle">
+                        Get Legatura on your Android device — scan the QR code or tap the button below to install the app.
+                    </p>
+                </div>
+
+                <div class="download-modal-divider"></div>
+
+                <!-- QR + Download Row -->
+                <div class="download-modal-main">
+
+                    <!-- QR Code -->
+                    <div class="download-qr-section">
+                        <div class="download-qr-wrap">
+                            <img src="{{ asset('img/legaturaQR.png') }}" alt="Scan to download Legatura">
+                        </div>
+                        <p class="download-qr-label">Scan to download</p>
+                    </div>
+
+                    <!-- OR divider -->
+                    <div class="download-or-divider">
+                        <span>or</span>
+                    </div>
+
+                    <!-- Download Button -->
+                    <div class="download-btn-section">
+                        <a href="https://expo.dev/accounts/jeffslazir/projects/legatura-app/builds/40b38fd2-82e3-4537-9737-ceef50418d02" class="download-android-btn" id="downloadAndroidBtn" target="_blank" rel="noopener noreferrer">
+                            <i class="ri-android-line"></i>
+                            <span>Download for Android</span>
+                        </a>
+                        <p class="download-btn-hint">Free · No account required to install</p>
+                    </div>
+
+                </div>
+
+                <!-- Platform Note -->
+                <div class="download-platform-note">
+                    <i class="ri-information-line"></i>
+                    <p>This mobile application is currently available for <strong>Android devices only</strong>. Support for <strong>iOS devices</strong> will be available in a future release.</p>
+                </div>
+
+            </div><!-- /.download-modal-body -->
+        </div>
+    </div>
 
     <!-- ── Admin Access Code Modal (first step) ─────────────────────── -->
     <div id="adminCodeModal" class="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="adminCodeTitle">

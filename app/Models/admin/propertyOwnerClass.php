@@ -92,7 +92,10 @@ class propertyOwnerClass
             $query->whereDate('property_owners.created_at', '<=', $dateTo);
         }
 
-        return $query->orderBy('property_owners.created_at', 'desc')->paginate($perPage, ['*'], 'page', $page);
+        return $query
+            ->orderBy('property_owners.created_at', 'desc')
+            ->orderBy('property_owners.owner_id', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     // Get property owner details by ID with occupation and user info

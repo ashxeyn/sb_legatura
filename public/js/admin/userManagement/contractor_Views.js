@@ -196,11 +196,11 @@ function closeSuspendModal() {
 
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
-    notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
+    notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
         type === 'success' ? 'bg-green-500' : 'bg-red-500'
-    } text-white font-semibold flex items-center gap-3`;
+    } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
     notification.innerHTML = `
-        <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-2xl"></i>
+        <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-base"></i>
         <span>${message}</span>
     `;
     document.body.appendChild(notification);
@@ -358,6 +358,7 @@ const cancelDeactivateTeamMemberBtn = document.getElementById('cancelDeactivateT
 const confirmDeactivateTeamMemberBtn = document.getElementById('confirmDeactivateTeamMemberBtn');
 
 const reactivateTeamMemberModal = document.getElementById('reactivateTeamMemberModal');
+const closeReactivateTeamMemberBtn = document.getElementById('closeReactivateTeamMemberBtn');
 const cancelReactivateTeamMemberBtn = document.getElementById('cancelReactivateTeamMemberBtn');
 const confirmReactivateTeamMemberBtn = document.getElementById('confirmReactivateTeamMemberBtn');
 
@@ -901,12 +902,34 @@ if (teamMemberOwnerSearch) {
     });
 }
 
+function showAddTeamMemberErrors(errors) {
+    const errorAlert = document.getElementById('addTeamMemberErrorAlert');
+    const errorList = document.getElementById('addTeamMemberErrorList');
+    
+    errorList.innerHTML = '';
+    errors.forEach(error => {
+        const li = document.createElement('li');
+        li.textContent = error;
+        errorList.appendChild(li);
+    });
+    
+    errorAlert.classList.remove('hidden');
+}
+
+function clearAddTeamMemberErrors() {
+    const errorAlert = document.getElementById('addTeamMemberErrorAlert');
+    errorAlert.classList.add('hidden');
+}
+
 function saveAddTeamMember() {
     const contractorId = document.body.dataset.contractorId;
+    
+    // Clear previous errors
+    clearAddTeamMemberErrors();
 
     // Validate that at least one property owner is selected
     if (selectedPropertyOwners.length === 0) {
-        showNotification('Please select at least one property owner to add as team member', 'error');
+        showAddTeamMemberErrors(['Please select at least one property owner to add as team member']);
         return;
     }
 
@@ -940,7 +963,7 @@ function saveAddTeamMember() {
     });
 
     if (hasErrors) {
-        showNotification('Please assign roles to all selected members', 'error');
+        showAddTeamMemberErrors(['Please assign roles to all selected members']);
         return;
     }
 
@@ -1051,7 +1074,6 @@ if (editTeamMemberUpload) {
 // ============================================
 // TEAM MEMBERS EVENT DELEGATION
 // ============================================
-
 document.addEventListener('click', function(e) {
     // Edit button clicked
     if (e.target.closest('.team-edit-btn')) {
@@ -2270,6 +2292,7 @@ teamMemberRadioButtons.forEach(radio => {
     });
 });
 
+if (closeReactivateTeamMemberBtn) closeReactivateTeamMemberBtn.addEventListener('click', closeReactivateTeamMemberModal);
 if (cancelReactivateTeamMemberBtn) cancelReactivateTeamMemberBtn.addEventListener('click', closeReactivateTeamMemberModal);
 if (confirmReactivateTeamMemberBtn) confirmReactivateTeamMemberBtn.addEventListener('click', confirmReactivateTeamMember);
 

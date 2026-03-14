@@ -12,36 +12,38 @@ $afterNotifications — raw HTML inserted after the notification bell
 ═══════════════════════════════════════════════════════════════════════════ --}}
 
 <header
-  class="bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-8 py-4 sticky top-0 z-30">
+  class="topnav-white-bar relative overflow-visible bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30"
+  style="box-shadow: 0 10px 26px rgba(2, 38, 68, 0.10), 0 2px 8px rgba(2, 38, 68, 0.06);">
 
   {{-- Left: Title --}}
   <div>
-    <h1 class="text-2xl font-semibold text-gray-800">{{ $pageTitle }}</h1>
+    <h1 class="text-xl lg:text-2xl font-bold leading-tight" style="color: #1E1E1E;">{{ $pageTitle }}</h1>
     @if(!empty($pageSubtitle))
-      <p class="text-gray-400 text-sm">{{ $pageSubtitle }}</p>
+      <p class="text-xs mt-0.5" style="color: #64748b;">{{ $pageSubtitle }}</p>
     @endif
   </div>
 
   {{-- Right: search / extras / notifications --}}
-  <div class="flex items-center gap-6">
+  <div class="flex items-center gap-3 lg:gap-4">
 
     {{-- Before-notifications slot (e.g. AI status badge, proof-of-payments form) --}}
     @if(!empty($beforeNotifications))
       {!! $beforeNotifications !!}
     @elseif(empty($hideSearch))
       {{-- Default search input --}}
-      <div class="relative w-64" style="width: 600px;">
+      <div class="relative w-56 lg:w-[32rem] topnav-search-wrap" style="width: min(520px, 42vw);">
         <input type="text" id="topNavSearch" placeholder="{{ $searchPlaceholder ?? 'Search...' }}"
-          class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full">
-        <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 pr-9 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300 transition-all duration-200 topnav-search-input"
+          style="color: #1E1E1E;">
+        <i class="fi fi-rr-search absolute right-2.5 top-1/2 transform -translate-y-1/2 text-sm transition-all duration-200 topnav-search-icon" style="color: #64748b;"></i>
       </div>
     @endif
 
     {{-- Notification bell + dropdown --}}
     <div class="relative">
       <button id="notificationBell"
-        class="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
-        <i class="fi fi-ss-bell-notification-social-media" style="font-size: 20px;"></i>
+        class="topnav-bell group cursor-pointer w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 transition-all duration-200">
+        <i class="fi fi-ss-bell-notification-social-media transition-transform duration-200 group-hover:scale-110" style="font-size: 16px; color: #022644;"></i>
       </button>
       <span id="notificationUnreadCount"
         class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 hidden items-center justify-center">0</span>
@@ -60,7 +62,7 @@ $afterNotifications — raw HTML inserted after the notification bell
           <a href="{{ route('admin.settings.notifications') }}"
             class="text-sm text-indigo-600 hover:text-indigo-700">View All Notifications</a>
           <a href="{{ route('admin.settings.notifications') }}"
-            class="text-sm text-indigo-600 hover:text-indigo-700">Notification settings</a>
+            class="topnav-settings-link text-sm font-medium transition-all duration-200" style="color: #022644;">Notification settings</a>
         </div>
       </div>
     </div>
@@ -71,4 +73,6 @@ $afterNotifications — raw HTML inserted after the notification bell
     @endif
 
   </div>
+
+  <div class="topnav-accent-line pointer-events-none absolute inset-x-0 bottom-0"></div>
 </header>

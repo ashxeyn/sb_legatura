@@ -320,10 +320,46 @@ class reportManagementClass
             $reports = $reports->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
         }
 
-        // Sort by created_at desc
-        $reports = $reports->sortByDesc('created_at')->values();
+        // Sort newest first, with report_id as a stable tie-breaker.
+        $reports = $reports->sort(function ($a, $b) {
+            $aTime = strtotime((string) ($a->created_at ?? '')) ?: 0;
+            $bTime = strtotime((string) ($b->created_at ?? '')) ?: 0;
+
+            if ($aTime === $bTime) {
+                return (int) ($b->report_id ?? 0) <=> (int) ($a->report_id ?? 0);
+            }
+
+            return $bTime <=> $aTime;
+        })->values();
 
         return $reports;
+    }
+
+    /**
+     * Get active reports with in-memory pagination.
+     */
+    public static function getActiveReportsPaginated($filters = [], $page = 1, $perPage = 10)
+    {
+        $page = max(1, (int) $page);
+        $perPage = max(1, (int) $perPage);
+
+        $allReports = self::getActiveReports($filters);
+        $total = $allReports->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+
+        if ($page > $lastPage) {
+            $page = $lastPage;
+        }
+
+        $data = $allReports->forPage($page, $perPage)->values();
+
+        return [
+            'data' => $data,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'last_page' => $lastPage,
+        ];
     }
 
     /**

@@ -26,6 +26,12 @@ class globalManagementController extends Controller
             $request->query('page', 1)
         );
 
+        if ($request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'bids_html' => view('admin.globalManagement.partials.bidManagementTable', ['bids' => $bids])->render(),
+            ]);
+        }
+
         return view('admin.globalManagement.bidManagement', [
             'bids' => $bids,
         ]);
@@ -284,7 +290,7 @@ class globalManagementController extends Controller
         }
 
         return $query->orderBy('bids.submitted_at', 'desc')
-            ->paginate(15, ['*'], 'page', $page);
+            ->paginate(10, ['*'], 'page', $page);
     }
     // ----------------------------------------------------------------
 // 2. NEW: getBidFiles() â€” AJAX endpoint to load files for a bid
@@ -413,7 +419,7 @@ class globalManagementController extends Controller
         }
 
         return $query->orderBy('mp.transaction_date', 'desc')
-            ->paginate(15, ['*'], 'page', $page);
+            ->paginate(10, ['*'], 'page', $page);
     }
 
 

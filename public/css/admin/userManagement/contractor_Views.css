@@ -234,3 +234,12 @@ button:active {
         opacity: 1;
     }
 }
+
+/* Align overall motion behavior with compact property-owner view style */
+section:hover {
+    transform: none;
+}
+
+.modal-content {
+    animation: none;
+}

@@ -10,7 +10,7 @@ class bothReactivateClass extends Model
     /**
      * Get suspended contractors (contractors with is_active = 0 and suspension data)
      */
-    public static function getSuspendedContractors($search = null, $dateFrom = null, $dateTo = null)
+    public static function getSuspendedContractors($search = null, $dateFrom = null, $dateTo = null, $pageName = 'contractors_page')
     {
         $query = DB::table('contractors as c')
             ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
@@ -52,13 +52,14 @@ class bothReactivateClass extends Model
                 DB::raw('(SELECT COUNT(*) FROM projects p INNER JOIN project_relationships pr ON p.relationship_id = pr.rel_id WHERE pr.selected_contractor_id = c.contractor_id) as total_projects')
             )
             ->orderBy('c.created_at', 'desc')
-            ->get();
+            ->paginate(10, ['*'], $pageName)
+            ->withQueryString();
     }
 
     /**
      * Get suspended property owners (is_active = 0 and suspension data)
      */
-    public static function getSuspendedPropertyOwners($search = null, $dateFrom = null, $dateTo = null)
+    public static function getSuspendedPropertyOwners($search = null, $dateFrom = null, $dateTo = null, $pageName = 'owners_page')
     {
         $query = DB::table('property_owners as po')
             ->join('users as u', 'po.user_id', '=', 'u.user_id')
@@ -98,7 +99,8 @@ class bothReactivateClass extends Model
                 DB::raw('(SELECT COUNT(*) FROM projects p INNER JOIN project_relationships pr ON p.relationship_id = pr.rel_id WHERE pr.owner_id = po.owner_id) as total_projects')
             )
             ->orderBy('po.created_at', 'desc')
-            ->get();
+                ->paginate(10, ['*'], $pageName)
+                ->withQueryString();
     }
 
     /**

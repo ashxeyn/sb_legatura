@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function attachPaginationListeners() {
-        const paginationLinks = document.querySelectorAll('#contractorsTableWrap .pagination a');
+        const paginationLinks = document.querySelectorAll('#contractorsTableWrap .contractor-page-link, #contractorsTableWrap .pagination a');
         paginationLinks.forEach(link => {
             link.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -205,6 +205,112 @@ document.addEventListener('DOMContentLoaded', function () {
 
     attachActionListeners();
 
+    // Helper function to show validation errors in modal alert
+    function showModalErrors(errors) {
+        const errorAlert = document.getElementById('addContractorErrorAlert');
+        const errorList = document.getElementById('addContractorErrorList');
+        
+        if (!errorAlert || !errorList) return;
+        
+        // Clear previous errors
+        errorList.innerHTML = '';
+        
+        // Add all errors to list
+        if (Array.isArray(errors)) {
+            errors.forEach(error => {
+                const li = document.createElement('li');
+                li.textContent = error;
+                errorList.appendChild(li);
+            });
+        } else if (typeof errors === 'object') {
+            Object.values(errors).forEach(messages => {
+                if (Array.isArray(messages)) {
+                    messages.forEach(msg => {
+                        const li = document.createElement('li');
+                        li.textContent = msg;
+                        errorList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = messages;
+                    errorList.appendChild(li);
+                }
+            });
+        }
+        
+        // Show the alert
+        errorAlert.classList.remove('hidden');
+        
+        // Scroll to top of modal
+        const modalBody = document.querySelector('#addContractorModal .add-contractor-modal-scroll');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+    }
+
+    function clearModalErrors() {
+        const errorAlert = document.getElementById('addContractorErrorAlert');
+        if (errorAlert) {
+            errorAlert.classList.add('hidden');
+        }
+    }
+
+    // Helper functions for Edit Contractor Modal errors
+    function showEditModalErrors(errors) {
+        const errorAlert = document.getElementById('editContractorErrorAlert');
+        const errorList = document.getElementById('editContractorErrorList');
+        
+        if (!errorAlert || !errorList) return;
+        
+        // Clear previous errors
+        errorList.innerHTML = '';
+        
+        // Add all errors to list
+        if (Array.isArray(errors)) {
+            errors.forEach(error => {
+                const li = document.createElement('li');
+                li.textContent = error;
+                errorList.appendChild(li);
+            });
+        } else if (typeof errors === 'object') {
+            Object.values(errors).forEach(messages => {
+                if (Array.isArray(messages)) {
+                    messages.forEach(msg => {
+                        const li = document.createElement('li');
+                        li.textContent = msg;
+                        errorList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = messages;
+                    errorList.appendChild(li);
+                }
+            });
+        }
+        
+        // Show the alert
+        errorAlert.classList.remove('hidden');
+        
+        // Scroll to top of modal
+        const modalBody = document.querySelector('#editContractorModal .edit-contractor-modal-scroll');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+    }
+
+    function clearEditModalErrors() {
+        const errorAlert = document.getElementById('editContractorErrorAlert');
+        if (errorAlert) {
+            errorAlert.classList.add('hidden');
+        }
+    }
+
+    // Wire up close button for edit modal error alert
+    const closeEditErrorAlertBtn = document.getElementById('closeEditErrorAlert');
+    if (closeEditErrorAlertBtn) {
+        closeEditErrorAlertBtn.addEventListener('click', clearEditModalErrors);
+    }
+
     const addBtn = document.querySelector('#addContractorBtn');
     const modal = document.getElementById('addContractorModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
@@ -216,8 +322,14 @@ document.addEventListener('DOMContentLoaded', function () {
         addBtn.addEventListener('click', function () {
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            
+            // Clear any previous errors
+            clearModalErrors();
+            modal.querySelectorAll('.add-contractor-field.error').forEach(el => el.classList.remove('error'));
+            modal.querySelectorAll('.add-contractor-error').forEach(el => el.classList.add('hidden'));
 
             const modalContent = modal.querySelector('.modal-content');
+            if (!modalContent) return;
             modalContent.style.transform = 'scale(0.9)';
             modalContent.style.opacity = '0';
 
@@ -230,6 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const closeModal = () => {
             const modalContent = modal.querySelector('.modal-content');
+            if (!modalContent) return;
             modalContent.style.transform = 'scale(0.9)';
             modalContent.style.opacity = '0';
 
@@ -241,8 +354,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 300);
         };
 
-        closeModalBtn.addEventListener('click', closeModal);
-        cancelBtn.addEventListener('click', closeModal);
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', closeModal);
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeModal);
+        }
 
         modal.addEventListener('click', function (e) {
             if (e.target === modal) {
@@ -256,7 +373,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        saveBtn.addEventListener('click', async function () {
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function () {
+            // Clear previous errors
+            clearModalErrors();
+            modal.querySelectorAll('.add-contractor-field.error').forEach(el => el.classList.remove('error'));
+            modal.querySelectorAll('.add-contractor-error').forEach(el => el.classList.add('hidden'));
+            
+            // Ensure an existing property owner was selected
+            const ownerIdInputCheck = document.getElementById('selectedOwnerId');
+            if (ownerIdInputCheck && (!ownerIdInputCheck.value || ownerIdInputCheck.value.trim() === '')) {
+                showModalErrors(['Please select an existing verified property owner before saving.']);
+                const ownerSearchInputCheck = document.getElementById('ownerSearchInput');
+                if (ownerSearchInputCheck) ownerSearchInputCheck.classList.add('border-red-500');
+                return;
+            }
 
             const formData = new FormData();
 
@@ -317,92 +448,46 @@ document.addEventListener('DOMContentLoaded', function () {
                     handleFilterChange();
                 } else {
                     if (result.errors) {
+                        const errorMessages = [];
+                        
                         for (const [key, messages] of Object.entries(result.errors)) {
-                            // Special-case owner_id so the error is shown under the visible search field
+                            const errorMsg = Array.isArray(messages) ? messages[0] : messages;
+                            errorMessages.push(errorMsg);
+                            
+                            // Mark field with error class
                             if (key === 'owner_id') {
                                 const ownerSearch = modal.querySelector('#ownerSearchInput');
                                 if (ownerSearch) {
-                                        ownerSearch.classList.add('border-red-500');
-                                        const existing = ownerSearch.parentElement.querySelector('.error-message');
-                                        if (existing) existing.remove();
-                                        const errorDiv = document.createElement('div');
-                                        errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
-                                        errorDiv.textContent = 'The owner field is required';
-                                        ownerSearch.parentElement.appendChild(errorDiv);
-                                    } else {
-                                        const hidden = modal.querySelector('[name="owner_id"]');
-                                        if (hidden) {
-                                            const parent = hidden.parentElement;
-                                            const existing = parent.querySelector('.error-message');
-                                            if (existing) existing.remove();
-                                            const errorDiv = document.createElement('div');
-                                            errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
-                                            errorDiv.textContent = 'The owner field is required';
-                                            parent.appendChild(errorDiv);
-                                        } else {
-                                            showNotification('The owner field is required', 'error');
-                                        }
-                                }
-                                continue;
-                            }
-
-                            const input = modal.querySelector(`[name="${key}"]`);
-                            if (input) {
-                                if (input.type === 'file' && input.id === 'dtiUpload') {
-                                    const dropzone = document.getElementById('dtiDropzone');
-                                    if (dropzone) {
-                                        dropzone.classList.add('border-red-500');
-                                        const errorDiv = document.createElement('div');
-                                        errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
-                                        errorDiv.textContent = messages[0];
-                                        dropzone.parentElement.appendChild(errorDiv);
-                                    }
-                                } else {
-                                    // If the input is hidden (like owner_id) try to find a visible companion
-                                    if (input.type === 'hidden') {
-                                        let visibleTarget = modal.querySelector('#ownerSearchInput');
-                                        if (visibleTarget) {
-                                            visibleTarget.classList.add('border-red-500');
-                                            const errorDiv = document.createElement('div');
-                                            errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
-                                            errorDiv.textContent = messages[0];
-                                            visibleTarget.parentElement.appendChild(errorDiv);
-                                        } else {
-                                            input.classList.add('border-red-500');
-                                            const errorDiv = document.createElement('div');
-                                            errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
-                                            errorDiv.textContent = messages[0];
-                                            input.parentElement.appendChild(errorDiv);
-                                        }
-                                    } else {
-                                        input.classList.add('border-red-500');
-                                        const errorDiv = document.createElement('div');
-                                        errorDiv.className = 'text-red-500 text-xs mt-1 error-message';
-                                        errorDiv.textContent = messages[0];
-                                        input.parentElement.appendChild(errorDiv);
-                                    }
+                                    ownerSearch.classList.add('error');
                                 }
                             } else {
-                                showNotification(messages[0], 'error');
+                                const input = modal.querySelector(`[name="${key}"]`);
+                                if (input && input.classList.contains('add-contractor-field')) {
+                                    input.classList.add('error');
+                                    const errorElement = input.parentElement.querySelector('.add-contractor-error');
+                                    if (errorElement) {
+                                        errorElement.textContent = errorMsg;
+                                        errorElement.classList.remove('hidden');
+                                    }
+                                }
                             }
                         }
-
-                        const firstError = modal.querySelector('.error-message');
-                        if (firstError) {
-                            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
+                        
+                        // Show all errors in the modal alert
+                        showModalErrors(errorMessages);
                     } else {
-                        showNotification(result.message || 'An error occurred', 'error');
+                        showModalErrors([result.message || 'An error occurred']);
                     }
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showNotification('An unexpected error occurred', 'error');
+                showModalErrors(['An unexpected error occurred']);
             } finally {
                 this.innerHTML = originalText;
                 this.disabled = false;
             }
-        });
+            });
+        }
     }
 
     // Owner live-search for Add Contractor modal
@@ -660,6 +745,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function resetModalForm() {
+        // Clear error alert
+        clearModalErrors();
+        
         const inputs = modal.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             if (input.type === 'file') {
@@ -672,9 +760,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.value = '';
             }
 
-            input.classList.remove('border-red-500');
+            input.classList.remove('border-red-500', 'error');
         });
 
+        // Clear individual field errors
+        modal.querySelectorAll('.add-contractor-field.error').forEach(el => el.classList.remove('error'));
+        modal.querySelectorAll('.add-contractor-error').forEach(el => el.classList.add('hidden'));
         modal.querySelectorAll('.error-message').forEach(el => el.remove());
 
         modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
@@ -686,7 +777,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (dtiFileName) {
             dtiFileName.textContent = '';
-            if (dtiDropzone) dtiDropzone.classList.remove('border-orange-500', 'bg-orange-100');
+            if (dtiDropzone) dtiDropzone.classList.remove('border-orange-500', 'bg-orange-100', 'error');
         }
 
         if (citySelect) {
@@ -795,6 +886,11 @@ document.addEventListener('DOMContentLoaded', function () {
         try { console.log('[contractor.js] openEditModal contractorId=', contractorId); } catch (e) {}
         if (!editModal || !editModalContent) return;
 
+        // Clear any previous errors
+        clearEditModalErrors();
+        editModal.querySelectorAll('.edit-contractor-field.error').forEach(el => el.classList.remove('error'));
+        editModal.querySelectorAll('.edit-contractor-error').forEach(el => el.classList.add('hidden'));
+
         try {
             const response = await fetch(`/admin/user-management/contractors/${contractorId}/edit`, {
                 headers: {
@@ -813,6 +909,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('edit_user_id').value = data.contractor_id;
             document.getElementById('edit_company_name').value = data.company_name || '';
             document.getElementById('edit_company_start_date').value = data.company_start_date || '';
+            const editCompanyPhoneEl = document.getElementById('edit_company_phone');
+            if (editCompanyPhoneEl) editCompanyPhoneEl.value = data.company_phone || data.phone || '';
 
             const typeSelect = document.getElementById('edit_contractorTypeSelect');
             if (typeSelect) {
@@ -987,6 +1085,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
+            // Force-close delete modal if it's stuck open
+            if (deleteModal && !deleteModal.classList.contains('hidden')) {
+                deleteModal.classList.add('hidden');
+                deleteModal.classList.remove('flex');
+                if (deleteModalContent) {
+                    deleteModalContent.classList.add('scale-95', 'opacity-0');
+                    deleteModalContent.classList.remove('scale-100', 'opacity-100');
+                }
+            }
+
+            // Capture form state before showing modal
+            captureEditFormState();
+
             editModal.classList.remove('hidden');
             editModal.classList.add('flex');
             document.body.style.overflow = 'hidden';
@@ -1016,6 +1127,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('editContractorForm');
             if (form) form.reset();
 
+            // Clear modal errors
+            clearEditModalErrors();
+            editModal.querySelectorAll('.edit-contractor-field.error').forEach(el => el.classList.remove('error'));
+            editModal.querySelectorAll('.edit-contractor-error').forEach(el => el.classList.add('hidden'));
             editModal.querySelectorAll('.error-message').forEach(el => el.remove());
             editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
@@ -1140,9 +1255,62 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Store initial form state for change detection
+    let editFormInitialState = {};
+
+    function captureEditFormState() {
+        editFormInitialState = {};
+        const form = document.getElementById('editContractorForm');
+        if (!form) return;
+        
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.type === 'file') {
+                editFormInitialState[input.name] = input.files.length;
+            } else if (input.type === 'checkbox' || input.type === 'radio') {
+                editFormInitialState[input.name] = input.checked;
+            } else {
+                editFormInitialState[input.name] = input.value;
+            }
+        });
+    }
+
+    function hasEditFormChanged() {
+        const form = document.getElementById('editContractorForm');
+        if (!form) return false;
+        
+        const inputs = form.querySelectorAll('input, select, textarea');
+        for (let input of inputs) {
+            let currentValue;
+            if (input.type === 'file') {
+                currentValue = input.files.length;
+            } else if (input.type === 'checkbox' || input.type === 'radio') {
+                currentValue = input.checked;
+            } else {
+                currentValue = input.value;
+            }
+            
+            if (currentValue !== editFormInitialState[input.name]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     if (saveEditBtn) {
         saveEditBtn.addEventListener('click', async function (e) {
             e.preventDefault();
+
+            // Check if form has changed
+            if (!hasEditFormChanged()) {
+                showEditModalErrors(['No changes detected. Please modify at least one field before saving.']);
+                return;
+            }
+
+            // Clear previous errors
+            clearEditModalErrors();
+            editModal.querySelectorAll('.edit-contractor-field.error').forEach(el => el.classList.remove('error'));
+            editModal.querySelectorAll('.edit-contractor-error').forEach(el => el.classList.add('hidden'));
 
             const form = document.getElementById('editContractorForm');
             const userId = document.getElementById('edit_user_id').value;
@@ -1199,30 +1367,41 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 } else {
                     if (result.errors) {
+                        const errorMessages = [];
+                        
                         for (const [key, messages] of Object.entries(result.errors)) {
+                            const errorMsg = Array.isArray(messages) ? messages[0] : messages;
+                            errorMessages.push(errorMsg);
+                            
+                            // Mark field with error class and show inline message
                             const input = editModal.querySelector(`[name="${key}"]`);
                             if (input) {
-                                input.classList.add('border-red-500');
-                                const errorMsg = document.createElement('p');
-                                errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                                errorMsg.textContent = messages[0];
-                                input.parentElement.appendChild(errorMsg);
-                            } else {
-                                showNotification(messages[0], 'error');
+                                if (input.classList.contains('edit-contractor-field')) {
+                                    input.classList.add('error');
+                                    const errorElement = input.parentElement.querySelector('.edit-contractor-error');
+                                    if (errorElement) {
+                                        errorElement.textContent = errorMsg;
+                                        errorElement.classList.remove('hidden');
+                                    }
+                                } else {
+                                    input.classList.add('border-red-500');
+                                    const errorDisplay = document.createElement('p');
+                                    errorDisplay.className = 'text-red-500 text-xs mt-1 error-message';
+                                    errorDisplay.textContent = errorMsg;
+                                    input.parentElement.appendChild(errorDisplay);
+                                }
                             }
                         }
-
-                        const firstError = editModal.querySelector('.error-message');
-                        if (firstError) {
-                            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
+                        
+                        // Show all errors in the modal alert
+                        showEditModalErrors(errorMessages);
                     } else {
-                        showNotification(result.message || 'An error occurred', 'error');
+                        showEditModalErrors([result.message || 'An error occurred']);
                     }
                 }
             } catch (error) {
                 console.error('Error updating contractor:', error);
-                showNotification('An error occurred while updating', 'error');
+                showEditModalErrors(['An unexpected error occurred']);
             } finally {
                 this.innerHTML = originalContent;
                 this.disabled = false;
@@ -1241,6 +1420,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         input.addEventListener('input', function () {
+            // Clear old-style error styling
             if (this.classList.contains('border-red-500')) {
                 this.classList.remove('border-red-500');
                 const errorMsg = this.parentElement.querySelector('.error-message');
@@ -1248,15 +1428,34 @@ document.addEventListener('DOMContentLoaded', function () {
                     errorMsg.remove();
                 }
             }
+            
+            // Clear new-style error styling
+            if (this.classList.contains('edit-contractor-field') && this.classList.contains('error')) {
+                this.classList.remove('error');
+                const errorElement = this.parentElement.querySelector('.edit-contractor-error');
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                }
+            }
         });
 
         if (input.tagName === 'SELECT') {
             input.addEventListener('change', function () {
+                // Clear old-style error styling
                 if (this.classList.contains('border-red-500')) {
                     this.classList.remove('border-red-500');
                     const errorMsg = this.parentElement.querySelector('.error-message');
                     if (errorMsg) {
                         errorMsg.remove();
+                    }
+                }
+                
+                // Clear new-style error styling
+                if (this.classList.contains('edit-contractor-field') && this.classList.contains('error')) {
+                    this.classList.remove('error');
+                    const errorElement = this.parentElement.querySelector('.edit-contractor-error');
+                    if (errorElement) {
+                        errorElement.classList.add('hidden');
                     }
                 }
             });
@@ -1265,6 +1464,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const deleteModal = document.getElementById('deleteContractorModal');
     const deleteModalContent = deleteModal ? deleteModal.querySelector('.modal-content') : null;
+    const closeDeleteModalBtn = document.getElementById('closeDeleteModalBtn');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
     const deleteContractorNameSpan = document.getElementById('deleteContractorName');
@@ -1285,6 +1485,16 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!modalEl || !contentEl) {
             console.error('[contractor.js] delete modal elements not found in DOM');
             return;
+        }
+
+        // Force-close edit modal if it's stuck open
+        if (editModal && !editModal.classList.contains('hidden')) {
+            editModal.classList.add('hidden');
+            editModal.classList.remove('flex');
+            if (editModalContent) {
+                editModalContent.classList.add('scale-95', 'opacity-0');
+                editModalContent.classList.remove('scale-100', 'opacity-100');
+            }
         }
 
         rowToDelete = row;
@@ -1342,10 +1552,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function closeDeleteModal() {
-        if (!deleteModalContent) return;
+        if (!deleteModal) return;
 
-        deleteModalContent.classList.remove('scale-100', 'opacity-100');
-        deleteModalContent.classList.add('scale-95', 'opacity-0');
+        if (deleteModalContent) {
+            deleteModalContent.classList.remove('scale-100', 'opacity-100');
+            deleteModalContent.classList.add('scale-95', 'opacity-0');
+        }
 
         setTimeout(() => {
             deleteModal.classList.add('hidden');
@@ -1358,6 +1570,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (cancelDeleteBtn) {
         cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+    }
+
+    if (closeDeleteModalBtn) {
+        closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
     }
 
     if (confirmDeleteBtn) {
@@ -1423,10 +1639,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            } text-white font-semibold flex items-center gap-3`;
+                notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                        } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
         notification.innerHTML = `
-      <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-2xl"></i>
+            <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-base"></i>
       <span>${message}</span>
     `;
         document.body.appendChild(notification);
@@ -1528,6 +1744,105 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!src) return;
         openViewFileModal(src);
     });
+
+    // Owner live-search for Edit Contractor modal
+    const editOwnerSearchInput = document.getElementById('edit_ownerSearchInput');
+    const editOwnerSearchResults = document.getElementById('edit_ownerSearchResults');
+    const editSelectedOwnerIdInput = document.getElementById('edit_selectedOwnerId');
+    const editSelectedOwnerSummary = document.getElementById('edit_selectedOwnerSummary');
+    const editClearOwnerBtn = document.getElementById('edit_clearOwnerBtn');
+    const editSelectedOwnerName = document.getElementById('edit_ownerDisplayName');
+    const editSelectedOwnerEmail = document.getElementById('edit_ownerDisplayEmail');
+
+    if (editOwnerSearchInput) {
+        let editOwnerDebounce;
+        editOwnerSearchInput.addEventListener('input', function (e) {
+            clearTimeout(editOwnerDebounce);
+            const q = this.value.trim();
+            if (!q) {
+                if (editOwnerSearchResults) editOwnerSearchResults.classList.add('hidden');
+                return;
+            }
+            editOwnerDebounce = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/admin/users/property-owners?search=${encodeURIComponent(q)}&eligible=1`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!res.ok) throw new Error('Network error');
+                    const json = await res.json();
+                    const owners = json.data || json;
+                    if (!editOwnerSearchResults) return;
+                    editOwnerSearchResults.innerHTML = '';
+                    if (!owners || owners.length === 0) {
+                        editOwnerSearchResults.innerHTML = '<div class="p-2 text-sm text-gray-500">No results</div>';
+                        editOwnerSearchResults.classList.remove('hidden');
+                        return;
+                    }
+                    owners.forEach(owner => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3';
+                        div.innerHTML = `<div class="flex-1 text-sm"><div class="font-medium">${owner.first_name || ''} ${owner.last_name || ''}</div><div class="text-xs text-gray-500">${owner.email || ''}</div></div>`;
+                        div.dataset.ownerId = owner.owner_id;
+                        div.dataset.firstName = owner.first_name || '';
+                        div.dataset.lastName = owner.last_name || '';
+                        div.dataset.email = owner.email || '';
+                        div.addEventListener('click', function () {
+                            if (editSelectedOwnerIdInput) editSelectedOwnerIdInput.value = this.dataset.ownerId;
+                            if (editSelectedOwnerName) editSelectedOwnerName.textContent = `${this.dataset.firstName} ${this.dataset.lastName}`;
+                            if (editSelectedOwnerEmail) editSelectedOwnerEmail.textContent = this.dataset.email;
+                            if (editSelectedOwnerSummary) editSelectedOwnerSummary.classList.remove('hidden');
+                            editOwnerSearchResults.classList.add('hidden');
+                            editOwnerSearchInput.value = '';
+
+                            // Clear any inline error on the owner search input
+                            const editOwnerSearchEl = document.getElementById('edit_ownerSearchInput');
+                            if (editOwnerSearchEl) {
+                                editOwnerSearchEl.classList.remove('border-red-500');
+                                const err = editOwnerSearchEl.parentElement.querySelector('.error-message');
+                                if (err) err.remove();
+                            }
+
+                            // Prefill representative name inputs with the owner's identity
+                            const firstNameInput = document.querySelector('#editContractorModal [name="first_name"]');
+                            const lastNameInput = document.querySelector('#editContractorModal [name="last_name"]');
+                            if (firstNameInput) firstNameInput.value = this.dataset.firstName;
+                            if (lastNameInput) lastNameInput.value = this.dataset.lastName;
+                        });
+                        editOwnerSearchResults.appendChild(div);
+                    });
+                    editOwnerSearchResults.classList.remove('hidden');
+                } catch (err) {
+                    console.error('Edit owner search error', err);
+                }
+            }, 300);
+        });
+
+        // Close results when clicking outside
+        document.addEventListener('click', function (e) {
+            if (editOwnerSearchResults && !editOwnerSearchResults.contains(e.target) && e.target !== editOwnerSearchInput) {
+                editOwnerSearchResults.classList.add('hidden');
+            }
+        });
+    }
+
+    if (editClearOwnerBtn) {
+        editClearOwnerBtn.addEventListener('click', function () {
+            if (editSelectedOwnerIdInput) editSelectedOwnerIdInput.value = '';
+            if (editSelectedOwnerName) editSelectedOwnerName.textContent = '';
+            if (editSelectedOwnerEmail) editSelectedOwnerEmail.textContent = '';
+            if (editSelectedOwnerSummary) editSelectedOwnerSummary.classList.add('hidden');
+            // Clear representative fields
+            const firstNameInput = document.querySelector('#editContractorModal [name="first_name"]');
+            const lastNameInput = document.querySelector('#editContractorModal [name="last_name"]');
+            if (firstNameInput) firstNameInput.value = '';
+            if (lastNameInput) lastNameInput.value = '';
+            // Remove inline owner validation error if present
+            const editOwnerSearchEl = document.getElementById('edit_ownerSearchInput');
+            if (editOwnerSearchEl) {
+                editOwnerSearchEl.classList.remove('border-red-500');
+                const err = editOwnerSearchEl.parentElement.querySelector('.error-message');
+                if (err) err.remove();
+            }
+        });
+    }
 
     window.openDeleteModal = openDeleteModal;
     window.openEditModal = openEditModal;

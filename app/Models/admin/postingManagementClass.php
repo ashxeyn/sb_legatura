@@ -68,7 +68,7 @@ class postingManagementClass
         $query->orderBy('project_relationships.created_at', 'asc');
 
         // Pagination
-        return $query->paginate(10);
+        return $query->paginate(10)->withQueryString();
     }
 
     public function getPostDetails($projectId)

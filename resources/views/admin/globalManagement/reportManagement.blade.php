@@ -15,6 +15,12 @@
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
 
+    <style>
+        html {
+            scrollbar-gutter: stable;
+        }
+    </style>
+
     <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 </head>
 
@@ -92,14 +98,10 @@
 
                     {{-- ── Tab 1: Active Moderation ── --}}
                     <div id="panelModerationHub" class="tab-panel">
-                        {{-- Filters --}}
-                        <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
-                            <div class="flex items-center gap-3 flex-wrap">
-                                <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
-                                    <i class="fi fi-rr-filter text-gray-500"></i>
-                                    <span>Filter By</span>
-                                </div>
-
+                        {{-- Header with Filters --}}
+                        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-800">Active Reports</h3>
+                            <div class="flex flex-wrap items-center gap-3">
                                 <select id="filterSource" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
                                     <option value="all">All Source Types</option>
                                     <option value="project">Project</option>
@@ -123,23 +125,15 @@
                                     <option value="dismissed">Dismissed</option>
                                 </select>
 
-                                <div class="flex items-center gap-2">
-                                    <label class="text-sm font-medium text-gray-700">From:</label>
-                                    <input type="date" id="filterDateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
-                                    <label class="text-sm font-medium text-gray-700">To:</label>
-                                    <input type="date" id="filterDateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
-                                </div>
-
-                                <div class="relative">
-                                    <input type="text" id="filterSearch" placeholder="Search..." class="px-3 py-2 pl-9 border border-gray-300 rounded-lg text-sm w-48 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                                <div class="relative min-w-[200px]">
+                                    <input type="text" id="filterSearch" placeholder="Search reports..." class="w-full px-3 py-2 pl-9 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
                                     <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                                 </div>
-                            </div>
 
-                            <button id="resetFilters" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
-                                <i class="fi fi-rr-rotate-left"></i>
-                                <span>Reset Filter</span>
-                            </button>
+                                <button id="resetFilters" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+                                    <i class="fi fi-rr-rotate-left mr-1"></i>Reset
+                                </button>
+                            </div>
                         </div>
 
                         {{-- Reports Table --}}
@@ -182,9 +176,9 @@
                                             <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="{{ $report->reason }}">{{ $report->reason }}</td>
                                             <td class="px-6 py-4">
                                                 @php
-                                                    $statColors = ['pending' => 'bg-amber-100 text-amber-700', 'under_review' => 'bg-blue-100 text-blue-700', 'resolved' => 'bg-emerald-100 text-emerald-700', 'dismissed' => 'bg-red-100 text-red-700'];
+                                                    $statColors = ['pending' => 'bg-amber-100 text-amber-700 border-amber-200', 'under_review' => 'bg-blue-100 text-blue-700 border-blue-200', 'resolved' => 'bg-emerald-100 text-emerald-700 border-emerald-200', 'dismissed' => 'bg-red-100 text-red-700 border-red-200'];
                                                 @endphp
-                                                <span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold {{ $statColors[$report->status] ?? 'bg-gray-100 text-gray-700' }}">{{ strtoupper(str_replace('_', ' ', $report->status)) }}</span>
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $statColors[$report->status] ?? 'bg-gray-100 text-gray-700 border-gray-200' }}">{{ strtoupper(str_replace('_', ' ', $report->status)) }}</span>
                                             </td>
                                             <td class="px-6 py-4 text-sm text-gray-500">{{ $report->created_at ? \Carbon\Carbon::parse($report->created_at)->format('M d, Y') : '-' }}</td>
                                             <td class="px-6 py-4 text-center">
@@ -230,75 +224,92 @@
                             </select>
                         </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-gray-50 border-b border-gray-200">
+                            <table class="w-full table-fixed">
+                                <thead class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
                                     <tr>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reporter</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Reports</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pending</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Resolved</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Dismissed</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Dismiss Rate</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sources</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Flags</th>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Latest Report</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Reporter</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Total Reports</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Pending</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Resolved</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Dismissed</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Dismiss Rate</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Sources</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Flags</th>
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Latest Report</th>
                                     </tr>
                                 </thead>
-                                <tbody id="reporterStatsBody">
+                                <tbody id="reporterStatsBody" class="divide-y divide-gray-200">
                                     @forelse ($reporterStats as $stat)
-                                        <tr class="border-b border-gray-100 hover:bg-gray-50 transition reporter-row"
+                                        <tr class="hover:bg-indigo-50/60 transition-colors reporter-row"
                                             data-super="{{ $stat->is_super_reporter ? '1' : '0' }}"
                                             data-abuser="{{ $stat->is_potential_abuser ? '1' : '0' }}">
-                                            <td class="px-6 py-4 text-sm text-gray-700 font-medium">{{ $stat->reporter_username }}</td>
-                                            <td class="px-6 py-4 text-sm text-gray-800 font-bold">{{ $stat->total_reports }}</td>
-                                            <td class="px-6 py-4 text-sm text-amber-600 font-medium">{{ $stat->pending_count }}</td>
-                                            <td class="px-6 py-4 text-sm text-emerald-600 font-medium">{{ $stat->resolved_count }}</td>
-                                            <td class="px-6 py-4 text-sm text-red-600 font-medium">{{ $stat->dismissed_count }}</td>
-                                            <td class="px-6 py-4">
-                                                @php $rateColor = $stat->dismiss_rate >= 50 ? 'text-red-700 bg-red-100' : ($stat->dismiss_rate >= 25 ? 'text-amber-700 bg-amber-100' : 'text-emerald-700 bg-emerald-100'); @endphp
-                                                <span class="inline-flex px-2 py-1 rounded-full text-xs font-semibold {{ $rateColor }}">{{ $stat->dismiss_rate }}%</span>
+                                            <td class="px-2.5 py-2.5 text-xs text-gray-700 font-medium">{{ $stat->reporter_username }}</td>
+                                            <td class="px-2.5 py-2.5 text-xs text-gray-800 font-bold">{{ $stat->total_reports }}</td>
+                                            <td class="px-2.5 py-2.5 text-xs text-amber-600 font-medium">{{ $stat->pending_count }}</td>
+                                            <td class="px-2.5 py-2.5 text-xs text-emerald-600 font-medium">{{ $stat->resolved_count }}</td>
+                                            <td class="px-2.5 py-2.5 text-xs text-red-600 font-medium">{{ $stat->dismissed_count }}</td>
+                                            <td class="px-2.5 py-2.5">
+                                                @php $rateColor = $stat->dismiss_rate >= 50 ? 'text-red-700 bg-red-100 border-red-200' : ($stat->dismiss_rate >= 25 ? 'text-amber-700 bg-amber-100 border-amber-200' : 'text-emerald-700 bg-emerald-100 border-emerald-200'); @endphp
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $rateColor }}">{{ $stat->dismiss_rate }}%</span>
                                             </td>
-                                            <td class="px-6 py-4">
+                                            <td class="px-2.5 py-2.5">
                                                 <div class="flex gap-1 flex-wrap">
                                                     @foreach ($stat->sources as $src)
-                                                        @php $srcC = ['post' => 'bg-blue-50 text-blue-600', 'review' => 'bg-purple-50 text-purple-600', 'content' => 'bg-teal-50 text-teal-600', 'dispute' => 'bg-orange-50 text-orange-600']; @endphp
-                                                        <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $srcC[$src] ?? 'bg-gray-50 text-gray-600' }}">{{ ucfirst($src) }}</span>
+                                                        @php $srcC = ['post' => 'bg-blue-50 text-blue-600 border-blue-200', 'review' => 'bg-purple-50 text-purple-600 border-purple-200', 'content' => 'bg-teal-50 text-teal-600 border-teal-200', 'dispute' => 'bg-orange-50 text-orange-600 border-orange-200']; @endphp
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border {{ $srcC[$src] ?? 'bg-gray-50 text-gray-600 border-gray-200' }}">{{ ucfirst($src) }}</span>
                                                     @endforeach
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4">
+                                            <td class="px-2.5 py-2.5">
                                                 <div class="flex gap-1 flex-wrap">
                                                     @if ($stat->is_super_reporter)
-                                                        <span class="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Super Reporter</span>
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">Super Reporter</span>
                                                     @endif
                                                     @if ($stat->is_potential_abuser)
-                                                        <span class="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Potential Abuser</span>
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 border border-red-200">Potential Abuser</span>
                                                     @endif
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 text-sm text-gray-500">{{ $stat->latest_report ? \Carbon\Carbon::parse($stat->latest_report)->format('M d, Y') : '-' }}</td>
+                                            <td class="px-2.5 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">{{ $stat->latest_report ? \Carbon\Carbon::parse($stat->latest_report)->format('M d, Y') : '-' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="px-6 py-12 text-center text-gray-500 text-sm">No reporter data available.</td>
+                                            <td colspan="9" class="px-4 py-10 text-center text-gray-500 text-xs">No reporter data available.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
+
+                        @php
+                            $statsTotal = count($reporterStats ?? []);
+                            $statsPerPage = 15;
+                            $statsPage = 1;
+                            $statsLastPage = ceil($statsTotal / $statsPerPage);
+                            $statsFrom = $statsTotal > 0 ? 1 : 0;
+                            $statsTo = $statsTotal > 0 ? min($statsPerPage, $statsTotal) : 0;
+                        @endphp
+
+                        <div id="reporterStatsPaginationBar" class="px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2 {{ $statsTotal > 0 ? '' : 'hidden' }}">
+                            <p id="reporterStatsPaginationInfo" class="text-xs text-gray-500">
+                                @if($statsTotal > 0)
+                                    Showing <strong id="statsFrom">{{ $statsFrom }}</strong>–<strong id="statsTo">{{ $statsTo }}</strong> of <strong id="statsTotal">{{ $statsTotal }}</strong> reporters
+                                @else
+                                    Showing <strong>0</strong> reporters
+                                @endif
+                            </p>
+                            <div class="flex items-center gap-1">
+                                <button id="reporterStatsPrevPage" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition disabled:text-gray-400 disabled:cursor-not-allowed" disabled>‹ Prev</button>
+                                <span id="reporterStatsPageIndicator" class="px-2.5 py-1 rounded-lg text-xs bg-indigo-600 text-white font-semibold">Page 1 of {{ $statsLastPage }}</span>
+                                <button id="reporterStatsNextPage" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition disabled:text-gray-400 disabled:cursor-not-allowed" {{ $statsLastPage <= 1 ? 'disabled' : '' }}>Next ›</button>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
                     {{-- ── Tab 3: Direct Admin Action ── --}}
                     <div id="panelAdminAction" class="tab-panel hidden">
-                        <div class="px-6 py-5 border-b border-gray-200">
-                            <div class="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-800">Direct Admin Action</h3>
-                                    <p class="text-sm text-gray-500">Search for any user, post, or review and take action directly.</p>
-                                </div>
-                            </div>
-
+                        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-800">Direct Admin Action</h3>
                             <div class="flex flex-wrap items-center gap-3">
                                 <select id="adminSearchType" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
                                     <option value="user">Users</option>
@@ -320,17 +331,17 @@
 
                         {{-- Search Results --}}
                         <div class="overflow-x-auto">
-                            <table class="w-full" id="adminSearchTable">
-                                <thead class="bg-gray-50 border-b border-gray-200" id="adminSearchThead">
+                            <table class="w-full table-fixed" id="adminSearchTable">
+                                <thead class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200" id="adminSearchThead">
                                     <tr>
-                                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" colspan="6">
+                                        <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider" colspan="6">
                                             <span class="text-gray-400">Browse or search users, posts, or reviews below.</span>
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody id="adminSearchBody">
+                                <tbody id="adminSearchBody" class="divide-y divide-gray-200">
                                     <tr>
-                                        <td colspan="6" class="px-6 py-12 text-center text-gray-400 text-sm">
+                                        <td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">
                                             <i class="fi fi-rr-loading-spinner text-3xl block mb-2 text-gray-300 animate-spin"></i>
                                             Loading...
                                         </td>
@@ -340,16 +351,12 @@
                         </div>
 
                         {{-- Pagination --}}
-                        <div id="adminPaginationBar" class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between hidden">
-                            <span id="adminPaginationInfo" class="text-sm text-gray-600"></span>
-                            <div class="flex items-center gap-2">
-                                <button id="adminPrevPage" class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
-                                    <i class="fi fi-rr-angle-left mr-1"></i> Previous
-                                </button>
-                                <span id="adminPageIndicator" class="text-sm font-medium text-gray-700"></span>
-                                <button id="adminNextPage" class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
-                                    Next <i class="fi fi-rr-angle-right ml-1"></i>
-                                </button>
+                        <div id="adminPaginationBar" class="px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2 hidden">
+                            <p id="adminPaginationInfo" class="text-xs text-gray-500"></p>
+                            <div class="flex items-center gap-1">
+                                <button id="adminPrevPage" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition disabled:text-gray-400 disabled:cursor-not-allowed" disabled>‹ Prev</button>
+                                <span id="adminPageIndicator" class="px-2.5 py-1 rounded-lg text-xs bg-indigo-600 text-white font-semibold"></span>
+                                <button id="adminNextPage" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition disabled:text-gray-400 disabled:cursor-not-allowed" disabled>Next ›</button>
                             </div>
                         </div>
                     </div>

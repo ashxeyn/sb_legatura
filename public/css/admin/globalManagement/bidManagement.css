@@ -2,12 +2,7 @@
 .stat-card {
   position: relative;
   overflow: hidden;
-  transform: translateY(0);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.stat-card:hover {
-  transform: translateY(-8px);
 }
 
 .stat-card::before {
@@ -59,15 +54,6 @@
   animation: progressFill 1.5s ease-out;
 }
 
-/* Icon Hover Effect */
-.stat-card:hover .bg-blue-100,
-.stat-card:hover .bg-orange-100,
-.stat-card:hover .bg-green-100,
-.stat-card:hover .bg-red-100 {
-  transform: rotate(10deg) scale(1.1);
-  transition: transform 0.3s ease;
-}
-
 /* Percentage Badge */
 .stat-card span svg {
   animation: bounce 2s infinite;
@@ -101,6 +87,7 @@
 
 /* Card Glow Effect on Hover */
 .stat-card:hover {
+  transform: none;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 
               0 10px 10px -5px rgba(0, 0, 0, 0.04),
               0 0 0 3px rgba(99, 102, 241, 0.1);

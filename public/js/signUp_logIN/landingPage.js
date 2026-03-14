@@ -4,42 +4,58 @@ window.addEventListener('scroll', () => {
     nav.classList.toggle('scrolled', window.scrollY > 40);
 });
 
-// Dailymotion video auto-loop via postMessage
-(function() {
+// Dailymotion video controls via postMessage
+(function () {
     const iframe = document.getElementById('legatura-video');
+    if (!iframe) return;
+
     let playerReady = false;
 
-    window.addEventListener('message', function(event) {
+    const pauseVideo = () => {
+        if (!playerReady || !iframe.contentWindow) return;
+        iframe.contentWindow.postMessage(JSON.stringify({ command: 'pause' }), '*');
+    };
+
+    window.addEventListener('message', (event) => {
         if (!event.origin.includes('dailymotion.com')) return;
-        
+
         try {
             const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-            
-            // When player is ready, subscribe to ended event
-            if (data.event === 'apiready') {
+            if (data && data.event === 'apiready') {
                 playerReady = true;
-                iframe.contentWindow.postMessage(JSON.stringify({
-                    command: 'addEventListener',
-                    parameters: ['ended']
-                }), '*');
             }
-            
-            // When video ends, restart it
-            if (playerReady && (data.event === 'ended' || data.event === 'video_end')) {
-                setTimeout(() => {
-                    iframe.contentWindow.postMessage(JSON.stringify({
-                        command: 'seek',
-                        parameters: [0]
-                    }), '*');
-                    iframe.contentWindow.postMessage(JSON.stringify({
-                        command: 'play'
-                    }), '*');
-                }, 100);
-            }
-        } catch(e) {
+        } catch (e) {
             console.log('Dailymotion event error:', e);
         }
     });
+
+    // Stop playback whenever the user scrolls up or down.
+    let scrollTicking = false;
+    window.addEventListener('scroll', () => {
+        if (scrollTicking) return;
+        scrollTicking = true;
+
+        window.requestAnimationFrame(() => {
+            pauseVideo();
+            scrollTicking = false;
+        });
+    }, { passive: true });
+
+    // Also stop playback when the video section leaves the viewport.
+    const videoSection = document.getElementById('video-demo');
+    if (videoSection && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) {
+                    pauseVideo();
+                }
+            });
+        }, {
+            threshold: 0.2
+        });
+
+        observer.observe(videoSection);
+    }
 })();
 
 // Hamburger toggle
@@ -430,75 +446,23 @@ if (hero && heroImg) {
 
 // ── Scroll Fade-in / Fade-out Animations ──────────────────────────
 (function () {
-    // --- About Section ---
-    document.querySelectorAll('#about h2, #about > div > p').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#about .about-card').forEach((el, i) => {
+    // --- User Experience Section ---
+    document.querySelectorAll('#user-experience .owner-card').forEach(el => el.classList.add('scroll-fade-left'));
+    document.querySelectorAll('#user-experience .contractor-card').forEach(el => el.classList.add('scroll-fade-right'));
+
+    // --- Plans Section ---
+    document.querySelectorAll('#plans .plan-panel').forEach((el, i) => {
         el.classList.add(i === 0 ? 'scroll-fade-left' : 'scroll-fade-right');
         el.classList.add('scroll-delay-' + (i + 1));
     });
 
-    // --- User Experience Section ---
-    document.querySelectorAll('#user-experience h2, #user-experience > div > p').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#user-experience .owner-card').forEach(el => el.classList.add('scroll-fade-left'));
-    document.querySelectorAll('#user-experience .separator-container').forEach(el => el.classList.add('scroll-fade-scale'));
-    document.querySelectorAll('#user-experience .contractor-card').forEach(el => el.classList.add('scroll-fade-right'));
-
-    // --- Features Section ---
-    document.querySelectorAll('#features h2, #features > div > p').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#features .feature-card').forEach((el, i) => {
-        el.classList.add('scroll-fade');
-        el.classList.add('scroll-delay-' + (i + 1));
-    });
-
-    // --- Features Highlight Section (Everything You Need) ---
-    document.querySelectorAll('#features-highlight h2, #features-highlight > div > p').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#features-highlight .feature-card').forEach((el, i) => {
-        el.classList.add('scroll-fade');
-        el.classList.add('scroll-delay-' + ((i % 6) + 1));
-    });
-
-    // --- Plans Section ---
-    document.querySelectorAll('#plans h2, #plans > div > p').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#plans .boost-panel').forEach(el => el.classList.add('scroll-fade-left'));
-    document.querySelectorAll('#plans .subscription-panel').forEach(el => el.classList.add('scroll-fade-right'));
-
-    // --- Video Demo Section ---
-    document.querySelectorAll('#video-demo h2').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#video-demo .text-left h1').forEach(el => {
-        el.classList.add('scroll-fade-left');
-        el.classList.add('scroll-delay-1');
-    });
-    document.querySelectorAll('#video-demo .text-left p').forEach(el => {
-        el.classList.add('scroll-fade-left');
-        el.classList.add('scroll-delay-2');
-    });
-    document.querySelectorAll('#video-demo .flex img').forEach(el => {
-        el.classList.add('scroll-fade-right');
-        el.classList.add('scroll-delay-1');
-    });
-    document.querySelectorAll('#video-demo .separator-container').forEach(el => {
-        el.classList.add('scroll-fade-scale');
-        el.classList.add('scroll-delay-2');
-    });
-    document.querySelectorAll('#video-demo .video-frame').forEach(el => el.classList.add('scroll-fade-scale'));
-
     // --- Team Section ---
-    document.querySelectorAll('#team .team-header').forEach(el => el.classList.add('scroll-fade'));
     document.querySelectorAll('#team .member-card').forEach((el, i) => {
         el.classList.add('scroll-fade');
         el.classList.add('scroll-delay-' + (i + 1));
     });
 
     // --- MVP Showcase Section ---
-    document.querySelectorAll('#mvp .text-center h2').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#mvp .text-center > p').forEach(el => {
-        el.classList.add('scroll-fade');
-        el.classList.add('scroll-delay-1');
-    });
-    document.querySelectorAll('#mvp .text-center .max-w-2xl').forEach(el => {
-        el.classList.add('scroll-fade');
-        el.classList.add('scroll-delay-2');
-    });
     document.querySelectorAll('#mvp .mvp-text-col').forEach(el => {
         const isRight = el.classList.contains('order-1'); // order-1 lg:order-2 = right side on desktop
         el.classList.add(isRight ? 'scroll-fade-right' : 'scroll-fade-left');
@@ -511,13 +475,7 @@ if (hero && heroImg) {
     });
     document.querySelectorAll('#mvp .separator-container').forEach(el => el.classList.add('scroll-fade-scale'));
 
-    // --- Contact Section ---
-    document.querySelectorAll('#contact .contact-logo').forEach(el => el.classList.add('scroll-fade-scale'));
-    document.querySelectorAll('#contact h2, #contact > div > p').forEach(el => el.classList.add('scroll-fade'));
-    document.querySelectorAll('#contact .contact-card').forEach((el, i) => {
-        el.classList.add('scroll-fade');
-        el.classList.add('scroll-delay-' + (i + 1));
-    });
+
 
     // --- Footer (no animation) ---
     // Footer is always visible, no scroll animation
@@ -542,6 +500,101 @@ if (hero && heroImg) {
     });
 
     allFadeEls.forEach(el => observer.observe(el));
+})();
+// ──────────────────────────────────────────────────────────────────
+
+// ── Contact Phone Call (Mobile View Only) ────────────────────────
+(function () {
+    const phoneCard = document.getElementById('contactPhoneCard');
+    if (!phoneCard) return;
+
+    const phoneNumber = '09755924862';
+    const telUrl = `tel:${phoneNumber}`;
+
+    const isMobileView = () => window.matchMedia('(max-width: 768px)').matches;
+
+    function syncPhoneCardState() {
+        if (isMobileView()) {
+            phoneCard.style.cursor = 'pointer';
+            phoneCard.setAttribute('role', 'button');
+            phoneCard.setAttribute('tabindex', '0');
+        } else {
+            phoneCard.style.cursor = '';
+            phoneCard.removeAttribute('role');
+            phoneCard.removeAttribute('tabindex');
+        }
+    }
+
+    phoneCard.addEventListener('click', () => {
+        if (!isMobileView()) return;
+        window.location.href = telUrl;
+    });
+
+    phoneCard.addEventListener('keydown', (e) => {
+        if (!isMobileView()) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            window.location.href = telUrl;
+        }
+    });
+
+    syncPhoneCardState();
+    window.addEventListener('resize', syncPhoneCardState);
+})();
+// ──────────────────────────────────────────────────────────────────
+
+// ── Contact Email Redirect (Desktop + Mobile) ────────────────────
+(function () {
+    const emailLink = document.getElementById('contactEmailLink');
+    if (!emailLink) return;
+
+    const recipient = 'legatura.info.official@gmail.com';
+    const gmailWebCompose = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipient)}`;
+    const mailtoCompose = `mailto:${recipient}`;
+
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isMobile = isAndroid || isIOS;
+
+    // Keep a no-JS-safe fallback.
+    emailLink.setAttribute('href', mailtoCompose);
+
+    // Desktop: open Gmail web compose in a new tab.
+    if (!isMobile) {
+        emailLink.setAttribute('href', gmailWebCompose);
+        emailLink.setAttribute('target', '_blank');
+        emailLink.setAttribute('rel', 'noopener noreferrer');
+        return;
+    }
+
+    // Mobile: attempt Gmail app first, then fallback to default mail app.
+    emailLink.removeAttribute('target');
+    emailLink.removeAttribute('rel');
+
+    emailLink.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        if (isAndroid) {
+            const intentUrl = `intent://compose?to=${encodeURIComponent(recipient)}#Intent;scheme=mailto;package=com.google.android.gm;end`;
+            window.location.href = intentUrl;
+            window.setTimeout(() => {
+                window.location.href = mailtoCompose;
+            }, 700);
+            return;
+        }
+
+        if (isIOS) {
+            const gmailIosUrl = `googlegmail:///co?to=${encodeURIComponent(recipient)}`;
+            window.location.href = gmailIosUrl;
+            window.setTimeout(() => {
+                window.location.href = mailtoCompose;
+            }, 700);
+            return;
+        }
+
+        window.location.href = mailtoCompose;
+    });
 })();
 // ──────────────────────────────────────────────────────────────────
 
@@ -831,6 +884,67 @@ if (hero && heroImg) {
             } else {
                 openAdminModal();
             }
+        }
+    });
+})();
+// ──────────────────────────────────────────────────────────────────
+
+// ── Download App Modal ────────────────────────────────────────────
+(function () {
+    const overlay = document.getElementById('downloadModal');
+    const closeBtn = document.getElementById('downloadModalClose');
+
+    if (!overlay) return;
+
+    function openDownloadModal() {
+        overlay.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+    }
+
+    function closeDownloadModal() {
+        overlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+    }
+
+    // Desktop navbar "Download App" button
+    const navCta = document.querySelector('.hero-nav-cta');
+    if (navCta) navCta.addEventListener('click', openDownloadModal);
+
+    // In-hero "Download App" button (shown on mobile)
+    const heroCta = document.querySelector('.hero-body-cta');
+    if (heroCta) heroCta.addEventListener('click', openDownloadModal);
+
+    // Mobile overlay menu "Download App" button
+    const mobileCta = document.getElementById('mobileDownloadBtn');
+    if (mobileCta) {
+        mobileCta.addEventListener('click', () => {
+            // Close mobile menu first, then open modal
+            const mobileMenu = document.getElementById('navMobileMenu');
+            const hamburger = document.getElementById('navHamburger');
+            if (mobileMenu) mobileMenu.classList.remove('open');
+            if (hamburger) hamburger.classList.remove('open');
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.documentElement.style.overflow = '';
+            openDownloadModal();
+        });
+    }
+
+    // Close via close button
+    if (closeBtn) closeBtn.addEventListener('click', closeDownloadModal);
+
+    // Close on overlay backdrop click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeDownloadModal();
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('is-open')) {
+            closeDownloadModal();
         }
     });
 })();

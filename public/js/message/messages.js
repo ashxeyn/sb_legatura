@@ -127,6 +127,25 @@ document.addEventListener('DOMContentLoaded', () => {
     loadInbox();
     setupEventListeners();
 
+    // Auto-open compose modal with recipient if redirected from profile
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('compose') === '1') {
+        const recipientId = urlParams.get('recipient_id');
+        const recipientName = urlParams.get('recipient_name');
+        if (recipientId) {
+            // Wait a moment for DOM to be ready, then open compose modal
+            setTimeout(() => {
+                showComposeModal().then(() => {
+                    // Find and select the recipient
+                    const recipient = availableUsers?.find(u => u.id == recipientId);
+                    if (recipient) {
+                        selectRecipient(recipient.id);
+                    }
+                });
+            }, 500);
+        }
+    }
+
     // Update timestamps every 30 seconds
     setInterval(updateAllTimestamps, 30000);
 });

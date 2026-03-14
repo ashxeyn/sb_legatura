@@ -5,22 +5,28 @@ Active links are auto-detected via the current route name.
 User card reads from session('user').
 ═══════════════════════════════════════════════════════════════════════════ --}}
 
-<aside class="bg-white shadow-xl flex flex-col">
+<aside class="flex flex-col">
 
-  <div class="flex justify-center items-center">
-    <img src="{{ asset('img/logo.svg') }}" alt="Legatura Logo" class="logo-img">
+  {{-- ── Logo ── --}}
+  <div class="sidebar-logo-wrap">
+    <img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura Logo" class="logo-img">
+    <img src="{{ asset('img/LEGATURA.svg') }}" alt="Legatura" class="logo-text-img">
   </div>
 
-  <nav class="flex-1 px-3 py-4 space-y-1">
+  <nav class="flex-1 px-2 py-2 overflow-y-auto">
 
-    {{-- ── Home ── --}}
+    {{-- ── Overview ── --}}
+    <p class="nav-section-label">Overview</p>
+
     <div class="nav-group">
       <button class="nav-btn">
-        <div class="flex items-center gap-3">
-          <i class="fi fi-ss-home" style="font-size: 20px;"></i>
+        <div class="flex items-center gap-2">
+          <i class="fi fi-br-home sidebar-icon"></i>
           <span>Home</span>
         </div>
-        <span class="arrow">▼</span>
+        <svg class="arrow w-3 h-3 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
       </button>
       <div class="nav-submenu">
         <a href="{{ route('admin.dashboard') }}"
@@ -28,121 +34,134 @@ User card reads from session('user').
         <div class="submenu-nested">
           <button class="submenu-link submenu-nested-btn">
             <span>Analytics</span>
-            <span class="arrow-small">▼</span>
+            <svg class="arrow-small w-2.5 h-2.5 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
           </button>
           <div class="submenu-nested-content">
             <a href="{{ route('admin.analytics') }}"
-              class="submenu-nested-link {{ request()->routeIs('admin.analytics') && !request()->routeIs('admin.analytics.*') ? 'active' : '' }}">Project
-              Performance Analytics</a>
+              class="submenu-nested-link {{ request()->routeIs('admin.analytics') && !request()->routeIs('admin.analytics.*') ? 'active' : '' }}">Project Performance</a>
             <a href="{{ route('admin.analytics.subscription') }}"
-              class="submenu-nested-link {{ request()->routeIs('admin.analytics.subscription') ? 'active' : '' }}">Subscription
-              Analytics</a>
+              class="submenu-nested-link {{ request()->routeIs('admin.analytics.subscription') ? 'active' : '' }}">Subscription</a>
             <a href="{{ route('admin.analytics.userActivity') }}"
-              class="submenu-nested-link {{ request()->routeIs('admin.analytics.userActivity') ? 'active' : '' }}">User
-              Activity Analytics</a>
-            <!--<a href="{{ route('admin.analytics.projectPerformance') }}"
-               class="submenu-nested-link {{ request()->routeIs('admin.analytics.projectPerformance') ? 'active' : '' }}">Project Performance Analytics</a>-->
+              class="submenu-nested-link {{ request()->routeIs('admin.analytics.userActivity') ? 'active' : '' }}">User Activity</a>
             <a href="{{ route('admin.analytics.bidCompletion') }}"
-              class="submenu-nested-link {{ request()->routeIs('admin.analytics.bidCompletion') ? 'active' : '' }}">Bid
-              Completion Analytics</a>
-            <!--<a href="{{ route('admin.analytics.reports') }}"
-               class="submenu-nested-link {{ request()->routeIs('admin.analytics.reports') ? 'active' : '' }}">Reports and Analytics</a>-->
+              class="submenu-nested-link {{ request()->routeIs('admin.analytics.bidCompletion') ? 'active' : '' }}">Bid Completion</a>
           </div>
         </div>
       </div>
     </div>
 
+    {{-- ── Management ── --}}
+    <p class="nav-section-label">Management</p>
+
     {{-- ── User Management ── --}}
     <div class="nav-group">
       <button class="nav-btn">
-        <div class="flex items-center gap-3">
-          <i class="fi fi-ss-users-alt" style="font-size: 20px;"></i>
-          <span>User Management</span>
+        <div class="flex items-center gap-2">
+          <i class="fi fi-br-users-alt sidebar-icon"></i>
+          <span>Users</span>
         </div>
-        <span class="arrow">▼</span>
+        <svg class="arrow w-3 h-3 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
       </button>
       <div class="nav-submenu">
         <a href="{{ route('admin.userManagement.propertyOwner') }}"
-          class="submenu-link {{ request()->routeIs('admin.userManagement.propertyOwner*') ? 'active' : '' }}">Property
-          Owner</a>
+          class="submenu-link {{ request()->routeIs('admin.userManagement.propertyOwner*') ? 'active' : '' }}">Property Owners</a>
         <a href="{{ route('admin.userManagement.contractor') }}"
-          class="submenu-link {{ request()->routeIs('admin.userManagement.contractor*') ? 'active' : '' }}">Contractor</a>
+          class="submenu-link {{ request()->routeIs('admin.userManagement.contractor*') ? 'active' : '' }}">Contractors</a>
         <a href="{{ route('admin.userManagement.verificationRequest') }}"
-          class="submenu-link {{ request()->routeIs('admin.userManagement.verificationRequest') ? 'active' : '' }}">Verification
-          Request</a>
+          class="submenu-link {{ request()->routeIs('admin.userManagement.verificationRequest') ? 'active' : '' }}">Verification</a>
         <a href="{{ route('admin.userManagement.suspendedAccounts') }}"
-          class="submenu-link {{ request()->routeIs('admin.userManagement.suspendedAccounts') ? 'active' : '' }}">Suspended
-          Accounts</a>
+          class="submenu-link {{ request()->routeIs('admin.userManagement.suspendedAccounts') ? 'active' : '' }}">Suspended</a>
       </div>
     </div>
 
     {{-- ── Global Management ── --}}
     <div class="nav-group">
       <button class="nav-btn">
-        <div class="flex items-center gap-3">
-          <i class="fi fi-ss-globe" style="font-size: 20px;"></i>
-          <span>Global Management</span>
+        <div class="flex items-center gap-2">
+          <i class="fi fi-br-globe sidebar-icon"></i>
+          <span>Global</span>
         </div>
-        <span class="arrow">▼</span>
+        <svg class="arrow w-3 h-3 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
       </button>
       <div class="nav-submenu">
         <a href="{{ route('admin.globalManagement.reviewManagement') }}"
-          class="submenu-link {{ request()->routeIs('admin.globalManagement.reviewManagement') ? 'active' : '' }}">Review
-          & Rating</a>
-        <a href="{{ route('admin.globalManagement.bidManagement') }}"
-          class="submenu-link {{ request()->routeIs('admin.globalManagement.bidManagement') ? 'active' : '' }}">Bid
-          Management</a>
+          class="submenu-link {{ request()->routeIs('admin.globalManagement.reviewManagement') ? 'active' : '' }}">Review & Rating</a>
         <a href="{{ route('admin.globalManagement.proofOfpayments') }}"
-          class="submenu-link {{ request()->routeIs('admin.globalManagement.proofOfpayments') ? 'active' : '' }}">Proof
-          of Payments</a>
-        <a href="{{ route('admin.globalManagement.aiManagement') }}"
-          class="submenu-link {{ request()->routeIs('admin.globalManagement.aiManagement') ? 'active' : '' }}">AI
-          Management</a>
+          class="submenu-link {{ request()->routeIs('admin.globalManagement.proofOfpayments') ? 'active' : '' }}">Proof of Payments</a>
+        <a href="{{ route('admin.projectManagement.subscriptions') }}"
+          class="submenu-link {{ request()->routeIs('admin.projectManagement.subscriptions') ? 'active' : '' }}">Subscriptions & Boosts</a>
         <a href="{{ route('admin.globalManagement.postingManagement') }}"
-          class="submenu-link {{ request()->routeIs('admin.globalManagement.postingManagement') ? 'active' : '' }}">Posting
-          Management</a>
+          class="submenu-link {{ request()->routeIs('admin.globalManagement.postingManagement') ? 'active' : '' }}">Posting</a>
         <a href="{{ route('admin.globalManagement.reportManagement') }}"
-          class="submenu-link {{ request()->routeIs('admin.globalManagement.reportManagement') ? 'active' : '' }}">Report
-          Management</a>
+          class="submenu-link {{ request()->routeIs('admin.globalManagement.reportManagement') ? 'active' : '' }}">Report Management</a>
       </div>
     </div>
 
     {{-- ── Project Management ── --}}
     <div class="nav-group">
       <button class="nav-btn">
-        <div class="flex items-center gap-3">
-          <i class="fi fi-sr-master-plan" style="font-size: 20px;"></i>
-          <span>Project Management</span>
+        <div class="flex items-center gap-2">
+          <i class="fi fi-br-briefcase sidebar-icon"></i>
+          <span>Projects</span>
         </div>
-        <span class="arrow">▼</span>
+        <svg class="arrow w-3 h-3 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
       </button>
       <div class="nav-submenu">
         <a href="{{ route('admin.projectManagement.listOfProjects') }}"
           class="submenu-link {{ request()->routeIs('admin.projectManagement.listOfProjects') ? 'active' : '' }}">List
           of Projects</a>
-       <!-- <a href="{{ route('admin.projectManagement.disputesReports') }}"
-         class="submenu-link {{ request()->routeIs('admin.projectManagement.disputesReports') ? 'active' : '' }}">Disputes/Reports</a>-->
-        <a href="{{ route('admin.projectManagement.messages') }}"
-          class="submenu-link {{ request()->routeIs('admin.projectManagement.messages') ? 'active' : '' }}">Messages</a>
-        <a href="{{ route('admin.projectManagement.subscriptions') }}"
-          class="submenu-link {{ request()->routeIs('admin.projectManagement.subscriptions') ? 'active' : '' }}">Subscriptions
-          & Boosts</a>
+        <a href="{{ route('admin.globalManagement.bidManagement') }}"
+          class="submenu-link {{ request()->routeIs('admin.globalManagement.bidManagement') ? 'active' : '' }}">Bid Management</a>
         <a href="{{ route('admin.projectManagement.showcaseManagement') }}"
-          class="submenu-link {{ request()->routeIs('admin.projectManagement.showcaseManagement') ? 'active' : '' }}">Showcase
-          Management</a>
+          class="submenu-link {{ request()->routeIs('admin.projectManagement.showcaseManagement') ? 'active' : '' }}">Showcase</a>
         <a href="{{ route('admin.progressFeed') }}"
           class="submenu-link {{ request()->routeIs('admin.progressFeed') ? 'active' : '' }}">Progress Feed</a>
       </div>
     </div>
 
+    {{-- ── AI Management ── --}}
+    <div class="nav-group">
+      <a href="{{ route('admin.globalManagement.aiManagement') }}"
+        class="nav-btn {{ request()->routeIs('admin.globalManagement.aiManagement') ? 'active' : '' }}">
+        <div class="flex items-center gap-2">
+          <i class="fi fi-br-robot sidebar-icon"></i>
+          <span>AI Management</span>
+        </div>
+      </a>
+    </div>
+
+    {{-- ── Messages ── --}}
+    <div class="nav-group">
+      <a href="{{ route('admin.projectManagement.messages') }}"
+        class="nav-btn {{ request()->routeIs('admin.projectManagement.messages') ? 'active' : '' }}">
+        <div class="flex items-center gap-2">
+          <i class="fi fi-br-envelope sidebar-icon"></i>
+          <span>Messages</span>
+        </div>
+      </a>
+    </div>
+
+    {{-- ── System ── --}}
+    <p class="nav-section-label">System</p>
+
     {{-- ── Settings ── --}}
     <div class="nav-group">
       <button class="nav-btn">
-        <div class="flex items-center gap-3">
-          <i class="fi fi-br-settings-sliders" style="font-size: 20px;"></i>
+        <div class="flex items-center gap-2">
+          <i class="fi fi-br-settings sidebar-icon"></i>
           <span>Settings</span>
         </div>
-        <span class="arrow">▼</span>
+        <svg class="arrow w-3 h-3 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
       </button>
       <div class="nav-submenu">
         <a href="{{ route('admin.settings.notifications') }}"
@@ -179,78 +198,102 @@ User card reads from session('user').
     $userEmail = $user->email ?? 'admin@legatura.com';
   @endphp
 
-  <div class="mt-auto p-4">
-    <div class="user-card flex items-center gap-3 p-3 rounded-lg shadow-md text-white">
-      @if($profilePic)
-        <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $fullName }}" class="w-10 h-10 rounded-full object-cover shadow flex-shrink-0">
-      @else
-        <div
-          class="w-10 h-10 rounded-full bg-white text-indigo-900 flex items-center justify-center font-bold shadow flex-shrink-0">
-          {{ $initials }}
-        </div>
-      @endif
-      <div class="flex-1 min-w-0">
-        <div class="font-semibold text-sm truncate">{{ $fullName }}</div>
-        <div class="text-xs opacity-80 truncate">{{ $userEmail }}</div>
+  <div class="p-2.5 border-t border-slate-200">
+    <div class="user-card flex items-center gap-2 p-2 rounded-lg" style="background: linear-gradient(135deg, #F9A600 0%, #C97700 100%);">
+      <div 
+        class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style="background-color: #ffffff; color: #E48F00;">
+        {{ $initials }}
       </div>
-      <div class="relative">
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-xs truncate" style="color: #ffffff;">{{ $fullName }}</div>
+        <div class="text-xs truncate" style="color: rgba(255, 255, 255, 0.82);">{{ $userEmail }}</div>
+      </div>
+      <div class="relative user-menu-container">
         <button id="userMenuBtn"
-          class="text-white opacity-80 hover:opacity-100 transition text-2xl w-8 h-8 flex items-center justify-center rounded-full">⋮</button>
-        <div id="userMenuDropdown"
-          class="absolute right-0 bottom-full mb-2 w-44 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 hidden">
-          <div class="px-4 py-3 border-b border-gray-100">
-            <div class="text-sm font-semibold truncate">{{ $fullName }}</div>
-            <div class="text-xs text-gray-500 truncate">{{ $userEmail }}</div>
-          </div>
-          <ul class="py-1">
-            <li>
-              <button id="logoutBtn"
-                class="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 text-red-600">
-                <i class="fi fi-ss-exit"></i>
-                <span>Logout</span>
-              </button>
-            </li>
-          </ul>
-        </div>
+          class="text-white/80 hover:text-white transition text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-white/10">⋮</button>
       </div>
     </div>
     <form id="logoutForm" method="POST" action="/admin/logout" class="hidden">@csrf</form>
+  </div>
+
+  {{-- User Menu Dropdown (outside sidebar to avoid overflow issues) --}}
+  <div id="userMenuDropdown"
+    class="fixed w-48 bg-white rounded-xl shadow-2xl border hidden z-[60]" style="border-color: rgba(228, 143, 0, 0.24);">
+    {{-- Header --}}
+    <div class="px-3 py-2 border-b" style="background: linear-gradient(135deg, #F9A600 0%, #C97700 100%); border-color: rgba(228, 143, 0, 0.24);">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0" style="background-color: rgba(255,255,255,0.25); color: #ffffff;">
+          {{ $initials }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-semibold truncate" style="color: #ffffff;">{{ $fullName }}</div>
+          <div class="text-[10px] truncate" style="color: rgba(255, 255, 255, 0.82);">{{ $userEmail }}</div>
+        </div>
+      </div>
+    </div>
+    {{-- Menu Items --}}
+    <ul class="py-1.5">
+      <li>
+        <button id="logoutBtn"
+          class="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all group"
+          style="color: #dc2626;">
+          <div class="w-6 h-6 rounded-lg flex items-center justify-center transition-all" style="background-color: rgba(220, 38, 38, 0.08);">
+            <i class="fi fi-br-sign-out-alt text-xs" style="color: #dc2626;"></i>
+          </div>
+          <span class="group-hover:translate-x-0.5 transition-transform">Logout</span>
+        </button>
+      </li>
+    </ul>
   </div>
 
 </aside>
 
 {{-- ── Logout Confirmation Modal ── --}}
 <div id="logoutModal"
-  class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-[100] transition-opacity duration-200">
+  class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-[100] transition-opacity duration-300">
   <div
-    class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden transform transition-all duration-200 scale-95"
+    class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-3 overflow-hidden transform transition-all duration-300 scale-95"
     id="logoutModalContent">
-    <div class="px-6 py-5 bg-gradient-to-r from-red-600 to-rose-600">
+    {{-- Header --}}
+    <div class="px-5 py-4" style="background: linear-gradient(135deg, #F9A600 0%, #C97700 100%);">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-            <i class="fi fi-ss-exit text-white text-xl"></i>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <i class="fi fi-br-sign-out-alt text-white text-lg"></i>
           </div>
-          <h3 class="text-xl font-bold text-white">Logout</h3>
+          <div>
+            <h3 class="text-lg font-bold text-white leading-tight">Confirm Logout</h3>
+            <p class="text-[11px] text-white/70">End your current session</p>
+          </div>
         </div>
         <button id="logoutModalClose"
-          class="text-white/80 hover:text-white transition text-2xl leading-none cursor-pointer">&times;</button>
+          class="text-white/70 hover:text-white hover:bg-white/10 transition-all rounded-md w-7 h-7 flex items-center justify-center text-xl leading-none cursor-pointer">&times;</button>
       </div>
     </div>
-    <div class="p-6 space-y-5">
-      <div class="flex items-start gap-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-        <i class="fi fi-rr-info-circle text-red-600 text-xl mt-0.5"></i>
-        <div class="flex-1">
-          <p class="text-sm text-red-900 font-semibold mb-1">Are you sure you want to logout?</p>
-          <p class="text-xs text-red-800">You will be redirected to the login page.</p>
+    
+    {{-- Content --}}
+    <div class="p-4">
+      <div class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg mb-4">
+        <div class="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0" style="background-color: rgba(2, 38, 68, 0.1);">
+          <i class="fi fi-rr-info text-lg" style="color: #022644;"></i>
+        </div>
+        <div class="flex-1 pt-0.5">
+          <p class="text-xs font-semibold mb-1" style="color: #1E1E1E;">Are you sure you want to logout?</p>
+          <p class="text-xs leading-relaxed" style="color: #64748b;">You will be securely logged out and redirected to the landing page.</p>
         </div>
       </div>
-      <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+      
+      {{-- Actions --}}
+      <div class="flex items-center justify-end gap-2">
         <button id="logoutModalCancel"
-          class="px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition cursor-pointer">Cancel</button>
+          class="px-4 py-2 rounded-lg border border-slate-300 font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all text-xs cursor-pointer" style="color: #64748b;">Cancel</button>
         <button id="logoutModalConfirm"
-          class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition cursor-pointer">Confirm
-          Logout</button>
+          class="px-4 py-2 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all text-xs cursor-pointer" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);">
+          <span class="flex items-center gap-1.5">
+            <i class="fi fi-br-sign-out-alt text-xs"></i>
+            <span>Logout</span>
+          </span>
+        </button>
       </div>
     </div>
   </div>

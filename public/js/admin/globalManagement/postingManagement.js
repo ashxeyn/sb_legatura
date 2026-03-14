@@ -1,6 +1,484 @@
-// Posting Management JavaScript - PHP-based modal version
+// Posting Management JavaScript
+
+function showNotification(message, type = "success") {
+    const notification = document.createElement("div");
+    notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
+        type === "success" ? "bg-green-500" : "bg-red-500"
+    } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
+    notification.innerHTML = `
+      <i class="fi fi-rr-${
+          type === "success" ? "check-circle" : "cross-circle"
+      } text-base"></i>
+      <span>${message}</span>
+    `;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.transform = "translateX(0)";
+    }, 10);
+
+    setTimeout(() => {
+        notification.style.transform = "translateX(150%)";
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
+
+// Define attachModalListeners globally so filters.js can call it
+window.attachModalListeners = function () {
+    // View Modal
+    const viewModal = document.getElementById("viewModal");
+    const viewButtons = document.querySelectorAll(".view-btn");
+
+    viewButtons.forEach((button) => {
+        button.addEventListener("click", async function () {
+            const projectId = this.getAttribute("data-id");
+            const name = this.getAttribute("data-name");
+            const date = this.getAttribute("data-date");
+            const type = this.getAttribute("data-type");
+            const status = this.getAttribute("data-status");
+            const profilePic = this.getAttribute("data-pic");
+
+            // Update basic modal content
+            document.getElementById("modalName").textContent = name;
+            document.getElementById("modalDate").textContent = date;
+            document.getElementById("modalType").textContent = type;
+            document.getElementById("modalAccountType").textContent = type;
+
+            // Toggle buttons based on status
+            const closeBtn = document.getElementById("viewModalCloseBtn");
+            const declineBtn = document.getElementById("viewModalDeclineBtn");
+            const approveBtn = document.getElementById("viewModalApproveBtn");
+
+            if (status === "under_review") {
+                if (closeBtn) closeBtn.classList.add("hidden");
+                if (declineBtn) declineBtn.classList.remove("hidden");
+                if (approveBtn) approveBtn.classList.remove("hidden");
+            } else {
+                if (closeBtn) closeBtn.classList.remove("hidden");
+                if (declineBtn) declineBtn.classList.add("hidden");
+                if (approveBtn) approveBtn.classList.add("hidden");
+            }
+
+            // Generate avatar initials or use profile picture
+            const modalAvatar = document.getElementById("modalAvatar");
+            if (profilePic) {
+                modalAvatar.innerHTML = `<img src="${profilePic}" alt="Profile" class="w-full h-full object-cover rounded-full">`;
+            } else {
+                const initials = name
+                    .split(" ")
+                    .map((word) => word[0])
+                    .join("")
+                    .substring(0, 2);
+                modalAvatar.textContent = initials;
+            }
+
+            // Store data for Approve/Decline actions
+            viewModal.setAttribute("data-current-name", name);
+            viewModal.setAttribute("data-project-id", projectId);
+            if (approveBtn) {
+                approveBtn.setAttribute("data-project-id", projectId);
+                approveBtn.setAttribute("data-name", name);
+            }
+            if (declineBtn) {
+                declineBtn.setAttribute("data-project-id", projectId);
+                declineBtn.setAttribute("data-name", name);
+            }
+
+            // Show modal with animation
+            viewModal.classList.add("show");
+            viewModal.classList.remove("hidden");
+
+            // Fetch project details from API
+            try {
+                const csrfToken = document
+                    .querySelector('meta[name="csrf-token"]')
+                    .getAttribute("content");
+                const response = await fetch(
+                    `/api/admin/management/postings/${projectId}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": csrfToken,
+                            Accept: "application/json",
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch project details");
+                }
+
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const data = result.data;
+
+                    // Populate owner information
+                    document.getElementById("modalEmail").textContent =
+                        data.owner.email || "N/A";
+                    document.getElementById("modalPhone").textContent =
+                        data.owner.phone || "N/A";
+                    // If owner registered date is provided, show it
+                    if (data.owner.registered_at) {
+                        try {
+                            const regDate = new Date(data.owner.registered_at);
+                            document.getElementById("modalDate").textContent =
+                                regDate.toLocaleDateString(undefined, {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "2-digit",
+                                });
+                        } catch (e) {
+                            // fallback to raw value
+                            document.getElementById("modalDate").textContent =
+                                data.owner.registered_at;
+                        }
+                    }
+                    // Account type
+                    document.getElementById("modalAccountType").textContent =
+                        data.owner.type || "N/A";
+
+                    // Populate project information
+                    const projectTitle =
+                        data.project.project_title ||
+                        data.project.title ||
+                        data.project.name ||
+                        "Untitled Post";
+                    const titleEl =
+                        document.getElementById("modalProjectTitle");
+                    if (titleEl) titleEl.textContent = projectTitle;
+
+                    document.getElementById("modalDescription").textContent =
+                        data.project.description || "No description available";
+                    document.getElementById("modalLocation").textContent =
+                        data.project.project_location || "N/A";
+                    document.getElementById("modalPropertyType").textContent =
+                        data.project.property_type || "N/A";
+
+                    // Format budget range
+                    const budgetMin = data.project.budget_range_min
+                        ? parseFloat(
+                              data.project.budget_range_min
+                          ).toLocaleString("en-PH", {
+                              style: "currency",
+                              currency: "PHP",
+                          })
+                        : "N/A";
+                    const budgetMax = data.project.budget_range_max
+                        ? parseFloat(
+                              data.project.budget_range_max
+                          ).toLocaleString("en-PH", {
+                              style: "currency",
+                              currency: "PHP",
+                          })
+                        : "N/A";
+                    document.getElementById(
+                        "modalBudget"
+                    ).textContent = `${budgetMin} - ${budgetMax}`;
+
+                    document.getElementById("modalLotSize").textContent = data
+                        .project.lot_size
+                        ? `${data.project.lot_size} sqm`
+                        : "N/A";
+                    document.getElementById("modalFloorArea").textContent = data
+                        .project.floor_area
+                        ? `${data.project.floor_area} sqm`
+                        : "N/A";
+                    document.getElementById("modalTimeline").textContent = data
+                        .project.to_finish
+                        ? `${data.project.to_finish} months`
+                        : "N/A";
+
+                    // Format status
+                    const statusLabel = {
+                        under_review: "Under Review",
+                        approved: "Approved",
+                        rejected: "Rejected",
+                        deleted: "Deleted",
+                        due: "Due",
+                    };
+                    document.getElementById("modalPostStatus").textContent =
+                        statusLabel[data.project.status] || data.project.status;
+
+                    // Populate files section
+                    const filesContainer =
+                        document.getElementById("postFilesContainer");
+                    if (data.files && data.files.length > 0) {
+                        // Group files by type
+                        const filesByType = {};
+                        data.files.forEach((file) => {
+                            const type = file.file_type || "others";
+                            if (!filesByType[type]) {
+                                filesByType[type] = [];
+                            }
+                            filesByType[type].push(file);
+                        });
+
+                        // Build HTML for files
+                        let filesHTML = "";
+                        const typeLabels = {
+                            "building permit": "Building Permit",
+                            blueprint: "Blueprint",
+                            "desired design": "Desired Design",
+                            title: "Title",
+                            others: "Other Files",
+                        };
+
+                        Object.keys(filesByType).forEach((type) => {
+                            const files = filesByType[type];
+                            const label =
+                                typeLabels[type] ||
+                                type.charAt(0).toUpperCase() + type.slice(1);
+
+                            filesHTML += `
+                                <div class="mb-4 last:mb-0">
+                                    <h6 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        ${label} (${files.length})
+                                    </h6>
+                                    <div class="space-y-2">
+                            `;
+
+                            files.forEach((file) => {
+                                const rawPath = file.file_path || "";
+                                const fileName =
+                                    file.file_name || rawPath.split("/").pop();
+                                const fileExtension = (
+                                    fileName.split(".").pop() || ""
+                                ).toLowerCase();
+                                const isImage = [
+                                    "jpg",
+                                    "jpeg",
+                                    "png",
+                                    "gif",
+                                    "webp",
+                                ].includes(fileExtension);
+
+                                // map file_type to storage folder
+                                const typeKey = (file.file_type || "others")
+                                    .toString()
+                                    .toLowerCase()
+                                    .trim();
+                                const typeMap = {
+                                    blueprint: "blueprints",
+                                    blueprints: "blueprints",
+                                    "building permit": "building_permits",
+                                    building_permits: "building_permits",
+                                    title: "land_titles",
+                                    "land title": "land_titles",
+                                    land_titles: "land_titles",
+                                    "desired design": "desired_design",
+                                    desired_design: "desired_design",
+                                    "supporting documents":
+                                        "supporting_documents",
+                                    supporting_documents:
+                                        "supporting_documents",
+                                    others: "others",
+                                };
+                                const folder = typeMap[typeKey] || "others";
+
+                                // ensure the public storage path follows project_files/<folder>/<filename>
+                                let filenameOnly = fileName;
+                                if (rawPath && rawPath.includes("/"))
+                                    filenameOnly = rawPath.split("/").pop();
+                                const storedPath = `project_files/${folder}/${filenameOnly}`;
+                                const fileUrl = `/storage/${storedPath}`;
+
+                                filesHTML += `
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            ${
+                                                isImage
+                                                    ? `
+                                                <div class="w-12 h-12 rounded bg-gray-200 overflow-hidden flex-shrink-0">
+                                                    <img src="${fileUrl}" alt="${fileName}" class="w-full h-full object-cover">
+                                                </div>
+                                            `
+                                                    : `
+                                                <div class="w-12 h-12 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                </div>
+                                            `
+                                            }
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 truncate">${fileName}</p>
+                                                <p class="text-xs text-gray-500">${fileExtension.toUpperCase()}</p>
+                                            </div>
+                                        </div>
+                                        <button type="button" onclick="window.openFileInViewer('${fileUrl}','${fileExtension}', ${
+                                    isImage ? "true" : "false"
+                                })" class="ml-3 p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition flex-shrink-0">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m6 4H9m6-8H9M4 6h16M4 18h16"></path>
+                                            </svg>
+                                        </button>
+                                        <a href="${fileUrl}" target="_blank" download class="ml-3 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition flex-shrink-0">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    </div>
+                                `;
+                            });
+
+                            filesHTML += `
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        filesContainer.innerHTML = filesHTML;
+                    } else {
+                        filesContainer.innerHTML = `
+                            <div class="text-center py-8">
+                                <svg class="w-16 h-16 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-sm text-gray-500">No files uploaded for this project</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    console.error("Invalid response format:", result);
+                    showErrorInModal();
+                }
+            } catch (error) {
+                console.error("Error fetching project details:", error);
+                showErrorInModal();
+            }
+        });
+    });
+
+    function showErrorInModal() {
+        document.getElementById("modalDescription").textContent =
+            "Error loading data";
+        document.getElementById("modalEmail").textContent =
+            "Error loading data";
+        document.getElementById("modalPhone").textContent =
+            "Error loading data";
+        document.getElementById("postFilesContainer").innerHTML = `
+            <div class="text-center py-8">
+                <svg class="w-16 h-16 text-red-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-sm text-red-500">Failed to load project details</p>
+            </div>
+        `;
+        showNotification("Failed to load project details", "error");
+    }
+
+    // Inline file viewer: images and PDFs (callable from generated HTML)
+    window.openFileInViewer = function (url, ext, isImage) {
+        const viewer = document.getElementById("fileViewer");
+        if (!viewer) return window.open(url, "_blank");
+        // normalize ext
+        const lower = (ext || "").toString().toLowerCase();
+        viewer.innerHTML = "";
+
+        // Close button
+        const closeBtn = document.createElement("button");
+        closeBtn.className =
+            "mb-3 px-3 py-1 rounded bg-gray-100 text-sm hover:bg-gray-200";
+        closeBtn.textContent = "Close Preview";
+        closeBtn.addEventListener("click", () => (viewer.innerHTML = ""));
+        viewer.appendChild(closeBtn);
+
+        // Image
+        if (isImage || ["jpg", "jpeg", "png", "gif", "webp"].includes(lower)) {
+            const imgWrap = document.createElement("div");
+            imgWrap.className = "w-full max-h-[60vh] overflow-auto";
+            const img = document.createElement("img");
+            img.src = url;
+            img.alt = "Preview";
+            img.className = "w-full h-auto object-contain rounded-lg shadow-sm";
+            imgWrap.appendChild(img);
+            viewer.appendChild(imgWrap);
+            return;
+        }
+
+        // PDF
+        if (lower === "pdf") {
+            const frame = document.createElement("iframe");
+            frame.src = url;
+            frame.className = "w-full h-[60vh] border rounded-lg";
+            frame.setAttribute("aria-label", "PDF preview");
+            viewer.appendChild(frame);
+            return;
+        }
+
+        // Other types: provide download/open link
+        const other = document.createElement("div");
+        other.className = "p-4 bg-gray-50 rounded-lg border border-gray-200";
+        other.innerHTML = `<p class="text-sm text-gray-700 mb-2">Preview not available for this file type.</p><a href="${url}" target="_blank" class="text-blue-600 underline">Download</a>`;
+        viewer.appendChild(other);
+    };
+
+    // Approve Modal
+    const approveModal = document.getElementById("approveModal");
+    const approveButtons = document.querySelectorAll(".approve-btn");
+
+    approveButtons.forEach((button) => {
+        button.addEventListener("click", function () {
+            const name = this.getAttribute("data-name");
+            // Store name in a global or data attribute of the modal for the confirm button to use
+            approveModal.setAttribute("data-current-name", name);
+            document.getElementById("approveModalName").textContent = name;
+
+            // Show modal with animation
+            approveModal.classList.add("show");
+            approveModal.classList.remove("hidden");
+        });
+    });
+
+    // Decline Modal
+    const declineModal = document.getElementById("declineModal");
+    const declineButtons = document.querySelectorAll(".decline-btn");
+
+    declineButtons.forEach((button) => {
+        button.addEventListener("click", function () {
+            const name = this.getAttribute("data-name");
+            // Store name in a global or data attribute of the modal
+            declineModal.setAttribute("data-current-name", name);
+            document.getElementById("declineModalName").textContent = name;
+
+            // Clear previous reason
+            const declTextarea = document.getElementById("declineReason");
+            if (declTextarea) {
+                declTextarea.value = "";
+                declTextarea.classList.remove(
+                    "border-red-500",
+                    "ring-2",
+                    "ring-red-200"
+                );
+            }
+            const existingError = document.getElementById("decline-error");
+            if (existingError) existingError.remove();
+
+            // Show modal with animation
+            declineModal.classList.add("show");
+            declineModal.classList.remove("hidden");
+        });
+    });
+
+    // Add hover effects to table rows
+    const tableRows = document.querySelectorAll("tbody tr");
+    tableRows.forEach((row) => {
+        row.addEventListener("mouseenter", function () {
+            this.style.transform = "translateX(4px)";
+        });
+
+        row.addEventListener("mouseleave", function () {
+            this.style.transform = "translateX(0)";
+        });
+    });
+};
 
 document.addEventListener("DOMContentLoaded", function () {
+    if (typeof window.attachModalListeners === "function") {
+        window.attachModalListeners();
+    }
+
     const viewModal = document.getElementById("viewModal");
     const approveModal = document.getElementById("approveModal");
     const declineModal = document.getElementById("declineModal");
@@ -11,8 +489,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (viewModalApproveBtn) {
         viewModalApproveBtn.addEventListener("click", function () {
-            const projectId = this.getAttribute("data-project-id");
-            const name = this.getAttribute("data-name");
+            const projectId =
+                this.getAttribute("data-project-id") ||
+                (viewModal && viewModal.getAttribute("data-project-id"));
+            const name =
+                this.getAttribute("data-name") ||
+                (viewModal && viewModal.getAttribute("data-current-name"));
+
+            if (!projectId) return;
 
             // Setup and Show Approve Modal
             approveModal.setAttribute("data-project-id", projectId);
@@ -25,8 +509,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (viewModalDeclineBtn) {
         viewModalDeclineBtn.addEventListener("click", function () {
-            const projectId = this.getAttribute("data-project-id");
-            const name = this.getAttribute("data-name");
+            const projectId =
+                this.getAttribute("data-project-id") ||
+                (viewModal && viewModal.getAttribute("data-project-id"));
+            const name =
+                this.getAttribute("data-name") ||
+                (viewModal && viewModal.getAttribute("data-current-name"));
+
+            if (!projectId) return;
 
             // Setup and Show Decline Modal
             declineModal.setAttribute("data-project-id", projectId);
@@ -74,36 +564,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(
-                        result.message || "Failed to approve posting"
-                    );
+                    const serverMessage =
+                        (result &&
+                            result.errors &&
+                            result.errors.reason &&
+                            result.errors.reason[0]) ||
+                        result.message ||
+                        "Failed to approve posting";
+                    throw new Error(serverMessage);
                 }
 
                 if (result.success) {
-                    // Create success notification
-                    const notification = document.createElement("div");
-                    notification.className =
-                        "fixed top-4 right-4 bg-green-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-[60] animate-slideInRight";
-                    notification.innerHTML = `
-                        <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-semibold">Approved Successfully!</p>
-                            <p class="text-sm opacity-90">${currentApproveName}</p>
-                        </div>
-                    `;
-                    document.body.appendChild(notification);
-
-                    // Remove notification after 4 seconds
-                    setTimeout(() => {
-                        notification.style.animation =
-                            "slideOutRight 0.3s ease forwards";
-                        setTimeout(() => notification.remove(), 300);
-                    }, 4000);
-
                     // Close modal and reload
                     approveModal.style.animation = "fadeOut 0.3s ease forwards";
                     setTimeout(() => {
@@ -116,29 +587,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             } catch (error) {
                 console.error("Error approving posting:", error);
-
-                // Show error notification
-                const notification = document.createElement("div");
-                notification.className =
-                    "fixed top-4 right-4 bg-red-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-[60] animate-slideInRight";
-                notification.innerHTML = `
-                    <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="font-semibold">Error!</p>
-                        <p class="text-sm opacity-90">${error.message}</p>
-                    </div>
-                `;
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.style.animation =
-                        "slideOutRight 0.3s ease forwards";
-                    setTimeout(() => notification.remove(), 300);
-                }, 4000);
             } finally {
                 // Remove loading state
                 this.disabled = false;
@@ -245,29 +693,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (result.success) {
-                    // Create success notification
-                    const notification = document.createElement("div");
-                    notification.className =
-                        "fixed top-4 right-4 bg-green-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-[60] animate-slideInRight";
-                    notification.innerHTML = `
-                        <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-semibold">Declined Successfully!</p>
-                            <p class="text-sm opacity-90">${currentDeclineName}</p>
-                        </div>
-                    `;
-                    document.body.appendChild(notification);
-
-                    setTimeout(() => {
-                        notification.style.animation =
-                            "slideOutRight 0.3s ease forwards";
-                        setTimeout(() => notification.remove(), 300);
-                    }, 4000);
-
                     // Close modal and reload
                     declineModal.style.animation = "fadeOut 0.3s ease forwards";
                     setTimeout(() => {
@@ -280,31 +705,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             } catch (error) {
                 console.error("Error rejecting posting:", error);
-
-                // Only show notification if no validation error is displayed
-                if (!document.getElementById("decline-error")) {
-                    const notification = document.createElement("div");
-                    notification.className =
-                        "fixed top-4 right-4 bg-red-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-[60] animate-slideInRight";
-                    notification.innerHTML = `
-                        <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-semibold">Error!</p>
-                            <p class="text-sm opacity-90">${error.message}</p>
-                        </div>
-                    `;
-                    document.body.appendChild(notification);
-
-                    setTimeout(() => {
-                        notification.style.animation =
-                            "slideOutRight 0.3s ease forwards";
-                        setTimeout(() => notification.remove(), 300);
-                    }, 4000);
-                }
             } finally {
                 // Remove loading state
                 this.disabled = false;

@@ -21,6 +21,18 @@
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
   <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
 
+  <style>
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0.5;
+      cursor: pointer;
+      filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+    }
+
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
+    }
+  </style>
+
 
 </head>
 
@@ -36,19 +48,36 @@
 
       <div class="p-8 space-y-6 max-w-7xl mx-auto">
         <!-- Filters Bar -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-wrap">
+        <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2.5">
             <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
               <i class="fi fi-rr-filter text-gray-500"></i>
               <span>Filter By</span>
             </div>
 
             <!-- Date Range -->
-            <div class="flex items-center gap-2">
-              <label class="text-sm font-medium text-gray-700">From:</label>
-              <input type="date" id="dateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
-              <label class="text-sm font-medium text-gray-700">To:</label>
-              <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- From -->
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                </div>
+                <input type="date" id="dateFrom"
+                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+              </div>
+
+              <span class="text-gray-300 font-bold text-lg">→</span>
+
+              <!-- To -->
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                </div>
+                <input type="date" id="dateTo"
+                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+              </div>
             </div>
 
             <!-- Contractor Filter (only visible for Staff tab) -->
@@ -673,37 +702,37 @@
       </div>
 
   <!-- Reactivate Suspended Account Modal -->
-  <div id="reactivateSuspendedAccountModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fadeIn">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden">
+  <div id="reactivateSuspendedAccountModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-[80] hidden items-center justify-center p-2 sm:p-3 animate-fadeIn">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-[22rem] w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden">
       <!-- Icon Section with Gradient Background -->
-      <div class="flex justify-center pt-12 pb-8 bg-gradient-to-b from-green-50 to-white relative">
-        <div class="w-32 h-32 bg-gradient-to-br from-green-100 to-green-50 rounded-full flex items-center justify-center relative animate-pulse-slow">
+      <div class="flex justify-center pt-8 pb-5 bg-gradient-to-b from-green-50 to-white relative">
+        <div class="w-20 h-20 bg-gradient-to-br from-green-100 to-green-50 rounded-full flex items-center justify-center relative animate-pulse-slow">
           <div class="absolute inset-0 bg-green-200 rounded-full animate-ping opacity-30"></div>
-          <div class="relative w-24 h-24 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-xl transform hover:scale-110 transition-transform duration-300">
-            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-              <i class="fi fi-rr-user-check text-white text-4xl"></i>
+          <div class="relative w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-xl transform hover:scale-105 transition-transform duration-300">
+            <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+              <i class="fi fi-rr-user-check text-white text-2xl"></i>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Content Section -->
-      <div class="px-8 pb-8 text-center">
-        <h2 class="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Reactivate User</h2>
-        <p class="text-gray-600 leading-relaxed text-base mb-2">
+      <div class="px-5 pb-5 text-center">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Reactivate User</h2>
+        <p class="text-gray-600 leading-relaxed text-sm mb-1.5">
           Are you sure you want to reactivate
         </p>
-        <p class="text-xl font-bold text-gray-900 mb-1" id="reactivateSuspendedAccountName">User Name</p>
-        <p class="text-sm text-gray-500">They will regain access to their account.</p>
+        <p class="text-lg font-bold text-gray-900 mb-1" id="reactivateSuspendedAccountName">User Name</p>
+        <p class="text-xs text-gray-500">They will regain access to their account.</p>
       </div>
 
       <!-- Action Buttons -->
-      <div class="px-8 pb-8 space-y-3">
-        <button id="confirmReactivateSuspendedAccountBtn" class="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-2xl transition-all font-bold shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 text-base">
+      <div class="px-5 pb-5 space-y-2">
+        <button id="confirmReactivateSuspendedAccountBtn" class="w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 text-sm">
           <i class="fi fi-rr-user-check"></i>
           Reactivate
         </button>
-        <button id="cancelReactivateSuspendedAccountBtn" class="w-full px-6 py-4 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-all font-semibold hover:border-gray-300 hover:shadow-md transform hover:scale-[1.02] active:scale-95 text-base">
+        <button id="cancelReactivateSuspendedAccountBtn" class="w-full px-4 py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold hover:border-gray-300 hover:shadow-sm transform hover:scale-[1.01] active:scale-95 text-sm">
           Cancel
         </button>
       </div>

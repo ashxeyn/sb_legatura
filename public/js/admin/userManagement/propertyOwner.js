@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function attachPaginationListeners() {
-    const paginationLinks = document.querySelectorAll('#ownersTableWrap .pagination a');
+    const paginationLinks = document.querySelectorAll('#ownersTableWrap .owner-page-link, #ownersTableWrap .pagination a');
     paginationLinks.forEach(link => {
       link.addEventListener('click', function (e) {
         e.preventDefault();
@@ -157,9 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addRipple(this, e);
         const id = this.getAttribute('data-id');
         if (id) {
-          setTimeout(() => {
-            openEditModal(id);
-          }, 200);
+          openEditModal(id);
         }
       });
     });
@@ -168,7 +166,8 @@ document.addEventListener('DOMContentLoaded', function () {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
         const row = this.closest('tr');
-        const name = row.querySelector('.font-medium').textContent;
+        const nameElement = row ? row.querySelector('.font-medium, .font-semibold') : null;
+        const name = nameElement ? nameElement.textContent.trim() : 'this user';
         const id = this.getAttribute('data-id');
 
         addRipple(this, e);
@@ -241,7 +240,144 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
+    // Clear all error messages when user interacts with fields
+    const clearError = (errorElementId) => {
+      const errorElement = document.getElementById(errorElementId);
+      if (errorElement) {
+        errorElement.classList.add('hidden');
+        errorElement.textContent = '';
+      }
+    };
+
+    // Add event listeners to clear errors on user input
+    const errorFieldMap = {
+      'addFirstName': 'addFirstNameError',
+      'addLastName': 'addLastNameError',
+      'occupationSelect': 'addOccupationError',
+      'addEmail': 'addEmailError',
+      'owner_address_province': 'addProvinceError',
+      'owner_address_city': 'addCityError',
+      'owner_address_barangay': 'addBarangayError',
+      'addValidIdType': 'addValidIdTypeError',
+      'idFrontUpload': 'addIdFrontError',
+      'idBackUpload': 'addIdBackError',
+      'policeClearanceUpload': 'addPoliceClearanceError'
+    };
+
+    Object.entries(errorFieldMap).forEach(([fieldId, errorId]) => {
+      const field = document.getElementById(fieldId);
+      if (field) {
+        field.addEventListener('change', () => clearError(errorId));
+        field.addEventListener('input', () => clearError(errorId));
+      }
+    });
+
+    // Validation function
+    const validateAddForm = () => {
+      let isValid = true;
+      const errors = {};
+
+      // Clear all errors first
+      Object.values(errorFieldMap).forEach(errorId => clearError(errorId));
+
+      // Check First Name
+      const firstName = document.getElementById('addFirstName');
+      if (!firstName || !firstName.value.trim()) {
+        errors['addFirstNameError'] = 'First name is required';
+        isValid = false;
+      }
+
+      // Check Last Name
+      const lastName = document.getElementById('addLastName');
+      if (!lastName || !lastName.value.trim()) {
+        errors['addLastNameError'] = 'Last name is required';
+        isValid = false;
+      }
+
+      // Check Occupation
+      const occupation = document.getElementById('occupationSelect');
+      if (!occupation || !occupation.value) {
+        errors['addOccupationError'] = 'Please select an occupation';
+        isValid = false;
+      }
+
+      // Check Email
+      const email = document.getElementById('addEmail');
+      if (!email || !email.value.trim()) {
+        errors['addEmailError'] = 'Email is required';
+        isValid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+        errors['addEmailError'] = 'Please enter a valid email address';
+        isValid = false;
+      }
+
+      // Check Province
+      const province = document.getElementById('owner_address_province');
+      if (!province || !province.value) {
+        errors['addProvinceError'] = 'Please select a province';
+        isValid = false;
+      }
+
+      // Check City
+      const city = document.getElementById('owner_address_city');
+      if (!city || !city.value) {
+        errors['addCityError'] = 'Please select a city/municipality';
+        isValid = false;
+      }
+
+      // Check Barangay
+      const barangay = document.getElementById('owner_address_barangay');
+      if (!barangay || !barangay.value) {
+        errors['addBarangayError'] = 'Please select a barangay';
+        isValid = false;
+      }
+
+      // Check Valid ID Type
+      const validIdType = document.getElementById('addValidIdType');
+      if (!validIdType || !validIdType.value) {
+        errors['addValidIdTypeError'] = 'Please select a valid ID type';
+        isValid = false;
+      }
+
+      // Check Valid ID Front
+      const idFront = document.getElementById('idFrontUpload');
+      if (!idFront || !idFront.files || idFront.files.length === 0) {
+        errors['addIdFrontError'] = 'Valid ID (Front) is required';
+        isValid = false;
+      }
+
+      // Check Valid ID Back
+      const idBack = document.getElementById('idBackUpload');
+      if (!idBack || !idBack.files || idBack.files.length === 0) {
+        errors['addIdBackError'] = 'Valid ID (Back) is required';
+        isValid = false;
+      }
+
+      // Check Police Clearance
+      const policeClearance = document.getElementById('policeClearanceUpload');
+      if (!policeClearance || !policeClearance.files || policeClearance.files.length === 0) {
+        errors['addPoliceClearanceError'] = 'Police Clearance is required';
+        isValid = false;
+      }
+
+      // Display errors
+      Object.entries(errors).forEach(([errorId, message]) => {
+        const errorElement = document.getElementById(errorId);
+        if (errorElement) {
+          errorElement.textContent = message;
+          errorElement.classList.remove('hidden');
+        }
+      });
+
+      return isValid;
+    };
+
     saveBtn.addEventListener('click', async function () {
+      // Validate form first
+      if (!validateAddForm()) {
+        return;
+      }
+
       const formData = new FormData();
 
       const inputs = modal.querySelectorAll('input, select');
@@ -571,6 +707,21 @@ document.addEventListener('DOMContentLoaded', function () {
       input.classList.remove('border-red-500');
     });
 
+    // Clear validation error messages
+    const validationErrorIds = [
+      'addFirstNameError', 'addLastNameError', 'addOccupationError', 'addEmailError',
+      'addProvinceError', 'addCityError', 'addBarangayError', 'addValidIdTypeError',
+      'addIdFrontError', 'addIdBackError', 'addPoliceClearanceError'
+    ];
+    
+    validationErrorIds.forEach(errorId => {
+      const errorElement = document.getElementById(errorId);
+      if (errorElement) {
+        errorElement.classList.add('hidden');
+        errorElement.textContent = '';
+      }
+    });
+
     modal.querySelectorAll('.error-message').forEach(el => el.remove());
 
     modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
@@ -681,9 +832,56 @@ document.addEventListener('DOMContentLoaded', function () {
   const editProfileUpload = document.getElementById('editProfileUpload');
   const editProfilePreview = document.getElementById('editProfilePreview');
   const editProfileIcon = document.getElementById('editProfileIcon');
+  const defaultSaveEditBtnHtml = saveEditBtn ? saveEditBtn.innerHTML : '';
 
   async function openEditModal(userId) {
     if (!editModal || !editModalContent) return;
+
+    // Show modal instantly, then hydrate fields as data arrives.
+    editModal.classList.remove('hidden');
+    editModal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+      editModalContent.classList.remove('scale-95', 'opacity-0');
+      editModalContent.classList.add('scale-100', 'opacity-100');
+    }, 10);
+
+    const editFormEl = document.getElementById('editPropertyOwnerForm');
+    const provinceSelect = document.getElementById('edit_owner_address_province');
+    const citySelect = document.getElementById('edit_owner_address_city');
+    const barangaySelect = document.getElementById('edit_owner_address_barangay');
+    const currentIdFront = document.getElementById('currentIdFront');
+    const currentIdBack = document.getElementById('currentIdBack');
+    const currentPoliceClearance = document.getElementById('currentPoliceClearance');
+
+    if (editFormEl) {
+      editFormEl.reset();
+      editFormEl.classList.add('opacity-60', 'pointer-events-none');
+    }
+    if (saveEditBtn) {
+      saveEditBtn.disabled = true;
+      saveEditBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Loading...';
+    }
+    if (editProfilePreview && editProfileIcon) {
+      editProfilePreview.classList.add('hidden');
+      editProfileIcon.classList.remove('hidden');
+      editProfilePreview.src = '';
+    }
+    if (provinceSelect) {
+      provinceSelect.value = '';
+    }
+    if (citySelect) {
+      citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
+      citySelect.disabled = true;
+    }
+    if (barangaySelect) {
+      barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
+      barangaySelect.disabled = true;
+    }
+    if (currentIdFront) currentIdFront.innerHTML = '';
+    if (currentIdBack) currentIdBack.innerHTML = '';
+    if (currentPoliceClearance) currentPoliceClearance.innerHTML = '';
 
     try {
       const response = await fetch(`/admin/user-management/property-owners/${userId}/edit`, {
@@ -727,10 +925,6 @@ document.addEventListener('DOMContentLoaded', function () {
         editProfilePreview.classList.add('hidden');
         editProfileIcon.classList.remove('hidden');
       }
-
-      const provinceSelect = document.getElementById('edit_owner_address_province');
-      const citySelect = document.getElementById('edit_owner_address_city');
-      const barangaySelect = document.getElementById('edit_owner_address_barangay');
 
       let provinceCode = '';
       if (owner.province && provinceSelect) {
@@ -814,10 +1008,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
       document.getElementById('edit_valid_id_id').value = owner.valid_id_id;
 
-      const currentIdFront = document.getElementById('currentIdFront');
-      const currentIdBack = document.getElementById('currentIdBack');
-      const currentPoliceClearance = document.getElementById('currentPoliceClearance');
-
       if (owner.valid_id_photo) {
         currentIdFront.innerHTML = `Current: <a href="/storage/${owner.valid_id_photo}" onclick="event.preventDefault(); event.stopPropagation(); openImageModal('/storage/${owner.valid_id_photo}', 'Valid ID (Front)')" class="text-orange-500 hover:underline">View File</a>`;
       } else {
@@ -836,18 +1026,17 @@ document.addEventListener('DOMContentLoaded', function () {
         currentPoliceClearance.innerHTML = '';
       }
 
-      editModal.classList.remove('hidden');
-      editModal.classList.add('flex');
-      document.body.style.overflow = 'hidden';
-
-      setTimeout(() => {
-        editModalContent.classList.remove('scale-95', 'opacity-0');
-        editModalContent.classList.add('scale-100', 'opacity-100');
-      }, 10);
-
     } catch (error) {
       console.error('Error fetching user data:', error);
       alert('Failed to load user data.');
+    } finally {
+      if (editFormEl) {
+        editFormEl.classList.remove('opacity-60', 'pointer-events-none');
+      }
+      if (saveEditBtn) {
+        saveEditBtn.disabled = false;
+        saveEditBtn.innerHTML = defaultSaveEditBtnHtml;
+      }
     }
   }
 
@@ -1167,10 +1356,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
-    notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${type === 'success' ? 'bg-green-500' : 'bg-red-500'
-      } text-white font-semibold flex items-center gap-3`;
+    notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${type === 'success' ? 'bg-green-500' : 'bg-red-500'
+      } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
     notification.innerHTML = `
-      <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-2xl"></i>
+      <i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-base"></i>
       <span>${message}</span>
     `;
     document.body.appendChild(notification);
@@ -1187,6 +1376,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const deleteModal = document.getElementById('deleteUserModal');
   const deleteModalContent = deleteModal ? deleteModal.querySelector('.modal-content') : null;
+  const closeDeleteModalBtn = document.getElementById('closeDeleteModalBtn');
   const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
   const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
   const deleteUserNameSpan = document.getElementById('deleteUserName');
@@ -1240,6 +1430,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (cancelDeleteBtn) {
     cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+  }
+
+  if (closeDeleteModalBtn) {
+    closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
   }
 
   if (confirmDeleteBtn) {

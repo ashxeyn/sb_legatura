@@ -33,23 +33,28 @@
 
       <div class="p-8 space-y-6">
         <!-- Controls Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-4">
-          <div class="flex items-center gap-4 flex-wrap">
+        <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+              <i class="fi fi-rr-filter text-gray-500"></i>
+              <span>Filter By</span>
+            </div>
+
             <!-- Verification Status Filter -->
             <div class="relative">
-              <select id="verificationFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition cursor-pointer">
-                <option value="">All Verification Status</option>
+              <select id="verificationFilter" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm">
+                <option value="">All Verification</option>
                 <option value="approved" {{ request('verification') == 'approved' ? 'selected' : '' }}>Approved</option>
                 <option value="under_review" {{ request('verification') == 'under_review' ? 'selected' : '' }}>Under Review</option>
                 <option value="rejected" {{ request('verification') == 'rejected' ? 'selected' : '' }}>Rejected</option>
               </select>
-              <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+              <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
             </div>
 
             <!-- Progress Status Filter -->
             <div class="relative">
-              <select id="progressFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition cursor-pointer">
-                <option value="">All Progress Status</option>
+              <select id="progressFilter" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm">
+                <option value="">All Progress</option>
                 <option value="completed" {{ request('progress') == 'completed' ? 'selected' : '' }}>Completed</option>
                 <option value="in_progress" {{ request('progress') == 'in_progress' ? 'selected' : '' }}>Ongoing</option>
                 <option value="open" {{ request('progress') == 'open' ? 'selected' : '' }}>Open</option>
@@ -57,35 +62,37 @@
                 <option value="halt" {{ request('progress') == 'halt' ? 'selected' : '' }}>Halted</option>
                 <option value="terminated" {{ request('progress') == 'terminated' ? 'selected' : '' }}>Terminated</option>
               </select>
-              <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+              <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
             </div>
 
-            <!-- Date From -->
-            <div class="relative">
-              <input
-                type="date"
-                id="dateFrom"
-                class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-                value="{{ request('date_from') }}"
-              >
-            </div>
+            <!-- Date Range -->
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- From -->
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
+                </div>
+                <input type="date" id="dateFrom" class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white" value="{{ request('date_from') }}">
+              </div>
 
-            <!-- Date To -->
-            <div class="relative">
-              <input
-                type="date"
-                id="dateTo"
-                class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-                value="{{ request('date_to') }}"
-              >
+              <span class="text-gray-300 font-bold text-lg">→</span>
+
+              <!-- To -->
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
+                </div>
+                <input type="date" id="dateTo" class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white" value="{{ request('date_to') }}">
+              </div>
             </div>
           </div>
 
-          <!-- Reset Button -->
-          <button id="resetFilterBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
-            <i class="fi fi-rr-rotate-left"></i>
-            <span>Reset Filter</span>
-          </button>
+          <div class="flex items-center gap-2">
+            <button id="resetFilterBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+              <i class="fi fi-rr-rotate-left"></i>
+              <span>Reset Filter</span>
+            </button>
+          </div>
         </div>
 
         <!-- Projects Table -->
