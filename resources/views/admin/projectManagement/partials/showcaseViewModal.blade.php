@@ -15,7 +15,7 @@
     <div>
         <h4 class="text-lg font-bold text-gray-800">{{ $showcase['contractor']['name'] }}</h4>
         <p class="text-sm text-gray-500">
-            {{ \Carbon\Carbon::parse($showcase['post']['created_at'])->format('M d, Y, h:i A') }}</p>
+            {{ \Carbon\Carbon::parse($showcase['post']['created_at'])->format('F j, Y') }}</p>
     </div>
     <div class="ml-auto">
         @php

@@ -66,7 +66,8 @@ class bothReactivateClass extends Model
             ->where('po.is_active', 0)
             ->whereNotNull('po.suspension_reason')
             ->whereNotNull('po.suspension_until')
-            ->where('po.verification_status', '!=', 'deleted');
+            ->where('po.verification_status', '!=', 'deleted')
+            ->where('u.user_type', 'property_owner');
 
         // Apply search filter
         if ($search) {
@@ -106,16 +107,17 @@ class bothReactivateClass extends Model
     /**
      * Get suspended contractor staff (is_active = 0 and suspension data)
      */
-    public static function getSuspendedStaff($search = null, $dateFrom = null, $dateTo = null, $contractorId = null)
+    public static function getSuspendedStaff($search = null, $dateFrom = null, $dateTo = null, $contractorId = null, $pageName = 'staff_page')
     {
         $query = DB::table('contractor_staff as cs')
             ->join('contractors as c', 'cs.contractor_id', '=', 'c.contractor_id')
             ->join('property_owners as po', 'cs.owner_id', '=', 'po.owner_id')
             ->join('users as u', 'po.user_id', '=', 'u.user_id')
             ->where('cs.is_active', 0)
+            ->where('cs.is_suspended', 1)
             ->whereNotNull('cs.suspension_reason')
             ->whereNotNull('cs.suspension_until')
-            ->whereNull('cs.deletion_reason'); // Not deleted/cancelled
+            ->whereNull('cs.deletion_reason');
 
         // Apply contractor filter
         if ($contractorId) {
@@ -155,7 +157,8 @@ class bothReactivateClass extends Model
                 DB::raw("'staff' as user_type")
             )
             ->orderBy('cs.created_at', 'desc')
-            ->get();
+            ->paginate(10, ['*'], $pageName)
+            ->withQueryString();
     }
 
     /**
@@ -188,6 +191,15 @@ class bothReactivateClass extends Model
                     'is_suspended' => 0,
                     'suspension_reason' => null,
                     'suspension_until' => null
+                ]);
+
+            // 3. Restore halted projects that were halted due to this contractor's suspension
+            DB::table('projects')
+                ->where('selected_contractor_id', $contractorId)
+                ->where('project_status', 'halt')
+                ->update([
+                    'project_status' => 'in_progress',
+                    'updated_at' => now()
                 ]);
 
             return $result;
@@ -270,7 +282,7 @@ class bothReactivateClass extends Model
         }
         
         // Contractor is active, proceed with reactivation
-        $affected = DB::table('contractor_staff')
+        DB::table('contractor_staff')
             ->where('staff_id', $staffId)
             ->update([
                 'is_active' => 1,
@@ -278,7 +290,7 @@ class bothReactivateClass extends Model
                 'suspension_reason' => null,
                 'suspension_until' => null
             ]);
-        
+
         return true;
     }
 }

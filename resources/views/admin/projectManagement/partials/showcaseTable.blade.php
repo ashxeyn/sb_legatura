@@ -40,8 +40,7 @@
 
         <!-- Date Posted -->
         <td class="px-6 py-4 whitespace-nowrap">
-            <span class="text-sm text-gray-600">{{ \Carbon\Carbon::parse($showcase->created_at)->format('M d, Y') }}</span>
-            <p class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($showcase->created_at)->format('h:i A') }}</p>
+            <span class="text-sm text-gray-600">{{ \Carbon\Carbon::parse($showcase->created_at)->format('F j, Y') }}</span>
         </td>
 
         <!-- Status -->

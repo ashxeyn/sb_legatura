@@ -47,7 +47,7 @@
                 <td class="px-2.5 py-2.5 text-gray-700 text-xs">
                     <span class="block truncate max-w-[240px]" title="{{ $post->project_title }}">{{ $post->project_title }}</span>
                 </td>
-                <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($post->created_at)->format('m/d/y') }}</td>
+                <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($post->created_at)->format('F j, Y') }}</td>
                 <td class="px-2.5 py-2.5 text-center">
                     <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $statusColors[$post->project_post_status] ?? 'bg-gray-100 text-gray-700 border-gray-200' }}">
                         {{ $statusLabel[$post->project_post_status] ?? ucfirst($post->project_post_status) }}
@@ -61,7 +61,7 @@
                             data-id="{{ $post->project_id }}"
                             data-name="{{ $post->first_name }} {{ $post->last_name }}"
                             data-title="{{ $post->project_title }}"
-                            data-date="{{ \Carbon\Carbon::parse($post->created_at)->format('d M, Y') }}"
+                            data-date="{{ \Carbon\Carbon::parse($post->created_at)->format('F j, Y') }}"
                             data-status="{{ $post->project_post_status }}"
                             data-type="{{ ucfirst($post->user_type ?? 'Property Owner') }}"
                             data-pic="{{ $post->profile_pic ? asset('storage/' . $post->profile_pic) : '' }}"

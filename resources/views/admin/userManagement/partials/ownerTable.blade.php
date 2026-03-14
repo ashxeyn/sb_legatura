@@ -30,7 +30,7 @@
             </div>
           </div>
         </td>
-        <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('m/d/y') }}</td>
+        <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('F j, Y') }}</td>
         <td class="px-2.5 py-2.5 text-gray-700 text-xs max-w-[130px]">
           <span class="block truncate" title="{{ $propertyOwner->occupation ?? 'N/A' }}">{{ $propertyOwner->occupation ?? 'N/A' }}</span>
         </td>

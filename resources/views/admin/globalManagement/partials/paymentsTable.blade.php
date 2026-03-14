@@ -68,7 +68,7 @@
                     <div class="font-semibold whitespace-nowrap">₱{{ number_format($payment->amount, 2) }}</div>
                     <div class="text-[11px] text-gray-500 truncate" title="{{ $methodLabel }}">{{ $methodLabel }}</div>
                 </td>
-                <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($payment->payment_date)->format('m/d/y') }}</td>
+                <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($payment->payment_date)->format('F j, Y') }}</td>
                 <td class="px-2.5 py-2.5 text-center">
                     <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $sc['cls'] }}">
                         {{ $sc['label'] }}

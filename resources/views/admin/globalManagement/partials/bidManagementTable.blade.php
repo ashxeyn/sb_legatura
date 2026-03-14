@@ -61,7 +61,7 @@
 
           <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px] font-semibold">₱{{ number_format($bid->bid_amount, 2) }}</td>
 
-          <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-600 text-[11px]">{{ \Carbon\Carbon::parse($bid->bid_date)->format('m/d/y') }}</td>
+          <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-600 text-[11px]">{{ \Carbon\Carbon::parse($bid->bid_date)->format('F j, Y') }}</td>
 
           <td class="px-2.5 py-2.5 whitespace-nowrap">
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border {{ $s['class'] }}">{{ $s['label'] }}</span>
@@ -77,8 +77,8 @@
                 data-project-title="{{ e($bid->project_title) }}"
                 data-proposed-cost="{{ $bid->bid_amount }}"
                 data-timeline="{{ $bid->estimated_timeline }}"
-                data-submitted-at="{{ \Carbon\Carbon::parse($bid->bid_date)->format('F d, Y') }}"
-                data-decision-date="{{ $bid->decision_date ? \Carbon\Carbon::parse($bid->decision_date)->format('F d, Y') : '' }}"
+                data-submitted-at="{{ \Carbon\Carbon::parse($bid->bid_date)->format('F j, Y') }}"
+                data-decision-date="{{ $bid->decision_date ? \Carbon\Carbon::parse($bid->decision_date)->format('F j, Y') : '' }}"
                 data-notes="{{ e($bid->contractor_notes ?? '') }}"
                 data-reason="{{ e($bid->reason ?? '') }}"
                 data-pcab="{{ e($bid->picab_number ?? 'N/A') }}"

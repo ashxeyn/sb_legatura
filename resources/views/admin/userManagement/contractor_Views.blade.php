@@ -195,7 +195,7 @@
                       </div>
                       <div>
                         <label class="block text-xs font-semibold text-blue-700 mb-1 uppercase tracking-wider">Member Since</label>
-                        <p class="text-xs font-medium text-gray-800">{{ $contractor->created_at ? \Carbon\Carbon::parse($contractor->created_at)->format('M d, Y') : 'N/A' }}</p>
+                        <p class="text-xs font-medium text-gray-800">{{ $contractor->created_at ? \Carbon\Carbon::parse($contractor->created_at)->format('F j, Y') : 'N/A' }}</p>
                       </div>
                       <div>
                         <label class="block text-xs font-semibold text-blue-700 mb-1 uppercase tracking-wider">Last Login</label>
@@ -235,7 +235,7 @@
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Registration Date</label>
-                    <p class="text-xs font-medium text-gray-800">{{ $contractor->created_at ? \Carbon\Carbon::parse($contractor->created_at)->format('F d, Y') : 'N/A' }}</p>
+                    <p class="text-xs font-medium text-gray-800">{{ $contractor->created_at ? \Carbon\Carbon::parse($contractor->created_at)->format('F j, Y') : 'N/A' }}</p>
                   </div>
 
                   <!-- Company Website / Socials -->
@@ -455,7 +455,7 @@
                           </div>
                         </td>
                         <td class="px-2.5 py-2.5 text-center text-[11px] text-gray-700">{{ $displayRole }}</td>
-                        <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-[11px] text-gray-700">{{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('M d, Y') : 'N/A' }}</td>
+                        <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-[11px] text-gray-700">{{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('F j, Y') : 'N/A' }}</td>
                         <td class="px-2.5 py-2.5 text-center status-cell">
                           @if($dataStatus == 'deactivated')
                             <span class="status-badge inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-gray-100 text-gray-600 border-gray-200 hidden">
@@ -554,7 +554,7 @@
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
-                    <p class="text-xs font-medium text-gray-800">{{ $contractor->picab_expiration_date ? \Carbon\Carbon::parse($contractor->picab_expiration_date)->format('F d, Y') : 'N/A' }}</p>
+                    <p class="text-xs font-medium text-gray-800">{{ $contractor->picab_expiration_date ? \Carbon\Carbon::parse($contractor->picab_expiration_date)->format('F j, Y') : 'N/A' }}</p>
                   </div>
                 </div>
 
@@ -574,7 +574,7 @@
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
-                    <p class="text-xs font-medium text-gray-800">{{ $contractor->business_permit_expiration ? \Carbon\Carbon::parse($contractor->business_permit_expiration)->format('F d, Y') : 'N/A' }}</p>
+                    <p class="text-xs font-medium text-gray-800">{{ $contractor->business_permit_expiration ? \Carbon\Carbon::parse($contractor->business_permit_expiration)->format('F j, Y') : 'N/A' }}</p>
                   </div>
                 </div>
 

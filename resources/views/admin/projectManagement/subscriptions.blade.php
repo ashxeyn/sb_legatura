@@ -320,10 +320,10 @@
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('Y-m-d') }}
+                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('Y-m-d') : 'N/A' }}
+                      {{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <div class="flex items-center gap-2 justify-center">
@@ -333,8 +333,8 @@
                           data-user="{{ $isBoost ? ($sub->first_name . ' ' . $sub->last_name) : ($sub->company_name ?? 'Contractor') }}"
                           data-project="{{ $isBoost ? ($sub->project_title ?? '') : '' }}" data-plan="{{ $planName }}"
                           data-plan-key="{{ $sub->plan_key }}" data-amount="{{ number_format($sub->amount, 2) }}"
-                          data-date="{{ \Carbon\Carbon::parse($sub->transaction_date)->format('Y-m-d') }}"
-                          data-expiry="{{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('Y-m-d') : 'N/A' }}"
+                          data-date="{{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}"
+                          data-expiry="{{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}"
                           data-type="{{ $isBoost ? 'Boost' : 'Subscription' }}"
                           data-billing="{{ $sub->billing_cycle ?? 'N/A' }}"
                           data-txn="{{ $sub->transaction_number ?? 'N/A' }}"
@@ -406,10 +406,10 @@
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('Y-m-d') }}
+                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
-                      {{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('Y-m-d') : 'N/A' }}
+                      {{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <div class="flex items-center gap-2 justify-center">
@@ -419,8 +419,8 @@
                           data-user="{{ $isBoost ? ($sub->first_name . ' ' . $sub->last_name) : ($sub->company_name ?? 'Contractor') }}"
                           data-project="{{ $isBoost ? ($sub->project_title ?? '') : '' }}" data-plan="{{ $planName }}"
                           data-plan-key="{{ $sub->plan_key }}" data-amount="{{ number_format($sub->amount, 2) }}"
-                          data-date="{{ \Carbon\Carbon::parse($sub->transaction_date)->format('Y-m-d') }}"
-                          data-expiry="{{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('Y-m-d') : 'N/A' }}"
+                          data-date="{{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}"
+                          data-expiry="{{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}"
                           data-type="{{ $isBoost ? 'Boost' : 'Subscription' }}"
                           data-billing="{{ $sub->billing_cycle ?? 'N/A' }}"
                           data-txn="{{ $sub->transaction_number ?? 'N/A' }}"
@@ -485,7 +485,7 @@
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('Y-m-d') }}
+                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <div class="flex items-center gap-2 justify-center">

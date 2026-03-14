@@ -153,7 +153,7 @@
                     </div>
                     <div>
                       <p class="text-[10px] text-blue-600 font-medium">Registered</p>
-                      <p class="text-xs font-semibold text-blue-900">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('M d, Y') }}</p>
+                      <p class="text-xs font-semibold text-blue-900">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('F j, Y') }}</p>
                     </div>
                   </div>
                   <div class="flex items-center gap-2 border border-blue-200 bg-blue-50 p-2 rounded-lg">

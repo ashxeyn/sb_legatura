@@ -40,7 +40,7 @@
       <td class="px-2.5 py-2.5 text-gray-700 text-xs max-w-[160px]">
         <span class="block truncate" title="{{ $request->email }}">{{ $request->email }}</span>
       </td>
-      <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($request->request_date)->format('m/d/y') }}</td>
+      <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($request->request_date)->format('F j, Y') }}</td>
       <td class="px-2.5 py-2.5 whitespace-nowrap">
         <div class="flex items-center gap-1">
           <button class="vr-view-btn action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all active:scale-95" data-key="{{ $request->user_id }}" title="View">

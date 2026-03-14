@@ -42,7 +42,7 @@
           @endif
         </td>
         <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-gray-700 text-[11px]">{{ $contractor->years_of_experience }} Years</td>
-        <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($contractor->created_at)->format('m/d/y') }}</td>
+        <td class="px-2.5 py-2.5 whitespace-nowrap text-gray-700 text-[11px]">{{ \Carbon\Carbon::parse($contractor->created_at)->format('F j, Y') }}</td>
         <td class="px-2.5 py-2.5 text-center">
           <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-indigo-100 text-indigo-700 border-indigo-200">{{ $contractor->bids_count ?? 0 }}</span>
         </td>

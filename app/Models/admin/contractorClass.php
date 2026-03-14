@@ -680,7 +680,7 @@ class contractorClass extends Model
             $contractor = DB::table('contractors')->where('contractor_id', $id)->first();
 
             if ($contractor) {
-                // Pause ongoing projects/bids
+                // Withdraw pending/approved bids
                 $bidIds = DB::table('bids')
                     ->where('contractor_id', $id)
                     ->whereIn('bid_status', ['pending', 'approved'])
@@ -694,6 +694,15 @@ class contractorClass extends Model
                             'updated_at' => now()
                         ]);
                 }
+
+                // Halt all in_progress projects assigned to this contractor
+                DB::table('projects')
+                    ->where('selected_contractor_id', $id)
+                    ->where('project_status', 'in_progress')
+                    ->update([
+                        'project_status' => 'halt',
+                        'updated_at' => now()
+                    ]);
             }
 
             return $contractor;

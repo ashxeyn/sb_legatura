@@ -58,7 +58,7 @@
       {{ $displayRole }}
     </td>
     <td class="px-6 py-4 text-center text-sm text-gray-600">
-      {{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('M d, Y') : 'N/A' }}
+      {{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('F j, Y') : 'N/A' }}
     </td>
     <td class="px-6 py-4 text-center status-cell">
       @if($dataStatus == 'deactivated')

@@ -182,7 +182,7 @@
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $statColors[$report->status] ?? 'bg-gray-100 text-gray-700 border-gray-200' }}">{{ strtoupper(str_replace('_', ' ', $report->status)) }}</span>
                                             </td>
                                             <td class="px-6 py-4 text-sm text-gray-700">{{ $report->admin_action ?? '-' }}</td>
-                                            <td class="px-6 py-4 text-sm text-gray-500">{{ $report->created_at ? \Carbon\Carbon::parse($report->created_at)->format('M d, Y') : '-' }}</td>
+                                            <td class="px-6 py-4 text-sm text-gray-500">{{ $report->created_at ? \Carbon\Carbon::parse($report->created_at)->format('F j, Y') : '-' }}</td>
                                             <td class="px-6 py-4 text-center">
                                                 <button class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition view-report-btn"
                                                     data-id="{{ $report->case_ref_id }}"
@@ -272,7 +272,7 @@
                                                     @endif
                                                 </div>
                                             </td>
-                                            <td class="px-2.5 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">{{ $stat->latest_report ? \Carbon\Carbon::parse($stat->latest_report)->format('M d, Y') : '-' }}</td>
+                                            <td class="px-2.5 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">{{ $stat->latest_report ? \Carbon\Carbon::parse($stat->latest_report)->format('F j, Y') : '-' }}</td>
                                         </tr>
                                     @empty
                                         <tr>

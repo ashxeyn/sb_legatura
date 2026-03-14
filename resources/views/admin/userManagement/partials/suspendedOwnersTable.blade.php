@@ -30,8 +30,8 @@
           <td class="px-2.5 py-2.5 text-gray-700 text-xs max-w-[150px]">
             <span class="block truncate" title="{{ $owner->email ?? 'N/A' }}">{{ $owner->email ?? 'N/A' }}</span>
           </td>
-          <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-gray-700 text-[11px]">{{ $owner->date_registered ? \Carbon\Carbon::parse($owner->date_registered)->format('m/d/y') : 'N/A' }}</td>
-          <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-red-600 text-[11px] font-medium">{{ $owner->suspension_until ? \Carbon\Carbon::parse($owner->suspension_until)->format('m/d/y') : 'N/A' }}</td>
+          <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-gray-700 text-[11px]">{{ $owner->date_registered ? \Carbon\Carbon::parse($owner->date_registered)->format('F j, Y') : 'N/A' }}</td>
+          <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-red-600 text-[11px] font-medium">{{ $owner->suspension_until ? \Carbon\Carbon::parse($owner->suspension_until)->format('F j, Y') : 'N/A' }}</td>
           <td class="px-2.5 py-2.5 text-gray-700 text-[11px] max-w-[190px]">
             <span class="block truncate" title="{{ $owner->reason ?? 'No reason provided' }}">{{ Str::limit($owner->reason ?? 'No reason provided', 55) }}</span>
           </td>

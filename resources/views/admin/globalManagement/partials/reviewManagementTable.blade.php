@@ -70,7 +70,7 @@
             <p class="truncate max-w-[160px]" title="{{ $review->review_text }}">{{ Str::limit($review->review_text, 40) }}</p>
             <p class="text-[11px] text-gray-400 mt-0.5">{{ $review->project_title }}</p>
         </td>
-        <td class="px-2.5 py-2.5 text-xs text-gray-700 whitespace-nowrap w-[10%]">{{ \Carbon\Carbon::parse($review->created_at)->format('m/d/y') }}</td>
+        <td class="px-2.5 py-2.5 text-xs text-gray-700 whitespace-nowrap w-[10%]">{{ \Carbon\Carbon::parse($review->created_at)->format('F j, Y') }}</td>
         <td class="px-2.5 py-2.5 whitespace-nowrap w-[10%]">
             <div class="flex items-center gap-1">
                 <button
@@ -84,7 +84,7 @@
                     data-reviewed-type="{{ ucfirst(str_replace('_', ' ', $review->reviewed_type)) }}"
                     data-rating="{{ $review->rating }}" data-review-text="{{ e($review->review_text) }}"
                     data-project-title="{{ $review->project_title }}"
-                    data-date="{{ \Carbon\Carbon::parse($review->created_at)->format('d M, Y') }}">
+                    data-date="{{ \Carbon\Carbon::parse($review->created_at)->format('F j, Y') }}">
                     <i class="fi fi-rr-eye text-[13px] leading-none"></i>
                 </button>
                 <button

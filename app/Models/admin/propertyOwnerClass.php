@@ -78,6 +78,9 @@ class propertyOwnerClass
         // Exclude deleted users
         $query->where('property_owners.verification_status', '!=', 'deleted');
 
+        // Only pure property owners, not staff or both
+        $query->where('users.user_type', 'property_owner');
+
         if ($status) {
             $query->where('property_owners.verification_status', $status === 'verified' ? 'approved' : 'pending');
         } else {
