@@ -102,9 +102,9 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div class="border-b border-gray-200">
             <div class="flex px-6">
-              <button id="saTabContractors" class="sa-tab active px-4 py-3 text-sm font-semibold border-b-2 border-orange-500 text-orange-600 transition-all">Contractors</button>
-              <button id="saTabOwners" class="sa-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-all">Property Owners</button>
-              <button id="saTabStaff" class="sa-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-all">Staff</button>
+              <button id="saTabContractors" class="sa-tab active px-4 py-3 text-sm font-semibold border-b-2 border-orange-500 text-gray-700 transition-all">Contractors</button>
+              <button id="saTabOwners" class="sa-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:border-orange-300 transition-all">Property Owners</button>
+              <button id="saTabStaff" class="sa-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:border-orange-300 transition-all">Staff</button>
             </div>
           </div>
 

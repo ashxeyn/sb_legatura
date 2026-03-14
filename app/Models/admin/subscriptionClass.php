@@ -67,7 +67,7 @@ class subscriptionClass
     /**
      * Get subscriptions by status.
      */
-    public static function getSubscriptions($status = 'active')
+    public static function getSubscriptions($status = 'active', $dateFrom = null, $dateTo = null, $planType = null, $search = null)
     {
         $now = Carbon::now();
 
@@ -104,8 +104,27 @@ class subscriptionClass
                 ->where('platform_payments.expiration_date', '>', $now);
         }
 
-        return $query->orderByDesc('platform_payments.transaction_date')->get();
+        if ($dateFrom) {
+            $query->whereDate('platform_payments.transaction_date', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('platform_payments.transaction_date', '<=', $dateTo);
+        }
+        if ($planType) {
+            $query->where('subscription_plans.plan_key', $planType);
+        }
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('contractors.company_name', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT(po_user.first_name, ' ', po_user.last_name) like ?", ["%{$search}%"])
+                  ->orWhere('platform_payments.platform_payment_id', 'like', "%{$search}%");
+            });
+        }
 
+        $pageParam = 'page_' . $status;
+        return $query->orderByDesc('platform_payments.transaction_date')
+            ->paginate(10, ['*'], $pageParam)
+            ->withQueryString();
     }
     /**
      * Add a subscription plan.

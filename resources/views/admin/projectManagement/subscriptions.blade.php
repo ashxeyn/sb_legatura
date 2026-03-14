@@ -21,7 +21,18 @@
 
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+  <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
 
+  <style>
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0.5;
+      cursor: pointer;
+      filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+    }
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
+    }
+  </style>
 
 </head>
 
@@ -31,100 +42,97 @@
     @include('admin.layouts.sidebar')
 
     <main class="flex-1">
-      @include('admin.layouts.topnav', ['pageTitle' => 'Subscriptions & Boosts'])
+      @include('admin.layouts.topnav', ['pageTitle' => 'Subscriptions & Boosts', 'searchPlaceholder' => 'Search by name or ID...'])
 
       <!-- Subscriptions Section -->
-      <section class="px-8 py-8">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-semibold text-gray-800">Subscription Plans</h2>
-          <button
-            class="add-subscription-btn bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 hover:shadow-lg flex items-center gap-2">
-            <span class="text-xl">+</span>
-            <span>Add Subscription</span>
+      <section class="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+        <div class="flex justify-end items-center mb-4">
+          <button class="add-subscription-btn flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:shadow-md transition transform hover:scale-[1.01]">
+            <i class="fi fi-rr-plus"></i>
+            <span>Add Plan</span>
           </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           @forelse($plans as $plan)
             @php
-              // Assign gradient color based on plan key
-              $gradientColor = 'bg-gradient-to-br from-indigo-400 to-purple-600';
-              $hoverColor = 'hover:border-indigo-400';
-              $borderColor = 'border-transparent';
+              $accentColor = 'border-indigo-200';
+              $iconGradient = 'from-indigo-500 to-blue-600';
+              $badgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
               if (stripos($plan->plan_key, 'gold') !== false) {
-                $gradientColor = 'bg-gradient-to-br from-yellow-400 to-yellow-600';
-                $hoverColor = 'hover:border-yellow-400';
+                $accentColor = 'border-yellow-200';
+                $iconGradient = 'from-yellow-400 to-yellow-600';
+                $badgeClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
               } elseif (stripos($plan->plan_key, 'silver') !== false) {
-                $gradientColor = 'bg-gradient-to-br from-gray-300 to-gray-500';
-                $hoverColor = 'hover:border-gray-400';
+                $accentColor = 'border-gray-200';
+                $iconGradient = 'from-gray-400 to-gray-500';
+                $badgeClass = 'bg-gray-100 text-gray-700 border-gray-200';
               } elseif (stripos($plan->plan_key, 'bronze') !== false) {
-                $gradientColor = 'bg-gradient-to-br from-orange-600 to-orange-800';
-                $hoverColor = 'hover:border-orange-700';
+                $accentColor = 'border-orange-200';
+                $iconGradient = 'from-orange-500 to-orange-700';
+                $badgeClass = 'bg-orange-50 text-orange-700 border-orange-200';
               }
               $benefits = json_decode($plan->benefits, true) ?? [];
             @endphp
-            <div
-              class="subscription-card bg-white rounded-2xl shadow-lg p-6 transition-all hover:shadow-2xl hover:-translate-y-2 cursor-pointer border-2 {{ $borderColor }} {{ $hoverColor }} relative overflow-hidden group"
+            <div class="subscription-card bg-white rounded-xl border {{ $accentColor }} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer relative"
               data-id="{{ $plan->id }}" data-name="{{ $plan->name }}" data-price="{{ $plan->amount / 100 }}"
               data-billing-cycle="{{ $plan->billing_cycle }}" data-duration="{{ $plan->duration_days }}"
               data-benefits="{{ json_encode($benefits) }}">
 
-              <div class="absolute top-4 right-4 flex gap-2 z-10">
-                <button
-                  class="edit-icon text-gray-400 hover:text-indigo-600 transition p-1.5 rounded-md hover:bg-indigo-50"
-                  title="Edit Plan">
-                  <i class="fi fi-rr-edit text-lg"></i>
-                </button>
-                <button
-                  class="delete-icon w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 hover:scale-110">
-                  <i class="fi fi-rr-trash text-sm"></i>
-                </button>
-              </div>
-
-              <div class="flex items-center gap-2 mb-4">
-                <div class="w-10 h-10 rounded-lg {{ $gradientColor }} flex items-center justify-center shadow-md">
-                  <i class="fi fi-ss-star text-white text-lg"></i>
+              <div class="px-4 pt-4 pb-3 border-b border-gray-100">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br {{ $iconGradient }} flex items-center justify-center shadow-sm flex-shrink-0">
+                      <i class="fi fi-ss-star text-white text-xs"></i>
+                    </div>
+                    <div>
+                      <h3 class="text-sm font-semibold text-gray-800 leading-tight">{{ $plan->name }}</h3>
+                      <p class="text-[11px] text-gray-500">{{ ucfirst($plan->billing_cycle) }} charge</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    @if($plan->for_contractor)
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border {{ $badgeClass }}">
+                        <i class="fi fi-ss-building text-[9px]"></i> Contractor
+                      </span>
+                    @else
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-purple-50 text-purple-700 border-purple-200">
+                        <i class="fi fi-ss-home text-[9px]"></i> Owner
+                      </span>
+                    @endif
+                  </div>
                 </div>
-                @if($plan->for_contractor)
-                  <div class="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded inline-flex items-center">
-                    <i class="fi fi-ss-building mr-1"></i> Contractor
-                  </div>
-                @else
-                  <div
-                    class="text-xs font-semibold bg-purple-100 text-purple-800 px-2 py-1 rounded inline-flex items-center">
-                    <i class="fi fi-ss-home mr-1"></i> Owner
-                  </div>
-                @endif
+                <div class="mt-3">
+                  <span class="text-2xl font-bold text-gray-800">₱{{ number_format($plan->amount / 100, 2) }}</span>
+                </div>
               </div>
 
-              <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ $plan->name }}</h3>
-              <p class="text-sm text-gray-500 mb-4">{{ ucfirst($plan->billing_cycle) }} Charge</p>
-
-              <div class="mb-6">
-                <span class="text-5xl font-extrabold text-gray-800">₱ {{ number_format($plan->amount / 100, 2) }}</span>
-              </div>
-
-              <div class="bg-gray-50 rounded-xl p-4 mb-4">
-                <h4 class="text-sm font-semibold text-gray-700 mb-3">Benefits:</h4>
-                <ul class="space-y-2">
+              <div class="px-4 py-3">
+                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Benefits</p>
+                <ul class="space-y-1.5">
                   @foreach($benefits as $benefit)
-                    <li class="flex items-start gap-2 text-sm text-gray-600">
-                      <i class="fi fi-ss-check-circle text-green-500 text-base mt-0.5"></i>
+                    <li class="flex items-start gap-1.5 text-[11px] text-gray-600">
+                      <i class="fi fi-ss-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
                       <span>{{ $benefit }}</span>
                     </li>
                   @endforeach
                 </ul>
               </div>
 
-              <div
-                class="absolute bottom-0 left-0 w-full h-1 {{ $gradientColor }} transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left">
+              <div class="px-4 pb-4 flex gap-2 justify-end">
+                <button class="edit-icon w-7 h-7 inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition active:scale-95" title="Edit Plan">
+                  <i class="fi fi-rr-edit text-[11px] leading-none"></i>
+                </button>
+                <button class="delete-icon w-7 h-7 inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition active:scale-95" title="Delete Plan">
+                  <i class="fi fi-rr-trash text-[11px] leading-none"></i>
+                </button>
               </div>
             </div>
           @empty
-            <div class="col-span-3 text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
-              <i class="fi fi-rr-box-open text-4xl text-gray-400 mb-3"></i>
-              <h3 class="text-lg font-semibold text-gray-600">No active plans</h3>
-              <p class="text-sm text-gray-500">Click "Add Subscription" to create one.</p>
+            <div class="col-span-3 text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
+              <i class="fi fi-rr-box-open text-3xl text-gray-300 block mb-2"></i>
+              <p class="text-sm font-medium text-gray-500">No active plans</p>
+              <p class="text-xs text-gray-400 mt-1">Click "Add Plan" to create one.</p>
             </div>
           @endforelse
         </div>
@@ -132,78 +140,54 @@
       <!-- End Subscriptions Section -->
 
       <!-- Subscription Statistics Section -->
-      <section class="px-8 pb-12">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <!-- Total Subscriptions Card -->
-          <div
-            class="stats-card bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer border-l-4 border-indigo-500 group relative overflow-hidden">
-            <div
-              class="absolute top-0 right-0 w-20 h-20 bg-indigo-50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150">
+      <section class="px-4 pb-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <!-- Total Subscriptions -->
+          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-sm flex-shrink-0">
+              <i class="fi fi-rr-calendar-check text-white text-sm"></i>
             </div>
-            <div class="relative z-10">
-              <p class="text-sm text-gray-600 font-medium mb-2">Total Subscriptions</p>
-              <div class="flex items-baseline gap-2 mb-1">
-                <span class="text-4xl font-extrabold text-gray-800">{{ $stats['total'] ?? 0 }}</span>
-                <span class="text-lg text-gray-400 font-medium">/300</span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-2 mt-3">
-                <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500 group-hover:bg-indigo-600"
-                  style="width: {{ min(($stats['total'] ?? 0) / 300 * 100, 100) }}%"></div>
+            <div>
+              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Total</p>
+              <p class="text-xl font-bold text-gray-800 leading-tight">{{ $stats['total'] ?? 0 }}</p>
+              <div class="w-full bg-gray-100 rounded-full h-1 mt-1">
+                <div class="bg-indigo-500 h-1 rounded-full" style="width: {{ min(($stats['total'] ?? 0) / 300 * 100, 100) }}%"></div>
               </div>
             </div>
           </div>
 
-          <!-- Total Revenue Card -->
-          <div
-            class="stats-card bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer border-l-4 border-green-500 group relative overflow-hidden">
-            <div
-              class="absolute top-0 right-0 w-20 h-20 bg-green-50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150">
+          <!-- Total Revenue -->
+          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-sm flex-shrink-0">
+              <i class="fi fi-rr-coins text-white text-sm"></i>
             </div>
-            <div class="relative z-10">
-              <p class="text-sm text-gray-600 font-medium mb-2">Total Revenue</p>
-              <div class="flex items-baseline gap-1 mb-1">
-                <span class="text-4xl font-extrabold text-gray-800">₱{{ $stats['revenue'] ?? '0.00' }}</span>
-              </div>
-              <div class="flex items-center gap-1 mt-2">
-                <i class="fi fi-rr-arrow-trend-up text-green-500 text-sm"></i>
-                <span class="text-xs text-green-600 font-semibold">+12.5% from last month</span>
-              </div>
+            <div class="min-w-0">
+              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Revenue</p>
+              <p class="text-xl font-bold text-gray-800 leading-tight truncate">₱{{ $stats['revenue'] ?? '0.00' }}</p>
             </div>
           </div>
 
-          <!-- Expiring Soon Card -->
-          <div
-            class="stats-card bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer border-l-4 border-yellow-500 group relative overflow-hidden">
-            <div
-              class="absolute top-0 right-0 w-20 h-20 bg-yellow-50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150">
+          <!-- Expiring Soon -->
+          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-sm flex-shrink-0">
+              <i class="fi fi-rr-clock text-white text-sm"></i>
             </div>
-            <div class="relative z-10">
-              <p class="text-sm text-gray-600 font-medium mb-2">Expiring Soon</p>
-              <div class="flex items-baseline gap-1 mb-1">
-                <span class="text-4xl font-extrabold text-gray-800">{{ $stats['expiring_soon'] ?? 0 }}</span>
-              </div>
-              <div class="flex items-center gap-1 mt-2">
-                <i class="fi fi-rr-clock text-yellow-500 text-sm"></i>
-                <span class="text-xs text-yellow-600 font-semibold">Within 7 days</span>
-              </div>
+            <div>
+              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Expiring Soon</p>
+              <p class="text-xl font-bold text-gray-800 leading-tight">{{ $stats['expiring_soon'] ?? 0 }}</p>
+              <p class="text-[10px] text-yellow-600">Within 7 days</p>
             </div>
           </div>
 
-          <!-- Expired Card -->
-          <div
-            class="stats-card bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer border-l-4 border-red-500 group relative overflow-hidden">
-            <div
-              class="absolute top-0 right-0 w-20 h-20 bg-red-50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150">
+          <!-- Expired -->
+          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-sm flex-shrink-0">
+              <i class="fi fi-rr-exclamation text-white text-sm"></i>
             </div>
-            <div class="relative z-10">
-              <p class="text-sm text-gray-600 font-medium mb-2">Expired</p>
-              <div class="flex items-baseline gap-1 mb-1">
-                <span class="text-4xl font-extrabold text-gray-800">{{ $stats['expired'] ?? 0 }}</span>
-              </div>
-              <div class="flex items-center gap-1 mt-2">
-                <i class="fi fi-rr-exclamation text-red-500 text-sm"></i>
-                <span class="text-xs text-red-600 font-semibold">Needs renewal</span>
-              </div>
+            <div>
+              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Expired</p>
+              <p class="text-xl font-bold text-gray-800 leading-tight">{{ $stats['expired'] ?? 0 }}</p>
+              <p class="text-[10px] text-red-600">Needs renewal</p>
             </div>
           </div>
         </div>
@@ -211,302 +195,230 @@
       <!-- End Subscription Statistics Section -->
 
       <!-- Subscriptions Management Table -->
-      <section class="px-8 pb-12">
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <!-- Tabs Header -->
-          <div class="border-b border-gray-200 overflow-x-auto">
-            <div class="flex px-2 sm:px-6 whitespace-nowrap">
-              <button id="tabActiveSubscriptions"
-                class="subscription-tab active px-4 py-3 text-sm font-semibold border-b-2 border-orange-500 text-orange-600 transition-all">
-                <i class="fi fi-rr-calendar-check mr-2"></i>
-                ACTIVE SUBSCRIPTIONS
-              </button>
-              <button id="tabExpiredSubscriptions"
-                class="subscription-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-all">
-                <i class="fi fi-rr-calendar-clock mr-2"></i>
-                EXPIRED SUBSCRIPTIONS
-              </button>
-              <button id="tabCancelledSubscriptions"
-                class="subscription-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-all">
-                <i class="fi fi-rr-cross-circle mr-2"></i>
-                CANCELLED SUBSCRIPTIONS
-              </button>
-            </div>
-          </div>
+      <section class="px-4 pb-6 sm:px-6 lg:px-8 space-y-4">
 
-          <!-- Filters Bar -->
-          <div class="bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div
-                class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white">
-                <i class="fi fi-rr-filter text-gray-500"></i>
-                <span>Filter By</span>
+        <!-- Filters Bar -->
+        <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+              <i class="fi fi-rr-filter text-gray-500"></i>
+              <span>Filter By</span>
+            </div>
+
+            <!-- Date Range -->
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                </div>
+                <input type="date" id="dateFrom"
+                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
               </div>
 
-              <select id="filterPlanType"
-                class="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition">
-                <option value="">All Plan Types</option>
-                @php
-                  $planKeys = collect(array_merge(
-                    $activeSubscriptions->pluck('plan_key')->unique()->toArray(),
-                    $expiredSubscriptions->pluck('plan_key')->unique()->toArray(),
-                    $cancelledSubscriptions->pluck('plan_key')->unique()->toArray()
-                  ))->unique()->sort()->values();
-                @endphp
-                @foreach($planKeys as $key)
-                  <option value="{{ $key }}">{{ ucfirst($key) }}</option>
-                @endforeach
-              </select>
+              <span class="text-gray-300 font-bold text-lg">→</span>
+
+              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                </div>
+                <input type="date" id="dateTo"
+                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+              </div>
             </div>
 
-            <button
-              class="reset-filter-btn flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
-              <i class="fi fi-rr-rotate-left"></i>
-              <span>Reset Filter</span>
-            </button>
+            <!-- Plan Type Filter -->
+            <select id="filterPlanType"
+              class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
+              <option value="">All Plan Types</option>
+              @foreach($allPlanKeys as $key)
+                <option value="{{ $key }}" {{ request('plan_type') === $key ? 'selected' : '' }}>{{ ucfirst($key) }}</option>
+              @endforeach
+            </select>
+          </div>
+
+          <button id="resetFilterBtn" class="reset-filter-btn flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+            <i class="fi fi-rr-rotate-left"></i>
+            <span>Reset Filter</span>
+          </button>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <!-- Tabs Header -->
+          <div class="border-b border-gray-200">
+            <div class="flex px-6">
+              <button id="tabActiveSubscriptions"
+                class="subscription-tab active px-4 py-3 text-sm font-semibold border-b-2 border-orange-500 text-gray-700 transition-all">
+                Active Subscriptions
+              </button>
+              <button id="tabExpiredSubscriptions"
+                class="subscription-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:border-orange-300 transition-all">
+                Expired Subscriptions
+              </button>
+              <button id="tabCancelledSubscriptions"
+                class="subscription-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:border-orange-300 transition-all">
+                Cancelled Subscriptions
+              </button>
+            </div>
           </div>
 
           <!-- Active Subscriptions Table -->
-          <div id="activeSubscriptionsTable" class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Name/Project</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type /
-                    Plan</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Expiry
-                  </th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody id="activeSubscriptionsTbody" class="divide-y divide-gray-200">
-                @forelse($activeSubscriptions as $sub)
-                  @php
-                    $isBoost = $sub->plan_key === 'boost' || stripos($sub->plan_key, 'boost') !== false;
-                    $personName = $isBoost ? ($sub->first_name . ' ' . $sub->last_name . ' (' . $sub->project_title . ')') : ($sub->company_name ?? 'Contractor');
-                    $initials = substr(preg_replace('/[^A-Za-z0-9]/', '', $personName), 0, 2);
-                    $planName = $sub->plan_name ?? ucwords(str_replace('_', ' ', $sub->plan_key));
-
-                    // Simple badge color generator
-                    $badgeColor = 'bg-blue-100 text-blue-800';
-                    if (stripos($planName, 'gold') !== false)
-                      $badgeColor = 'bg-yellow-100 text-yellow-800';
-                    elseif (stripos($planName, 'silver') !== false)
-                      $badgeColor = 'bg-gray-200 text-gray-800';
-                    elseif (stripos($planName, 'bronze') !== false)
-                      $badgeColor = 'bg-orange-100 text-orange-800';
-                  @endphp
-                  <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                      {{ str_pad($sub->platform_payment_id, 4, '0', STR_PAD_LEFT) }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex items-center gap-3">
-                        <div
-                          class="w-10 h-10 rounded-full {{ $isBoost ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gradient-to-br from-blue-400 to-blue-600' }} flex items-center justify-center text-white font-bold shadow-md uppercase">
-                          {{ $initials ?: 'U' }}
-                        </div>
-                        <span class="text-sm font-medium text-gray-800 truncate max-w-xs">{{ $personName }}</span>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span
-                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $badgeColor }}">
-                        {{ $planName }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                      <div class="flex items-center gap-2 justify-center">
-                        <button
-                          class="view-subscription-btn w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all hover:shadow-md"
-                          title="View Details" data-id="{{ $sub->platform_payment_id }}"
-                          data-user="{{ $isBoost ? ($sub->first_name . ' ' . $sub->last_name) : ($sub->company_name ?? 'Contractor') }}"
-                          data-project="{{ $isBoost ? ($sub->project_title ?? '') : '' }}" data-plan="{{ $planName }}"
-                          data-plan-key="{{ $sub->plan_key }}" data-amount="{{ number_format($sub->amount, 2) }}"
-                          data-date="{{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}"
-                          data-expiry="{{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}"
-                          data-type="{{ $isBoost ? 'Boost' : 'Subscription' }}"
-                          data-billing="{{ $sub->billing_cycle ?? 'N/A' }}"
-                          data-txn="{{ $sub->transaction_number ?? 'N/A' }}"
-                          data-duration="{{ $sub->duration_days ?? '' }}" data-status="active">
-                          <i class="fi fi-rr-eye text-base"></i>
-                        </button>
-                        <button
-                          class="deactivate-subscription-btn w-10 h-10 flex items-center justify-center rounded-full bg-orange-50 hover:bg-orange-100 text-orange-500 transition-all hover:shadow-md"
-                          title="Deactivate" data-id="{{ $sub->platform_payment_id }}" data-name="{{ $personName }}">
-                          <i class="fi fi-rr-ban text-base"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                      <i class="fi fi-rr-box-open text-4xl mb-3 block text-gray-300"></i>
-                      <p class="text-lg">No active subscriptions found.</p>
-                    </td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
+          <div id="activeSubscriptionsTable" class="{{ request()->has('page_expired') || request()->has('page_cancelled') ? '' : '' }}">
+            <div id="activeSubscriptionsWrap">
+              <div class="overflow-x-auto">
+                <table class="w-full table-fixed">
+                  <thead>
+                    <tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[6%]">ID</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[30%]">Name / Project</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Type / Plan</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Date</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Expiry</th>
+                      <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[14%]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="activeSubscriptionsTbody" class="divide-y divide-gray-200">
+                    @include('admin.projectManagement.partials.activeSubscriptionsTable')
+                  </tbody>
+                </table>
+              </div>
+              @if($activeSubscriptions->hasPages())
+                <div class="pagination px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <p class="text-xs text-gray-500">
+                    Showing <strong>{{ $activeSubscriptions->firstItem() }}</strong>–<strong>{{ $activeSubscriptions->lastItem() }}</strong> of <strong>{{ $activeSubscriptions->total() }}</strong> results
+                  </p>
+                  <div class="flex items-center gap-1">
+                    @if($activeSubscriptions->onFirstPage())
+                      <span class="px-2.5 py-1 rounded-lg text-xs text-gray-400 border border-gray-200 cursor-not-allowed">‹ Prev</span>
+                    @else
+                      <a href="{{ $activeSubscriptions->previousPageUrl() }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">‹ Prev</a>
+                    @endif
+                    @foreach($activeSubscriptions->getUrlRange(max(1, $activeSubscriptions->currentPage()-2), min($activeSubscriptions->lastPage(), $activeSubscriptions->currentPage()+2)) as $page => $url)
+                      @if($page == $activeSubscriptions->currentPage())
+                        <span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-600 text-white font-semibold">{{ $page }}</span>
+                      @else
+                        <a href="{{ $url }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">{{ $page }}</a>
+                      @endif
+                    @endforeach
+                    @if($activeSubscriptions->hasMorePages())
+                      <a href="{{ $activeSubscriptions->nextPageUrl() }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">Next ›</a>
+                    @else
+                      <span class="px-2.5 py-1 rounded-lg text-xs text-gray-400 border border-gray-200 cursor-not-allowed">Next ›</span>
+                    @endif
+                  </div>
+                </div>
+              @else
+                <div class="px-4 py-3 border-t border-gray-200">
+                  <p class="text-xs text-gray-500">Showing <strong>{{ $activeSubscriptions->total() }}</strong> result(s)</p>
+                </div>
+              @endif
+            </div>
           </div>
 
           <!-- Expired Subscriptions Table -->
-          <div id="expiredSubscriptionsTable" class="overflow-x-auto hidden">
-            <table class="w-full">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Name/Project</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type /
-                    Plan</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Expiry
-                  </th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody id="expiredSubscriptionsTbody" class="divide-y divide-gray-200">
-                @forelse($expiredSubscriptions as $sub)
-                  @php
-                    $isBoost = $sub->plan_key === 'boost' || stripos($sub->plan_key, 'boost') !== false;
-                    $personName = $isBoost ? ($sub->first_name . ' ' . $sub->last_name . ' (' . $sub->project_title . ')') : ($sub->company_name ?? 'Contractor');
-                    $initials = substr(preg_replace('/[^A-Za-z0-9]/', '', $personName), 0, 2);
-                    $planName = $sub->plan_name ?? ucwords(str_replace('_', ' ', $sub->plan_key));
-                  @endphp
-                  <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group bg-red-50/30">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                      {{ str_pad($sub->platform_payment_id, 4, '0', STR_PAD_LEFT) }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex items-center gap-3">
-                        <div
-                          class="w-10 h-10 rounded-full {{ $isBoost ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gradient-to-br from-blue-400 to-blue-600' }} flex items-center justify-center text-white font-bold shadow-md uppercase">
-                          {{ $initials ?: 'U' }}
-                        </div>
-                        <span class="text-sm font-medium text-gray-800 truncate max-w-xs">{{ $personName }}</span>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span
-                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">
-                        {{ $planName }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
-                      {{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                      <div class="flex items-center gap-2 justify-center">
-                        <button
-                          class="view-subscription-btn w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all hover:shadow-md"
-                          title="View Details" data-id="{{ $sub->platform_payment_id }}"
-                          data-user="{{ $isBoost ? ($sub->first_name . ' ' . $sub->last_name) : ($sub->company_name ?? 'Contractor') }}"
-                          data-project="{{ $isBoost ? ($sub->project_title ?? '') : '' }}" data-plan="{{ $planName }}"
-                          data-plan-key="{{ $sub->plan_key }}" data-amount="{{ number_format($sub->amount, 2) }}"
-                          data-date="{{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}"
-                          data-expiry="{{ $sub->expiration_date ? \Carbon\Carbon::parse($sub->expiration_date)->format('F j, Y') : 'N/A' }}"
-                          data-type="{{ $isBoost ? 'Boost' : 'Subscription' }}"
-                          data-billing="{{ $sub->billing_cycle ?? 'N/A' }}"
-                          data-txn="{{ $sub->transaction_number ?? 'N/A' }}"
-                          data-duration="{{ $sub->duration_days ?? '' }}">
-                          <i class="fi fi-rr-eye text-base"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                      <i class="fi fi-rr-box-open text-4xl mb-3 block text-gray-300"></i>
-                      <p class="text-lg">No expired subscriptions found.</p>
-                    </td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
+          <div id="expiredSubscriptionsTable" class="hidden">
+            <div id="expiredSubscriptionsWrap">
+              <div class="overflow-x-auto">
+                <table class="w-full table-fixed">
+                  <thead>
+                    <tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[6%]">ID</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[30%]">Name / Project</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Type / Plan</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Date</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Expiry</th>
+                      <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[14%]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expiredSubscriptionsTbody" class="divide-y divide-gray-200">
+                    @include('admin.projectManagement.partials.expiredSubscriptionsTable')
+                  </tbody>
+                </table>
+              </div>
+              @if($expiredSubscriptions->hasPages())
+                <div class="pagination px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <p class="text-xs text-gray-500">
+                    Showing <strong>{{ $expiredSubscriptions->firstItem() }}</strong>–<strong>{{ $expiredSubscriptions->lastItem() }}</strong> of <strong>{{ $expiredSubscriptions->total() }}</strong> results
+                  </p>
+                  <div class="flex items-center gap-1">
+                    @if($expiredSubscriptions->onFirstPage())
+                      <span class="px-2.5 py-1 rounded-lg text-xs text-gray-400 border border-gray-200 cursor-not-allowed">‹ Prev</span>
+                    @else
+                      <a href="{{ $expiredSubscriptions->previousPageUrl() }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">‹ Prev</a>
+                    @endif
+                    @foreach($expiredSubscriptions->getUrlRange(max(1, $expiredSubscriptions->currentPage()-2), min($expiredSubscriptions->lastPage(), $expiredSubscriptions->currentPage()+2)) as $page => $url)
+                      @if($page == $expiredSubscriptions->currentPage())
+                        <span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-600 text-white font-semibold">{{ $page }}</span>
+                      @else
+                        <a href="{{ $url }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">{{ $page }}</a>
+                      @endif
+                    @endforeach
+                    @if($expiredSubscriptions->hasMorePages())
+                      <a href="{{ $expiredSubscriptions->nextPageUrl() }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">Next ›</a>
+                    @else
+                      <span class="px-2.5 py-1 rounded-lg text-xs text-gray-400 border border-gray-200 cursor-not-allowed">Next ›</span>
+                    @endif
+                  </div>
+                </div>
+              @else
+                <div class="px-4 py-3 border-t border-gray-200">
+                  <p class="text-xs text-gray-500">Showing <strong>{{ $expiredSubscriptions->total() }}</strong> result(s)</p>
+                </div>
+              @endif
+            </div>
           </div>
 
           <!-- Cancelled Subscriptions Table -->
-          <div id="cancelledSubscriptionsTable" class="overflow-x-auto hidden">
-            <table class="w-full">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Name/Project</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type /
-                    Plan</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody id="cancelledSubscriptionsTbody" class="divide-y divide-gray-200">
-                @forelse($cancelledSubscriptions as $sub)
-                  @php
-                    $isBoost = $sub->plan_key === 'boost' || stripos($sub->plan_key, 'boost') !== false;
-                    $personName = $isBoost ? ($sub->first_name . ' ' . $sub->last_name . ' (' . $sub->project_title . ')') : ($sub->company_name ?? 'Contractor');
-                    $initials = substr(preg_replace('/[^A-Za-z0-9]/', '', $personName), 0, 2);
-                    $planName = $sub->plan_name ?? ucwords(str_replace('_', ' ', $sub->plan_key));
-                  @endphp
-                  <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group bg-orange-50/20">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                      {{ str_pad($sub->platform_payment_id, 4, '0', STR_PAD_LEFT) }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex items-center gap-3">
-                        <div
-                          class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white font-bold shadow-md uppercase">
-                          {{ $initials ?: 'U' }}
-                        </div>
-                        <span class="text-sm font-medium text-gray-800 truncate max-w-xs">{{ $personName }}</span>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span
-                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">
-                        {{ $planName }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {{ \Carbon\Carbon::parse($sub->transaction_date)->format('F j, Y') }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                      <div class="flex items-center gap-2 justify-center">
-                        <button
-                          class="reactivate-subscription-btn w-10 h-10 flex items-center justify-center rounded-full bg-green-50 hover:bg-green-100 text-green-600 transition-all hover:shadow-md"
-                          title="Reactivate" data-id="{{ $sub->platform_payment_id }}" data-name="{{ $personName }}">
-                          <i class="fi fi-rr-undo text-base"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                      <i class="fi fi-rr-box-open text-4xl mb-3 block text-gray-300"></i>
-                      <p class="text-lg">No cancelled subscriptions found.</p>
-                    </td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
+          <div id="cancelledSubscriptionsTable" class="hidden">
+            <div id="cancelledSubscriptionsWrap">
+              <div class="overflow-x-auto">
+                <table class="w-full table-fixed">
+                  <thead>
+                    <tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[6%]">ID</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[36%]">Name / Project</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[20%]">Type / Plan</th>
+                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[20%]">Date</th>
+                      <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cancelledSubscriptionsTbody" class="divide-y divide-gray-200">
+                    @include('admin.projectManagement.partials.cancelledSubscriptionsTable')
+                  </tbody>
+                </table>
+              </div>
+              @if($cancelledSubscriptions->hasPages())
+                <div class="pagination px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <p class="text-xs text-gray-500">
+                    Showing <strong>{{ $cancelledSubscriptions->firstItem() }}</strong>–<strong>{{ $cancelledSubscriptions->lastItem() }}</strong> of <strong>{{ $cancelledSubscriptions->total() }}</strong> results
+                  </p>
+                  <div class="flex items-center gap-1">
+                    @if($cancelledSubscriptions->onFirstPage())
+                      <span class="px-2.5 py-1 rounded-lg text-xs text-gray-400 border border-gray-200 cursor-not-allowed">‹ Prev</span>
+                    @else
+                      <a href="{{ $cancelledSubscriptions->previousPageUrl() }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">‹ Prev</a>
+                    @endif
+                    @foreach($cancelledSubscriptions->getUrlRange(max(1, $cancelledSubscriptions->currentPage()-2), min($cancelledSubscriptions->lastPage(), $cancelledSubscriptions->currentPage()+2)) as $page => $url)
+                      @if($page == $cancelledSubscriptions->currentPage())
+                        <span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-600 text-white font-semibold">{{ $page }}</span>
+                      @else
+                        <a href="{{ $url }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">{{ $page }}</a>
+                      @endif
+                    @endforeach
+                    @if($cancelledSubscriptions->hasMorePages())
+                      <a href="{{ $cancelledSubscriptions->nextPageUrl() }}" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">Next ›</a>
+                    @else
+                      <span class="px-2.5 py-1 rounded-lg text-xs text-gray-400 border border-gray-200 cursor-not-allowed">Next ›</span>
+                    @endif
+                  </div>
+                </div>
+              @else
+                <div class="px-4 py-3 border-t border-gray-200">
+                  <p class="text-xs text-gray-500">Showing <strong>{{ $cancelledSubscriptions->total() }}</strong> result(s)</p>
+                </div>
+              @endif
+            </div>
           </div>
         </div>
       </section>
@@ -518,129 +430,118 @@
 
     <!-- Add Subscription Plan Modal -->
     <div id="addSubscriptionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-      <div
-        class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all duration-300 scale-95 opacity-0 add-subscription-panel">
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 add-subscription-panel">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4 flex items-center justify-between">
-          <h2 class="text-xl font-bold text-white">Add Subscription Plan</h2>
-          <button id="closeAddSubscriptionBtn"
-            class="text-white hover:text-gray-200 transition p-1 rounded-lg hover:bg-white/10">
-            <i class="fi fi-rr-cross text-2xl"></i>
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-orange-500 to-orange-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <i class="fi fi-rr-plus-small text-white text-sm"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Add Subscription Plan</h2>
+          </div>
+          <button id="closeAddSubscriptionBtn" class="text-white hover:text-orange-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            <i class="fi fi-rr-cross text-lg"></i>
           </button>
         </div>
 
         <!-- Body -->
-        <form id="addSubscriptionForm" class="p-6 space-y-5">
-          <!-- Subscription Name -->
-          <div>
-            <label for="subscriptionName" class="block text-sm font-semibold text-gray-800 mb-2">Subscription Name <span
-                class="text-red-500">*</span></label>
-            <input type="text" id="subscriptionName" name="subscription_name"
-              class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition placeholder-gray-400"
-              placeholder="Enter subscription name" required>
-            <p id="subscriptionNameError" class="mt-1 text-xs text-red-600 hidden">Subscription name is required.</p>
-          </div>
+        <form id="addSubscriptionForm">
+          <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+            <!-- Subscription Name -->
+            <div>
+              <label for="subscriptionName" class="block text-xs font-semibold text-gray-800 mb-1.5">Subscription Name <span class="text-red-500">*</span></label>
+              <input type="text" id="subscriptionName" name="subscription_name"
+                class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
+                placeholder="Enter subscription name" required>
+              <p id="subscriptionNameError" class="mt-1 text-xs text-red-600 hidden">Subscription name is required.</p>
+            </div>
 
-          <!-- Benefits -->
-          <div>
-            <label class="block text-sm font-semibold text-gray-800 mb-2">Benefits</label>
-            <div id="benefitsContainer" class="space-y-2">
-              <div class="flex items-center gap-2 benefit-item">
-                <input type="checkbox"
-                  class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 benefit-checkbox"
-                  checked>
-                <input type="text"
-                  class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition text-sm benefit-input"
-                  placeholder="Enter benefit">
-                <button type="button" class="text-red-500 hover:text-red-700 transition p-1 remove-benefit-btn hidden">
-                  <i class="fi fi-rr-cross-small text-xl"></i>
-                </button>
+            <!-- Benefits -->
+            <div>
+              <label class="block text-xs font-semibold text-gray-800 mb-1.5">Benefits</label>
+              <div id="benefitsContainer" class="space-y-2">
+                <div class="flex items-center gap-2 benefit-item">
+                  <input type="checkbox" class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 benefit-checkbox" checked>
+                  <input type="text" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs benefit-input" placeholder="Enter benefit">
+                  <button type="button" class="text-red-500 hover:text-red-700 transition p-1 remove-benefit-btn hidden">
+                    <i class="fi fi-rr-cross-small text-lg"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="button" id="addBenefitBtn" class="mt-2 text-orange-600 hover:text-orange-700 text-xs font-semibold flex items-center gap-1 transition">
+                <span>+</span> Add another
+              </button>
+              <p id="benefitsError" class="mt-1 text-xs text-red-600 hidden">At least one benefit is required.</p>
+            </div>
+
+            <!-- Price -->
+            <div>
+              <label for="subscriptionPrice" class="block text-xs font-semibold text-gray-800 mb-1.5">Price <span class="text-red-500">*</span></label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-xs">₱</span>
+                <input type="number" id="subscriptionPrice" name="subscription_price"
+                  class="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
+                  placeholder="0.00" min="0" step="0.01" required>
+              </div>
+              <p id="subscriptionPriceError" class="mt-1 text-xs text-red-600 hidden">Price is required.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Plan Key -->
+              <div>
+                <label for="planKey" class="block text-xs font-semibold text-gray-800 mb-1.5">Plan Key <span class="text-red-500">*</span></label>
+                <input type="text" id="planKey" name="plan_key"
+                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
+                  placeholder="e.g. basic, premium" required>
+                <p id="planKeyError" class="mt-1 text-xs text-red-600 hidden">Plan key is required.</p>
+              </div>
+
+              <!-- Target Audience -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-800 mb-1.5">Target Audience <span class="text-red-500">*</span></label>
+                <div class="flex items-center gap-3 mt-1.5">
+                  <label class="inline-flex items-center cursor-pointer">
+                    <input type="radio" name="for_contractor" value="1" class="form-radio text-orange-500 focus:ring-orange-400 w-3.5 h-3.5">
+                    <span class="ml-1.5 text-xs text-gray-700">Contractors</span>
+                  </label>
+                  <label class="inline-flex items-center cursor-pointer">
+                    <input type="radio" name="for_contractor" value="0" class="form-radio text-orange-500 focus:ring-orange-400 w-3.5 h-3.5">
+                    <span class="ml-1.5 text-xs text-gray-700">Owners</span>
+                  </label>
+                </div>
+                <p id="forContractorError" class="mt-1 text-xs text-red-600 hidden">Please select a target audience.</p>
+              </div>
+
+              <!-- Billing Cycle -->
+              <div class="col-span-2 sm:col-span-1">
+                <label for="billingCycle" class="block text-xs font-semibold text-gray-800 mb-1.5">Billing Cycle <span class="text-red-500">*</span></label>
+                <select id="billingCycle" name="billing_cycle"
+                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition bg-white text-xs" required>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="one-time">One-time</option>
+                </select>
+              </div>
+
+              <!-- Duration Days -->
+              <div class="col-span-2 sm:col-span-1 hidden" id="durationDaysContainer">
+                <label for="durationDays" class="block text-xs font-semibold text-gray-800 mb-1.5">Duration (Days) <span class="text-red-500">*</span></label>
+                <input type="number" id="durationDays" name="duration_days"
+                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
+                  placeholder="e.g. 30" min="1">
+                <p id="durationDaysError" class="mt-1 text-xs text-red-600 hidden">Duration is required.</p>
               </div>
             </div>
-            <button type="button" id="addBenefitBtn"
-              class="mt-3 text-orange-600 hover:text-orange-700 text-sm font-semibold flex items-center gap-1 transition">
-              <span>+</span> Add another
-            </button>
           </div>
 
-          <!-- Price -->
-          <div>
-            <label for="subscriptionPrice" class="block text-sm font-semibold text-gray-800 mb-2">Price <span
-                class="text-red-500">*</span></label>
-            <div class="relative">
-              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₱</span>
-              <input type="number" id="subscriptionPrice" name="subscription_price"
-                class="w-full pl-8 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition placeholder-gray-400"
-                placeholder="0.00" min="0" step="0.01" required>
-            </div>
-            <p id="subscriptionPriceError" class="mt-1 text-xs text-red-600 hidden">Price is required.</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <!-- Plan Key -->
-            <div>
-              <label for="planKey" class="block text-sm font-semibold text-gray-800 mb-2">Plan Key <span
-                  class="text-red-500">*</span></label>
-              <input type="text" id="planKey" name="plan_key"
-                class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition placeholder-gray-400"
-                placeholder="e.g. basic, premium, one-time-boost" required>
-              <p id="planKeyError" class="mt-1 text-xs text-red-600 hidden">Plan key is required.</p>
-            </div>
-
-            <!-- Target Audience -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-2">Target Audience <span
-                  class="text-red-500">*</span></label>
-              <div class="flex items-center gap-4 mt-2">
-                <label class="inline-flex items-center cursor-pointer">
-                  <input type="radio" name="for_contractor" value="1"
-                    class="form-radio text-orange-500 focus:ring-orange-400 w-4 h-4" checked>
-                  <span class="ml-2 text-sm text-gray-700">Contractors</span>
-                </label>
-                <label class="inline-flex items-center cursor-pointer">
-                  <input type="radio" name="for_contractor" value="0"
-                    class="form-radio text-orange-500 focus:ring-orange-400 w-4 h-4">
-                  <span class="ml-2 text-sm text-gray-700">Property Owners</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Billing Cycle -->
-            <div class="col-span-2 sm:col-span-1">
-              <label for="billingCycle" class="block text-sm font-semibold text-gray-800 mb-2">Billing Cycle <span
-                  class="text-red-500">*</span></label>
-              <select id="billingCycle" name="billing_cycle"
-                class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition bg-white"
-                required>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="one-time">One-time</option>
-              </select>
-            </div>
-
-            <!-- Duration Days (hidden by default) -->
-            <div class="col-span-2 sm:col-span-1 hidden" id="durationDaysContainer">
-              <label for="durationDays" class="block text-sm font-semibold text-gray-800 mb-2">Duration (Days) <span
-                  class="text-red-500">*</span></label>
-              <input type="number" id="durationDays" name="duration_days"
-                class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition placeholder-gray-400"
-                placeholder="e.g. 30" min="1">
-              <p id="durationDaysError" class="mt-1 text-xs text-red-600 hidden">Duration is required.</p>
-            </div>
-          </div>
-
-          <!-- Footer Buttons -->
-          <div class="flex items-center justify-end gap-3 pt-4">
+          <!-- Footer -->
+          <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
             <button type="button" id="cancelAddSubscriptionBtn"
-              class="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold">
-              Cancel
-            </button>
+              class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
             <button type="submit"
-              class="px-8 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition font-semibold shadow-md hover:shadow-lg">
-              Save
-            </button>
+              class="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition font-semibold shadow-md hover:shadow-lg active:scale-95 text-xs">Save</button>
           </div>
         </form>
       </div>
@@ -648,92 +549,99 @@
 
     <!-- Edit Subscription Plan Modal -->
     <div id="editSubscriptionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
       <div
-        class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all duration-300 scale-95 opacity-0 edit-subscription-panel">
+        class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 edit-subscription-panel">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4 flex items-center justify-between">
-          <h2 class="text-xl font-bold text-white">Edit Subscription Plan</h2>
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <i class="fi fi-rr-edit text-white text-sm"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Edit Subscription Plan</h2>
+          </div>
           <button id="closeEditSubscriptionBtn"
-            class="text-white hover:text-gray-200 transition p-1 rounded-lg hover:bg-white/10">
-            <i class="fi fi-rr-cross text-2xl"></i>
+            class="text-white hover:text-indigo-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            <i class="fi fi-rr-cross text-lg"></i>
           </button>
         </div>
 
         <!-- Body -->
-        <form id="editSubscriptionForm" class="p-6 space-y-5">
-          <!-- Subscription Name -->
-          <div>
-            <label for="editSubscriptionName" class="block text-sm font-semibold text-gray-800 mb-2">Subscription Name
-              <span class="text-red-500">*</span></label>
-            <input type="text" id="editSubscriptionName" name="edit_subscription_name"
-              class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition placeholder-gray-400"
-              placeholder="Enter subscription name" required>
-            <p id="editSubscriptionNameError" class="mt-1 text-xs text-red-600 hidden">Subscription name is required.
-            </p>
-          </div>
-
-          <!-- Benefits -->
-          <div>
-            <label class="block text-sm font-semibold text-gray-800 mb-2">Benefits</label>
-            <div id="editBenefitsContainer" class="space-y-2">
-              <!-- Dynamically injected benefit rows -->
+        <form id="editSubscriptionForm">
+          <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+            <!-- Subscription Name -->
+            <div>
+              <label for="editSubscriptionName" class="block text-xs font-semibold text-gray-800 mb-1.5">Subscription Name
+                <span class="text-red-500">*</span></label>
+              <input type="text" id="editSubscriptionName" name="edit_subscription_name"
+                class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-xs"
+                placeholder="Enter subscription name" required>
+              <p id="editSubscriptionNameError" class="mt-1 text-xs text-red-600 hidden">Subscription name is required.</p>
             </div>
-            <button type="button" id="editAddBenefitBtn"
-              class="mt-3 text-indigo-600 hover:text-indigo-700 text-sm font-semibold flex items-center gap-1 transition">
-              <span>+</span> Add another
-            </button>
-          </div>
 
-          <!-- Price -->
-          <div>
-            <label for="editSubscriptionPrice" class="block text-sm font-semibold text-gray-800 mb-2">Price <span
-                class="text-red-500">*</span></label>
-            <div class="relative">
-              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₱</span>
-              <input type="number" id="editSubscriptionPrice" name="edit_subscription_price"
-                class="w-full pl-8 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition placeholder-gray-400"
-                placeholder="0.00" min="0" step="0.01" required>
+            <!-- Benefits -->
+            <div>
+              <label class="block text-xs font-semibold text-gray-800 mb-1.5">Benefits</label>
+              <div id="editBenefitsContainer" class="space-y-2">
+                <!-- Dynamically injected benefit rows -->
+              </div>
+              <button type="button" id="editAddBenefitBtn"
+                class="mt-2 text-indigo-600 hover:text-indigo-700 text-xs font-semibold flex items-center gap-1 transition">
+                <span>+</span> Add another
+              </button>
+              <p id="editBenefitsError" class="mt-1 text-xs text-red-600 hidden">At least one benefit is required.</p>
             </div>
-            <p id="editSubscriptionPriceError" class="mt-1 text-xs text-red-600 hidden">Price is required.</p>
-          </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <!-- Billing Cycle -->
-            <div class="col-span-2 sm:col-span-1">
-              <label for="editBillingCycle" class="block text-sm font-semibold text-gray-800 mb-2">Billing Cycle <span
+            <!-- Price -->
+            <div>
+              <label for="editSubscriptionPrice" class="block text-xs font-semibold text-gray-800 mb-1.5">Price <span
                   class="text-red-500">*</span></label>
-              <select id="editBillingCycle" name="edit_billing_cycle"
-                class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition bg-white"
-                required>
-                <option value="" disabled selected>Select cycle</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
-                <option value="one-time">One-time</option>
-              </select>
-              <p id="editBillingCycleError" class="mt-1 text-xs text-red-600 hidden">Billing cycle is required.</p>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-xs">₱</span>
+                <input type="number" id="editSubscriptionPrice" name="edit_subscription_price"
+                  class="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-xs"
+                  placeholder="0.00" min="0" step="0.01" required>
+              </div>
+              <p id="editSubscriptionPriceError" class="mt-1 text-xs text-red-600 hidden">Price is required.</p>
             </div>
 
-            <!-- Edit Duration Days (hidden by default) -->
-            <div class="col-span-2 sm:col-span-1 hidden" id="editDurationDaysContainer">
-              <label for="editDurationDays" class="block text-sm font-semibold text-gray-800 mb-2">Duration (Days) <span
-                  class="text-red-500">*</span></label>
-              <input type="number" id="editDurationDays" name="edit_duration_days"
-                class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition placeholder-gray-400"
-                placeholder="e.g. 30" min="1">
-              <p id="editDurationDaysError" class="mt-1 text-xs text-red-600 hidden">Duration is required.</p>
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Billing Cycle -->
+              <div class="col-span-2 sm:col-span-1">
+                <label for="editBillingCycle" class="block text-xs font-semibold text-gray-800 mb-1.5">Billing Cycle <span
+                    class="text-red-500">*</span></label>
+                <select id="editBillingCycle" name="edit_billing_cycle"
+                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition bg-white text-xs"
+                  required>
+                  <option value="" disabled selected>Select cycle</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="one-time">One-time</option>
+                </select>
+                <p id="editBillingCycleError" class="mt-1 text-xs text-red-600 hidden">Billing cycle is required.</p>
+              </div>
+
+              <!-- Edit Duration Days (hidden by default) -->
+              <div class="col-span-2 sm:col-span-1 hidden" id="editDurationDaysContainer">
+                <label for="editDurationDays" class="block text-xs font-semibold text-gray-800 mb-1.5">Duration (Days) <span
+                    class="text-red-500">*</span></label>
+                <input type="number" id="editDurationDays" name="edit_duration_days"
+                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-xs"
+                  placeholder="e.g. 30" min="1">
+                <p id="editDurationDaysError" class="mt-1 text-xs text-red-600 hidden">Duration is required.</p>
+              </div>
             </div>
           </div>
 
-          <!-- Footer Buttons -->
-          <div class="flex items-center justify-end gap-3 pt-4">
+          <!-- Footer -->
+          <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
             <button type="button" id="cancelEditSubscriptionBtn"
-              class="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold">
+              class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">
               Cancel
             </button>
             <button type="submit"
-              class="px-8 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition font-semibold shadow-md hover:shadow-lg">
+              class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition font-semibold shadow-md hover:shadow-lg active:scale-95 text-xs">
               Save Changes
             </button>
           </div>
@@ -743,123 +651,133 @@
 
     <!-- Delete Subscription Plan Modal -->
     <div id="deleteSubscriptionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
       <div
-        class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all duration-300 scale-95 opacity-0 delete-subscription-panel">
-        <!-- Header / Close -->
-        <div class="flex items-start justify-end p-3">
+        class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 delete-subscription-panel">
+        <!-- Header -->
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-red-600 to-red-500 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <i class="fi fi-rr-trash text-white text-sm"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Delete Subscription Plan</h2>
+          </div>
           <button id="closeDeleteSubscriptionBtn"
-            class="text-gray-400 hover:text-gray-600 rounded-lg p-1 hover:bg-gray-100 transition">
-            <i class="fi fi-rr-cross text-xl"></i>
+            class="text-white hover:text-red-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            <i class="fi fi-rr-cross text-lg"></i>
           </button>
         </div>
         <!-- Body -->
-        <div class="px-6 pb-6 -mt-4 space-y-5">
-          <div
-            class="w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-red-100 to-red-200 relative overflow-hidden shadow-inner">
-            <div class="absolute inset-0 animate-pulse bg-red-50/40"></div>
-            <i class="fi fi-rr-trash text-2xl text-red-600"></i>
+        <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+          <div class="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2.5">
+            <div class="w-7 h-7 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <i class="fi fi-rr-shield-exclamation text-white text-xs"></i>
+            </div>
+            <p class="text-xs text-gray-700 leading-relaxed">Are you sure you want to delete the <span id="deletePlanName"
+                class="font-bold text-red-600">selected plan</span>? This action cannot be undone.</p>
           </div>
-          <h3 class="text-xl font-bold text-gray-900">Delete Subscription Plan?</h3>
-          <p class="text-gray-600 text-sm leading-relaxed">Are you sure you want to delete the <span id="deletePlanName"
-              class="font-semibold text-gray-800">selected plan</span>?<br>This action cannot be undone.</p>
 
-          <div class="space-y-2 text-left">
+          <div class="space-y-1.5">
             <label for="deleteSubscriptionReason"
-              class="text-sm font-semibold text-gray-800 flex items-center gap-1">Reason
-              <span class="text-red-500">*</span></label>
-            <input type="text" id="deleteSubscriptionReason"
-              class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition text-sm"
-              placeholder="Provide a generic reason" required>
+              class="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+              <i class="fi fi-rr-edit text-red-500"></i>
+              Reason <span class="text-red-500">*</span></label>
+            <textarea id="deleteSubscriptionReason" rows="3"
+              class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-300 focus:border-red-300 transition text-xs resize-none"
+              placeholder="Provide a reason"></textarea>
             <p id="deleteSubscriptionReasonError" class="text-xs text-red-600 hidden">A reason is required.</p>
           </div>
-          <!-- Footer -->
-          <div class="pt-2 flex flex-col gap-3">
-            <button id="confirmDeleteSubscriptionBtn"
-              class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-red-600 to-red-600 hover:from-red-700 hover:to-red-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-              <i class="fi fi-rr-trash text-sm"></i>
-              Delete
-            </button>
-            <button id="cancelDeleteSubscriptionBtn"
-              class="w-full px-6 py-3 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
-          </div>
+        </div>
+        <!-- Footer -->
+        <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
+          <button id="cancelDeleteSubscriptionBtn"
+            class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
+          <button id="confirmDeleteSubscriptionBtn"
+            class="px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+            <i class="fi fi-rr-trash text-xs"></i>Delete
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Edit Subscription (Row) Details Modal -->
     <div id="rowEditSubscriptionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
       <div
-        class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden transform transition-all duration-300 scale-95 opacity-0 row-edit-subscription-panel">
+        class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 row-edit-subscription-panel">
         <!-- Header -->
-        <div
-          class="px-6 pt-5 pb-4 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
-          <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2"><i
-              class="fi fi-rr-edit"></i><span>Edit Subscription Details</span></h2>
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <i class="fi fi-rr-edit text-white text-sm"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Edit Subscription Details</h2>
+          </div>
           <button id="rowEditCloseBtn"
-            class="text-white hover:text-gray-200 transition p-2 rounded-lg hover:bg-white/10"><i
-              class="fi fi-rr-cross text-xl"></i></button>
+            class="text-white hover:text-indigo-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            <i class="fi fi-rr-cross text-lg"></i>
+          </button>
         </div>
 
         <!-- Body -->
-        <form id="rowEditSubscriptionForm" class="p-6 space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <!-- Contractor -->
-            <div class="space-y-2">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Contractor</label>
-              <input id="rowEditContractor" type="text"
-                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-300 transition bg-white text-sm"
-                readonly>
-            </div>
-            <!-- Status -->
-            <div class="space-y-2">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Status</label>
-              <div id="rowEditStatusBadge"
-                class="px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 border-2 border-gray-200 bg-gray-50 text-gray-700">
+        <form id="rowEditSubscriptionForm">
+          <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Contractor -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Contractor</label>
+                <input id="rowEditContractor" type="text"
+                  class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition bg-white text-xs"
+                  readonly>
+              </div>
+              <!-- Status -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Status</label>
+                <div id="rowEditStatusBadge"
+                  class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-gray-200 bg-gray-50 text-gray-700">
+                </div>
+              </div>
+              <!-- Plan -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Plan</label>
+                <select id="rowEditPlan"
+                  class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition bg-white text-xs">
+                  <option value="Gold Tier">Gold Tier</option>
+                  <option value="Silver Tier">Silver Tier</option>
+                  <option value="Bronze Tier">Bronze Tier</option>
+                </select>
+              </div>
+              <!-- Total Revenue -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Total Revenue</label>
+                <input id="rowEditRevenue" type="text"
+                  class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition bg-white text-xs"
+                  readonly>
+              </div>
+              <!-- Start Date -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Start Date</label>
+                <input id="rowEditStartDate" type="date"
+                  class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition bg-white text-xs">
+              </div>
+              <!-- Expiry Date -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Expiry Date</label>
+                <input id="rowEditExpiryDate" type="date"
+                  class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition bg-white text-xs">
               </div>
             </div>
-            <!-- Plan -->
-            <div class="space-y-2">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Plan</label>
-              <select id="rowEditPlan"
-                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-300 transition bg-white text-sm">
-                <option value="Gold Tier">Gold Tier</option>
-                <option value="Silver Tier">Silver Tier</option>
-                <option value="Bronze Tier">Bronze Tier</option>
-              </select>
-            </div>
-            <!-- Total Revenue -->
-            <div class="space-y-2">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Total Revenue</label>
-              <input id="rowEditRevenue" type="text"
-                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-300 transition bg-white text-sm"
-                readonly>
-            </div>
-            <!-- Start Date -->
-            <div class="space-y-2">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Start Date</label>
-              <input id="rowEditStartDate" type="date"
-                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-300 transition bg-white text-sm">
-            </div>
-            <!-- Expiry Date -->
-            <div class="space-y-2">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Expiry Date</label>
-              <input id="rowEditExpiryDate" type="date"
-                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-300 transition bg-white text-sm">
-            </div>
+            <p id="rowEditDatesError" class="text-xs text-red-600 hidden">Start and expiry dates are required.</p>
           </div>
 
-          <!-- Divider -->
-          <div class="border-t border-dashed border-gray-200"></div>
-
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-3">
+          <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
             <button type="button" id="rowEditCancelBtn"
-              class="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+              class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
             <button type="submit"
-              class="px-8 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition flex items-center gap-2"><i
-                class="fi fi-rr-check"></i>Save</button>
+              class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+              <i class="fi fi-rr-check text-xs"></i>Save
+            </button>
           </div>
         </form>
       </div>
@@ -867,202 +785,213 @@
 
     <!-- Deactivate Subscription Modal -->
     <div id="deactivateSubscriptionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
       <div
-        class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all duration-300 scale-95 opacity-0 deactivate-subscription-panel">
+        class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 deactivate-subscription-panel">
         <!-- Header -->
-        <div
-          class="px-6 pt-5 pb-4 border-b border-gray-200 bg-gradient-to-r from-red-600 to-orange-600 flex items-center justify-between">
-          <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2"><i
-              class="fi fi-rr-ban"></i><span>Deactivate Subscription</span></h2>
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-red-600 to-orange-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <i class="fi fi-rr-ban text-white text-sm"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Deactivate Subscription</h2>
+          </div>
           <button id="closeDeactivateSubscriptionBtn"
-            class="text-white hover:text-gray-200 transition p-2 rounded-lg hover:bg-white/10"><i
-              class="fi fi-rr-cross text-xl"></i></button>
+            class="text-white hover:text-red-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            <i class="fi fi-rr-cross text-lg"></i>
+          </button>
         </div>
         <!-- Body -->
-        <form id="deactivateSubscriptionForm" class="p-6 space-y-6">
-          <div class="space-y-4">
-            <p class="text-sm text-gray-600 leading-relaxed">You are about to deactivate the subscription for <span
-                id="deactivateContractorName" class="font-semibold text-gray-800">Selected Contractor</span>. This will
-              immediately revoke active benefits.</p>
-            <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-              <i class="fi fi-rr-info text-red-500 text-xl mt-0.5"></i>
-              <div class="text-xs md:text-sm text-red-700">Deactivation cannot be undone automatically. A manual renewal
-                or new purchase will be required to restore benefits.</div>
+        <form id="deactivateSubscriptionForm">
+          <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+            <div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2.5">
+              <div class="flex items-start gap-2.5">
+                <div class="w-7 h-7 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <i class="fi fi-rr-shield-exclamation text-white text-xs"></i>
+                </div>
+                <div>
+                  <h3 class="text-xs font-semibold text-gray-800 mb-0.5">Confirm Deactivation</h3>
+                  <p class="text-xs text-gray-700 leading-relaxed">You are about to deactivate the subscription for <span
+                      id="deactivateContractorName" class="font-bold text-red-600">Selected Contractor</span>. This will immediately revoke active benefits.</p>
+                </div>
+              </div>
             </div>
-            <div class="space-y-2">
-              <label for="deactivateReason" class="text-sm font-semibold text-gray-800 flex items-center gap-1">Reason
-                <span class="text-red-500">*</span></label>
-              <textarea id="deactivateReason"
-                class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition text-sm resize-none min-h-[110px]"
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-2.5 rounded-r-lg">
+              <div class="flex gap-2">
+                <i class="fi fi-rr-triangle-warning text-yellow-600 text-sm flex-shrink-0 mt-0.5"></i>
+                <p class="text-xs text-gray-700">Deactivation cannot be undone automatically. A manual renewal or new purchase will be required to restore benefits.</p>
+              </div>
+            </div>
+            <div>
+              <label for="deactivateReason" class="block text-xs font-semibold text-gray-800 mb-1.5 flex items-center gap-1.5">
+                <i class="fi fi-rr-edit text-red-500"></i>
+                Reason <span class="text-red-500">*</span>
+              </label>
+              <textarea id="deactivateReason" rows="3"
+                class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-300 focus:border-red-300 transition text-xs resize-none"
                 placeholder="Provide a clear reason (e.g. policy violation, duplicate account)..."></textarea>
-              <p id="deactivateReasonError" class="text-xs text-red-600 hidden">A reason is required.</p>
+              <p id="deactivateReasonError" class="text-xs text-red-600 hidden mt-1">A reason is required.</p>
             </div>
           </div>
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-3 pt-2">
+          <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
             <button type="button" id="cancelDeactivateSubscriptionBtn"
-              class="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+              class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
             <button type="submit" id="confirmDeactivateSubscriptionBtn"
-              class="px-8 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition flex items-center gap-2"><i
-                class="fi fi-rr-ban"></i>Deactivate</button>
+              class="px-4 py-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+              <i class="fi fi-rr-ban text-xs"></i>Deactivate
+            </button>
           </div>
         </form>
       </div>
     </div>
     <!-- Reactivate Subscription Modal -->
     <div id="reactivateSubscriptionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
       <div
-        class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all duration-300 scale-95 opacity-0 reactivate-subscription-panel">
+        class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 reactivate-subscription-panel">
         <!-- Header -->
-        <div
-          class="px-6 pt-5 pb-4 border-b border-gray-200 bg-gradient-to-r from-emerald-600 to-green-600 flex items-center justify-between">
-          <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2"><i
-              class="fi fi-rr-undo"></i><span>Reactivate Subscription</span></h2>
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 to-green-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <i class="fi fi-rr-undo text-white text-sm"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Reactivate Subscription</h2>
+          </div>
           <button id="closeReactivateSubscriptionBtn"
-            class="text-white hover:text-gray-200 transition p-2 rounded-lg hover:bg-white/10"><i
-              class="fi fi-rr-cross text-xl"></i></button>
+            class="text-white hover:text-emerald-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            <i class="fi fi-rr-cross text-lg"></i>
+          </button>
         </div>
         <!-- Body -->
-        <div class="p-6 space-y-6">
-          <div class="space-y-4">
-            <p class="text-sm text-gray-600 leading-relaxed">You are about to reactivate the subscription for <span
-                id="reactivateContractorName" class="font-semibold text-gray-800">Selected Contractor</span>. This will
-              immediately restore all active benefits associated with their plan.</p>
-            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
-              <i class="fi fi-rr-info text-emerald-500 text-xl mt-0.5"></i>
-              <div class="text-xs md:text-sm text-emerald-700">Reactivating will set the status back to 'Approved' and
-                clear any previous deactivation records. The user will be notified of the restoration.</div>
+        <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2.5">
+            <div class="flex items-start gap-2.5">
+              <div class="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fi fi-rr-check text-white text-xs"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-semibold text-gray-800 mb-0.5">Confirm Reactivation</h3>
+                <p class="text-xs text-gray-700 leading-relaxed">You are about to reactivate the subscription for <span
+                    id="reactivateContractorName" class="font-bold text-emerald-600">Selected Contractor</span>. This will immediately restore all active benefits.</p>
+              </div>
             </div>
           </div>
-          <!-- Footer -->
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <button type="button" id="cancelReactivateSubscriptionBtn"
-              class="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
-            <button type="button" id="confirmReactivateSubscriptionBtn"
-              class="px-8 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-md hover:shadow-lg transition flex items-center gap-2"><i
-                class="fi fi-rr-undo text-sm"></i>Reactivate Now</button>
+          <div class="bg-yellow-50 border-l-4 border-yellow-500 p-2.5 rounded-r-lg">
+            <div class="flex gap-2">
+              <i class="fi fi-rr-triangle-warning text-yellow-600 text-sm flex-shrink-0 mt-0.5"></i>
+              <p class="text-xs text-gray-700">Reactivating will set the status back to 'Approved' and clear any previous deactivation records. The user will be notified.</p>
+            </div>
           </div>
+        </div>
+        <!-- Footer -->
+        <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
+          <button type="button" id="cancelReactivateSubscriptionBtn"
+            class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Cancel</button>
+          <button type="button" id="confirmReactivateSubscriptionBtn"
+            class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition active:scale-95 flex items-center gap-1.5 text-xs">
+            <i class="fi fi-rr-undo text-xs"></i>Reactivate Now
+          </button>
         </div>
       </div>
     </div>
 
     <!-- View Subscription Details Modal -->
     <div id="viewSubscriptionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
       <div
-        class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden transform transition-all duration-300 scale-95 opacity-0 view-subscription-panel">
+        class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 view-subscription-panel">
         <!-- Header -->
-        <div
-          class="px-6 pt-5 pb-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-between">
-          <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2"><i
-              class="fi fi-rr-eye"></i><span>Subscription Details</span></h2>
+        <div class="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <i class="fi fi-rr-eye text-white text-sm"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Subscription Details</h2>
+          </div>
           <button id="closeViewSubscriptionBtn"
-            class="text-white hover:text-gray-200 transition p-2 rounded-lg hover:bg-white/10"><i
-              class="fi fi-rr-cross text-xl"></i></button>
+            class="text-white hover:text-blue-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+            <i class="fi fi-rr-cross text-lg"></i>
+          </button>
         </div>
         <!-- Body -->
-        <div class="p-6 space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- ID -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Payment ID</label>
-              <p id="viewSubId"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Payment ID</label>
+              <p id="viewSubId" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Name -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Name</label>
-              <p id="viewSubName"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Name</label>
+              <p id="viewSubName" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Project (shown only for boost/owner) -->
             <div class="space-y-1 hidden" id="viewSubProjectContainer">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Project</label>
-              <p id="viewSubProject"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Project</label>
+              <p id="viewSubProject" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Plan -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Plan</label>
-              <p id="viewSubPlan"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Plan</label>
+              <p id="viewSubPlan" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Plan Key -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Plan Key</label>
-              <p id="viewSubPlanKey"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Plan Key</label>
+              <p id="viewSubPlanKey" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Type -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Type</label>
-              <p id="viewSubType"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Type</label>
+              <p id="viewSubType" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Billing Cycle -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Billing Cycle</label>
-              <p id="viewSubBilling"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Billing Cycle</label>
+              <p id="viewSubBilling" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Amount -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Amount Paid</label>
-              <p id="viewSubAmount"
-                class="text-sm font-bold text-emerald-700 bg-emerald-50 px-4 py-2.5 rounded-lg border border-emerald-200">
-                —</p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Amount Paid</label>
+              <p id="viewSubAmount" class="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">—</p>
             </div>
             <!-- Transaction Number -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Transaction Number</label>
-              <p id="viewSubTxn"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200 truncate"
-                title="">—</p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Transaction Number</label>
+              <p id="viewSubTxn" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 truncate" title="">—</p>
             </div>
             <!-- Transaction Date -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Transaction Date</label>
-              <p id="viewSubDate"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Transaction Date</label>
+              <p id="viewSubDate" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
             <!-- Expiry Date -->
             <div class="space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Expiry Date</label>
-              <p id="viewSubExpiry"
-                class="text-sm font-bold text-red-600 bg-red-50 px-4 py-2.5 rounded-lg border border-red-200">—</p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Expiry Date</label>
+              <p id="viewSubExpiry" class="text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">—</p>
             </div>
             <!-- Duration (shown only for one-time) -->
             <div class="space-y-1 hidden" id="viewSubDurationContainer">
-              <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Duration (Days)</label>
-              <p id="viewSubDuration"
-                class="text-sm font-semibold text-gray-800 bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">—
-              </p>
+              <label class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Duration (Days)</label>
+              <p id="viewSubDuration" class="text-xs font-semibold text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">—</p>
             </div>
           </div>
 
-          <!-- Status Badge -->
-          <div id="viewSubStatusBanner" class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <i id="viewSubStatusIcon" class="fi fi-rr-calendar-clock text-red-500 text-xl mt-0.5"></i>
-            <div id="viewSubStatusText" class="text-xs md:text-sm text-red-700">This subscription has
+          <!-- Status Banner -->
+          <div id="viewSubStatusBanner" class="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2.5">
+            <i id="viewSubStatusIcon" class="fi fi-rr-calendar-clock text-red-500 text-base mt-0.5"></i>
+            <div id="viewSubStatusText" class="text-xs text-red-700">This subscription has
               <strong>expired</strong>. The user would need to purchase a new subscription or boost to restore benefits.
             </div>
           </div>
+        </div>
 
-          <!-- Footer -->
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <button type="button" id="cancelViewSubscriptionBtn"
-              class="px-8 py-2.5 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Close</button>
-          </div>
+        <!-- Footer -->
+        <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
+          <button type="button" id="cancelViewSubscriptionBtn"
+            class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-semibold active:scale-95 text-xs">Close</button>
         </div>
       </div>
     </div>

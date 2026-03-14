@@ -207,9 +207,12 @@ User card reads from session('user').
 
   <div class="p-2.5 border-t border-slate-200">
     <div class="user-card flex items-center gap-2 p-2 rounded-lg" style="background: linear-gradient(135deg, #F9A600 0%, #C97700 100%);">
-      <div 
-        class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style="background-color: #ffffff; color: #E48F00;">
-        {{ $initials }}
+      <div class="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden" style="background-color: #ffffff;">
+        @if($profilePic)
+          <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $initials }}" class="w-full h-full object-cover">
+        @else
+          <div class="w-full h-full flex items-center justify-center text-xs font-bold" style="color: #E48F00;">{{ $initials }}</div>
+        @endif
       </div>
       <div class="flex-1 min-w-0">
         <div class="font-semibold text-xs truncate" style="color: #ffffff;">{{ $fullName }}</div>
@@ -229,8 +232,12 @@ User card reads from session('user').
     {{-- Header --}}
     <div class="px-3 py-2 border-b" style="background: linear-gradient(135deg, #F9A600 0%, #C97700 100%); border-color: rgba(228, 143, 0, 0.24);">
       <div class="flex items-center gap-2">
-        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0" style="background-color: rgba(255,255,255,0.25); color: #ffffff;">
-          {{ $initials }}
+        <div class="w-7 h-7 rounded-lg flex-shrink-0 overflow-hidden" style="background-color: rgba(255,255,255,0.25);">
+          @if($profilePic)
+            <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $initials }}" class="w-full h-full object-cover">
+          @else
+            <div class="w-full h-full flex items-center justify-center text-xs font-bold" style="color: #ffffff;">{{ $initials }}</div>
+          @endif
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-xs font-semibold truncate" style="color: #ffffff;">{{ $fullName }}</div>

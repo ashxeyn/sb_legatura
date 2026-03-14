@@ -4,12 +4,8 @@
 	transition: all 0.3s ease;
 }
 
-.subscription-tab:hover {
-	background-color: rgba(249, 115, 22, 0.05);
-}
-
 .subscription-tab.active {
-	background-color: rgba(249, 115, 22, 0.05);
+	background-color: transparent;
 }
 
 /* Table row animations */

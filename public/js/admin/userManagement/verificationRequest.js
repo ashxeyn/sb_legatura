@@ -7,26 +7,17 @@
 
     function activate(tab) {
         if (tab === "contractors") {
-            tabContractors?.classList.add(
-                "text-orange-600",
-                "border-orange-500"
-            );
-            tabContractors?.classList.remove(
-                "text-gray-600",
-                "border-transparent"
-            );
-            tabOwners?.classList.remove("text-orange-600", "border-orange-500");
-            tabOwners?.classList.add("text-gray-600");
+            tabContractors?.classList.add("text-gray-700", "border-orange-500");
+            tabContractors?.classList.remove("text-gray-600", "border-transparent");
+            tabOwners?.classList.remove("text-gray-700", "border-orange-500");
+            tabOwners?.classList.add("text-gray-600", "border-transparent");
             contractorsWrap?.classList.remove("hidden");
             ownersWrap?.classList.add("hidden");
         } else {
-            tabOwners?.classList.add("text-orange-600", "border-orange-500");
+            tabOwners?.classList.add("text-gray-700", "border-orange-500");
             tabOwners?.classList.remove("text-gray-600", "border-transparent");
-            tabContractors?.classList.remove(
-                "text-orange-600",
-                "border-orange-500"
-            );
-            tabContractors?.classList.add("text-gray-600");
+            tabContractors?.classList.remove("text-gray-700", "border-orange-500");
+            tabContractors?.classList.add("text-gray-600", "border-transparent");
             ownersWrap?.classList.remove("hidden");
             contractorsWrap?.classList.add("hidden");
         }

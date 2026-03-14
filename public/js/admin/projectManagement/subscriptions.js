@@ -20,12 +20,12 @@ document.addEventListener('DOMContentLoaded', function () {
       tab.btn.addEventListener('click', function () {
         tabs.forEach(t => {
           if (t.btn) {
-            t.btn.classList.remove('active', 'border-orange-500', 'text-orange-600');
+            t.btn.classList.remove('active', 'border-orange-500', 'text-gray-700');
             t.btn.classList.add('border-transparent', 'text-gray-600');
           }
           if (t.table) t.table.classList.add('hidden');
         });
-        tab.btn.classList.add('active', 'border-orange-500', 'text-orange-600');
+        tab.btn.classList.add('active', 'border-orange-500', 'text-gray-700');
         tab.btn.classList.remove('border-transparent', 'text-gray-600');
         tab.table.classList.remove('hidden');
       });
@@ -33,73 +33,9 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // ===== Filter Logic =====
-  const filterSearch = document.getElementById('filterSearch');
+  // Search and plan type filtering are handled server-side via filters.js
   const filterPlanType = document.getElementById('filterPlanType');
-  const resetFilterBtn = document.getElementById('resetFilterBtn');
-
-  function applyFilters() {
-    const searchQuery = filterSearch?.value.toLowerCase().trim() || '';
-    const planFilter = filterPlanType?.value.toLowerCase().trim() || '';
-
-    [activeTable, expiredTable, cancelledTable].forEach(table => {
-      if (!table) return;
-      const tbody = table.querySelector('tbody');
-      if (!tbody) return;
-
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      let visibleCount = 0;
-
-      rows.forEach(row => {
-        // Skip empty state rows
-        if (row.querySelector('td[colspan]')) {
-          row.classList.add('hidden');
-          return;
-        }
-
-        const id = row.cells[0]?.textContent.toLowerCase().trim() || '';
-        const name = row.cells[1]?.textContent.toLowerCase().trim() || '';
-        
-        // Get plan_key from the view button's data attribute
-        const viewBtn = row.querySelector('.view-subscription-btn');
-        const planKey = viewBtn?.dataset['planKey']?.toLowerCase().trim() || '';
-
-        const matchesSearch = id.includes(searchQuery) || name.includes(searchQuery);
-        const matchesPlan = planFilter === '' || planKey === planFilter;
-
-        if (matchesSearch && matchesPlan) {
-          row.classList.remove('hidden');
-          visibleCount++;
-        } else {
-          row.classList.add('hidden');
-        }
-      });
-
-      // Show/Hide empty state row if exists
-      const emptyRow = tbody.querySelector('td[colspan]')?.parentElement;
-      if (emptyRow && visibleCount === 0) {
-        emptyRow.classList.remove('hidden');
-        const emptyText = emptyRow.querySelector('p, span:not(.text-xs)') || emptyRow.querySelector('td');
-        if (emptyText && (searchQuery || planFilter)) {
-          // If we are filtering, change the text to show no results found
-          if (!emptyRow.dataset.originalText) emptyRow.dataset.originalText = emptyText.textContent;
-          emptyText.textContent = 'No subscriptions match your filters';
-        } else if (emptyRow.dataset.originalText) {
-          emptyText.textContent = emptyRow.dataset.originalText;
-        }
-      }
-    });
-  }
-
-  if (filterSearch) filterSearch.addEventListener('input', applyFilters);
-  if (filterPlanType) filterPlanType.addEventListener('change', applyFilters);
-  if (resetFilterBtn) {
-    resetFilterBtn.addEventListener('click', () => {
-      if (filterSearch) filterSearch.value = '';
-      if (filterPlanType) filterPlanType.value = '';
-      applyFilters();
-      if (typeof showToast === 'function') showToast('Filters reset', 'info');
-    });
-  }
+  if (filterPlanType) filterPlanType.addEventListener('change', () => {}); // handled by filters.js
 
   // View buttons removed from table (cleanup listeners)
 
@@ -246,7 +182,6 @@ document.addEventListener('DOMContentLoaded', function () {
         deactivateReasonError.classList.remove('hidden');
         deactivateReason.classList.add('border-red-500', 'ring-2', 'ring-red-300');
         deactivateReason.focus();
-        showToast('Reason required', 'error');
         return;
       }
 
@@ -504,7 +439,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (benefitsContainer.children.length > 1) {
           newBenefit.remove();
         } else {
-          showToast('At least one benefit is required', 'error');
+          const err = document.getElementById('benefitsError');
+          if (err) err.classList.remove('hidden');
         }
       });
     });
@@ -518,7 +454,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (benefitsContainer.children.length > 1) {
           removeBtn.closest('.benefit-item').remove();
         } else {
-          showToast('At least one benefit is required', 'error');
+          const err = document.getElementById('benefitsError');
+          if (err) err.classList.remove('hidden');
         }
       }
     });
@@ -563,7 +500,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       if (!isValid) {
-        showToast('Please fill in all required fields', 'error');
         return;
       }
 
@@ -720,7 +656,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (editBenefitsContainer.children.length > 1) {
         row.remove();
       } else {
-        showToast('At least one benefit is required', 'error');
+        const err = document.getElementById('editBenefitsError');
+        if (err) err.classList.remove('hidden');
       }
     });
     return row;
@@ -817,7 +754,8 @@ document.addEventListener('DOMContentLoaded', function () {
       });
 
       if (benefits.length === 0) {
-        showToast('At least one benefit is required', 'error');
+        const err = document.getElementById('editBenefitsError');
+        if (err) err.classList.remove('hidden');
         valid = false;
       }
 
@@ -872,18 +810,25 @@ document.addEventListener('DOMContentLoaded', function () {
           const card = document.querySelector(`.subscription-card[data-id="${currentEditingPlanId}"]`);
           if (card) {
             // Update text content
-            card.querySelector('h3').textContent = payload.edit_subscription_name;
-            card.querySelector('.text-5xl').textContent = `₱ ${parseFloat(payload.edit_subscription_price).toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
-            card.querySelector('p.text-gray-500').textContent = `${payload.edit_billing_cycle.charAt(0).toUpperCase() + payload.edit_billing_cycle.slice(1)} Charge`;
+            const nameEl = card.querySelector('h3');
+            if (nameEl) nameEl.textContent = payload.edit_subscription_name;
+
+            const priceEl = card.querySelector('.text-2xl');
+            if (priceEl) priceEl.textContent = `₱${parseFloat(payload.edit_subscription_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const cycleEl = card.querySelector('p.text-gray-500');
+            if (cycleEl) cycleEl.textContent = `${payload.edit_billing_cycle.charAt(0).toUpperCase() + payload.edit_billing_cycle.slice(1)} charge`;
 
             // Update benefits list
             const benefitList = card.querySelector('ul');
-            benefitList.innerHTML = benefits.map(b => `
-                  <li class="flex items-start gap-2 text-sm text-gray-600">
-                      <i class="fi fi-ss-check-circle text-orange-500 text-base mt-0.5"></i>
-                      <span>${b}</span>
-                  </li>
+            if (benefitList) {
+              benefitList.innerHTML = benefits.map(b => `
+                <li class="flex items-start gap-1.5 text-[11px] text-gray-600">
+                  <i class="fi fi-ss-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
+                  <span>${b}</span>
+                </li>
               `).join('');
+            }
 
             // Update data attributes so future edits have fresh data
             card.dataset.name = payload.edit_subscription_name;
@@ -1044,6 +989,8 @@ document.addEventListener('DOMContentLoaded', function () {
       rowEditStatusBadge.className = 'px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 border-2 border-gray-200 bg-gray-50 text-gray-700';
       rowEditStatusBadge.textContent = '';
       rowEditingTarget = null;
+      const datesErr = document.getElementById('rowEditDatesError');
+      if (datesErr) datesErr.classList.add('hidden');
     }, 200);
   }
   if (rowEditCloseBtn) rowEditCloseBtn.addEventListener('click', closeRowEditModal);
@@ -1093,8 +1040,11 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
       if (!rowEditingTarget) { closeRowEditModal(); return; }
       // Basic validation
+      const datesErr = document.getElementById('rowEditDatesError');
+      if (datesErr) datesErr.classList.add('hidden');
       if (!rowEditStartDate.value || !rowEditExpiryDate.value) {
-        showToast('Start and Expiry dates required', 'error');
+        const err = document.getElementById('rowEditDatesError');
+        if (err) err.classList.remove('hidden');
         return;
       }
       // Update dataset + table cells
@@ -1153,40 +1103,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Toast Notification Function
 function showToast(message, type = 'info') {
-  // Remove existing toast
-  const existingToast = document.querySelector('.toast-notification');
-  if (existingToast) {
-    existingToast.remove();
-  }
+  const existing = document.querySelector('.toast-notification');
+  if (existing) existing.remove();
 
-  // Create toast
   const toast = document.createElement('div');
-  toast.className = 'toast-notification fixed bottom-8 right-8 px-6 py-4 rounded-lg shadow-2xl text-white font-semibold z-50 transform transition-all duration-300 translate-y-0 opacity-100';
-
-  // Set color based on type
-  if (type === 'success') {
-    toast.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-  } else if (type === 'error') {
-    toast.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-  } else {
-    toast.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
-  }
-
-  toast.textContent = message;
+  toast.className = `toast-notification fixed top-20 right-4 z-[9999] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
+    type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+  } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
+  toast.innerHTML = `
+    <i class="fi fi-rr-${type === 'success' ? 'check-circle' : type === 'error' ? 'cross-circle' : 'info'} text-base"></i>
+    <span>${message}</span>
+  `;
   document.body.appendChild(toast);
 
-  // Animate in
+  setTimeout(() => { toast.style.transform = 'translateX(0)'; }, 10);
   setTimeout(() => {
-    toast.style.transform = 'translateY(-10px)';
-  }, 100);
-
-  // Remove after 3 seconds
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(20px)';
-    setTimeout(() => {
-      toast.remove();
-    }, 300);
+    toast.style.transform = 'translateX(150%)';
+    setTimeout(() => toast.remove(), 500);
   }, 3000);
 }
 

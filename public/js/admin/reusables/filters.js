@@ -39,6 +39,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const statusFilter = document.getElementById("statusFilter");
     const resetFiltersBtn = document.getElementById("resetFilters");
 
+    // Plan type filter (subscriptions page)
+    const filterPlanType = document.getElementById("filterPlanType");
+
     // Projects filters
     const verificationFilter = document.getElementById("verificationFilter");
     const progressFilter = document.getElementById("progressFilter");
@@ -117,6 +120,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 projectsWrap.innerHTML = data.html;
             }
 
+            // Subscriptions tables
+            const activeWrap = document.getElementById('activeSubscriptionsWrap');
+            const expiredWrap = document.getElementById('expiredSubscriptionsWrap');
+            const cancelledWrap = document.getElementById('cancelledSubscriptionsWrap');
+            if (activeWrap && data.active_html) activeWrap.innerHTML = data.active_html;
+            if (expiredWrap && data.expired_html) expiredWrap.innerHTML = data.expired_html;
+            if (cancelledWrap && data.cancelled_html) cancelledWrap.innerHTML = data.cancelled_html;
+
             // Update URL without reload
             window.history.pushState({}, "", url);
 
@@ -175,6 +186,13 @@ document.addEventListener("DOMContentLoaded", function () {
             params.delete("contractor_id");
         }
 
+        // Plan type filter (subscriptions page)
+        if (filterPlanType && filterPlanType.value) {
+            params.set("plan_type", filterPlanType.value);
+        } else {
+            params.delete("plan_type");
+        }
+
         // New params
         if (statusFilter && statusFilter.value) {
             params.set("status", statusFilter.value);
@@ -218,7 +236,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function attachPaginationListeners() {
         // Target pagination links inside the wrappers
         const paginationLinks = document.querySelectorAll(
-            "#contractorsTableWrap .pagination a, #ownersTableWrap .pagination a, #ownersTableWrap .posting-page-link, #projectsTableWrap .pagination a"
+            "#contractorsTableWrap .pagination a, #ownersTableWrap .pagination a, #ownersTableWrap .posting-page-link, #projectsTableWrap .pagination a, #activeSubscriptionsWrap .pagination a, #expiredSubscriptionsWrap .pagination a, #cancelledSubscriptionsWrap .pagination a"
         );
         paginationLinks.forEach((link) => {
             link.addEventListener("click", function (e) {
@@ -243,6 +261,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (contractorFilter && urlParams.has("contractor_id")) {
         contractorFilter.value = urlParams.get("contractor_id");
     }
+    if (filterPlanType && urlParams.has("plan_type")) {
+        filterPlanType.value = urlParams.get("plan_type");
+    }
     if (statusFilter && urlParams.has("status")) {
         statusFilter.value = urlParams.get("status");
     }
@@ -262,6 +283,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (contractorFilter)
         contractorFilter.addEventListener("change", handleFilterChange);
 
+    if (filterPlanType)
+        filterPlanType.addEventListener("change", handleFilterChange);
+
     if (statusFilter)
         statusFilter.addEventListener("change", handleFilterChange);
 
@@ -279,6 +303,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (contractorFilter) contractorFilter.value = "";
             if (verificationFilter) verificationFilter.value = "";
             if (progressFilter) progressFilter.value = "";
+            if (filterPlanType) filterPlanType.value = "";
             handleFilterChange();
         });
     }

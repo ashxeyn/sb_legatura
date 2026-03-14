@@ -112,9 +112,9 @@
           <div class="border-b border-gray-200">
             <div class="flex px-6">
               <button id="tabContractors"
-                class="verification-tab active px-4 py-3 text-sm font-semibold border-b-2 border-orange-500 text-orange-600 transition-all">Contractors</button>
+                class="verification-tab active px-4 py-3 text-sm font-semibold border-b-2 border-orange-500 text-gray-700 transition-all">Contractors</button>
               <button id="tabOwners"
-                class="verification-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-all">Property
+                class="verification-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:border-orange-300 transition-all">Property
                 Owners</button>
             </div>
           </div>

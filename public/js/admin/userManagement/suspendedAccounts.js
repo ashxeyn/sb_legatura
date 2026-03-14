@@ -9,7 +9,7 @@
 	function activate(which){
 		// Remove active classes from all tabs
 		[cTab, oTab, sTab].forEach(tab => {
-			tab?.classList.remove('text-orange-600','border-orange-500');
+			tab?.classList.remove('text-gray-700','border-orange-500');
 			tab?.classList.add('text-gray-600','border-transparent');
 		});
 		
@@ -20,15 +20,15 @@
 		
 		// Activate selected tab
 		if(which==='contractors'){
-			cTab?.classList.add('text-orange-600','border-orange-500');
+			cTab?.classList.add('text-gray-700','border-orange-500');
 			cTab?.classList.remove('text-gray-600','border-transparent');
 			cWrap?.classList.remove('hidden');
 		} else if(which==='owners') {
-			oTab?.classList.add('text-orange-600','border-orange-500');
+			oTab?.classList.add('text-gray-700','border-orange-500');
 			oTab?.classList.remove('text-gray-600','border-transparent');
 			oWrap?.classList.remove('hidden');
 		} else if(which==='staff') {
-			sTab?.classList.add('text-orange-600','border-orange-500');
+			sTab?.classList.add('text-gray-700','border-orange-500');
 			sTab?.classList.remove('text-gray-600','border-transparent');
 			sWrap?.classList.remove('hidden');
 		}

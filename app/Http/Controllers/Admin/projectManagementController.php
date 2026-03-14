@@ -699,14 +699,37 @@ class projectManagementController extends Controller
 
     public function subscriptions(Request $request)
     {
-        $plans                 = subscriptionClass::getPlans();
-        $stats                 = subscriptionClass::getStats();
-        $activeSubscriptions   = subscriptionClass::getSubscriptions('active');
-        $expiredSubscriptions  = subscriptionClass::getSubscriptions('expired');
-        $cancelledSubscriptions = subscriptionClass::getSubscriptions('cancelled');
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+        $planType = $request->input('plan_type');
+        $search   = $request->input('search');
+
+        $plans                  = subscriptionClass::getPlans();
+        $stats                  = subscriptionClass::getStats();
+        $activeSubscriptions    = subscriptionClass::getSubscriptions('active', $dateFrom, $dateTo, $planType, $search);
+        $expiredSubscriptions   = subscriptionClass::getSubscriptions('expired', $dateFrom, $dateTo, $planType, $search);
+        $cancelledSubscriptions = subscriptionClass::getSubscriptions('cancelled', $dateFrom, $dateTo, $planType, $search);
+
+        $allPlanKeys = \Illuminate\Support\Facades\DB::table('platform_payments')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->whereNotNull('subscription_plans.plan_key')
+            ->distinct()
+            ->orderBy('subscription_plans.plan_key')
+            ->pluck('subscription_plans.plan_key');
+
+        if ($request->ajax()) {
+            return response()->json([
+                'active_html'    => view('admin.projectManagement.partials.activeSubscriptionsWrap',
+                    compact('activeSubscriptions'))->render(),
+                'expired_html'   => view('admin.projectManagement.partials.expiredSubscriptionsWrap',
+                    compact('expiredSubscriptions'))->render(),
+                'cancelled_html' => view('admin.projectManagement.partials.cancelledSubscriptionsWrap',
+                    compact('cancelledSubscriptions'))->render(),
+            ]);
+        }
 
         return view('admin.projectManagement.subscriptions', compact(
-            'plans', 'stats', 'activeSubscriptions', 'expiredSubscriptions', 'cancelledSubscriptions'
+            'plans', 'stats', 'activeSubscriptions', 'expiredSubscriptions', 'cancelledSubscriptions', 'allPlanKeys'
         ));
     }
 
