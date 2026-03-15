@@ -14,6 +14,51 @@ import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
 import { computeYears, formatDate, formatDateForDisplay, formatExperience } from '../../utils/roleFormUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const LEGATURA_TOS = `LEGATURA TERMS OF SERVICE
+Last Updated: March 2026
+
+1. Acceptance of Terms and Platform Definition
+
+By accessing or using the Legatura platform, you agree to be bound by these Terms of Service. Legatura operates strictly as an information and matching intermediary and a digital workflow manager. Legatura is an Information Technology (IT) software provider; it is not a construction firm, an engineering firm, a bank, or an e-wallet.
+
+2. Limitation of Liability for Construction and Post-Project Defects
+
+2.1. No Construction Guarantee: Legatura facilitates the connection between Property Owners and Contractors. We do not oversee physical construction, supply materials, or manage on-site labor.
+
+2.2. Article 1723 Compliance: In strict accordance with Article 1723 of the Civil Code of the Philippines, the fifteen-year (15-year) legal liability for the collapse of a building or structure due to defects in construction, the use of inferior materials, or violations of the terms of the contract rests entirely and exclusively upon the licensed Engineer, Architect, or Contractor who executed the project.
+
+2.3. Indemnification: The Property Owner agrees that Legatura, its administrators, and its developers shall bear zero legal or financial liability for any structural failure, property damage, personal injury, or subsequent loss resulting from the physical construction activities of the hired Contractor.
+
+3. Verification and Account Accountability
+
+3.1. Document Authenticity: Users are required to submit valid documentation, including but not limited to, Philippine Contractors Accreditation Board (PCAB) licenses, DTI/SEC registrations, Local Government Business Permits, and Valid Government IDs.
+
+3.2. Platform Disclaimer: While Legatura's administration cross-references these documents against respective national and local government portals, the platform does not guarantee the real-world operational competence of the Contractor.
+
+4. Financial Transactions and Tax Liabilities
+
+4.1. Non-Financial Institution: Legatura acts as a milestone ledger. The platform does not hold, escrow, or transmit fiat currency. All financial transfers occur externally via the users' respective banking institutions.
+
+4.2. Tax Obligations: Users are solely responsible for compliance with the National Internal Revenue Code (R.A. 8424). Legatura is not a Withholding Agent. The issuance of Official Receipts (OR) and the deduction of applicable withholding taxes and Value-Added Tax (VAT) remain the direct responsibility of the transacting Property Owner and Contractor.
+
+5. Dispute Resolution and Arbitration
+
+5.1. System Audit Trails: In the event of a dispute, Legatura will provide an immutable export of the user activity logs and milestone items to serve as electronic evidence under the Electronic Commerce Act of 2000 (R.A. 8792).
+
+5.2. Escalation: If a project is placed on "Halt" and parties cannot reach a settlement through the platform, the deadlock must be escalated to the Construction Industry Arbitration Commission (CIAC) pursuant to Executive Order No. 1008. Legatura administrators will not act as technical judges or arbitrators for structural disputes.
+
+6. Intellectual Property (Blueprints and Designs)
+
+As per the Intellectual Property Code of the Philippines (R.A. 8293), all architectural designs, blueprints, and proprietary documents uploaded to the platform's project files module remain the exclusive intellectual property of the original creator.
+
+7. Artificial Intelligence (AI) Decision Support Disclaimer
+
+The Legatura platform utilizes an AI-driven delay prediction module. This feature is architected strictly as a Decision Support System (DSS) utilizing historical analytics and weather patterns. It generates a probability, not a deterministic guarantee. Legatura assumes no legal liability for project delays or financial losses incurred if a user relies solely on the system's delay probability metrics.
+
+8. Data Retention and Privacy
+
+In compliance with the Data Privacy Act of 2012 (R.A. 10173), user data is processed to establish contractual necessities. In the event of account deletion, Legatura reserves the right to retain specific contractual audit trails, system logs, and verified IDs for a legally mandated period to protect users against post-project liabilities and to establish legal claims.`;
+
 interface RoleAddScreenProps {
   targetRole: 'contractor' | 'owner';
   onBack: () => void;
@@ -128,6 +173,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   const [permitCityQuery, setPermitCityQuery] = useState('');
   const [agreedConfirm, setAgreedConfirm] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [hasReadTerms, setHasReadTerms] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -877,6 +925,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
       return;
     }
     if (formStep < 3) return submitStep();
+    if (!termsAgreed) { Alert.alert('Terms of Service', 'Please read and acknowledge the Terms of Service before submitting.'); return; }
     if (!agreedConfirm) { Alert.alert('Confirm', 'Please confirm the information is correct.'); return; }
     setShowSubmitConfirm(true);
   };
@@ -1284,8 +1333,38 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     </View>
                   </>
                 )}
+                {/* Terms of Service */}
+                <View style={styles.tosCard}>
+                  <View style={styles.tosCardHeader}>
+                    <Ionicons name="document-text-outline" size={18} color="#1E3A5F" />
+                    <Text style={styles.tosCardTitle}>Terms of Service</Text>
+                  </View>
+                  <View style={styles.tosDivider} />
+                  <Text style={styles.tosCardBody}>
+                    Before submitting your application, you must read and acknowledge the Legatura Terms of Service.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.tosReadButton, termsAgreed && styles.tosReadButtonAgreed]}
+                    onPress={() => setShowTermsModal(true)}
+                  >
+                    <Ionicons name={termsAgreed ? 'checkmark-circle-outline' : 'document-text-outline'} size={18} color="#FFFFFF" />
+                    <Text style={styles.tosReadButtonText}>
+                      {termsAgreed ? 'Terms Read & Acknowledged ✓' : 'Read Terms of Service'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.confirmRow}>
-                  <TouchableOpacity onPress={() => setAgreedConfirm(!agreedConfirm)} style={styles.confirmCheckbox}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!termsAgreed) {
+                        Alert.alert('Terms of Service', 'Please read and acknowledge the Terms of Service first.');
+                        return;
+                      }
+                      setAgreedConfirm(!agreedConfirm);
+                    }}
+                    style={styles.confirmCheckbox}
+                  >
                     <Ionicons name={agreedConfirm ? 'checkmark-circle' : 'checkmark-circle-outline'} size={24} color={agreedConfirm ? '#2ECC71' : '#666'} />
                   </TouchableOpacity>
                   <Text style={styles.confirmText}>I confirm the details above are accurate and agree to submit.</Text>
@@ -1837,6 +1916,50 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
         </View>
       </Modal>
 
+      {/* Terms of Service Modal */}
+      <Modal visible={showTermsModal} animationType="slide" transparent onRequestClose={() => setShowTermsModal(false)}>
+        <View style={styles.tosModalOverlay}>
+          <View style={styles.tosModalContainer}>
+            <View style={styles.tosModalHeader}>
+              <Text style={styles.tosModalTitle}>Terms of Service</Text>
+              <TouchableOpacity onPress={() => setShowTermsModal(false)} style={styles.tosModalClose}>
+                <Ionicons name="close" size={22} color="#1E3A5F" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={styles.tosModalScroll}
+              contentContainerStyle={styles.tosScrollContent}
+              showsVerticalScrollIndicator={true}
+              scrollIndicatorInsets={{ right: 1 }}
+              onScroll={({ nativeEvent }) => {
+                const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+                if (contentOffset.y + layoutMeasurement.height >= contentSize.height - 30) {
+                  setHasReadTerms(true);
+                }
+              }}
+              scrollEventThrottle={16}
+            >
+              <Text style={styles.tosText}>{LEGATURA_TOS}</Text>
+            </ScrollView>
+            {!hasReadTerms ? (
+              <View style={styles.tosScrollHint}>
+                <Ionicons name="arrow-down" size={14} color="#92400E" />
+                <Text style={styles.tosScrollHintText}>  Scroll down to read the full Terms of Service</Text>
+              </View>
+            ) : null}
+            <TouchableOpacity
+              style={[styles.tosAcknowledgeButton, !hasReadTerms && styles.tosAcknowledgeButtonDisabled]}
+              disabled={!hasReadTerms}
+              onPress={() => { setTermsAgreed(true); setShowTermsModal(false); }}
+            >
+              <Text style={styles.tosAcknowledgeButtonText}>
+                {hasReadTerms ? 'I Acknowledge & Agree' : 'Read to Continue'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Submit Confirmation */}
       <Modal visible={showSubmitConfirm} animationType="fade" transparent onRequestClose={() => setShowSubmitConfirm(false)}>
         <View style={styles.confirmModalOverlay}>
@@ -1914,6 +2037,27 @@ const styles = StyleSheet.create({
   confirmRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
   confirmCheckbox: { marginRight: 8 },
   confirmText: { flex: 1, fontSize: 13, color: '#333333' },
+  tosCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 4, padding: 14, marginTop: 20, marginBottom: 4, elevation: 1 },
+  tosCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  tosCardTitle: { fontSize: 13, fontWeight: '700', color: '#1E3A5F', marginLeft: 8, letterSpacing: 0.3 },
+  tosDivider: { height: 1, backgroundColor: '#E2E8F0', marginBottom: 10 },
+  tosCardBody: { fontSize: 13, color: '#64748B', marginBottom: 12, lineHeight: 19 },
+  tosReadButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1E3A5F', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12 },
+  tosReadButtonAgreed: { backgroundColor: '#10B981' },
+  tosReadButtonText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF', marginLeft: 8 },
+  tosModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  tosModalContainer: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '85%' },
+  tosModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  tosModalTitle: { fontSize: 16, fontWeight: '700', color: '#1E3A5F' },
+  tosModalClose: { padding: 4 },
+  tosModalScroll: { flex: 1 },
+  tosScrollContent: { padding: 16, paddingBottom: 32 },
+  tosText: { fontSize: 13, color: '#334155', lineHeight: 22 },
+  tosScrollHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, backgroundColor: '#FEF3C7' },
+  tosScrollHintText: { fontSize: 12, color: '#92400E', fontWeight: '500' },
+  tosAcknowledgeButton: { marginHorizontal: 16, marginTop: 12, marginBottom: 20, backgroundColor: '#EC7E00', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
+  tosAcknowledgeButtonDisabled: { backgroundColor: '#CBD5E1' },
+  tosAcknowledgeButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContainer: { backgroundColor: '#FFFFFF', borderRadius: 16, width: '90%', maxHeight: '80%', paddingVertical: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },

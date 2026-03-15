@@ -412,6 +412,26 @@ class AuthService
                         $rejectionReason = $rejectionReason ? $rejectionReason . " | Owner: " . ($reason ?: 'rejected') : "Owner: " . ($reason ?: 'rejected');
                     }
 
+                    // RESUBMISSION fallback for 'both' users: allow login if at least
+                    // one rejected role has a RESUBMISSION: reason.
+                    $resubmissionInfo = $this->buildResubmissionInfo($user);
+                    if (!empty($resubmissionInfo)) {
+                        \Log::info('Login allowed for resubmission (both user)', [
+                            'user_id' => $user->user_id,
+                            'resubmission_roles' => array_column($resubmissionInfo, 'role'),
+                        ]);
+                        return [
+                            'success' => true,
+                            'user' => $user,
+                            'userType' => 'user',
+                            'determinedRole' => null,
+                            'requires_resubmission' => true,
+                            'resubmission' => $resubmissionInfo,
+                            'contractor_status' => $cRejected ? 'rejected' : 'pending',
+                            'owner_status' => $oRejected ? 'rejected' : 'pending',
+                        ];
+                    }
+
                     return [
                         'success' => false,
                         'message' => $rejectionReason ? "Rejected: $rejectionReason" : "Your account is pending verification",
@@ -450,6 +470,25 @@ class AuthService
                         'owner_rejection_reason' => $owner && $owner->verification_status === 'rejected' ? $owner->rejection_reason : null
                     ];
                 }
+
+                // RESUBMISSION fallback: allow login when the rejection reason starts
+                // with "RESUBMISSION:" so the user can re-upload documents.
+                $resubmissionInfo = $this->buildResubmissionInfo($user);
+                if (!empty($resubmissionInfo)) {
+                    \Log::info('Login allowed for resubmission', [
+                        'user_id' => $user->user_id,
+                        'resubmission_roles' => array_column($resubmissionInfo, 'role'),
+                    ]);
+                    return [
+                        'success' => true,
+                        'user' => $user,
+                        'userType' => 'user',
+                        'determinedRole' => $determinedRole ?? null,
+                        'requires_resubmission' => true,
+                        'resubmission' => $resubmissionInfo,
+                    ];
+                }
+
                 return [
                     'success' => false,
                     'message' => $message
@@ -487,6 +526,50 @@ class AuthService
                 'username' => 'Invalid username'
             ]
         ];
+    }
+
+    /**
+     * Build resubmission info for a user whose rejection reason starts with RESUBMISSION:.
+     * Returns an array of resubmission entries (one per rejected role) or empty array.
+     */
+    private function buildResubmissionInfo($user): array
+    {
+        $info = [];
+
+        // Check property_owner
+        try {
+            $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            if ($owner && $owner->verification_status === 'rejected'
+                && str_starts_with((string) $owner->rejection_reason, 'RESUBMISSION:')) {
+                $info[] = [
+                    'role' => 'property_owner',
+                    'reason' => trim(substr($owner->rejection_reason, strlen('RESUBMISSION:'))),
+                    'fields' => ['valid_id_photo', 'valid_id_back_photo', 'police_clearance'],
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('buildResubmissionInfo owner lookup failed: ' . $e->getMessage());
+        }
+
+        // Check contractor
+        try {
+            $ownerId = DB::table('property_owners')->where('user_id', $user->user_id)->value('owner_id');
+            $contractor = $ownerId
+                ? DB::table('contractors')->where('owner_id', $ownerId)->first()
+                : null;
+            if ($contractor && $contractor->verification_status === 'rejected'
+                && str_starts_with((string) $contractor->rejection_reason, 'RESUBMISSION:')) {
+                $info[] = [
+                    'role' => 'contractor',
+                    'reason' => trim(substr($contractor->rejection_reason, strlen('RESUBMISSION:'))),
+                    'fields' => ['dti_sec_registration'],
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('buildResubmissionInfo contractor lookup failed: ' . $e->getMessage());
+        }
+
+        return $info;
     }
 
     public function attemptAdminLogin($username, $password)

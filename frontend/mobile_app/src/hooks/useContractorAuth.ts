@@ -103,10 +103,8 @@ export function useContractorAuth(): UseContractorAuthResult {
   // Check if user has full access (owner or representative)
   const hasFullAccess = isActive && role !== null && FULL_ACCESS_ROLES.includes(role);
   
-  // Member management - owner/representative only
-  const canManageMembers = hasFullAccess ||
-    (memberContext?.permissions?.can_manage_members ??
-      (isActive && role !== null && MEMBER_MANAGEMENT_ROLES.includes(role)));
+  // Member management - OWNER ONLY (Tier 1)
+  const canManageMembers = isActive && role === 'owner';
   
   const canViewMembers = isActive || (memberContext?.permissions?.can_view_members ?? false);
   

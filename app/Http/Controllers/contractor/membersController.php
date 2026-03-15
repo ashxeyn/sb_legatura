@@ -130,7 +130,10 @@ class membersController extends Controller
                 ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
                 ->join('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->where('contractor_staff.contractor_id', $contractor->contractor_id)
-                ->whereNull('contractor_staff.deletion_reason');
+                ->whereNull('contractor_staff.deletion_reason')
+                // The company owner is never a staff row — this guard prevents them
+                // from appearing even if stale data exists.
+                ->where('contractor_staff.owner_id', '!=', $contractor->owner_id);
 
             // Search by name/email/username
             if ($request->filled('search')) {
@@ -179,9 +182,27 @@ class membersController extends Controller
                 ->orderByRaw("FIELD(contractor_staff.company_role, 'representative', 'manager', 'engineer', 'architect', 'others')")
                 ->get();
 
+            // Fetch the contractor owner's user info so the frontend can display
+            // a read-only owner card separate from the staff list.
+            $ownerInfo = DB::table('property_owners')
+                ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                ->where('property_owners.owner_id', $contractor->owner_id)
+                ->select(
+                    'property_owners.owner_id',
+                    'users.user_id',
+                    'users.first_name',
+                    'users.middle_name',
+                    'users.last_name',
+                    'users.email',
+                    'users.username',
+                    'property_owners.profile_pic'
+                )
+                ->first();
+
             return response()->json([
                 'success' => true,
                 'data'    => $members,
+                'owner'   => $ownerInfo,
                 'filters' => [
                     'search' => $request->search ?? '',
                     'role'   => $request->role   ?? 'all',
@@ -253,6 +274,19 @@ class membersController extends Controller
 
             if ($existing) {
                 return response()->json(['success' => false, 'message' => 'This user is already a member of your company.'], 422);
+            }
+
+            // Enforce single representative — direct invite bypasses changeRepresentative
+            if ($validated['role'] === 'representative') {
+                $existingRep = DB::table('contractor_staff')
+                    ->where('contractor_id', $contractor->contractor_id)
+                    ->where('company_role', 'representative')
+                    ->whereNull('deletion_reason')
+                    ->exists();
+
+                if ($existingRep) {
+                    return response()->json(['success' => false, 'message' => 'A representative already exists. Use "Change Representative" to replace them.'], 422);
+                }
             }
 
             // Insert invitation record — is_active = 0 until the owner accepts
@@ -334,6 +368,20 @@ class membersController extends Controller
                 'company_role'   => $validated['role'],
                 'role_if_others' => $validated['role'] === 'others' ? ($validated['role_other'] ?? null) : null,
             ];
+
+            // Enforce single representative — role update bypasses changeRepresentative
+            if ($validated['role'] === 'representative' && $staffRecord->company_role !== 'representative') {
+                $existingRep = DB::table('contractor_staff')
+                    ->where('contractor_id', $contractor->contractor_id)
+                    ->where('company_role', 'representative')
+                    ->where('staff_id', '!=', $id)
+                    ->whereNull('deletion_reason')
+                    ->exists();
+
+                if ($existingRep) {
+                    return response()->json(['success' => false, 'message' => 'A representative already exists. Use "Change Representative" to replace them.'], 422);
+                }
+            }
 
             if ($staffRecord->company_role !== $validated['role']) {
                 $updates['company_role_before'] = $staffRecord->company_role;

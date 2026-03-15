@@ -64,6 +64,15 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
     return () => clearTimeout(timer);
   }, [username, email, password, confirmPassword]);
 
+  const passwordRules = {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[^A-Za-z0-9\s]/.test(password),
+  };
+  const allPasswordRulesMet = Object.values(passwordRules).every(Boolean);
+
   const handleNext = async () => {
     if (isLoading) return;
 
@@ -76,8 +85,8 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
     if (!email.trim()) errors.email = ['Email is required.'];
     if (!password.trim()) {
       errors.password = ['Password is required.'];
-    } else if (password.length < 8) {
-      errors.password = ['Password must be at least 8 characters.'];
+    } else if (!allPasswordRulesMet) {
+      errors.password = ['Password does not meet all requirements.'];
     }
     if (!confirmPassword.trim()) {
       errors.password_confirmation = ['Please confirm your password.'];
@@ -189,6 +198,31 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
               </TouchableOpacity>
             </View>
             {fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password[0]}</Text>}
+            {password.length > 0 && (
+              <View style={styles.rulesContainer}>
+                {[
+                  { key: 'minLength', label: 'At least 8 characters' },
+                  { key: 'hasUppercase', label: 'At least one uppercase letter' },
+                  { key: 'hasLowercase', label: 'At least one lowercase letter' },
+                  { key: 'hasNumber', label: 'At least one number' },
+                  { key: 'hasSpecial', label: 'At least one special character' },
+                ].map(({ key, label }) => {
+                  const met = passwordRules[key as keyof typeof passwordRules];
+                  return (
+                    <View key={key} style={styles.ruleRow}>
+                      <Ionicons
+                        name={met ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={16}
+                        color={met ? '#22C55E' : '#BBBBBB'}
+                      />
+                      <Text style={[styles.ruleText, met && styles.ruleTextMet]}>
+                        {label}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           <View style={styles.inputContainer}>
@@ -376,5 +410,22 @@ const styles = StyleSheet.create({
   },
   nextButtonTextDisabled: {
     color: '#999999',
+  },
+  rulesContainer: {
+    marginTop: 10,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  ruleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ruleText: {
+    fontSize: 13,
+    color: '#BBBBBB',
+  },
+  ruleTextMet: {
+    color: '#22C55E',
   },
 });

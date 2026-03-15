@@ -37,6 +37,7 @@ import ChangeOtpScreen from './src/screens/both/changeOtpScreen';
 import ForgotPasswordScreen from './src/screens/auth/forgotPasswordScreen';
 import ResetOtpScreen from './src/screens/auth/resetOtpScreen';
 import ResetPasswordScreen from './src/screens/auth/resetPasswordScreen';
+import DocumentResubmitScreen from './src/screens/both/documentResubmitScreen';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,7 +48,7 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
     'force_change_password' | 'change_otp' | 'change_otp_verify' | 'subscription' |
-    'forgot_password' | 'reset_otp' | 'reset_password' |
+    'forgot_password' | 'reset_otp' | 'reset_password' | 'document_resubmit' |
     'main' | 'edit_profile' | 'owner_profile' | 'contractor_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
 
 
@@ -155,6 +156,9 @@ export default function App() {
     const [contractor_company_info, set_contractor_company_info] = useState<any>(null);
     const [contractor_account_info, set_contractor_account_info] = useState<any>(null);
     const [contractor_documents_info, set_contractor_documents_info] = useState<any>(null);
+
+    // Resubmission data (when user logs in with RESUBMISSION rejection)
+    const [resubmission_data, set_resubmission_data] = useState<any[]>([]);
 
     // Registration success modal
     const [show_registration_success, set_show_registration_success] = useState(false);
@@ -630,6 +634,11 @@ export default function App() {
                     on_login_success={handle_login_success}
                     on_signup={handle_register}
                     on_forgot_password={handle_forgot_password}
+                    on_resubmit_documents={(userData, resubmission) => {
+                        set_user_data(userData);
+                        set_resubmission_data(resubmission);
+                        set_app_state('document_resubmit');
+                    }}
                 />
             </SafeAreaProvider>
         );
@@ -666,6 +675,25 @@ export default function App() {
                     reset_token={reset_token}
                     on_back={() => set_app_state('forgot_password')}
                     on_success={handle_password_reset_success}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'document_resubmit') {
+        return (
+            <SafeAreaProvider>
+                <DocumentResubmitScreen
+                    resubmission={resubmission_data}
+                    onBack={() => {
+                        set_resubmission_data([]);
+                        set_app_state('login');
+                    }}
+                    onComplete={() => {
+                        set_resubmission_data([]);
+                        set_app_state('login');
+                        Alert.alert('Success', 'Your documents are now pending review. You will be notified by email once approved.');
+                    }}
                 />
             </SafeAreaProvider>
         );

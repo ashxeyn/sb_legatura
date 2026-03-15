@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'https://legaturaph.com'; //'https://legaturaph.com'
+const API_BASE_URL = 'http://192.168.254.111:8086'; //'https://legaturaph.com'
 
 import { storage_service } from '../utils/storage';
 
@@ -55,6 +55,10 @@ export const api_config = {
         profile: {
             update: '/api/user/profile',
             update_alt: '/api/profile'
+        }
+        ,
+        verification: {
+            resubmit: '/api/verification/resubmit'
         }
         ,
         contractor_members: {
