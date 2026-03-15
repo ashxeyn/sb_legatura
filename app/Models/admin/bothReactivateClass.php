@@ -67,7 +67,7 @@ class bothReactivateClass extends Model
             ->whereNotNull('po.suspension_reason')
             ->whereNotNull('po.suspension_until')
             ->where('po.verification_status', '!=', 'deleted')
-            ->where('u.user_type', 'property_owner');
+            ->whereIn('u.user_type', ['property_owner', 'both']);
 
         // Apply search filter
         if ($search) {

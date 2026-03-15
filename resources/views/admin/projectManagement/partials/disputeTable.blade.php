@@ -56,12 +56,28 @@
   }}</td>
   <td class="px-6 py-4 whitespace-nowrap text-center">
     <div class="inline-flex gap-2">
-      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-id="{{ $dispute->dispute_id }}" title="View">
+      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-id="{{ $dispute->dispute_id }}" title="View Details">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
       </button>
-      <!-- <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-emerald-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 resolve-btn" data-id="{{ $dispute->dispute_id }}" title="Resolve">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"></path></svg>
-      </button> -->
+      
+      @php
+        $status = strtolower($dispute->status);
+      @endphp
+      
+      @if($status === 'open')
+        <!-- Actions for Open Disputes -->
+        <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 reject-btn" data-id="{{ $dispute->dispute_id }}" title="Reject">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <button class="w-10 h-10 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 halt-btn" data-id="{{ $dispute->dispute_id }}" title="Halt Project">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </button>
+      @elseif($status === 'resolved')
+        <!-- Actions for Resolved Disputes 
+        <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-emerald-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 resolve-btn" data-id="{{ $dispute->dispute_id }}" title="Mark as Resolved">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"></path></svg>
+        </button>-->
+      @endif
     </div>
   </td>
 </tr>

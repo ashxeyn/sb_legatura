@@ -6,6 +6,7 @@
     let currentDirectPreviewItem = null; // { type, id, item }
     let moderationCurrentPage = 1;
     let moderationLastPage = 1;
+    let isOpeningReportModal = false;
 
     // ── Toast helper ──
     function toast(msg, type) {
@@ -365,15 +366,26 @@
                 </tr>`;
             })
             .join("");
-
-        bindViewButtons();
     }
 
-    function bindViewButtons() {
-        document.querySelectorAll(".view-report-btn").forEach((btn) => {
-            btn.onclick = function () {
-                openViewModal(this.dataset.source, this.dataset.id, this.dataset.caseType);
-            };
+    function bindModerationTableDelegates() {
+        const tbody = document.getElementById("reportsTableBody");
+        if (!tbody) return;
+
+        tbody.addEventListener("click", async (event) => {
+            const button = event.target.closest(".view-report-btn");
+            if (!button || !tbody.contains(button)) return;
+
+            event.preventDefault();
+
+            if (isOpeningReportModal) return;
+            isOpeningReportModal = true;
+
+            try {
+                await openViewModal(button.dataset.source, button.dataset.id, button.dataset.caseType);
+            } finally {
+                isOpeningReportModal = false;
+            }
         });
     }
 
@@ -402,11 +414,43 @@
         if (next) next.disabled = page >= lastPage;
     }
 
+    function updateModerationRowStatus(reportId, status) {
+        const targetId = String(reportId);
+        const rows = document.querySelectorAll("#reportsTableBody tr[data-id]");
+        const row = Array.from(rows).find((item) => String(item.dataset.id) === targetId);
+        if (!row) return;
+
+        row.dataset.status = status;
+        const statusCell = row.children[6];
+        if (statusCell) {
+            statusCell.innerHTML = getStatusBadge(status);
+        }
+    }
+
+    function hideAllModalActionGroups() {
+        const reportBtns = document.getElementById("modalActionBtns");
+        const disputeBtns = document.getElementById("modalDisputeActionBtns");
+        const directBtns = document.getElementById("modalDirectActionBtns");
+
+        if (reportBtns) {
+            reportBtns.classList.add("hidden");
+        }
+        if (disputeBtns) {
+            disputeBtns.classList.add("hidden");
+            disputeBtns.classList.remove("flex");
+        }
+        if (directBtns) {
+            directBtns.classList.add("hidden");
+            directBtns.classList.remove("flex");
+        }
+    }
+
     // ══════════════════════════════════════════════════════
     // VIEW REPORT MODAL — load detail with evidence
     // ══════════════════════════════════════════════════════
     async function openViewModal(source, reportId, caseType = null) {
         currentReport = null;
+        hideAllModalActionGroups();
 
         // Show modal with loading state
         document.getElementById("modalCaseId").textContent = `Case #${reportId}`;
@@ -529,7 +573,7 @@
             );
             const json = await res.json();
             if (json.success) {
-                fetchReports();
+                updateModerationRowStatus(reportId, "under_review");
             }
         } catch (error) {
             console.warn("Auto under-review update failed:", error);
@@ -548,7 +592,7 @@
             );
             const json = await res.json();
             if (json.success) {
-                fetchReports();
+                updateModerationRowStatus(disputeId, "under_review");
                 return true;
             }
         } catch (error) {
@@ -570,6 +614,8 @@
         const actionable = status === "pending" || status === "under_review";
 
         if (source === "dispute") {
+            const isHaltDispute = currentReport?.required_action === "halt_project";
+
             if (directBtns) {
                 directBtns.classList.add("hidden");
                 directBtns.classList.remove("flex");
@@ -586,11 +632,21 @@
 
             if (reviewBtn) reviewBtn.classList.toggle("hidden", status !== "pending");
             if (resolveBtn) {
-                const canResolve = status === "under_review" && !!(currentReport?.action_completed);
-                resolveBtn.classList.toggle("hidden", status !== "under_review");
-                resolveBtn.disabled = !canResolve;
-                resolveBtn.classList.toggle("opacity-60", !canResolve);
-                resolveBtn.title = canResolve ? "" : "Complete the required project action first.";
+                if (isHaltDispute) {
+                    const canHalt = status === "under_review" && !(currentReport?.action_completed);
+                    resolveBtn.classList.toggle("hidden", status !== "under_review");
+                    resolveBtn.disabled = !canHalt;
+                    resolveBtn.classList.toggle("opacity-60", !canHalt);
+                    resolveBtn.title = canHalt ? "" : "Project action already completed for this dispute.";
+                    resolveBtn.innerHTML = '<i class="fi fi-rr-briefcase mr-1"></i> Halt Project';
+                } else {
+                    const canResolve = status === "under_review" && !!(currentReport?.action_completed);
+                    resolveBtn.classList.toggle("hidden", status !== "under_review");
+                    resolveBtn.disabled = !canResolve;
+                    resolveBtn.classList.toggle("opacity-60", !canResolve);
+                    resolveBtn.title = canResolve ? "" : "Complete the required project action first.";
+                    resolveBtn.innerHTML = '<i class="fi fi-rr-check mr-1"></i> Approve';
+                }
             }
             if (rejectBtn) rejectBtn.classList.toggle("hidden", !actionable);
             return;
@@ -940,7 +996,8 @@
             String(project?.project_status || "").toLowerCase() === "halt";
 
         if (actionForm) {
-            actionForm.classList.toggle("hidden", !requiredAction || status !== "under_review");
+            const showInlineActionForm = !!requiredAction && requiredAction !== "halt_project" && status === "under_review";
+            actionForm.classList.toggle("hidden", !showInlineActionForm);
         }
 
         if (resolvedActionsWrap) {
@@ -1424,6 +1481,18 @@
     // ══════════════════════════════════════════════════════
     // DISPUTE ACTIONS
     // ══════════════════════════════════════════════════════
+    function openDisputeHaltModal() {
+        const modal = document.getElementById("disputeHaltConfirmModal");
+        const reason = document.getElementById("disputeHaltReason");
+        const remarks = document.getElementById("disputeHaltRemarks");
+        if (reason) reason.value = "";
+        if (remarks) remarks.value = "";
+        if (modal) {
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+    }
+
     document.getElementById("btnReviewDispute")?.addEventListener("click", async () => {
         if (!currentReport || currentReport.source !== "dispute") return;
         await performDisputeAction("review");
@@ -1431,6 +1500,11 @@
 
     document.getElementById("btnResolveDispute")?.addEventListener("click", async () => {
         if (!currentReport || currentReport.source !== "dispute") return;
+
+        if (currentReport.required_action === "halt_project") {
+            openDisputeHaltModal();
+            return;
+        }
 
         const disputeType = String(currentReport.dispute_type || "").toLowerCase();
         const needsWarningModal = ["payment", "delay", "quality", "others"].includes(disputeType);
@@ -1463,15 +1537,7 @@
             return;
         }
 
-        const modal = document.getElementById("disputeHaltConfirmModal");
-        const reason = document.getElementById("disputeHaltReason");
-        const remarks = document.getElementById("disputeHaltRemarks");
-        if (reason) reason.value = "";
-        if (remarks) remarks.value = "";
-        if (modal) {
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-        }
+        openDisputeHaltModal();
     });
 
     document.getElementById("confirmDisputeHaltBtn")?.addEventListener("click", async function () {
@@ -2358,6 +2424,6 @@
     });
 
     // ── Init ──
-    bindViewButtons();
+    bindModerationTableDelegates();
     fetchReports();
 })();

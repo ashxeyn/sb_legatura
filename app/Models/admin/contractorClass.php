@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\user;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class contractorClass extends Model
 {
@@ -695,14 +696,26 @@ class contractorClass extends Model
                         ]);
                 }
 
-                // Halt all in_progress projects assigned to this contractor
-                DB::table('projects')
+                // Halt all in_progress projects assigned to this contractor.
+                // selected_contractor_id is stored on project_relationships, not projects.
+                $assignedRelIds = DB::table('project_relationships')
                     ->where('selected_contractor_id', $id)
-                    ->where('project_status', 'in_progress')
-                    ->update([
+                    ->pluck('rel_id');
+
+                if ($assignedRelIds->isNotEmpty()) {
+                    $projectUpdates = [
                         'project_status' => 'halt',
-                        'updated_at' => now()
-                    ]);
+                    ];
+
+                    if (Schema::hasColumn('projects', 'updated_at')) {
+                        $projectUpdates['updated_at'] = now();
+                    }
+
+                    DB::table('projects')
+                        ->whereIn('relationship_id', $assignedRelIds)
+                        ->where('project_status', 'in_progress')
+                        ->update($projectUpdates);
+                }
             }
 
             return $contractor;

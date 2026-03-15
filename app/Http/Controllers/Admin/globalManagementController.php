@@ -1357,7 +1357,7 @@ class globalManagementController extends Controller
             }
 
             if ($actionType === 'warning') {
-                reportManagementClass::notifyUser(
+                $this->safeNotifyUser(
                     $reportedUserId,
                     'Official Warning from Admin',
                     "A moderation warning has been issued on your account. Reason: {$reason}",
@@ -1366,10 +1366,13 @@ class globalManagementController extends Controller
             } else {
                 $suspensionType = $actionType === 'permanent_ban' ? 'permanent' : 'temporary';
                 $suspUntilDate = $actionType === 'permanent_ban' ? '9999-12-31' : $banUntil;
-                $this->suspendResolvedUser($user, $reason, $suspensionType, $suspUntilDate);
+                $didSuspend = $this->suspendResolvedUser($user, $reason, $suspensionType, $suspUntilDate);
+                if (!$didSuspend) {
+                    throw new \RuntimeException('Suspension was not applied: unable to resolve linked owner/contractor account.');
+                }
 
                 $durationLabel = $actionType === 'permanent_ban' ? 'permanent' : ('until ' . $banUntil);
-                reportManagementClass::notifyUser(
+                $this->safeNotifyUser(
                     $reportedUserId,
                     'Account Restriction Applied',
                     "A moderation action has been applied to your account. Reason: {$reason}. Restriction: {$durationLabel}.",
@@ -1395,25 +1398,112 @@ class globalManagementController extends Controller
         }
     }
 
-    private function suspendResolvedUser($user, string $reason, string $duration, string $suspUntilDate): void
+    private function suspendResolvedUser($user, string $reason, string $duration, string $suspUntilDate): bool
     {
+        $didSuspend = false;
+
+        // Resolve owner profile first; many account types (including staff) map through owner_id.
         $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
 
-        if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
-            if ($owner) {
-                $ownerModel = new \App\Models\admin\propertyOwnerClass();
-                $ownerModel->suspendOwner($owner->owner_id, $reason, $duration, $suspUntilDate);
+        if ($owner) {
+            $ownerModel = new \App\Models\admin\propertyOwnerClass();
+            $ownerModel->suspendOwner($owner->owner_id, $reason, $duration, $suspUntilDate);
+            $didSuspend = true;
+        }
+
+        $contractorIds = [];
+
+        if ($owner) {
+            $contractorByOwner = DB::table('contractors')->where('owner_id', $owner->owner_id)->value('contractor_id');
+            if ($contractorByOwner) {
+                $contractorIds[] = (int) $contractorByOwner;
             }
         }
 
-        if ($user->user_type === 'contractor' || $user->user_type === 'both') {
+        if (Schema::hasColumn('contractors', 'user_id')) {
+            $contractorByUser = DB::table('contractors')->where('user_id', $user->user_id)->value('contractor_id');
+            if ($contractorByUser) {
+                $contractorIds[] = (int) $contractorByUser;
+            }
+        }
+
+        if (Schema::hasTable('contractor_staff')) {
             if ($owner) {
-                $contractor = DB::table('contractors')->where('owner_id', $owner->owner_id)->first();
-                if ($contractor) {
-                    $contractorModel = new \App\Models\admin\contractorClass();
-                    $contractorModel->suspendContractor($contractor->contractor_id, $reason, $duration, $suspUntilDate);
+                $staffContractorIds = DB::table('contractor_staff')
+                    ->where('owner_id', $owner->owner_id)
+                    ->whereNull('deletion_reason')
+                    ->pluck('contractor_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $contractorIds = array_merge($contractorIds, $staffContractorIds);
+            }
+
+            if (Schema::hasColumn('contractor_staff', 'user_id')) {
+                $legacyStaffContractorIds = DB::table('contractor_staff')
+                    ->where('user_id', $user->user_id)
+                    ->whereNull('deletion_reason')
+                    ->pluck('contractor_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $contractorIds = array_merge($contractorIds, $legacyStaffContractorIds);
+            }
+        }
+
+        $contractorIds = array_values(array_unique(array_filter($contractorIds)));
+        if (!empty($contractorIds)) {
+            $contractorModel = new \App\Models\admin\contractorClass();
+            foreach ($contractorIds as $contractorId) {
+                $contractorModel->suspendContractor($contractorId, $reason, $duration, $suspUntilDate);
+                $didSuspend = true;
+            }
+        }
+
+        if (Schema::hasTable('contractor_staff')) {
+            $staffUpdate = [
+                'is_active' => 0,
+                'is_suspended' => 1,
+                'suspension_reason' => 'Moderation action: ' . $reason,
+                'suspension_until' => $suspUntilDate,
+            ];
+
+            if ($owner) {
+                $updatedStaffByOwner = DB::table('contractor_staff')
+                    ->where('owner_id', $owner->owner_id)
+                    ->whereNull('deletion_reason')
+                    ->where('is_active', 1)
+                    ->update($staffUpdate);
+
+                if ($updatedStaffByOwner > 0) {
+                    $didSuspend = true;
                 }
             }
+
+            if (Schema::hasColumn('contractor_staff', 'user_id')) {
+                $updatedStaffByUser = DB::table('contractor_staff')
+                    ->where('user_id', $user->user_id)
+                    ->whereNull('deletion_reason')
+                    ->where('is_active', 1)
+                    ->update($staffUpdate);
+
+                if ($updatedStaffByUser > 0) {
+                    $didSuspend = true;
+                }
+            }
+        }
+
+        return $didSuspend;
+    }
+
+    private function safeNotifyUser(int $userId, string $title, string $message, string $type = 'Admin Announcement'): void
+    {
+        try {
+            reportManagementClass::notifyUser($userId, $title, $message, $type);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Resolution action notification failed but core transaction continues', [
+                'user_id' => $userId,
+                'title' => $title,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

@@ -642,8 +642,8 @@ class reportManagementClass
                 )
                 ->first();
             $result['evidence'] = $review ? ['type' => 'review', 'data' => $review] : null;
-            // Review reports target the reviewee account as the offending user in moderation flow.
-            $result['reported_user_id'] = (int) ($review->reviewee_account_user_id ?? $review->reviewee_user_id ?? 0) ?: null;
+            // Review reports should target the reviewer account (author of the reported review).
+            $result['reported_user_id'] = (int) ($review->reviewer_account_user_id ?? $review->reviewer_user_id ?? 0) ?: null;
 
         } elseif ($source === 'content') {
             $result['reason']       = $report->reason;

@@ -288,6 +288,129 @@ class projectManagementController extends Controller
     }
 
     /**
+     * Halt project directly from dispute (new simplified workflow)
+     * Route: POST /admin/project-management/disputes/{id}/halt-project
+     */
+    public function haltProjectFromDispute($id, Request $request)
+    {
+        $payload = $request->validate([
+            'halt_reason' => 'required|string|min:10|max:500',
+        ]);
+
+        $dispute = DB::table('disputes')->where('dispute_id', $id)->first();
+        if (!$dispute) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dispute not found.'
+            ], 404);
+        }
+
+        if (!$dispute->project_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No project linked to this dispute.'
+            ], 422);
+        }
+
+        $project = DB::table('projects')->where('project_id', $dispute->project_id)->first();
+        if (!$project) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Linked project not found.'
+            ], 404);
+        }
+
+        $projectStatus = strtolower((string) ($project->project_status ?? ''));
+        if (!in_array($projectStatus, ['in_progress', 'bidding_closed', 'open'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Project can only be halted when status is Open, In Progress, or Bidding Closed.'
+            ], 422);
+        }
+
+        $projectModel = new projectClass();
+        $result = $projectModel->haltProject($dispute->project_id, [
+            'dispute_id' => $id,
+            'halt_reason' => $payload['halt_reason'],
+        ]);
+
+        if (empty($result['success'])) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? 'Failed to halt project.'
+            ], 422);
+        }
+
+        // Update dispute to resolved with admin action
+        $disputeUpdate = [
+            'dispute_status' => 'resolved',
+            'admin_response' => $payload['halt_reason'],
+            'resolved_at' => now(),
+        ];
+        if (Schema::hasColumn('disputes', 'admin_action')) {
+            $disputeUpdate['admin_action'] = 'Halted';
+        }
+
+        DB::table('disputes')
+            ->where('dispute_id', $id)
+            ->update($disputeUpdate);
+
+        // Send email notifications
+        $this->sendHaltNotifications($dispute, $project, $payload['halt_reason']);
+
+        AdminActivityLog::log('dispute_project_halted', [
+            'dispute_id' => $id,
+            'project_id' => $dispute->project_id,
+            'halt_reason' => $payload['halt_reason']
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Send email notifications when project is halted
+     */
+    private function sendHaltNotifications($dispute, $project, $reason)
+    {
+        try {
+            // Get project participants
+            $projectRelation = DB::table('project_relationships')
+                ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+                ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
+                ->leftJoin('users as contractor_users', 'contractors.user_id', '=', 'contractor_users.user_id')
+                ->where('project_relationships.rel_id', $project->relationship_id)
+                ->select(
+                    'owner_users.email as owner_email',
+                    'owner_users.first_name as owner_first_name',
+                    'contractor_users.email as contractor_email',
+                    'contractor_users.first_name as contractor_first_name'
+                )
+                ->first();
+
+            $subject = "Project Halted - " . $project->project_title;
+            $body = "The project '{$project->project_title}' has been halted by the admin due to a dispute resolution.\n\nReason: {$reason}\n\nPlease contact support for further assistance.";
+
+            // Send to property owner
+            if ($projectRelation && $projectRelation->owner_email) {
+                Mail::raw($body, function ($m) use ($projectRelation, $subject) {
+                    $m->to($projectRelation->owner_email)->subject($subject);
+                });
+            }
+
+            // Send to contractor
+            if ($projectRelation && $projectRelation->contractor_email) {
+                Mail::raw($body, function ($m) use ($projectRelation, $subject) {
+                    $m->to($projectRelation->contractor_email)->subject($subject);
+                });
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send halt notifications: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Apply required project action during dispute workflow.
      * Route: POST /admin/project-management/disputes/{id}/project-action
      */
@@ -415,6 +538,9 @@ class projectManagementController extends Controller
             DB::table('disputes')
                 ->where('dispute_id', $id)
                 ->update($disputeUpdate);
+
+            // Send email notifications for resume
+            $this->sendProjectActionNotifications($project, 'resumed', $payload['action_reason']);
         }
 
         if ($action === 'terminate_project') {
@@ -460,12 +586,59 @@ class projectManagementController extends Controller
             DB::table('disputes')
                 ->where('dispute_id', $id)
                 ->update($disputeUpdate);
+
+            // Send email notifications for termination
+            $this->sendProjectActionNotifications($project, 'terminated', $payload['action_reason']);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Project action applied successfully.'
         ]);
+    }
+
+    /**
+     * Send email notifications for project actions (resume/terminate)
+     */
+    private function sendProjectActionNotifications($project, $action, $reason)
+    {
+        try {
+            // Get project participants
+            $projectRelation = DB::table('project_relationships')
+                ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+                ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
+                ->leftJoin('users as contractor_users', 'contractors.user_id', '=', 'contractor_users.user_id')
+                ->where('project_relationships.rel_id', $project->relationship_id)
+                ->select(
+                    'owner_users.email as owner_email',
+                    'owner_users.first_name as owner_first_name',
+                    'contractor_users.email as contractor_email',
+                    'contractor_users.first_name as contractor_first_name'
+                )
+                ->first();
+
+            $actionText = $action === 'resumed' ? 'resumed' : 'terminated';
+            $subject = "Project " . ucfirst($actionText) . " - " . $project->project_title;
+            $body = "The project '{$project->project_title}' has been {$actionText} by the admin.\n\nReason: {$reason}\n\nPlease contact support if you have any questions.";
+
+            // Send to property owner
+            if ($projectRelation && $projectRelation->owner_email) {
+                Mail::raw($body, function ($m) use ($projectRelation, $subject) {
+                    $m->to($projectRelation->owner_email)->subject($subject);
+                });
+            }
+
+            // Send to contractor
+            if ($projectRelation && $projectRelation->contractor_email) {
+                Mail::raw($body, function ($m) use ($projectRelation, $subject) {
+                    $m->to($projectRelation->contractor_email)->subject($subject);
+                });
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send project action notifications: ' . $e->getMessage());
+        }
     }
 
     /**

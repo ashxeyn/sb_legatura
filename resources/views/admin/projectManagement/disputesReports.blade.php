@@ -136,6 +136,43 @@
         </div>
       </div>
 
+      <!-- Halt Project Confirmation Modal -->
+      <div id="haltConfirmModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+          <div class="px-6 py-5 bg-gradient-to-r from-amber-600 to-orange-600">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <i class="fi fi-sr-pause-circle text-white text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">Halt Project?</h3>
+              </div>
+              <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+            </div>
+          </div>
+          <div class="p-6 space-y-5">
+            <div class="flex items-start gap-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+              <i class="fi fi-rr-info-circle text-amber-600 text-xl mt-0.5"></i>
+              <div class="flex-1">
+                <p class="text-sm text-amber-900 font-semibold mb-1">Halt the project and resolve dispute</p>
+                <p class="text-xs text-amber-800">This will halt the project, resolve the dispute, and notify all parties.</p>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-800 mb-2">Halt Reason *</label>
+              <textarea id="haltReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-300 focus:border-amber-300 transition resize-none" placeholder="Provide reason for halting this project..."></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+              <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+              <button id="confirmHaltBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                Confirm Halt
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Content -->
       <section class="px-8 py-8 space-y-8">
         <!-- Statistics Cards -->
@@ -537,7 +574,7 @@
               </div>
             </div>
 
-            <!-- Action Containers -->
+            <!-- Action Containers - REMOVED ACTION BUTTONS FROM VIEW MODAL -->
             <div class="flex items-center justify-between gap-3 pt-6 border-t border-gray-200">
               <div class="flex items-center gap-2 text-xs text-gray-500">
                 <i class="fi fi-rr-shield-check text-indigo-500"></i>
@@ -545,22 +582,9 @@
               </div>
               <div class="flex items-center gap-3">
                 <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Close</button>
-
-                <!-- Section D: Reject and Resolve buttons -->
-                <div id="sectionActions" class="flex items-center gap-3">
-                  <button id="rejectBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                    Reject
-                  </button>
-                  <button id="resolveBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                    Resolve
-                  </button>
-                </div>
-
-                <!-- Section E: Final Action (Mark as Resolved) -->
-                <div id="sectionFinalAction" class="hidden">
-                  <button id="finalResolveBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                    Mark as Resolved
-                  </button>
+                <!-- Action buttons removed - View modal is for viewing only -->
+              </div>
+            </div>
                 </div>
               </div>
             </div>

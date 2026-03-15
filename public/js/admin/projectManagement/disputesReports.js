@@ -441,7 +441,7 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // OPEN VIEW MODAL — main entry point
+    // OPEN VIEW MODAL — main entry point (FIXED - No Action Buttons)
     // ─────────────────────────────────────────────────────────────
 
     window.openViewModal = async function (id) {
@@ -462,7 +462,7 @@
             const content = data.content || {};
             const dispute = data.dispute  || {};
 
-            // ── Populate Section A (always visible) ──────────────────
+            // ── Populate Case Information (always visible) ──────────────────
 
             const caseIdEl = document.getElementById("modalCaseId");
             if (caseIdEl) caseIdEl.textContent = `Case #${dispute.dispute_id || id}`;
@@ -472,23 +472,6 @@
 
             const againstEl = document.getElementById("modalAgainst");
             if (againstEl) againstEl.textContent = dispute.against_username || dispute.respondent_username || header.against_name || "-";
-
-            // Penalty panel user info
-            const penaltyUserName = dispute.against_username || dispute.respondent_username || header.against_name || "-";
-            const penaltyUserType = header.against_user_type || dispute.against_user_type || "-";
-            ["reject", "resolve"].forEach(function (prefix) {
-                const nameEl  = document.getElementById(prefix + "PenaltyUserName");
-                const typeEl2 = document.getElementById(prefix + "PenaltyUserType");
-                if (nameEl)  nameEl.textContent  = penaltyUserName;
-                if (typeEl2) typeEl2.textContent  =
-                    penaltyUserType === "property_owner" ? "Property Owner" :
-                    penaltyUserType === "contractor"     ? "Contractor" :
-                    penaltyUserType;
-                const cb     = document.getElementById(prefix + "ApplyPenalty");
-                const fields = document.getElementById(prefix + "PenaltyFields");
-                if (cb)     cb.checked = false;
-                if (fields) fields.classList.add("hidden");
-            });
 
             const typeEl = document.getElementById("modalType");
             if (typeEl) typeEl.textContent = header.dispute_type || dispute.dispute_type || "-";
@@ -552,7 +535,7 @@
                 }
             }
 
-            // ── Section containers ────────────────────────────────────
+            // ── Section containers - HIDE ALL ACTION SECTIONS ────────────────────────
 
             const sectionResubmission  = document.getElementById("sectionResubmission");
             const sectionFeedback      = document.getElementById("sectionFeedback");
@@ -560,36 +543,28 @@
             const sectionFinalAction   = document.getElementById("sectionFinalAction");
             const resubmittedTable     = document.getElementById("modalResubmittedTable");
 
-            if (resubmittedTable)   resubmittedTable.innerHTML = "";
+            // Clear previous data
+            if (resubmittedTable) resubmittedTable.innerHTML = "";
+            
+            // HIDE ALL ACTION SECTIONS - View modal is for viewing only
             if (sectionResubmission) sectionResubmission.classList.add("hidden");
-            if (sectionFeedback)     sectionFeedback.classList.add("hidden");
-            if (sectionActions)      sectionActions.classList.add("hidden");
-            if (sectionFinalAction)  sectionFinalAction.classList.add("hidden");
+            if (sectionFeedback) sectionFeedback.classList.add("hidden");
+            if (sectionActions) sectionActions.classList.add("hidden");
+            if (sectionFinalAction) sectionFinalAction.classList.add("hidden");
 
-            // Reset the project panel every time the modal opens
+            // Reset the project panel
             resetProjectPanel();
 
             const statusVal = (header.dispute_status || dispute.dispute_status || "").toString().toLowerCase();
-            const hasResubmissions = (data.resubmissions && data.resubmissions.length) || (data.progressReports && data.progressReports.length);
 
-            const isUnderReview =
-                statusVal.indexOf("under") !== -1 ||
-                statusVal.indexOf("review") !== -1 ||
-                statusVal === "under_review" ||
-                statusVal === "escalated";
+            // ── Show additional information based on status (NO ACTION BUTTONS) ────────
 
-            // ── Status-driven visibility rules ────────────────────────
-
-            if (statusVal === "open") {
-                // Show Section D (Reject / Resolve buttons)
-                if (sectionActions) sectionActions.classList.remove("hidden");
-
-            } else if (isUnderReview) {
-                // Show Section B (resubmissions)
+            if (statusVal === "resolved" || statusVal === "closed") {
+                // Show resubmissions and feedback for resolved cases (read-only)
                 if (sectionResubmission) sectionResubmission.classList.remove("hidden");
-                if (sectionActions)      sectionActions.classList.add("hidden");
+                if (sectionFeedback) sectionFeedback.classList.remove("hidden");
 
-                // Populate resubmissions table
+                // Populate resubmissions table (read-only)
                 if (resubmittedTable) {
                     const resubs = (data.resubmissions && data.resubmissions.length)
                         ? data.resubmissions
@@ -618,17 +593,7 @@
                     }
                 }
 
-                // ── NEW: Auto-load the linked project panel ──
-                await loadLinkedProjectPanel(id, {
-                    requested_action: dispute.requested_action || content.requested_action || "",
-                });
-
-            } else if (statusVal === "resolved" || statusVal === "closed") {
-                // Show Sections B + C (resubmissions + feedback)
-                if (sectionResubmission) sectionResubmission.classList.remove("hidden");
-                if (sectionFeedback)     sectionFeedback.classList.remove("hidden");
-
-                // Populate feedback/resolution
+                // Populate feedback/resolution (read-only)
                 const reporterName  = data.reporter_name || header.reporter_name || dispute.reporter_username || "-";
                 const latestStatus  = data.latest_resubmission_status || null;
                 const latestDate    = data.latest_resubmission_date   || null;
@@ -657,198 +622,13 @@
                 const remarksEl = document.getElementById("modalFeedbackRemarks");
                 if (remarksEl)  remarksEl.textContent = adminResp || "-";
 
-                // Show linked project context for post-resolution decisions.
+                // Show linked project context (read-only)
                 await loadLinkedProjectPanel(id, {
                     requested_action: dispute.requested_action || content.requested_action || "",
                 });
             }
 
-            // ── Wire Reject button ────────────────────────────────────
-
-            const rejectBtn = document.getElementById("rejectBtn");
-            if (rejectBtn) {
-                rejectBtn.onclick = function () {
-                    window.__selectedDisputeId = id;
-                    showModal("rejectConfirmModal");
-                };
-            }
-
-            // ── Confirm Reject ────────────────────────────────────────
-
-            const confirmRejectBtn = document.getElementById("confirmRejectBtn");
-            if (confirmRejectBtn) {
-                confirmRejectBtn.onclick = async function () {
-                    const reason = (document.getElementById("rejectionReason") || {}).value || "";
-                    const useId  = window.__selectedDisputeId || id;
-                    if (!useId)  return;
-
-                    const applyPenaltyCb  = document.getElementById("rejectApplyPenalty");
-                    const penaltyPayload  = {};
-                    if (applyPenaltyCb && applyPenaltyCb.checked) {
-                        penaltyPayload.apply_penalty = true;
-                        penaltyPayload.penalty_type  = (document.getElementById("rejectPenaltyType") || {}).value || "";
-                        penaltyPayload.ban_duration  = (document.getElementById("rejectBanDuration") || {}).value  || "";
-                    }
-
-                    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-                    const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
-                    if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
-
-                    try {
-                        const resp = await fetch(
-                            `/admin/project-management/disputes/${useId}/reject`,
-                            { method: "POST", headers, body: JSON.stringify({ reason, ...penaltyPayload }) }
-                        );
-                        const j = await resp.json();
-                        hideModal("rejectConfirmModal");
-                        hideModal("viewDetailsModal");
-                        const tr = document.querySelector(`tr[data-id="${useId}"]`);
-                        if (tr) {
-                            tr.dataset.status = "cancelled";
-                            const statusCell  = tr.querySelector("td:nth-child(5)");
-                            if (statusCell)   statusCell.innerHTML = getStatusBadgeHTML("cancelled");
-                        }
-                        toast(j.success ? "Case rejected" : "Case rejected (partial)", "success");
-                    } catch (e) {
-                        console.error(e);
-                        toast("Failed to reject case", "error");
-                    }
-                };
-            }
-
-            // ── Resolve button (open → under_review) ─────────────────
-
-            const modalResolveBtn = document.getElementById("resolveBtn");
-            const finalResolveBtn = document.getElementById("finalResolveBtn");
-            const confirmResolveBtn = document.getElementById("confirmResolveBtn");
-
-            if (modalResolveBtn) {
-                if (statusVal === "open") {
-                    // Open the approve confirmation modal
-                    modalResolveBtn.onclick = function () {
-                        window.__selectedDisputeId = id;
-                        showModal("approveConfirmModal");
-                    };
-
-                    // Wire the confirm button inside approveConfirmModal
-                    const confirmApproveBtn = document.getElementById("confirmApproveBtn");
-                    if (confirmApproveBtn) {
-                        confirmApproveBtn.onclick = async function () {
-                            const useId = window.__selectedDisputeId || id;
-                            if (!useId) return;
-
-                            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-                            const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
-                            if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
-
-                            try {
-                                const resp = await fetch(
-                                    `/admin/project-management/disputes/${useId}/approve`,
-                                    { method: "POST", headers, body: JSON.stringify({}) }
-                                );
-                                const j = await resp.json();
-                                hideModal("approveConfirmModal");
-
-                                if (j.success) {
-                                    // Update table row badge
-                                    const tr = document.querySelector(`tr[data-id="${useId}"]`);
-                                    if (tr) {
-                                        tr.dataset.status = "under_review";
-                                        const statusCell  = tr.querySelector("td:nth-child(5)");
-                                        if (statusCell)   statusCell.innerHTML = getStatusBadgeHTML("under_review");
-                                    }
-
-                                    // Update modal status badge
-                                    const statusEl2 = document.getElementById("modalStatus");
-                                    if (statusEl2)  statusEl2.innerHTML = getStatusBadgeHTML("under_review");
-
-                                    // Show resubmission section, hide primary actions
-                                    if (sectionActions)      sectionActions.classList.add("hidden");
-                                    if (sectionResubmission) sectionResubmission.classList.remove("hidden");
-
-                                    toast("Dispute approved for review", "success");
-
-                                    // ── NEW: Load linked project panel ──
-                                    await loadLinkedProjectPanel(useId, {
-                                        requested_action: dispute.requested_action || content.requested_action || "",
-                                    });
-
-                                } else {
-                                    toast("Failed to approve dispute", "error");
-                                }
-                            } catch (e) {
-                                console.error(e);
-                                toast("Failed to approve dispute", "error");
-                            }
-                        };
-                    }
-                } else {
-                    modalResolveBtn.onclick = function () {
-                        showModal("resolveConfirmModal");
-                    };
-                }
-            }
-
-            // ── Final Resolve button (under_review → resolved) ────────
-
-            if (finalResolveBtn) {
-                finalResolveBtn.onclick = function () {
-                    window.__selectedDisputeId = id;
-                    showModal("resolveConfirmModal");
-                };
-            }
-
-            // ── Confirm Resolution ─────────────────────────────────────
-
-            if (confirmResolveBtn) {
-                confirmResolveBtn.onclick = async function () {
-                    const notes = (document.getElementById("resolutionNotes") || {}).value || "";
-                    if (!notes) {
-                        toast("Please provide resolution notes", "error");
-                        return;
-                    }
-                    const useId = window.__selectedDisputeId || id;
-                    if (!useId) return;
-
-                    const applyPenaltyCb  = document.getElementById("resolveApplyPenalty");
-                    const penaltyPayload  = {};
-                    if (applyPenaltyCb && applyPenaltyCb.checked) {
-                        penaltyPayload.apply_penalty = true;
-                        penaltyPayload.penalty_type  = (document.getElementById("resolvePenaltyType") || {}).value || "";
-                        penaltyPayload.ban_duration  = (document.getElementById("resolveBanDuration") || {}).value  || "";
-                    }
-
-                    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-                    const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
-                    if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
-
-                    try {
-                        const resp = await fetch(
-                            `/admin/project-management/disputes/${useId}/finalize`,
-                            { method: "POST", headers, body: JSON.stringify({ notes, ...penaltyPayload }) }
-                        );
-                        const j = await resp.json();
-                        hideModal("resolveConfirmModal");
-                        hideModal("viewDetailsModal");
-
-                        const tr = document.querySelector(`tr[data-id="${useId}"]`);
-                        if (tr) {
-                            tr.dataset.status = "resolved";
-                            const statusCell  = tr.querySelector("td:nth-child(5)");
-                            if (statusCell)   statusCell.innerHTML = getStatusBadgeHTML("resolved");
-                        }
-
-                        const notesEl = document.getElementById("resolutionNotes");
-                        if (notesEl) notesEl.value = "";
-
-                        toast(j.success ? "Case marked as resolved" : "Case updated", "success");
-                    } catch (e) {
-                        console.error(e);
-                        toast("Failed to finalize resolution", "error");
-                    }
-                };
-            }
-
+            // Store dispute ID for potential action buttons outside modal
             window.__selectedDisputeId = id;
             showModal("viewDetailsModal");
 
@@ -859,7 +639,156 @@
     };
 
     // ─────────────────────────────────────────────────────────────
-    // TABLE CONTROLS
+    // INITIALIZE ACTION BUTTON HANDLERS (Called once on page load)
+    // ─────────────────────────────────────────────────────────────
+
+    function initializeActionButtonHandlers() {
+        // ── Reject button handler ────────────────────────────────────
+
+        const confirmRejectBtn = document.getElementById("confirmRejectBtn");
+        if (confirmRejectBtn) {
+            confirmRejectBtn.onclick = async function () {
+                const reason = (document.getElementById("rejectionReason") || {}).value || "";
+                const useId  = window.__selectedDisputeId;
+                if (!useId || !reason.trim()) {
+                    toast("Please provide a rejection reason", "error");
+                    return;
+                }
+
+                const applyPenaltyCb  = document.getElementById("rejectApplyPenalty");
+                const penaltyPayload  = {};
+                if (applyPenaltyCb && applyPenaltyCb.checked) {
+                    penaltyPayload.apply_penalty = true;
+                    penaltyPayload.penalty_type  = (document.getElementById("rejectPenaltyType") || {}).value || "";
+                    penaltyPayload.ban_duration  = (document.getElementById("rejectBanDuration") || {}).value  || "";
+                }
+
+                const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
+                if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
+
+                try {
+                    const resp = await fetch(
+                        `/admin/project-management/disputes/${useId}/reject`,
+                        { method: "POST", headers, body: JSON.stringify({ reason, ...penaltyPayload }) }
+                    );
+                    const j = await resp.json();
+                    hideModal("rejectConfirmModal");
+                    hideModal("viewDetailsModal");
+                    const tr = document.querySelector(`tr[data-id="${useId}"]`);
+                    if (tr) {
+                        tr.dataset.status = "cancelled";
+                        const statusCell  = tr.querySelector("td:nth-child(5)");
+                        if (statusCell)   statusCell.innerHTML = getStatusBadgeHTML("cancelled");
+                    }
+                    toast(j.success ? "Case rejected" : "Case rejected (partial)", "success");
+                } catch (e) {
+                    console.error(e);
+                    toast("Failed to reject case", "error");
+                }
+            };
+        }
+
+        // ── Halt button handler ──────────────────────────────────────
+
+        const confirmHaltBtn = document.getElementById("confirmHaltBtn");
+        if (confirmHaltBtn) {
+            confirmHaltBtn.onclick = async function () {
+                const reason = (document.getElementById("haltReason") || {}).value || "";
+                const useId  = window.__selectedDisputeId;
+                if (!useId || !reason.trim()) {
+                    toast("Please provide a halt reason", "error");
+                    return;
+                }
+
+                const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
+                if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
+
+                try {
+                    const resp = await fetch(
+                        `/admin/project-management/disputes/${useId}/halt-project`,
+                        { method: "POST", headers, body: JSON.stringify({ halt_reason: reason }) }
+                    );
+                    const j = await resp.json();
+                    hideModal("haltConfirmModal");
+                    hideModal("viewDetailsModal");
+
+                    if (j.success) {
+                        // Update table row badge
+                        const tr = document.querySelector(`tr[data-id="${useId}"]`);
+                        if (tr) {
+                            tr.dataset.status = "resolved";
+                            const statusCell  = tr.querySelector("td:nth-child(5)");
+                            if (statusCell)   statusCell.innerHTML = getStatusBadgeHTML("resolved");
+                        }
+
+                        toast("Project halted and dispute resolved", "success");
+                    } else {
+                        toast("Failed to halt project", "error");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    toast("Failed to halt project", "error");
+                }
+            };
+        }
+
+        // ── Final Resolve button handler ──────────────────────────────
+
+        const confirmResolveBtn = document.getElementById("confirmResolveBtn");
+        if (confirmResolveBtn) {
+            confirmResolveBtn.onclick = async function () {
+                const notes = (document.getElementById("resolutionNotes") || {}).value || "";
+                if (!notes.trim()) {
+                    toast("Please provide resolution notes", "error");
+                    return;
+                }
+                const useId = window.__selectedDisputeId;
+                if (!useId) return;
+
+                const applyPenaltyCb  = document.getElementById("resolveApplyPenalty");
+                const penaltyPayload  = {};
+                if (applyPenaltyCb && applyPenaltyCb.checked) {
+                    penaltyPayload.apply_penalty = true;
+                    penaltyPayload.penalty_type  = (document.getElementById("resolvePenaltyType") || {}).value || "";
+                    penaltyPayload.ban_duration  = (document.getElementById("resolveBanDuration") || {}).value  || "";
+                }
+
+                const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
+                if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
+
+                try {
+                    const resp = await fetch(
+                        `/admin/project-management/disputes/${useId}/finalize`,
+                        { method: "POST", headers, body: JSON.stringify({ notes, ...penaltyPayload }) }
+                    );
+                    const j = await resp.json();
+                    hideModal("resolveConfirmModal");
+                    hideModal("viewDetailsModal");
+
+                    const tr = document.querySelector(`tr[data-id="${useId}"]`);
+                    if (tr) {
+                        tr.dataset.status = "resolved";
+                        const statusCell  = tr.querySelector("td:nth-child(5)");
+                        if (statusCell)   statusCell.innerHTML = getStatusBadgeHTML("resolved");
+                    }
+
+                    const notesEl = document.getElementById("resolutionNotes");
+                    if (notesEl) notesEl.value = "";
+
+                    toast(j.success ? "Case marked as resolved" : "Case updated", "success");
+                } catch (e) {
+                    console.error(e);
+                    toast("Failed to finalize resolution", "error");
+                }
+            };
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // TABLE CONTROLS (Called once on page load)
     // ─────────────────────────────────────────────────────────────
 
     function initTableControls() {
@@ -895,51 +824,77 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // SERVER-RENDERED ROW HANDLERS
+    // SERVER-RENDERED ROW HANDLERS (Consolidated - No Duplicates)
     // ─────────────────────────────────────────────────────────────
 
     if (hasServerRows) {
         initTableControls();
+        initializeActionButtonHandlers(); // Initialize action button handlers once
 
-        function attachRowHandlers() {
-            if (!tbody) return;
+        // Single event delegation for all table row buttons
+        if (tbody) {
             tbody.addEventListener("click", (e) => {
                 const viewBtn = e.target.closest(".view-btn");
                 if (viewBtn) {
-                    const tr           = viewBtn.closest("tr");
-                    const selectedId   = tr ? tr.dataset.id : null;
+                    const tr = viewBtn.closest("tr");
+                    const selectedId = tr ? tr.dataset.id : null;
                     if (selectedId && window.openViewModal) window.openViewModal(selectedId);
                     return;
                 }
+
+                const rejectBtn = e.target.closest(".reject-btn");
+                if (rejectBtn) {
+                    const tr = rejectBtn.closest("tr");
+                    const selectedId = tr ? tr.dataset.id : null;
+                    if (selectedId) {
+                        window.__selectedDisputeId = selectedId;
+                        showModal("rejectConfirmModal");
+                    }
+                    return;
+                }
+
+                const haltBtn = e.target.closest(".halt-btn");
+                if (haltBtn) {
+                    const tr = haltBtn.closest("tr");
+                    const selectedId = tr ? tr.dataset.id : null;
+                    if (selectedId) {
+                        window.__selectedDisputeId = selectedId;
+                        const reasonEl = document.getElementById("haltReason");
+                        if (reasonEl) reasonEl.value = "";
+                        showModal("haltConfirmModal");
+                    }
+                    return;
+                }
+
                 const resolveBtn = e.target.closest(".resolve-btn");
                 if (resolveBtn) {
-                    const tr           = resolveBtn.closest("tr");
-                    const selectedId   = tr ? tr.dataset.id : null;
-                    window.__selectedDisputeId = selectedId;
-                    const caseIdEl     = document.getElementById("modalCaseId");
-                    if (caseIdEl && selectedId) caseIdEl.textContent = `Case #${selectedId}`;
-                    showModal("resolveConfirmModal");
+                    const tr = resolveBtn.closest("tr");
+                    const selectedId = tr ? tr.dataset.id : null;
+                    if (selectedId) {
+                        window.__selectedDisputeId = selectedId;
+                        const notesEl = document.getElementById("resolutionNotes");
+                        if (notesEl) notesEl.value = "";
+                        showModal("resolveConfirmModal");
+                    }
                     return;
                 }
             });
-
-            document.addEventListener("click", (e) => {
-                if (e.target.closest && e.target.closest(".modal-close")) {
-                    const modal = e.target.closest(".modal-overlay");
-                    if (modal) hideModal(modal.id);
-                }
-            });
-
-            document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-                overlay.addEventListener("click", (e) => {
-                    if (e.target === overlay) hideModal(overlay.id);
-                });
-            });
         }
 
-        window.attachDisputeRowHandlers    = attachRowHandlers;
-        window.initDisputesTableControls  = initTableControls;
-        attachRowHandlers();
+        // Modal close handlers (single delegation)
+        document.addEventListener("click", (e) => {
+            if (e.target.closest && e.target.closest(".modal-close")) {
+                const modal = e.target.closest(".modal-overlay");
+                if (modal) hideModal(modal.id);
+            }
+        });
+
+        document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) hideModal(overlay.id);
+            });
+        });
+
         console.debug("Disputes: detected server-rendered rows — handlers attached.");
     }
 
@@ -1015,6 +970,11 @@
         return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
     }
 
+    // Initialize action handlers and AJAX filtering (only if not already initialized)
+    if (!hasServerRows) {
+        initializeActionButtonHandlers();
+    }
+
     document.querySelectorAll(".filter-tab").forEach((tab) => {
         tab.addEventListener("click", () => {
             document.querySelectorAll(".filter-tab").forEach((t) => t.classList.remove("active"));
@@ -1057,16 +1017,55 @@
         fetchDisputes(page);
     });
 
-    // Delegated view-button click
-    if (tbody) {
+    // Delegated view-button click for AJAX-loaded rows
+    if (tbody && !hasServerRows) {
         tbody.addEventListener("click", (e) => {
             const view = e.target.closest(".view-btn");
-            if (!view)  return;
-            const tr   = view.closest("tr");
-            if (!tr)    return;
-            const id   = tr.dataset.id;
-            if (!id)    return;
-            if (window.openViewModal) window.openViewModal(id);
+            if (view) {
+                const tr = view.closest("tr");
+                if (!tr) return;
+                const id = tr.dataset.id;
+                if (!id) return;
+                if (window.openViewModal) window.openViewModal(id);
+                return;
+            }
+
+            const rejectBtn = e.target.closest(".reject-btn");
+            if (rejectBtn) {
+                const tr = rejectBtn.closest("tr");
+                const selectedId = tr ? tr.dataset.id : null;
+                if (selectedId) {
+                    window.__selectedDisputeId = selectedId;
+                    showModal("rejectConfirmModal");
+                }
+                return;
+            }
+
+            const haltBtn = e.target.closest(".halt-btn");
+            if (haltBtn) {
+                const tr = haltBtn.closest("tr");
+                const selectedId = tr ? tr.dataset.id : null;
+                if (selectedId) {
+                    window.__selectedDisputeId = selectedId;
+                    const reasonEl = document.getElementById("haltReason");
+                    if (reasonEl) reasonEl.value = "";
+                    showModal("haltConfirmModal");
+                }
+                return;
+            }
+
+            const resolveBtn = e.target.closest(".resolve-btn");
+            if (resolveBtn) {
+                const tr = resolveBtn.closest("tr");
+                const selectedId = tr ? tr.dataset.id : null;
+                if (selectedId) {
+                    window.__selectedDisputeId = selectedId;
+                    const notesEl = document.getElementById("resolutionNotes");
+                    if (notesEl) notesEl.value = "";
+                    showModal("resolveConfirmModal");
+                }
+                return;
+            }
         });
     }
 

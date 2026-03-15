@@ -732,6 +732,7 @@ Route::post('/admin/project-management/{projectId}/change-bidder', [projectManag
 Route::get('/admin/project-management/disputes/{id}/details', [projectManagementController::class, 'getDisputeDetails'])->name('admin.projectManagement.disputeDetails');
 Route::post('/admin/project-management/disputes/{id}/approve', [projectManagementController::class, 'approveForReview'])->name('admin.projectManagement.approveDispute');
 Route::post('/admin/project-management/disputes/{id}/reject', [projectManagementController::class, 'rejectDispute'])->name('admin.projectManagement.rejectDispute');
+Route::post('/admin/project-management/disputes/{id}/halt-project', [projectManagementController::class, 'haltProjectFromDispute'])->name('admin.projectManagement.haltProjectFromDispute');
 Route::post('/admin/project-management/disputes/{id}/project-action', [projectManagementController::class, 'applyDisputeProjectAction'])->name('admin.projectManagement.applyDisputeProjectAction');
 Route::post('/admin/project-management/disputes/{id}/finalize', [projectManagementController::class, 'finalizeResolution'])->name('admin.projectManagement.finalizeDispute');
 Route::get('/admin/project-management/disputes/{id}/linked-project',
