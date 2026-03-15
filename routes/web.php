@@ -627,12 +627,18 @@ Route::get('/admin/user-management/property-owners/{id}/edit', [userManagementCo
 Route::put('/admin/user-management/property-owners/{id}', [userManagementController::class, 'updatePropertyOwner'])->name('admin.userManagement.propertyOwner.update');
 Route::delete('/admin/user-management/property-owners/{id}', [userManagementController::class, 'deletePropertyOwner'])->name('admin.userManagement.propertyOwner.delete');
 Route::get('/admin/user-management/property-owners/{id}', [userManagementController::class, 'viewPropertyOwner'])->name('admin.userManagement.propertyOwner.view');
+Route::post('/admin/user-management/property-owners/{id}/update-profile-pic', [userManagementController::class, 'updatePropertyOwnerProfilePic'])->name('admin.userManagement.propertyOwner.updateProfilePic');
+Route::post('/admin/user-management/property-owners/{id}/update-cover-photo', [userManagementController::class, 'updatePropertyOwnerCoverPhoto'])->name('admin.userManagement.propertyOwner.updateCoverPhoto');
+
 Route::get('/admin/user-management/contractors', [userManagementController::class, 'contractors'])->name('admin.userManagement.contractor');
 Route::post('/admin/user-management/contractors/store', [userManagementController::class, 'addContractor'])->name('admin.userManagement.contractor.store');
 Route::get('/admin/user-management/contractors/{id}/edit', [userManagementController::class, 'fetchContractor'])->name('admin.userManagement.contractor.edit');
 Route::put('/admin/user-management/contractors/update/{user_id}', [userManagementController::class, 'updateContractor'])->name('admin.userManagement.contractor.update');
 Route::delete('/admin/user-management/contractors/{id}', [userManagementController::class, 'deleteContractor'])->name('admin.userManagement.contractor.delete');
 Route::get('/admin/user-management/contractor/view', [userManagementController::class, 'viewContractor'])->name('admin.userManagement.contractor.view');
+Route::post('/admin/user-management/contractors/{id}/update-logo', [userManagementController::class, 'updateContractorLogo'])->name('admin.userManagement.contractor.updateLogo');
+Route::post('/admin/user-management/contractors/{id}/update-banner', [userManagementController::class, 'updateContractorBanner'])->name('admin.userManagement.contractor.updateBanner');
+
 Route::get('/admin/user-management/contractor/available-owners', [userManagementController::class, 'getAvailablePropertyOwners'])->name('admin.userManagement.contractor.availableOwners');
 Route::post('/admin/user-management/contractor/team-member/store', [userManagementController::class, 'addContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.store');
 Route::get('/admin/user-management/contractor/team-member/{id}/edit', [userManagementController::class, 'fetchContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.edit');
