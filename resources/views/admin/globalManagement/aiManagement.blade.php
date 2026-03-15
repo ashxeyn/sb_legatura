@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>AI Management - Legatura</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/globalManagement/aiManagement.css') }}">
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
@@ -14,28 +16,101 @@
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
-    {{-- Same JS as other admin pages so nav toggle works --}}
     <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+    <script src="{{ asset('js/admin/globalManagement/aiManagement.js') }}" defer></script>
 
     <style>
+        /* Tom Select Dropdown Styling */
         .ts-control {
-            border-radius: 0.5rem !important;
-            padding: 0.625rem !important;
-            background-color: #f9fafb !important;
-            border: 1px solid #e5e7eb !important;
+            border-radius: 0.75rem !important;
+            padding: 0.625rem 1rem !important;
+            background-color: #ffffff !important;
+            border: 2px solid #e5e7eb !important;
+            transition: all 0.2s ease !important;
         }
         .ts-wrapper.focus .ts-control {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5) !important;
-            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+            border-color: #6366f1 !important;
         }
-        .modal-scroll {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .ts-wrapper {
+            position: relative !important;
         }
-        .modal-scroll::-webkit-scrollbar {
-            display: none;
-            width: 0;
-            height: 0;
+        .ts-dropdown {
+            border-radius: 0.75rem !important;
+            border: 2px solid #e5e7eb !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+            max-height: 180px !important; /* Fixed height for exactly 4 items */
+            height: auto !important;
+            overflow-y: scroll !important;
+            overflow-x: hidden !important;
+            z-index: 60 !important;
+            position: absolute !important;
+            left: 0 !important;
+            right: 0 !important;
+            /* Hide scrollbar but keep functionality */
+            scrollbar-width: none !important; /* Firefox */
+            -ms-overflow-style: none !important; /* IE and Edge */
+        }
+        .ts-dropdown::-webkit-scrollbar {
+            display: none !important; /* Chrome, Safari, Opera */
+        }
+        .ts-dropdown .ts-dropdown-content {
+            max-height: 180px !important;
+            overflow-y: scroll !important;
+            /* Hide scrollbar but keep functionality */
+            scrollbar-width: none !important; /* Firefox */
+            -ms-overflow-style: none !important; /* IE and Edge */
+        }
+        .ts-dropdown .ts-dropdown-content::-webkit-scrollbar {
+            display: none !important; /* Chrome, Safari, Opera */
+        }
+        .ts-dropdown .option {
+            padding: 0.625rem 1rem !important;
+            transition: background 0.15s ease !important;
+            font-size: 0.875rem !important;
+            line-height: 1.25rem !important;
+            height: 45px !important; /* Fixed height per option */
+            display: flex !important;
+            align-items: center !important;
+        }
+        .ts-dropdown .option:hover,
+        .ts-dropdown .option.active {
+            background: linear-gradient(90deg, #faf5ff 0%, #f5f3ff 100%) !important;
+            color: #6366f1 !important;
+        }
+        .ts-dropdown .no-results {
+            padding: 0.75rem 1rem !important;
+            color: #9ca3af !important;
+            font-style: italic !important;
+            height: 45px !important;
+        }
+        /* Modal styling */
+        .modal-overlay {
+            z-index: 50 !important;
+        }
+        .modal-content {
+            position: relative;
+            z-index: 51 !important;
+        }
+        /* Ensure modal body contains the dropdown */
+        #analysisModalBody {
+            position: relative !important;
+            overflow: visible !important;
+        }
+        #projectSelectionStep {
+            position: relative !important;
+            z-index: 1 !important;
+        }
+
+        /* Date Filter Styling */
+        .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0.5;
+            cursor: pointer;
+            filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+        }
+
+        .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
         }
     </style>
 </head>
@@ -43,19 +118,16 @@
 <body class="bg-gray-50 text-gray-800 font-sans">
 <div class="flex min-h-screen">
 
-    {{-- ===================== SIDEBAR — identical structure to bidManagement.blade.php ===================== --}}
-        @include('admin.layouts.sidebar')
-    {{-- ===================== END SIDEBAR ===================== --}}
+    @include('admin.layouts.sidebar')
 
-    {{-- ===================== MAIN CONTENT ===================== --}}
     <main class="flex-1">
 
-              @php
-                $aiStatusBadge = '<div class="px-3 py-1.5 rounded-full flex items-center gap-1.5 '
+      @php
+        $aiStatusBadge = '<div class="px-3 py-1.5 rounded-full flex items-center gap-1.5 '
             . (($aiUsage['status'] ?? 'Offline') === 'Online' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
-                        . '"><span class="w-2.5 h-2.5 rounded-full animate-pulse '
+            . '"><span class="w-2.5 h-2.5 rounded-full animate-pulse '
             . (($aiUsage['status'] ?? 'Offline') === 'Online' ? 'bg-green-500' : 'bg-red-500')
-                        . '"></span><span class="font-semibold text-xs">System: ' . e($aiUsage['status'] ?? 'Offline') . '</span></div>';
+            . '"></span><span class="font-semibold text-xs">System: ' . e($aiUsage['status'] ?? 'Offline') . '</span></div>';
       @endphp
       @include('admin.layouts.topnav', [
           'pageTitle' => 'AI Management',
@@ -64,431 +136,230 @@
           'beforeNotifications' => $aiStatusBadge,
       ])
 
-        <div class="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 space-y-4">
+        <section class="px-8 py-8 space-y-8">
 
+            {{-- AI Features Banner --}}
             @if(!empty($aiUsage['features']))
-            <div class="flex flex-wrap gap-1.5">
-                @foreach($aiUsage['features'] as $feature)
-                    <span class="bg-blue-100 text-blue-700 text-[11px] font-semibold px-2.5 py-1 rounded-full">{{ $feature }}</span>
-                @endforeach
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-4 mb-6">
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fi fi-rr-sparkles text-indigo-600"></i>
+                    <span class="text-xs font-bold text-indigo-900 uppercase tracking-wider">AI Capabilities</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    @foreach($aiUsage['features'] as $feature)
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-indigo-700 border border-indigo-200 shadow-sm">
+                            <i class="fi fi-rr-check-circle text-[10px]"></i>
+                            {{ $feature }}
+                        </span>
+                    @endforeach
+                </div>
             </div>
             @endif
 
-            {{-- Run New Analysis --}}
-            <div class="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl shadow-md border border-blue-400/30 p-6 relative overflow-hidden">
-                <!-- Background decoration -->
-                <div class="absolute top-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl opacity-20 -translate-y-1/2 translate-x-1/2"></div>
-                
-                <div class="relative z-10">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 class="font-bold text-white text-base mb-1">Run New Analysis</h3>
-                            <p class="text-blue-50 text-sm">Execute a comprehensive delay risk assessment</p>
+            {{-- Filter Bar --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                            <i class="fi fi-rr-filter text-gray-500"></i>
+                            <span>Filter By</span>
+                        </div>
+
+                        {{-- Search Input --}}
+                        <div class="relative">
+                            <input id="searchInput" type="text"
+                                placeholder="Search project name…"
+                                class="w-64 px-3.5 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 focus:outline-none">
+                            <i class="fi fi-rr-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm"></i>
+                        </div>
+
+                        {{-- Date Range --}}
+                        <div class="flex flex-wrap items-center gap-2">
+                            {{-- From --}}
+                            <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                                    <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                                    <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                                </div>
+                                <input type="date" id="dateFrom"
+                                    class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                            </div>
+
+                            <span class="text-gray-300 font-bold text-lg">→</span>
+
+                            {{-- To --}}
+                            <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                                    <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                                    <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                                </div>
+                                <input type="date" id="dateTo"
+                                    class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                            </div>
+                        </div>
+
+                        {{-- Verdict Filter --}}
+                        <div class="relative">
+                            <select id="verdictFilter"
+                                class="appearance-none rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 pr-9 text-sm text-gray-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none">
+                                <option value="">All Verdicts</option>
+                                <option value="DELAYED">Delayed</option>
+                                <option value="ON_TIME">On Time</option>
+                            </select>
+                            <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none"></i>
                         </div>
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-3 items-end">
-                        <div class="flex-1">
-                            <label class="block text-xs font-bold text-blue-50 uppercase mb-2 tracking-wide">Select Project</label>
-                            <select id="projectSelect" name="project_id" placeholder="Start typing project name..." autocomplete="off" class="w-full px-4 py-2.5 bg-white text-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 font-medium text-sm border border-blue-200">
-                                <option value=""></option>
-                                @foreach($projects as $project)
-                                    <option value="{{ $project->project_id }}">
-                                        {{ $project->project_id }} - {{ $project->project_title }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <button onclick="runAnalysis()" id="btnAnalyze"
-                            class="bg-white text-blue-500 text-sm font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-blue-50 active:scale-95 duration-200 whitespace-nowrap">
-                            <i class="fi fi-br-play text-xs"></i>
+
+                    <div class="flex items-center gap-3">
+                        <button id="resetFilters"
+                            class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                            <i class="fi fi-rr-rotate-left"></i>
+                            <span>Reset Filter</span>
+                        </button>
+
+                        <button onclick="window.aiManagement.openAnalysisModal()" 
+                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-2">
+                            <i class="fi fi-br-chart-histogram text-sm"></i>
                             Analyze Now
                         </button>
-                    </div>
-                    <div id="analysisResult" class="hidden mt-4 p-4 bg-white/15 backdrop-blur-sm border border-white/25 rounded-lg">
-                        <div id="resultContent"></div>
                     </div>
                 </div>
             </div>
 
             {{-- Prediction History Logs --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-start">
-                    <div>
-                        <h3 class="font-bold text-sm text-gray-800">Prediction History Logs</h3>
-                        <p class="text-xs text-gray-500 mt-1">Analysis records and project risk assessments</p>
-                    </div>
-                    <span class="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">Latest 10</span>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-bold border-b border-gray-200">
-                            <tr>
-                                <th class="px-4 py-3 text-[11px]">Analyzed</th>
-                                <th class="px-4 py-3 text-[11px]">Project</th>
-                                <th class="px-4 py-3 text-[11px]">Verdict</th>
-                                <th class="px-4 py-3 text-[11px]">Probability</th>
-                                <th class="px-4 py-3 text-center text-[11px]">Confidence</th>
-                                <th class="px-4 py-3 text-right text-[11px]">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @forelse($predictionLogs as $log)
-                            <tr class="hover:bg-gray-50 transition-colors duration-150">
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="text-gray-600 font-medium">{{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}</span>
-                                </td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">{{ $log->project_title }}</td>
-                                <td class="px-4 py-3">
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border
-                                        {{ $log->prediction === 'DELAYED'
-                                            ? 'bg-red-50 text-red-700 border-red-200'
-                                            : 'bg-green-50 text-green-700 border-green-200' }}">
-                                        {{ $log->prediction }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                            <div class="h-full {{ $log->prediction === 'DELAYED' ? 'bg-red-500' : 'bg-green-500' }}" style="width: {{ $log->delay_probability * 100 }}%"></div>
-                                        </div>
-                                        <span class="font-mono font-bold text-gray-700 min-w-[40px]">{{ number_format($log->delay_probability * 100, 1) }}%</span>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 text-center">
-                                    <div class="flex items-center justify-center gap-0.5">
-                                        @for($i = 1; $i <= 5; $i++)
-                                            <div class="w-1.5 h-1.5 rounded-full {{ $i <= round($log->delay_probability * 5) ? ($log->prediction === 'DELAYED' ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-300' }}"></div>
-                                        @endfor
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <button
-                                        onclick="showDetails({{ json_encode(json_decode($log->ai_response_snapshot), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) }})"
-                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-300 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:border-gray-400 hover:text-gray-700 transition-all active:scale-95"
-                                        title="View Details">
-                                        <i class="fi fi-rr-eye text-[13px] leading-none"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="6" class="px-4 py-8 text-center">
-                                    <p class="text-gray-400 text-sm">No analysis history found</p>
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                @if(method_exists($predictionLogs, 'links'))
-                <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                    {{ $predictionLogs->links() }}
-                </div>
-                @endif
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" id="predictionTableWrap">
+                @include('admin.globalManagement.partials.aiManagementTable', ['predictionLogs' => $predictionLogs])
             </div>
 
-        </div>
+        </section>
     </main>
-    {{-- ===================== END MAIN CONTENT ===================== --}}
 
 </div>
 
-{{-- ===================== DETAILS MODAL ===================== --}}
-<div id="detailsModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
-    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm" onclick="closeModal()"></div>
-    <div class="flex items-center justify-center min-h-screen p-2">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden relative z-10">
-            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-3 sm:px-5 py-4 border-b border-gray-100 flex justify-between items-start">
-                <div>
-                    <h3 class="text-base sm:text-lg font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-                            <i class="fi fi-rr-chart-histogram text-sm"></i>
-                        </div>
-                        AI Strategic Project Audit
-                    </h3>
-                    <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Comprehensive Risk Analysis Report</p>
+{{-- ===================== DELETE CONFIRMATION MODAL ===================== --}}
+<div id="deleteModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div class="px-6 py-5 bg-gradient-to-r from-red-600 to-rose-600">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <i class="fi fi-sr-trash text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Delete Analysis?</h3>
+                        <p class="text-red-100 text-sm">This action cannot be undone</p>
+                    </div>
                 </div>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-full flex-shrink-0">
-                    <i class="fi fi-br-cross text-lg"></i>
-                </button>
+                <button class="modal-close-delete text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
             </div>
-            <div class="p-3 sm:p-4 overflow-y-auto modal-scroll bg-white" id="modalBody"></div>
-            <div class="bg-gradient-to-r from-gray-50 to-white px-3 sm:px-4 py-3 border-t border-gray-100 flex justify-end gap-2">
-                <button onclick="closeModal()" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-[11px] font-semibold rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">Close</button>
-                <button onclick="window.print()" class="px-4 py-2 bg-blue-600 text-white text-[11px] font-semibold rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 active:scale-95">
-                    <i class="fi fi-rr-print"></i> Print Report
-                </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div class="flex items-start gap-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                <i class="fi fi-rr-info-circle text-red-600 text-xl mt-0.5"></i>
+                <div class="flex-1">
+                    <p class="text-sm text-red-900 font-semibold mb-1">Confirm deletion</p>
+                    <p class="text-xs text-red-800">Are you sure you want to delete the analysis for <strong id="deleteProjectName"></strong>?</p>
+                </div>
             </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+            <button class="modal-close-delete px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+            <button id="confirmDeleteBtn" onclick="window.aiManagement.deleteAnalysis()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition flex items-center gap-2">
+                <i class="fi fi-rr-trash text-sm"></i>
+                Delete Analysis
+            </button>
         </div>
     </div>
 </div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        new TomSelect("#projectSelect", {
-            create: false,
-            sortField: { field: "text", direction: "asc" },
-            placeholder: "Search for a project...",
-            maxOptions: 10
-        });
-    });
-
-    async function runAnalysis() {
-        const projectId = document.getElementById('projectSelect').value;
-        const btn        = document.getElementById('btnAnalyze');
-        const resultBox  = document.getElementById('analysisResult');
-        const contentBox = document.getElementById('resultContent');
-
-        if (!projectId) { alert('Please select a project first.'); return; }
-
-        btn.disabled    = true;
-        btn.innerHTML   = '<span class="animate-spin inline-block mr-2 text-sm">⟳</span> Analyzing...';
-        resultBox.classList.remove('hidden');
-        contentBox.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-8 text-blue-600">
-                <div class="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
-                <p class="text-sm font-bold animate-pulse">Running Random Forest Model...</p>
-                <p class="text-xs text-blue-400 mt-1">Fetching Weather, Milestone Data & Contractor History</p>
-                <div class="mt-4 text-xs text-blue-500 space-y-1">
-                    <p>✓ Loading project data</p>
-                    <p>✓ Computing risk factors</p>
-                    <p>Processing environment variables...</p>
+{{-- ===================== ANALYSIS MODAL (Project Selection & Analysis) ===================== --}}
+<div id="analysisModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden">
+        <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <i class="fi fi-sr-chart-histogram text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Run AI Analysis</h3>
+                        <p class="text-indigo-100 text-sm">Select a project for delay risk assessment</p>
+                    </div>
                 </div>
-            </div>`;
+                <button class="modal-close-analysis text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+            </div>
+        </div>
 
-        try {
-            const response = await fetch(`/admin/global-management/ai-management/analyze/${projectId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-            });
-            const res = await response.json();
-
-            if (res.success) {
-                const data = res.data;
-                contentBox.innerHTML = `
-                    <div class="space-y-3">
-                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-4">
-                            <div class="flex items-start gap-3 mb-3">
-                                <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center text-white flex-shrink-0">
-                                    <i class="fi fi-rr-check-circle"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <h4 class="text-gray-900 font-bold text-base">Analysis Complete</h4>
-                                    <p class="text-gray-600 text-xs mt-1">${data.analysis_report.conclusion || 'Analysis successful.'}</p>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-3 gap-3 pt-3 border-t border-green-200">
-                                <div class="text-center">
-                                    <span class="text-xs font-bold text-gray-400 uppercase block mb-1">Verdict</span>
-                                    <p class="text-lg font-black ${data.prediction.prediction === 'DELAYED' ? 'text-red-600' : 'text-green-600'}">
-                                        ${data.prediction.prediction}
-                                    </p>
-                                </div>
-                                <div class="text-center">
-                                    <span class="text-xs font-bold text-gray-400 uppercase block mb-1">Risk Level</span>
-                                    <p class="text-lg font-black text-gray-800">
-                                        ${(data.prediction.delay_probability * 100).toFixed(1)}%
-                                    </p>
-                                </div>
-                                <div class="text-center">
-                                    <span class="text-xs font-bold text-gray-400 uppercase block mb-1">Status</span>
-                                    <p class="text-lg font-black text-blue-600">Active</p>
-                                </div>
-                            </div>
-                        </div>
-                        <button onclick="location.reload()"
-                            class="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2">
-                            <i class="fi fi-rr-disk"></i>
-                            Save to Logs
-                        </button>
-                    </div>`;
-            } else { throw new Error(res.message); }
-        } catch (err) {
-            contentBox.innerHTML = `
-                <div class="bg-red-50 border border-red-100 text-red-700 p-4 rounded-lg flex items-center gap-3">
-                    <div class="flex-shrink-0">
-                        <i class="fi fi-rr-exclamation text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-bold text-sm">Analysis Failed</p>
-                        <p class="text-xs mt-0.5 text-red-600">${err.message}</p>
-                    </div>
-                </div>`;
-        } finally {
-            btn.disabled  = false;
-            btn.innerHTML = 'Analyze Now';
-        }
-    }
-
-    function closeModal() {
-        document.getElementById('detailsModal').classList.add('hidden');
-    }
-
-    function showDetails(data) {
-        const modal = document.getElementById('detailsModal');
-        const body  = document.getElementById('modalBody');
-        const d     = (typeof data === 'string') ? JSON.parse(data) : data;
-
-        modal.classList.remove('hidden');
-
-        const isDelayed  = d.prediction.prediction === 'DELAYED';
-        const riskColor  = isDelayed ? 'text-red-600'   : 'text-green-600';
-        const riskBorder = isDelayed ? 'border-red-100' : 'border-green-100';
-        const contractor = d.analysis_report.contractor_audit;
-        const isFlagged  = contractor.flagged || (contractor.status && contractor.status.includes('Flagged'));
-
-        const details = d.analysis_report.pacing_status.details;
-        let pacingRows = '';
-        if (details && details.length > 0) {
-            pacingRows = details.map(item => {
-                const isRejected = item.status === 'rejected';
-                const isLate     = item.days_variance > 0;
-                return `
-                    <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
-                        <td class="py-2 px-3 text-xs font-medium text-gray-700">${item.title}</td>
-                        <td class="py-2 px-3 text-[11px] font-bold uppercase ${isRejected ? 'text-red-600' : 'text-gray-500'}">${item.status}</td>
-                        <td class="py-2 px-3 font-mono text-xs ${isLate ? 'text-amber-600' : 'text-green-600'}">
-                            ${item.days_variance > 0 ? '+' + item.days_variance : item.days_variance} days
-                        </td>
-                        <td class="py-2 px-3">
-                            <span class="px-2 py-0.5 rounded text-[11px] font-bold
-                                ${isRejected ? 'bg-red-100 text-red-700' : isLate ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}">
-                                ${item.pacing_label}
-                            </span>
-                        </td>
-                    </tr>`;
-            }).join('');
-        } else {
-            pacingRows = '<tr><td colspan="4" class="text-center py-3 text-xs text-gray-400 italic">No milestone data available yet.</td></tr>';
-        }
-
-        const recs     = d.dds_recommendations || [];
-        const recItems = recs.length > 0
-            ? recs.map(rec => `
-                <div class="flex gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
-                    <div class="flex-shrink-0 mt-1">
-                        ${rec.includes('QUALITY') ? '<i class="fi fi-rr-shield-exclamation text-red-500 text-lg"></i>'
-                          : rec.includes('WEATHER') || rec.includes('RAIN') ? '<i class="fi fi-rr-cloud-disabled text-orange-500 text-lg"></i>'
-                          : '<i class="fi fi-rr-bulb text-purple-500 text-lg"></i>'}
-                    </div>
-                    <p class="text-gray-700 text-xs font-medium leading-relaxed">${rec}</p>
-                </div>`).join('')
-            : '<p class="text-gray-400 italic text-sm">No recommendations generated.</p>';
-
-        const dots = [1,2,3,4,5].map(i =>
-            `<div class="w-2 h-2 rounded-full ${i <= d.weather_severity ? 'bg-orange-500' : 'bg-gray-200'}"></div>`
-        ).join('');
-
-        body.innerHTML = `
-            <div class="mb-4 bg-blue-50 border-l-4 border-blue-600 p-4 rounded-r-lg">
-                <h4 class="text-blue-900 font-bold text-xs uppercase tracking-wider mb-1.5">Executive Summary</h4>
-                <p class="text-blue-800 text-sm leading-relaxed font-medium">"${d.analysis_report.conclusion}"</p>
+        <div class="p-6 space-y-6" id="analysisModalBody">
+            <!-- Step 1: Project Selection -->
+            <div id="projectSelectionStep">
+                <label class="block text-sm font-semibold text-gray-800 mb-2">Select Project</label>
+                <select id="projectSelectModal" name="project_id" placeholder="Start typing to search for a project..." autocomplete="off" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-sm">
+                    <option value=""></option>
+                    @foreach($projects as $project)
+                        <option value="{{ $project->project_id }}">
+                            {{ $project->project_id }} - {{ $project->project_title }}
+                        </option>
+                    @endforeach
+                </select>
+                <div id="projectSelectError" class="hidden mt-2 text-xs text-red-600 flex items-center gap-1">
+                    <i class="fi fi-rr-exclamation text-sm"></i>
+                    <span>Please select a project before starting the analysis</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">
+                    <i class="fi fi-rr-info text-indigo-500"></i>
+                    Start typing to search and select a project for analysis
+                </p>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div class="lg:col-span-1 space-y-4">
+            <!-- Step 2: Analysis Progress/Results -->
+            <div id="analysisProgressStep" class="hidden">
+                <!-- Content will be dynamically inserted here -->
+            </div>
+        </div>
 
-                    <div class="bg-white border ${riskBorder} rounded-xl p-3.5 shadow-sm">
-                        <h5 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-2.5">Risk Assessment</h5>
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-2xl font-black ${riskColor}">${d.prediction.prediction}</span>
-                            <div class="text-right">
-                                <span class="block text-xs text-gray-500">Probability</span>
-                                <span class="text-lg font-bold text-gray-900">${(d.prediction.delay_probability * 100).toFixed(1)}%</span>
-                            </div>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="h-2.5 rounded-full ${isDelayed ? 'bg-red-500' : 'bg-green-500'}"
-                                 style="width:${(d.prediction.delay_probability * 100)}%"></div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2 italic">${d.prediction.reason || ''}</p>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+            <button class="modal-close-analysis px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+            <button id="btnStartAnalysis" onclick="window.aiManagement.startAnalysis()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition flex items-center gap-2">
+                <i class="fi fi-br-play text-xs"></i>
+                Start Analysis
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- ===================== DETAILS MODAL (View Analysis Results) ===================== --}}
+<div id="detailsModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-5xl w-full overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 sticky top-0 z-10">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <i class="fi fi-sr-chart-histogram text-white text-xl"></i>
                     </div>
-
-                    <div class="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm relative overflow-hidden">
-                        ${isFlagged ? '<div class="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-bl">FLAGGED</div>' : ''}
-                        <h5 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-2.5">Contractor Vetting</h5>
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span class="text-xs text-gray-600">Experience</span>
-                                <span class="text-xs font-bold text-gray-900">${contractor.experience}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-xs text-gray-600">Success Rate</span>
-                                <span class="text-xs font-bold ${isFlagged ? 'text-red-600' : 'text-green-600'}">${contractor.historical_success}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-xs text-gray-600">Audit Status</span>
-                                <span class="font-bold text-xs uppercase px-2 py-0.5 rounded
-                                    ${isFlagged ? 'text-red-600 bg-red-50' : 'text-green-600 bg-green-50'}">
-                                    ${contractor.status || (isFlagged ? 'High Risk' : 'Good Standing')}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm">
-                        <h5 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-2.5">Environment Context</h5>
-                        <div class="grid grid-cols-2 gap-2.5">
-                            <div class="text-center p-2 bg-gray-50 rounded">
-                                <i class="fi fi-rr-cloud-showers-heavy text-blue-500"></i>
-                                <p class="text-xs text-gray-500 mt-1">Rainfall</p>
-                                <p class="font-bold text-gray-800">${d.weather.total_rain}mm</p>
-                            </div>
-                            <div class="text-center p-2 bg-gray-50 rounded">
-                                <i class="fi fi-rr-temperature-high text-orange-500"></i>
-                                <p class="text-xs text-gray-500 mt-1">ENSO</p>
-                                <p class="font-bold text-gray-800">${d.enso_state}</p>
-                            </div>
-                        </div>
-                        <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
-                            <span class="text-xs text-gray-500">Weather Severity</span>
-                            <div class="flex gap-1">${dots}</div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="lg:col-span-2 space-y-4">
-
                     <div>
-                        <h5 class="text-xs sm:text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
-                            <span class="w-2 h-5 bg-blue-600 rounded-full"></span>
-                            Milestone Pacing Audit
-                        </h5>
-                        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                            <table class="w-full text-left">
-                                <thead class="bg-gray-50 border-b border-gray-100">
-                                    <tr>
-                                        <th class="px-3 py-2 text-[11px] font-bold text-gray-500 uppercase">Milestone</th>
-                                        <th class="px-3 py-2 text-[11px] font-bold text-gray-500 uppercase">Status</th>
-                                        <th class="px-3 py-2 text-[11px] font-bold text-gray-500 uppercase">Variance</th>
-                                        <th class="px-3 py-2 text-[11px] font-bold text-gray-500 uppercase">Verdict</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-xs">${pacingRows}</tbody>
-                            </table>
-                            <div class="bg-gray-50 px-3 py-2 border-t border-gray-200 text-right">
-                                <span class="text-xs font-bold text-gray-500">Average Pacing: </span>
-                                <span class="text-xs font-bold ${d.analysis_report.pacing_status.avg_delay_days > 0 ? 'text-red-600' : 'text-green-600'}">
-                                    ${d.analysis_report.pacing_status.avg_delay_days} days
-                                    ${d.analysis_report.pacing_status.avg_delay_days > 0 ? 'behind' : 'ahead'}
-                                </span>
-                            </div>
-                        </div>
+                        <h3 class="text-xl font-bold text-white">AI Strategic Project Audit</h3>
+                        <p class="text-indigo-100 text-sm">Comprehensive Risk Analysis Report</p>
                     </div>
-
-                    <div>
-                        <h5 class="text-xs sm:text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
-                            <span class="w-2 h-5 bg-purple-600 rounded-full"></span>
-                            AI Strategic Recommendations
-                        </h5>
-                        <div class="space-y-2">${recItems}</div>
-                    </div>
-
                 </div>
-            </div>`;
-    }
-</script>
+                <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6" id="modalBody">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3 sticky bottom-0">
+            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Close</button>
+            <button onclick="window.print()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition flex items-center gap-2">
+                <i class="fi fi-rr-print"></i> Print Report
+            </button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

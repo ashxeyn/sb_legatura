@@ -170,6 +170,30 @@ class globalManagementController extends Controller
     }
 
     /**
+     * ACTION: Delete AI Prediction Log
+     * Route: DELETE /admin/global-management/ai-management/delete/{id}
+     */
+    public function deleteAnalysis($id)
+    {
+        try {
+            $log = DB::table('ai_prediction_logs')->where('id', $id)->first();
+            
+            if (!$log) {
+                return response()->json(['success' => false, 'message' => 'Analysis not found'], 404);
+            }
+
+            DB::table('ai_prediction_logs')->where('id', $id)->delete();
+
+            AdminActivityLog::log('ai_analysis_deleted', ['log_id' => $id, 'project_id' => $log->project_id]);
+            
+            return response()->json(['success' => true, 'message' => 'Analysis deleted successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Display the posting management page
      */
     public function postingManagement(Request $request)

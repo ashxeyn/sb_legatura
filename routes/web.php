@@ -664,6 +664,8 @@ Route::delete('/admin/global-management/proof-of-payments/{id}', [globalManageme
 Route::put('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'updatePayment'])->name('admin.globalManagement.proofOfpayments.update');
 
 Route::get('/admin/global-management/ai-management', [globalManagementController::class, 'aiManagement'])->name('admin.globalManagement.aiManagement');
+Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);
+Route::delete('/admin/global-management/ai-management/delete/{id}', [globalManagementController::class, 'deleteAnalysis']);
 Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');
 Route::get('/admin/global-management/report-management', [globalManagementController::class, 'reportManagement'])->name('admin.globalManagement.reportManagement');
 Route::get('/admin/global-management/report-management/api', [globalManagementController::class, 'getReportsApi'])->name('admin.globalManagement.reportManagement.api');
