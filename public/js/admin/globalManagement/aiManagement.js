@@ -83,17 +83,128 @@
         if (searchInput) {
             searchInput.addEventListener("input", applyFilters);
         }
+        
         if (dateFrom) {
+            // Update min constraint on dateTo whenever dateFrom changes
+            dateFrom.addEventListener("input", function() {
+                if (this.value && dateTo) {
+                    dateTo.setAttribute('min', this.value);
+                    // If dateTo is already set and is now invalid, clear it silently
+                    if (dateTo.value && dateTo.value < this.value) {
+                        dateTo.value = '';
+                    }
+                } else if (dateTo) {
+                    dateTo.removeAttribute('min');
+                }
+            });
+            
+            // Apply filters when date is fully selected
             dateFrom.addEventListener("change", applyFilters);
         }
+        
         if (dateTo) {
-            dateTo.addEventListener("change", applyFilters);
+            // Update max constraint on dateFrom whenever dateTo changes
+            dateTo.addEventListener("input", function() {
+                if (this.value && dateFrom) {
+                    dateFrom.setAttribute('max', this.value);
+                } else if (dateFrom) {
+                    dateFrom.removeAttribute('max');
+                }
+            });
+            
+            // Validate only on blur (when user clicks away) or Enter key
+            dateTo.addEventListener("blur", function() {
+                validateAndApplyDateFilter();
+            });
+            
+            dateTo.addEventListener("keypress", function(e) {
+                if (e.key === 'Enter') {
+                    validateAndApplyDateFilter();
+                }
+            });
+            
+            // Apply filters when date is fully selected (without validation on change)
+            dateTo.addEventListener("change", function() {
+                const fromValue = dateFrom ? dateFrom.value : '';
+                // Only apply if valid or empty
+                if (!this.value || !fromValue || this.value >= fromValue) {
+                    clearDateError();
+                    applyFilters();
+                }
+            });
         }
+        
         if (verdictFilter) {
             verdictFilter.addEventListener("change", applyFilters);
         }
+        
         if (resetBtn) {
             resetBtn.addEventListener("click", resetFilters);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // VALIDATE AND APPLY DATE FILTER
+    // ─────────────────────────────────────────────────────────────
+
+    function validateAndApplyDateFilter() {
+        const dateFrom = document.getElementById("dateFrom");
+        const dateTo = document.getElementById("dateTo");
+        
+        if (!dateFrom || !dateTo) return;
+        
+        const fromValue = dateFrom.value;
+        const toValue = dateTo.value;
+        
+        // Only validate if both dates are set
+        if (fromValue && toValue) {
+            if (toValue < fromValue) {
+                showDateError();
+                dateTo.value = '';
+                // Apply filters after clearing
+                setTimeout(() => {
+                    applyFilters();
+                }, 100);
+                return;
+            }
+        }
+        
+        clearDateError();
+        applyFilters();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // SHOW/CLEAR DATE ERROR
+    // ─────────────────────────────────────────────────────────────
+
+    function showDateError() {
+        const dateToWrapper = document.getElementById("dateToWrapper");
+        const dateToError = document.getElementById("dateToError");
+        
+        if (dateToWrapper) {
+            dateToWrapper.classList.remove('border-indigo-200');
+            dateToWrapper.classList.add('border-red-500');
+        }
+        
+        if (dateToError) {
+            dateToError.classList.remove('hidden');
+        }
+        
+        // Auto-hide after 3 seconds
+        setTimeout(clearDateError, 3000);
+    }
+
+    function clearDateError() {
+        const dateToWrapper = document.getElementById("dateToWrapper");
+        const dateToError = document.getElementById("dateToError");
+        
+        if (dateToWrapper) {
+            dateToWrapper.classList.remove('border-red-500');
+            dateToWrapper.classList.add('border-indigo-200');
+        }
+        
+        if (dateToError) {
+            dateToError.classList.add('hidden');
         }
     }
 
@@ -184,10 +295,17 @@
         const verdictFilter = document.getElementById("verdictFilter");
 
         if (searchInput) searchInput.value = "";
-        if (dateFrom) dateFrom.value = "";
-        if (dateTo) dateTo.value = "";
+        if (dateFrom) {
+            dateFrom.value = "";
+            dateFrom.removeAttribute('max');
+        }
+        if (dateTo) {
+            dateTo.value = "";
+            dateTo.removeAttribute('min');
+        }
         if (verdictFilter) verdictFilter.value = "";
 
+        clearDateError();
         applyFilters();
         toast("Filters reset", "info");
     }
@@ -667,6 +785,18 @@
         toast,
         applyFilters,
         resetFilters
+    };
+
+    // ─────────────────────────────────────────────────────────────
+    // EXPOSE PUBLIC API
+    // ─────────────────────────────────────────────────────────────
+
+    window.aiManagement = {
+        openAnalysisModal,
+        startAnalysis,
+        confirmDelete,
+        deleteAnalysis,
+        showDetails
     };
 
 })();

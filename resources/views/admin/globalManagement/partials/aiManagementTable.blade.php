@@ -1,4 +1,4 @@
-.@php
+@php
     $hasFilters = request('search') || request('verdict') || request('date_from') || request('date_to');
 @endphp
 
@@ -27,7 +27,10 @@
         </thead>
         <tbody class="divide-y divide-gray-200" id="predictionTableBody">
             @forelse($predictionLogs as $log)
-            <tr class="hover:bg-indigo-50/60 transition-colors duration-200 ease-in-out">
+            <tr class="hover:bg-indigo-50/60 transition-colors duration-200 ease-in-out"
+                data-project="{{ strtolower($log->project_title) }}"
+                data-verdict="{{ $log->prediction }}"
+                data-date="{{ $log->created_at }}">
                 <td class="px-4 py-3 whitespace-nowrap text-xs">
                     <span class="text-gray-600 font-medium">{{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}</span>
                 </td>
@@ -76,6 +79,13 @@
                 </td>
             </tr>
             @empty
+            <tr id="noResultsRow" style="display: none;">
+                <td colspan="6" class="px-4 py-12 text-center text-gray-400">
+                    <i class="fi fi-sr-document text-3xl block mb-2"></i>
+                    <p class="text-base font-medium text-gray-500">No matching results found</p>
+                    <p class="text-xs mt-1">Try adjusting your filter criteria.</p>
+                </td>
+            </tr>
             <tr>
                 <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                     <i class="fi fi-sr-document text-3xl block mb-2"></i>

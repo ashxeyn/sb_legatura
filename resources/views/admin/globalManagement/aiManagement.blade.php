@@ -39,7 +39,7 @@
             border-radius: 0.75rem !important;
             border: 2px solid #e5e7eb !important;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
-            max-height: 180px !important; /* Fixed height for exactly 4 items */
+            max-height: 180px !important;
             height: auto !important;
             overflow-y: scroll !important;
             overflow-x: hidden !important;
@@ -47,29 +47,27 @@
             position: absolute !important;
             left: 0 !important;
             right: 0 !important;
-            /* Hide scrollbar but keep functionality */
-            scrollbar-width: none !important; /* Firefox */
-            -ms-overflow-style: none !important; /* IE and Edge */
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
         }
         .ts-dropdown::-webkit-scrollbar {
-            display: none !important; /* Chrome, Safari, Opera */
+            display: none !important;
         }
         .ts-dropdown .ts-dropdown-content {
             max-height: 180px !important;
             overflow-y: scroll !important;
-            /* Hide scrollbar but keep functionality */
-            scrollbar-width: none !important; /* Firefox */
-            -ms-overflow-style: none !important; /* IE and Edge */
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
         }
         .ts-dropdown .ts-dropdown-content::-webkit-scrollbar {
-            display: none !important; /* Chrome, Safari, Opera */
+            display: none !important;
         }
         .ts-dropdown .option {
             padding: 0.625rem 1rem !important;
             transition: background 0.15s ease !important;
             font-size: 0.875rem !important;
             line-height: 1.25rem !important;
-            height: 45px !important; /* Fixed height per option */
+            height: 45px !important;
             display: flex !important;
             align-items: center !important;
         }
@@ -92,7 +90,6 @@
             position: relative;
             z-index: 51 !important;
         }
-        /* Ensure modal body contains the dropdown */
         #analysisModalBody {
             position: relative !important;
             overflow: visible !important;
@@ -111,6 +108,16 @@
 
         .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
             opacity: 1;
+        }
+
+        /* Verdict Dropdown Options Styling */
+        #verdictFilter option {
+            padding: 10px;
+            background-color: #ffffff;
+        }
+
+        #verdictFilter option:hover {
+            background-color: #eef2ff;
         }
     </style>
 </head>
@@ -188,25 +195,37 @@
                             <span class="text-gray-300 font-bold text-lg">→</span>
 
                             {{-- To --}}
-                            <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                                    <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                                    <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                            <div>
+                                <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition" id="dateToWrapper">
+                                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                                        <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                                        <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                                    </div>
+                                    <input type="date" id="dateTo"
+                                        class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
                                 </div>
-                                <input type="date" id="dateTo"
-                                    class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                                <p id="dateToError" class="hidden text-xs text-red-600 mt-1 flex items-center gap-1">
+                                    <i class="fi fi-rr-exclamation text-xs"></i>
+                                    <span>End date cannot be earlier than start date</span>
+                                </p>
                             </div>
                         </div>
 
                         {{-- Verdict Filter --}}
-                        <div class="relative">
-                            <select id="verdictFilter"
-                                class="appearance-none rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 pr-9 text-sm text-gray-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none">
-                                <option value="">All Verdicts</option>
-                                <option value="DELAYED">Delayed</option>
-                                <option value="ON_TIME">On Time</option>
-                            </select>
-                            <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none"></i>
+                        <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                            <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                                <i class="fi fi-rr-chart-line-up text-white text-sm leading-none"></i>
+                                <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Verdict</span>
+                            </div>
+                            <div class="relative">
+                                <select id="verdictFilter"
+                                    class="appearance-none bg-white text-sm text-gray-700 font-medium px-3 py-2.5 pr-8 focus:outline-none cursor-pointer border-0 min-w-[120px]">
+                                    <option value="">All</option>
+                                    <option value="DELAYED">Delayed</option>
+                                    <option value="ON_TIME">On Time</option>
+                                </select>
+                                <i class="fi fi-rr-angle-small-down absolute right-2 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none"></i>
+                            </div>
                         </div>
                     </div>
 
@@ -217,7 +236,7 @@
                             <span>Reset Filter</span>
                         </button>
 
-                        <button onclick="window.aiManagement.openAnalysisModal()" 
+                        <button onclick="window.aiManagement.openAnalysisModal()"
                             class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-2">
                             <i class="fi fi-br-chart-histogram text-sm"></i>
                             Analyze Now
