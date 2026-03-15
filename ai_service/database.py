@@ -149,10 +149,11 @@ def get_contractor_history(conn, contractor_id):
     # ---------------------------------------------------------
     cursor.execute("""
         SELECT
-            COUNT(project_id) as total_projects,
-            SUM(CASE WHEN project_status = 'completed' THEN 1 ELSE 0 END) as successful_projects
-        FROM projects
-        WHERE selected_contractor_id = %s
+            COUNT(p.project_id) as total_projects,
+            SUM(CASE WHEN p.project_status = 'completed' THEN 1 ELSE 0 END) as successful_projects
+        FROM projects p
+        JOIN project_relationships pr ON p.relationship_id = pr.rel_id
+        WHERE pr.selected_contractor_id = %s
     """, (contractor_id,))
     proj_stats = cursor.fetchone()
 
@@ -176,7 +177,8 @@ def get_contractor_history(conn, contractor_id):
             AVG(r.rating) as avg_stars
         FROM reviews r
         JOIN projects p ON r.project_id = p.project_id
-        WHERE p.selected_contractor_id = %s
+        JOIN project_relationships pr ON p.relationship_id = pr.rel_id
+        WHERE pr.selected_contractor_id = %s
     """, (contractor_id,))
     review_stats = cursor.fetchone()
 
@@ -215,9 +217,10 @@ def get_project_and_contractor(project_id: int):
 
     # 1. Get Project Basics
     cursor.execute("""
-        SELECT project_location, to_finish, selected_contractor_id, project_title
-        FROM projects
-        WHERE project_id = %s
+        SELECT p.project_location, p.to_finish, p.project_title, pr.selected_contractor_id
+        FROM projects p
+        LEFT JOIN project_relationships pr ON p.relationship_id = pr.rel_id
+        WHERE p.project_id = %s
     """, (project_id,))
     project = cursor.fetchone()
 
