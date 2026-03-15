@@ -299,7 +299,8 @@
                   <div class="md:col-span-2">
                     <label class="block text-[11px] font-medium text-gray-600 mb-1">DTI / SEC Registration</label>
                     <a id="vrDtiFile" href="#"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition">
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition open-doc-btn"
+                      data-doc-src="#" data-doc-title="DTI / SEC Registration">
                       <i class="fi fi-rr-file-pdf text-indigo-500 text-[11px]"></i>
                       <span>DTIRegistration.pdf</span>
                       <span class="text-[10px] text-gray-500">200 KB</span>
@@ -486,7 +487,8 @@
                     <div>
                       <span class="block text-[11px] text-gray-500 mb-1">Valid ID Photo (Front)</span>
                       <a id="poValidIdPhoto" href="#"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition w-full">
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition w-full open-doc-btn"
+                        data-doc-src="#" data-doc-title="Valid ID (Front)">
                         <i class="fi fi-rr-id-badge text-indigo-500 text-[11px]"></i>
                         <span class="truncate">Front.jpg</span>
                       </a>
@@ -494,7 +496,8 @@
                     <div>
                       <span class="block text-[11px] text-gray-500 mb-1">Valid ID Photo (Back)</span>
                       <a id="poValidIdBackPhoto" href="#"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition w-full">
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition w-full open-doc-btn"
+                        data-doc-src="#" data-doc-title="Valid ID (Back)">
                         <i class="fi fi-rr-id-badge text-indigo-500 text-[11px]"></i>
                         <span class="truncate">Back.jpg</span>
                       </a>
@@ -503,7 +506,8 @@
                   <div>
                     <span class="block text-[11px] text-gray-500 mb-1">Police Clearance</span>
                     <a id="poPoliceClearance" href="#"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-medium transition">
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-medium transition open-doc-btn"
+                      data-doc-src="#" data-doc-title="Police Clearance">
                       <i class="fi fi-rr-file text-purple-500 text-[11px]"></i>
                       <span>PoliceClearance.pdf</span>
                       <span class="text-[10px] text-gray-500">200 KB</span>
@@ -550,21 +554,33 @@
         </div>
       </div>
 
-      <!-- Document Viewer Modal (moved here) -->
-      <div id="docViewerModal" class="fixed inset-0 bg-black bg-opacity-50 z-[90] hidden items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all">
-          <div class="flex items-center justify-between px-4 py-3 border-b">
-            <h3 class="text-lg font-semibold text-gray-800">Document Viewer</h3>
-            <button id="docViewerCloseBtn" class="text-gray-500 hover:text-gray-800 p-2">
-              <i class="fi fi-rr-cross text-2xl"></i>
-            </button>
+      <!-- Universal File Viewer (UFV) -->
+      <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] hidden items-center justify-center p-4">
+        <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
+          <!-- Header -->
+          <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
+              <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
+                <i class="fi fi-rr-download"></i>
+              </a>
+              <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
+                <i class="fi fi-rr-cross text-sm"></i>
+              </button>
+            </div>
           </div>
-          <div class="p-4 flex items-center justify-center min-h-[60vh]">
-            <img id="docViewerImg" src="" alt="Document" class="max-w-full max-h-[70vh] object-contain hidden" />
-            <iframe id="docViewerIframe" src="" class="w-full h-[70vh] hidden border-0"></iframe>
+          <!-- Viewport -->
+          <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
+            <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
+            <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
           </div>
         </div>
       </div>
+
+
 
     </main>
 

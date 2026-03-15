@@ -3818,3 +3818,92 @@ async function toggleHaltedProjectSummary(projectId) {
     }
   }
 }
+
+// Document Viewer Functions
+window.openDocumentViewer = function(docSrc, docTitle = 'Document Viewer') {
+  const modal = document.getElementById('documentViewerModal');
+  const content = document.getElementById('docViewerContent');
+  const title = document.getElementById('docViewerTitle');
+  const downloadBtn = document.getElementById('docViewerDownload');
+  
+  if (modal && content && title) {
+    title.textContent = docTitle;
+    
+    // Set download link
+    if (downloadBtn) {
+      downloadBtn.href = docSrc;
+    }
+    
+    // Detect file type from extension
+    const extension = docSrc.split('.').pop().toLowerCase();
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+    const pdfExtensions = ['pdf'];
+    
+    // Clear previous content
+    content.innerHTML = '';
+    
+    if (imageExtensions.includes(extension)) {
+      // Display as image
+      const img = document.createElement('img');
+      img.src = docSrc;
+      img.alt = docTitle;
+      img.className = 'max-w-full max-h-full object-contain rounded-lg';
+      img.onerror = function() {
+        content.innerHTML = '<div class="text-white text-center"><p class="text-lg mb-2">Failed to load image</p><p class="text-sm text-gray-400">The file may not exist or is inaccessible</p></div>';
+      };
+      content.appendChild(img);
+    } else if (pdfExtensions.includes(extension)) {
+      // Display PDF in iframe with embed fallback
+      const iframe = document.createElement('iframe');
+      iframe.src = docSrc;
+      iframe.className = 'w-full h-full rounded-lg';
+      iframe.frameBorder = '0';
+      iframe.onerror = function() {
+        content.innerHTML = `<div class="text-white text-center p-6"><p class="text-lg mb-4">Unable to display PDF</p><a href="${docSrc}" download class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg inline-flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Download File</a></div>`;
+      };
+      content.appendChild(iframe);
+    } else {
+      // For other file types, show download option
+      content.innerHTML = `
+        <div class="text-white text-center p-6">
+          <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          <p class="text-lg mb-2">Preview not available</p>
+          <p class="text-sm text-gray-400 mb-4">This file type cannot be previewed in the browser</p>
+          <a href="${docSrc}" download class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg inline-flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Download File
+          </a>
+        </div>
+      `;
+    }
+    
+    modal.classList.remove('hidden');
+  }
+};
+
+window.closeDocumentViewer = function() {
+  const modal = document.getElementById('documentViewerModal');
+  const content = document.getElementById('docViewerContent');
+  
+  if (modal && content) {
+    modal.classList.add('hidden');
+    content.innerHTML = '';
+  }
+};
+
+// Event delegation for document viewer buttons
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.open-doc-btn');
+  if (btn) {
+    e.preventDefault();
+    const docSrc = btn.getAttribute('data-doc-src');
+    const docTitle = btn.getAttribute('data-doc-title') || 'Document Viewer';
+    if (docSrc) {
+      openDocumentViewer(docSrc, docTitle);
+    }
+  }
+});

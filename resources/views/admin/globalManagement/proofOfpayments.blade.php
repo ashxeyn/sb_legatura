@@ -599,6 +599,32 @@
 
   </div>{{-- /flex min-h-screen --}}
 
+  <!-- Universal File Viewer (UFV) -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[130] hidden items-center justify-center p-4">
+    <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
+          <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
+            <i class="fi fi-rr-download"></i>
+          </a>
+          <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
+            <i class="fi fi-rr-cross text-sm"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Viewport -->
+      <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
+        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
+        <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function () {
     'use strict';
@@ -744,8 +770,8 @@
         .catch(function(){showToast('Network error.','error');});
     }
 
-    function pendingFileRow(path){var name=esc(path.split('/').pop()),ext=name.split('.').pop().toUpperCase().slice(0,4),url='/storage/'+path;return'<div class="file-row"><div class="flex items-center gap-3"><span class="file-type">'+ext+'</span><span class="text-gray-800">'+name+'</span></div><div class="flex items-center gap-2"><a href="'+esc(url)+'" target="_blank" class="icon-btn"><i class="fi fi-rr-eye"></i></a><a href="'+esc(url)+'" download class="icon-btn"><i class="fi fi-rr-download"></i></a></div></div>';}
-    function completedFileRow(path){var name=esc(path.split('/').pop()),ext=name.split('.').pop().toUpperCase().slice(0,4),url='/storage/'+path;return'<div class="grid grid-cols-12 items-center px-4 py-3 hover:bg-gray-50"><div class="col-span-7 flex items-center gap-3"><span class="file-type">'+ext+'</span><span class="text-gray-800">'+name+'</span></div><div class="col-span-4 text-sm text-gray-600">Receipt file</div><div class="col-span-1 flex justify-end"><a href="'+esc(url)+'" download class="icon-btn"><i class="fi fi-rr-download"></i></a></div></div>';}
+    function pendingFileRow(path){var name=esc(path.split('/').pop()),ext=name.split('.').pop().toUpperCase().slice(0,4),url='/storage/'+path;return'<div class="file-row"><div class="flex items-center gap-3"><span class="file-type">'+ext+'</span><span class="text-gray-800">'+name+'</span></div><div class="flex items-center gap-2"><a href="#" class="icon-btn open-doc-btn" data-doc-src="'+esc(url)+'" data-doc-title="'+esc(name)+'"><i class="fi fi-rr-eye"></i></a><a href="'+esc(url)+'" download class="icon-btn"><i class="fi fi-rr-download"></i></a></div></div>';}
+    function completedFileRow(path){var name=esc(path.split('/').pop()),ext=name.split('.').pop().toUpperCase().slice(0,4),url='/storage/'+path;return'<div class="grid grid-cols-12 items-center px-4 py-3 hover:bg-gray-50"><div class="col-span-7 flex items-center gap-3"><span class="file-type">'+ext+'</span><span class="text-gray-800">'+name+'</span></div><div class="col-span-4 text-sm text-gray-600">Receipt file</div><div class="col-span-1 flex justify-end gap-1.5"><a href="#" class="icon-btn open-doc-btn" data-doc-src="'+esc(url)+'" data-doc-title="'+esc(name)+'"><i class="fi fi-rr-eye"></i></a><a href="'+esc(url)+'" download class="icon-btn"><i class="fi fi-rr-download"></i></a></div></div>';}
     function invalidFileRow(path){return completedFileRow(path);}
 
     function showLoading(lid,bid){var l=document.getElementById(lid),b=document.getElementById(bid);if(l)l.classList.remove('hidden');if(b)b.classList.add('hidden');}
@@ -1071,6 +1097,118 @@
           btn.innerHTML='<i class="fi fi-rr-trash"></i>&nbsp;Delete';
         });
     });
+
+    // ============================================
+    // Universal File Viewer (UFV) - Dark Theme
+    // ============================================
+    (function() {
+        const modal = document.getElementById('documentViewerModal');
+        const iframe = document.getElementById('documentViewerFrame');
+        const img = document.getElementById('documentViewerImg');
+        const closeBtn = document.getElementById('closeDocumentViewerBtn');
+
+        if (!modal) {
+            console.error('UFV: documentViewerModal not found!');
+            return;
+        }
+
+        function openDocumentViewer(src, title) {
+            console.log('UFV: Opening viewer with src:', src, 'title:', title);
+            if (!modal) return;
+            const isPdf = /\.pdf(\?|$)/i.test(src);
+            const titleEl = document.getElementById('documentViewerTitle');
+            const downloadLink = document.getElementById('documentViewerDownload');
+
+            if (titleEl) titleEl.textContent = title || 'Document Viewer';
+            if (downloadLink) downloadLink.href = src;
+
+            if (isPdf) {
+                if (iframe) {
+                    iframe.src = src;
+                    iframe.classList.remove('hidden');
+                }
+                if (img) img.classList.add('hidden');
+            } else {
+                if (img) {
+                    img.src = src;
+                    img.classList.remove('hidden');
+                }
+                if (iframe) iframe.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
+                setTimeout(function() {
+                    modalShell.classList.remove('scale-95', 'opacity-0');
+                    modalShell.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            }
+        }
+
+        function closeDocumentViewer() {
+            console.log('UFV: Closing viewer');
+            if (!modal) return;
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
+                modalShell.classList.remove('scale-100', 'opacity-100');
+                modalShell.classList.add('scale-95', 'opacity-0');
+            }
+            setTimeout(function() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = 'auto';
+                if (iframe) iframe.src = '';
+                if (img) img.src = '';
+            }, 200);
+        }
+
+        // Delegated click handler for open buttons
+        document.addEventListener('click', function(e) {
+            console.log('UFV: Click detected on:', e.target);
+            const btn = e.target.closest && e.target.closest('.open-doc-btn');
+            console.log('UFV: Closest .open-doc-btn:', btn);
+            if (btn) {
+                console.log('UFV: Button clicked!');
+                e.preventDefault();
+                e.stopPropagation();
+                const src = btn.getAttribute('data-doc-src');
+                const title = btn.getAttribute('data-doc-title') || 'Document';
+                console.log('UFV: src:', src, 'title:', title);
+                if (src && src !== '#') {
+                    openDocumentViewer(src, title);
+                } else {
+                    showToast('No document available', 'error');
+                }
+            }
+        }, true); // Use capture phase
+
+        // Close button
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeDocumentViewer);
+        }
+
+        // Close on backdrop click
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeDocumentViewer();
+                }
+            });
+        }
+
+        // Close on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeDocumentViewer();
+            }
+        });
+
+        console.log('UFV: Initialization complete');
+    })();
 
   }());
   </script>

@@ -177,6 +177,32 @@
 
     </div>
 
+    <!-- Universal File Viewer (UFV) -->
+    <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+        <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
+                    <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
+                        <i class="fi fi-rr-download"></i>
+                    </a>
+                    <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
+                        <i class="fi fi-rr-cross text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Viewport -->
+            <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
+                <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
+                <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
+            </div>
+        </div>
+    </div>
+
     <!-- View Showcase Modal -->
     <div id="viewShowcaseModal"
         class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">

@@ -23,7 +23,8 @@ class projectClass
                 'owner_users.last_name as owner_last_name',
                 'owner_users.middle_name as owner_middle_name',
                 'property_owners.profile_pic as owner_profile_pic',
-                'contractors.company_name as contractor_company'
+                'contractors.company_name as contractor_company',
+                'contractors.company_logo as contractor_logo'
             );
 
         if ($search) {

@@ -154,6 +154,38 @@
 
   @include('admin.projectManagement.partials.paymentHistoryModal')
 
+  <!-- Document Viewer Modal (Dark Theme) -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] hidden transition-opacity duration-300">
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-[#1e1e2e] w-full max-w-5xl rounded-2xl shadow-2xl relative transform transition-all duration-300 scale-100 max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+          <h3 id="docViewerTitle" class="text-lg font-bold text-white">Document Viewer</h3>
+          <div class="flex items-center gap-2">
+            <a id="docViewerDownload" href="#" download class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Download
+            </a>
+            <button type="button" onclick="closeDocumentViewer()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-all duration-200 text-gray-300 hover:text-white">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-hidden p-6">
+          <div id="docViewerContent" class="w-full h-full flex items-center justify-center bg-gray-900 rounded-lg overflow-auto">
+            <!-- Content will be dynamically inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ asset('js/admin/reusables/filters.js') }}"></script>
   <script src="{{ asset('js/admin/projectManagement/listOfprojects.js') }}"></script>
   <script src="{{ asset('js/admin/projectManagement/paymentHistoryModal.js') }}"></script>

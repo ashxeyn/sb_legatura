@@ -43,6 +43,7 @@ class bothReactivateClass extends Model
                 'po.owner_id',
                 'u.user_id',
                 'c.company_name as name',
+                'c.company_logo',
                 'u.email',
                 'c.suspension_reason as reason',
                 'c.suspension_until',
@@ -90,6 +91,7 @@ class bothReactivateClass extends Model
         return $query->select(
                 'po.owner_id',
                 'po.user_id',
+                'po.profile_pic',
                 DB::raw("CONCAT(u.first_name, ' ', COALESCE(u.middle_name, ''), ' ', u.last_name) as name"),
                 'u.email',
                 'po.suspension_reason as reason',

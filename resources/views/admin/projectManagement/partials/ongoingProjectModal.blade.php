@@ -803,7 +803,7 @@
                     <td class="px-4 py-3 text-gray-600">{{ $payment->transaction_date ? \Carbon\Carbon::parse($payment->transaction_date)->format('M d, Y') : '—' }}</td>
                     <td class="px-4 py-3">
                       @if($payment->proof_attachment)
-                      <a href="{{ asset('storage/' . $payment->proof_attachment) }}" target="_blank" class="text-blue-600 hover:text-blue-800 underline text-xs">View</a>
+                      <a href="#" class="open-doc-btn text-blue-600 hover:text-blue-800 font-medium underline text-xs" data-doc-src="{{ asset('storage/' . $payment->proof_attachment) }}" data-doc-title="Proof of Payment">View</a>
                       @else
                       <span class="text-gray-400 text-xs">—</span>
                       @endif

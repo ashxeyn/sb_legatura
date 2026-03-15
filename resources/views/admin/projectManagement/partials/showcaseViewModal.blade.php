@@ -87,10 +87,12 @@
         @if(count($showcase['images']) > 0)
             <div class="grid grid-cols-3 gap-3">
                 @foreach($showcase['images'] as $image)
-                    <div class="rounded-lg overflow-hidden border border-gray-200 aspect-video bg-gray-100">
+                    <a href="#" class="rounded-lg overflow-hidden border border-gray-200 aspect-video bg-gray-100 block hover:border-orange-400 transition-colors cursor-pointer open-doc-btn"
+                        data-doc-src="{{ asset('storage/' . $image->file_path) }}"
+                        data-doc-title="{{ $image->original_name ?? 'Showcase image' }}">
                         <img src="{{ asset('storage/' . $image->file_path) }}"
                             alt="{{ $image->original_name ?? 'Showcase image' }}" class="w-full h-full object-cover">
-                    </div>
+                    </a>
                 @endforeach
             </div>
         @else

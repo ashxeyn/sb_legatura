@@ -11,9 +11,15 @@
     </td>
     <td class="px-2.5 py-2.5">
       <div class="flex items-center gap-1.5">
-        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0 uppercase">
-          {{ $initials ?: 'U' }}
-        </div>
+        @if($isBoost && $sub->profile_pic)
+          <img src="{{ asset('storage/' . $sub->profile_pic) }}" alt="{{ $personName }}" class="w-7 h-7 rounded-full object-cover shadow flex-shrink-0">
+        @elseif(!$isBoost && $sub->company_logo)
+          <img src="{{ asset('storage/' . $sub->company_logo) }}" alt="{{ $personName }}" class="w-7 h-7 rounded-full object-cover shadow flex-shrink-0">
+        @else
+          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0 uppercase">
+            {{ $initials ?: 'U' }}
+          </div>
+        @endif
         <span class="text-xs font-medium text-gray-800 truncate max-w-[220px]" title="{{ $personName }}">{{ $personName }}</span>
       </div>
     </td>

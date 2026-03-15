@@ -28,17 +28,23 @@ class reviewsClass
                 'r.comment as review_text',
                 'r.created_at',
                 'p.project_title',
-                'po_rev.profile_pic as reviewer_pic',
+                DB::raw("CASE 
+                    WHEN u_rev.user_type = 'contractor' OR u_rev.user_type = 'both' THEN c_rev.company_logo
+                    ELSE po_rev.profile_pic 
+                END as reviewer_pic"),
                 'u_rev.user_type as reviewer_type',
                 DB::raw("CASE 
-                    WHEN u_rev.user_type = 'contractor' THEN c_rev.company_name 
+                    WHEN u_rev.user_type = 'contractor' OR u_rev.user_type = 'both' THEN c_rev.company_name 
                     WHEN u_rev.user_type = 'property_owner' THEN CONCAT(u_rev.first_name, ' ', u_rev.last_name)
                     ELSE u_rev.username 
                 END as reviewer_name"),
-                'po_ree.profile_pic as reviewed_pic',
+                DB::raw("CASE 
+                    WHEN u_ree.user_type = 'contractor' OR u_ree.user_type = 'both' THEN c_ree.company_logo
+                    ELSE po_ree.profile_pic 
+                END as reviewed_pic"),
                 'u_ree.user_type as reviewed_type',
                 DB::raw("CASE 
-                    WHEN u_ree.user_type = 'contractor' THEN c_ree.company_name 
+                    WHEN u_ree.user_type = 'contractor' OR u_ree.user_type = 'both' THEN c_ree.company_name 
                     WHEN u_ree.user_type = 'property_owner' THEN CONCAT(u_ree.first_name, ' ', u_ree.last_name)
                     ELSE u_ree.username 
                 END as reviewed_name")

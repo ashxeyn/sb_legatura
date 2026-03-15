@@ -15,9 +15,15 @@
     </td>
     <td class="px-2.5 py-2.5">
       <div class="flex items-center gap-1.5">
-        <div class="w-7 h-7 rounded-full {{ $isBoost ? 'bg-gradient-to-br from-emerald-500 to-green-600' : 'bg-gradient-to-br from-indigo-500 to-blue-600' }} flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0 uppercase">
-          {{ $initials ?: 'U' }}
-        </div>
+        @if($isBoost && $sub->profile_pic)
+          <img src="{{ asset('storage/' . $sub->profile_pic) }}" alt="{{ $personName }}" class="w-7 h-7 rounded-full object-cover shadow flex-shrink-0">
+        @elseif(!$isBoost && $sub->company_logo)
+          <img src="{{ asset('storage/' . $sub->company_logo) }}" alt="{{ $personName }}" class="w-7 h-7 rounded-full object-cover shadow flex-shrink-0">
+        @else
+          <div class="w-7 h-7 rounded-full {{ $isBoost ? 'bg-gradient-to-br from-emerald-500 to-green-600' : 'bg-gradient-to-br from-indigo-500 to-blue-600' }} flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0 uppercase">
+            {{ $initials ?: 'U' }}
+          </div>
+        @endif
         <span class="text-xs font-medium text-gray-800 truncate max-w-[200px]" title="{{ $personName }}">{{ $personName }}</span>
       </div>
     </td>

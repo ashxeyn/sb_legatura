@@ -457,4 +457,108 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 4000);
     }
 
+    // ============================================
+    // Universal File Viewer (UFV) - Dark Theme
+    // ============================================
+    (function() {
+        const modal = document.getElementById('documentViewerModal');
+        const iframe = document.getElementById('documentViewerFrame');
+        const img = document.getElementById('documentViewerImg');
+        const closeBtn = document.getElementById('closeDocumentViewerBtn');
+
+        if (!modal) {
+            console.error('UFV: documentViewerModal not found!');
+            return;
+        }
+
+        function openDocumentViewer(src, title) {
+            if (!modal) return;
+            const isPdf = /\.pdf(\?|$)/i.test(src);
+            const titleEl = document.getElementById('documentViewerTitle');
+            const downloadLink = document.getElementById('documentViewerDownload');
+
+            if (titleEl) titleEl.textContent = title || 'Document Viewer';
+            if (downloadLink) downloadLink.href = src;
+
+            if (isPdf) {
+                if (iframe) {
+                    iframe.src = src;
+                    iframe.classList.remove('hidden');
+                }
+                if (img) img.classList.add('hidden');
+            } else {
+                if (img) {
+                    img.src = src;
+                    img.classList.remove('hidden');
+                }
+                if (iframe) iframe.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
+                setTimeout(function() {
+                    modalShell.classList.remove('scale-95', 'opacity-0');
+                    modalShell.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            }
+        }
+
+        function closeDocumentViewer() {
+            if (!modal) return;
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
+                modalShell.classList.remove('scale-100', 'opacity-100');
+                modalShell.classList.add('scale-95', 'opacity-0');
+            }
+            setTimeout(function() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = 'auto';
+                if (iframe) iframe.src = '';
+                if (img) img.src = '';
+            }, 200);
+        }
+
+        // Delegated click handler for open buttons
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest && e.target.closest('.open-doc-btn');
+            if (btn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const src = btn.getAttribute('data-doc-src');
+                const title = btn.getAttribute('data-doc-title') || 'Document';
+                if (src && src !== '#') {
+                    openDocumentViewer(src, title);
+                } else {
+                    showNotification('No document available', 'error');
+                }
+            }
+        }, true); // Use capture phase
+
+        // Close button
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeDocumentViewer);
+        }
+
+        // Close on backdrop click
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeDocumentViewer();
+                }
+            });
+        }
+
+        // Close on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeDocumentViewer();
+            }
+        });
+    })();
+
 });

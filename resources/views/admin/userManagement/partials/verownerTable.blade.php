@@ -22,9 +22,13 @@
     <tr class="hover:bg-indigo-50/60 transition-colors">
       <td class="px-2.5 py-2.5">
         <div class="flex items-center gap-1.5">
-          <div class="w-7 h-7 rounded-full bg-gradient-to-br {{ $ownerColor }} flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0">
-            {{ $ownerInitials }}
-          </div>
+          @if($request->profile_pic)
+            <img src="{{ asset('storage/' . $request->profile_pic) }}" alt="{{ $ownerName }}" class="w-7 h-7 rounded-full object-cover shadow flex-shrink-0">
+          @else
+            <div class="w-7 h-7 rounded-full bg-gradient-to-br {{ $ownerColor }} flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0">
+              {{ $ownerInitials }}
+            </div>
+          @endif
           <div class="min-w-0">
             <div class="font-medium text-gray-800 leading-tight text-xs truncate max-w-[170px]" title="{{ $ownerName }}">{{ $ownerName }}</div>
           </div>

@@ -1000,7 +1000,7 @@
               <td class="px-4 py-3 text-sm">{{ $payment->transaction_date ? \Carbon\Carbon::parse($payment->transaction_date)->format('M d, Y') : '—' }}</td>
               <td class="px-4 py-3 text-sm">
                 @if($payment->receipt_photo)
-                  <a href="{{ asset('storage/' . $payment->receipt_photo) }}" target="_blank" class="text-blue-600 hover:underline">View</a>
+                  <a href="#" class="open-doc-btn text-blue-600 hover:text-blue-700 font-medium hover:underline" data-doc-src="{{ asset('storage/' . $payment->receipt_photo) }}" data-doc-title="Proof of Payment">View</a>
                 @else
                   —
                 @endif

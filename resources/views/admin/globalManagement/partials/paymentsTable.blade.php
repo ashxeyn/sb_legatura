@@ -39,9 +39,13 @@
             <tr class="hover:bg-indigo-50/60 transition-colors duration-200 ease-in-out">
                 <td class="px-2.5 py-2.5">
                     <div class="flex items-center gap-1.5">
-                        <div class="w-7 h-7 rounded-full bg-gradient-to-br {{ $avatarColor }} flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0">
-                            {{ $initials }}
-                        </div>
+                        @if($payment->company_logo)
+                            <img src="{{ asset('storage/' . $payment->company_logo) }}" alt="{{ $payment->company_name ?? 'Company' }}" class="w-7 h-7 rounded-full object-cover shadow flex-shrink-0">
+                        @else
+                            <div class="w-7 h-7 rounded-full bg-gradient-to-br {{ $avatarColor }} flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0">
+                                {{ $initials }}
+                            </div>
+                        @endif
                         <div class="min-w-0">
                             <div class="font-medium text-gray-800 leading-tight text-xs truncate max-w-[170px]" title="{{ $payment->company_name ?? 'N/A' }}">{{ $payment->company_name ?? 'N/A' }}</div>
                             <div class="text-[11px] text-gray-500 truncate max-w-[170px]" title="{{ $payment->company_email ?? 'N/A' }}">{{ $payment->company_email ?? 'N/A' }}</div>
@@ -50,7 +54,7 @@
                 </td>
                 <td class="px-2.5 py-2.5 text-gray-700 text-xs">
                     <div class="font-medium leading-tight truncate max-w-[220px]" title="{{ $payment->project_title ?? 'N/A' }}">{{ $payment->project_title ?? 'N/A' }}</div>
-                    <div class="text-[11px] text-gray-500 truncate max-w-[220px]" title="{{ $detailLine ?: 'N/A' }}">{{ $detailLine ?: 'N/A' }}</div>
+                    <div class="text-[11px] text-gray-500 truncate  max-w-[220px]" title="{{ $detailLine ?: 'N/A' }}">{{ $detailLine ?: 'N/A' }}</div>
                 </td>
                 <td class="px-2.5 py-2.5 text-gray-700 text-xs min-w-0">
                     <div class="font-semibold whitespace-nowrap">₱{{ number_format($payment->amount, 2) }}</div>

@@ -265,9 +265,7 @@
           <i class="fi fi-ss-folder text-blue-600 text-sm"></i>
           <h3 class="text-[13px] font-semibold text-gray-800">Supporting Files</h3>
         </div>
-        <div class="overflow-x-auto scrollbar-hidden">
-          <div id="v-files-container" class="p-4 text-center text-sm text-gray-400">Loading files…</div>
-        </div>
+        <div id="v-files-container" class="p-4 text-center text-sm text-gray-400">Loading files…</div>
       </div>
     </div>
   </div>
@@ -410,6 +408,23 @@
     <div class="space-y-2">
       <button id="confirmDeleteFinalBtn" class="w-full px-3 py-2 rounded-md bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold text-[11px] hover:from-red-600 hover:to-red-700 shadow transition flex items-center justify-center gap-1.5"><i class="fi fi-rr-trash text-[10px]"></i> Delete</button>
        <button id="cancelDeleteFinalBtn" class="w-full px-3 py-2 rounded-md border border-gray-300 text-gray-700 font-semibold text-[11px] hover:bg-gray-50 transition">Cancel</button>
+    </div>
+  </div>
+</div>
+
+{{-- ══════════════════ DOCUMENT VIEWER MODAL (Dark Theme) ══════════════════ --}}
+<div id="documentViewerModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[110] items-center justify-center p-4">
+  <div class="relative w-full max-w-5xl h-[90vh] bg-[#1e1e2e] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 bg-[#2a2a3e] border-b border-gray-700">
+      <h3 id="docViewerTitle" class="text-lg font-semibold text-white">Document Viewer</h3>
+      <button id="closeDocViewer" class="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg">
+        <i class="fi fi-rr-cross text-xl"></i>
+      </button>
+    </div>
+    <div class="flex-1 overflow-auto p-6 bg-[#1e1e2e]">
+      <div id="docViewerContent" class="flex items-center justify-center h-full">
+        <p class="text-gray-400">Loading document...</p>
+      </div>
     </div>
   </div>
 </div>
@@ -622,9 +637,9 @@ document.addEventListener('DOMContentLoaded', function () {
       var rows = files.map(function(f) {
         var ext = (f.file_name||'').split('.').pop().toUpperCase();
         var ec = {PDF:'bg-red-100 text-red-700',JPG:'bg-yellow-100 text-yellow-700',JPEG:'bg-yellow-100 text-yellow-700',PNG:'bg-blue-100 text-blue-700'}[ext]||'bg-gray-100 text-gray-600';
-        return '<tr class="hover:bg-gray-50"><td class="px-4 py-3"><div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-8 h-8 rounded text-xs font-bold flex-shrink-0 '+ec+'">'+ext+'</span><span class="text-sm text-gray-800">'+escHtml(f.file_name)+'</span></div></td><td class="px-4 py-3 text-sm text-gray-500">'+escHtml(f.description||'—')+'</td><td class="px-4 py-3 text-sm text-gray-500">'+escHtml(f.uploaded_at)+'</td><td class="px-4 py-3"><a href="/storage/'+escHtml(f.file_path)+'" target="_blank" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 hover:bg-blue-100 transition"><i class="fi fi-rr-download text-blue-600"></i></a></td></tr>';
+        return '<tr class="hover:bg-gray-50"><td class="px-4 py-3 w-[35%]"><div class="flex items-center gap-2 min-w-0"><span class="inline-flex items-center justify-center w-8 h-8 rounded text-xs font-bold flex-shrink-0 '+ec+'">'+ext+'</span><span class="text-sm text-gray-800 break-all overflow-hidden">'+escHtml(f.file_name)+'</span></div></td><td class="px-4 py-3 text-sm text-gray-500 w-[30%] break-all overflow-hidden">'+escHtml(f.description||'—')+'</td><td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap w-[20%] overflow-hidden">'+escHtml(f.uploaded_at)+'</td><td class="px-4 py-3 w-[15%] text-center"><a href="#" class="open-doc-btn inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 hover:bg-blue-100 transition" data-doc-src="/storage/'+escHtml(f.file_path)+'" data-doc-title="'+escHtml(f.file_name)+'"><i class="fi fi-rr-eye text-blue-600"></i></a></td></tr>';
       }).join('');
-      container.innerHTML = '<table class="w-full text-sm"><thead><tr class="bg-gray-50 text-xs text-gray-500 uppercase border-b border-gray-200"><th class="px-4 py-2 text-left">File Name</th><th class="px-4 py-2 text-left">Description</th><th class="px-4 py-2 text-left">Uploaded</th><th class="px-4 py-2 text-left">Action</th></tr></thead><tbody class="divide-y divide-gray-100">'+rows+'</tbody></table>';
+      container.innerHTML = '<table class="w-full text-sm table-fixed"><thead><tr class="bg-gray-50 text-xs text-gray-500 uppercase border-b border-gray-200"><th class="px-4 py-2 text-left w-[35%] break-words overflow-hidden">File Name</th><th class="px-4 py-2 text-left w-[30%] break-words overflow-hidden">Description</th><th class="px-4 py-2 text-left w-[20%] overflow-hidden">Uploaded</th><th class="px-4 py-2 text-center w-[15%]">Action</th></tr></thead><tbody class="divide-y divide-gray-100">'+rows+'</tbody></table>';
     })
     .catch(function() { container.innerHTML = '<p class="py-4 text-sm text-red-400 text-center">Could not load files.</p>'; });
   }
@@ -860,6 +875,64 @@ document.addEventListener('DOMContentLoaded', function () {
       notification.style.transform = 'translateX(150%)';
       setTimeout(function() { notification.remove(); }, 500);
     }, 3000);
+  }
+
+  // ══════════════════ UNIVERSAL FILE VIEWER (UFV) - Dark Theme ══════════════════
+  document.addEventListener('click', function(e) {
+    const trigger = e.target.closest('.open-doc-btn');
+    if (!trigger) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const docSrc = trigger.getAttribute('data-doc-src');
+    const docTitle = trigger.getAttribute('data-doc-title') || 'Document';
+    
+    if (!docSrc) return;
+    
+    const modal = document.getElementById('documentViewerModal');
+    const titleEl = document.getElementById('docViewerTitle');
+    const contentEl = document.getElementById('docViewerContent');
+    
+    if (!modal || !titleEl || !contentEl) return;
+    
+    titleEl.textContent = docTitle;
+    
+    const ext = docSrc.split('.').pop().toLowerCase();
+    let content = '';
+    
+    if (ext === 'pdf') {
+      content = '<iframe src="' + docSrc + '" class="w-full h-full min-h-[70vh] rounded-lg border-0"></iframe>';
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+      content = '<img src="' + docSrc + '" alt="' + docTitle + '" class="max-w-full h-auto rounded-lg shadow-lg mx-auto">';
+    } else {
+      content = '<div class="text-center text-gray-400"><p class="mb-4">Preview not available for this file type.</p><a href="' + docSrc + '" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"><i class="fi fi-rr-download"></i> Download File</a></div>';
+    }
+    
+    contentEl.innerHTML = content;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  });
+  
+  const closeDocViewerBtn = document.getElementById('closeDocViewer');
+  if (closeDocViewerBtn) {
+    closeDocViewerBtn.addEventListener('click', function() {
+      const modal = document.getElementById('documentViewerModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    });
+  }
+  
+  const docViewerModal = document.getElementById('documentViewerModal');
+  if (docViewerModal) {
+    docViewerModal.addEventListener('click', function(e) {
+      if (e.target === docViewerModal) {
+        docViewerModal.classList.add('hidden');
+        docViewerModal.classList.remove('flex');
+      }
+    });
   }
 });
 </script>

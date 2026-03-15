@@ -32,8 +32,25 @@
         <td class="px-2.5 py-2.5">
           <div class="font-medium text-gray-800 text-xs truncate max-w-[130px]" title="{{ $project->project_title ?? 'N/A' }}">{{ $project->project_title ?? 'N/A' }}</div>
         </td>
-        <td class="px-2.5 py-2.5 text-xs text-gray-700 truncate max-w-[110px]" title="{{ $project->contractor_company ?? 'Not Assigned' }}">
-          {{ $project->contractor_company ?? 'Not Assigned' }}
+        <td class="px-2.5 py-2.5">
+          <div class="flex items-center gap-1.5">
+            @if($project->contractor_logo)
+              <img src="{{ asset('storage/' . $project->contractor_logo) }}" alt="Contractor" class="w-6 h-6 rounded-full object-cover shadow flex-shrink-0">
+            @elseif($project->contractor_company)
+              <div class="w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-[9px] font-bold shadow flex-shrink-0">
+                {{ strtoupper(substr($project->contractor_company, 0, 2)) }}
+              </div>
+            @else
+              <div class="w-6 h-6 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-[9px] font-bold shadow flex-shrink-0">
+                NA
+              </div>
+            @endif
+            <div class="min-w-0">
+              <div class="text-xs text-gray-700 truncate max-w-[110px]" title="{{ $project->contractor_company ?? 'Not Assigned' }}">
+                {{ $project->contractor_company ?? 'Not Assigned' }}
+              </div>
+            </div>
+          </div>
         </td>
         <td class="px-2.5 py-2.5 text-center">
           @php

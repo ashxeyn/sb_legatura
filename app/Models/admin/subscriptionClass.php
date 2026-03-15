@@ -84,9 +84,11 @@ class subscriptionClass
                 'subscription_plans.billing_cycle',
                 'subscription_plans.duration_days',
                 'contractors.company_name',
+                'contractors.company_logo',
                 'projects.project_title',
                 'po_user.first_name',
-                'po_user.last_name'
+                'po_user.last_name',
+                'property_owners.profile_pic'
             );
 
         if ($status === 'active') {

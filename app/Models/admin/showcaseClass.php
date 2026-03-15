@@ -27,7 +27,7 @@ class showcaseClass
                 'pp.rejection_reason',
                 'pp.linked_project_id',
                 'pp.created_at',
-                'po.profile_pic as contractor_pic',
+                'c.company_logo as contractor_pic',
                 DB::raw("COALESCE(c.company_name, u.username) as contractor_name")
             );
 
@@ -78,7 +78,7 @@ class showcaseClass
             ->where('pp.post_id', $postId)
             ->select(
                 'pp.*',
-                'po.profile_pic as contractor_pic',
+                'c.company_logo as contractor_pic',
                 'u.email as contractor_email',
                 DB::raw("COALESCE(c.company_name, u.username) as contractor_name")
             )

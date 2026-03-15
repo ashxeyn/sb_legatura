@@ -310,12 +310,12 @@ window.attachModalListeners = function () {
                                                 <p class="text-xs text-gray-500">${fileExtension.toUpperCase()}</p>
                                             </div>
                                         </div>
-                                        <button type="button" onclick="window.openFileInViewer('${fileUrl}','${fileExtension}', ${
-                                    isImage ? "true" : "false"
-                                })" class="ml-3 p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition flex-shrink-0">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m6 4H9m6-8H9M4 6h16M4 18h16"></path>
+                                        <a href="#" class="ml-3 p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition flex-shrink-0 open-doc-btn" data-doc-src="${fileUrl}" data-doc-title="${fileName}">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                             </svg>
-                                        </button>
+                                        </a>
                                         <a href="${fileUrl}" target="_blank" download class="ml-3 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition flex-shrink-0">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     </div>
@@ -817,3 +817,107 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// ============================================
+// Universal File Viewer (UFV) - Dark Theme
+// ============================================
+(function() {
+    const modal = document.getElementById('documentViewerModal');
+    const iframe = document.getElementById('documentViewerFrame');
+    const img = document.getElementById('documentViewerImg');
+    const closeBtn = document.getElementById('closeDocumentViewerBtn');
+
+    if (!modal) {
+        console.error('UFV: documentViewerModal not found!');
+        return;
+    }
+
+    function openDocumentViewer(src, title) {
+        if (!modal) return;
+        const isPdf = /\.pdf(\?|$)/i.test(src);
+        const titleEl = document.getElementById('documentViewerTitle');
+        const downloadLink = document.getElementById('documentViewerDownload');
+
+        if (titleEl) titleEl.textContent = title || 'Document Viewer';
+        if (downloadLink) downloadLink.href = src;
+
+        if (isPdf) {
+            if (iframe) {
+                iframe.src = src;
+                iframe.classList.remove('hidden');
+            }
+            if (img) img.classList.add('hidden');
+        } else {
+            if (img) {
+                img.src = src;
+                img.classList.remove('hidden');
+            }
+            if (iframe) iframe.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            setTimeout(function() {
+                modalShell.classList.remove('scale-95', 'opacity-0');
+                modalShell.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+    }
+
+    function closeDocumentViewer() {
+        if (!modal) return;
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            modalShell.classList.remove('scale-100', 'opacity-100');
+            modalShell.classList.add('scale-95', 'opacity-0');
+        }
+        setTimeout(function() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            if (iframe) iframe.src = '';
+            if (img) img.src = '';
+        }, 200);
+    }
+
+    // Delegated click handler for open buttons
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest && e.target.closest('.open-doc-btn');
+        if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const src = btn.getAttribute('data-doc-src');
+            const title = btn.getAttribute('data-doc-title') || 'Document';
+            if (src && src !== '#') {
+                openDocumentViewer(src, title);
+            } else {
+                showNotification('No document available', 'error');
+            }
+        }
+    }, true); // Use capture phase
+
+    // Close button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeDocumentViewer);
+    }
+
+    // Close on backdrop click
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeDocumentViewer();
+            }
+        });
+    }
+
+    // Close on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeDocumentViewer();
+        }
+    });
+})();

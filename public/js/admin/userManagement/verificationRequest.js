@@ -67,191 +67,108 @@
         }
     }
 
-    // Universal File Viewer (UFV) – same design as Progress Feed
-    (function () {
-        const ufvModal     = document.getElementById('ufvModal');
-        const ufvFileName  = document.getElementById('ufvFileName');
-        const ufvCounter   = document.getElementById('ufvCounter');
-        const ufvDownload  = document.getElementById('ufvDownload');
-        const ufvViewport  = document.getElementById('ufvViewport');
-        const ufvFilmstrip = document.getElementById('ufvFilmstrip');
-        const ufvPrev      = document.getElementById('ufvPrev');
-        const ufvNext      = document.getElementById('ufvNext');
-        const ufvClose     = document.getElementById('ufvClose');
+    // Universal File Viewer (UFV) - Dark Theme
+    (function() {
+        const modal = document.getElementById('documentViewerModal');
+        const iframe = document.getElementById('documentViewerFrame');
+        const img = document.getElementById('documentViewerImg');
+        const closeBtn = document.getElementById('closeDocumentViewerBtn');
 
-        let ufvCurrentFiles = [];
-        let ufvCurrentIndex = 0;
+        if (!modal) return;
 
-        function fileTypeFromName(name) {
-            if (!name) return 'other';
-            const ext = (name.split('.').pop() || '').toLowerCase();
-            const IMG_EXT   = ['jpg','jpeg','png','gif','webp','bmp','svg','heic','ico'];
-            const PDF_EXT   = ['pdf'];
-            const VIDEO_EXT = ['mp4','webm','mov','avi','mkv','m4v'];
-            const AUDIO_EXT = ['mp3','wav','ogg','flac','aac','m4a'];
-            if (IMG_EXT.includes(ext))   return 'image';
-            if (PDF_EXT.includes(ext))   return 'pdf';
-            if (VIDEO_EXT.includes(ext)) return 'video';
-            if (AUDIO_EXT.includes(ext)) return 'audio';
-            return 'other';
-        }
+        function openDocumentViewer(src, title) {
+            if (!modal) return;
+            const isPdf = /\.pdf(\?|$)/i.test(src);
+            const titleEl = document.getElementById('documentViewerTitle');
+            const downloadLink = document.getElementById('documentViewerDownload');
 
-        function resolveUrl(path) {
-            if (!path) return '';
-            if (path.startsWith('http') || path.startsWith('//') || path.startsWith('/')) return path;
-            return '/storage/' + path;
-        }
+            if (titleEl) titleEl.textContent = title || 'Document Viewer';
+            if (downloadLink) downloadLink.href = src;
 
-        function renderUFV() {
-            if (!ufvCurrentFiles.length) return;
-            const f     = ufvCurrentFiles[ufvCurrentIndex];
-            const name  = f.original_name || f.file_path || '';
-            const url   = resolveUrl(f.file_path);
-            const type  = fileTypeFromName(name || url);
-            const total = ufvCurrentFiles.length;
-
-            if (ufvFileName) ufvFileName.textContent = name || '';
-            if (ufvCounter)  ufvCounter.textContent  = (ufvCurrentIndex + 1) + ' / ' + total;
-            if (ufvDownload) { ufvDownload.href = url; ufvDownload.download = name || ''; }
-
-            if (ufvPrev) ufvPrev.style.visibility = total > 1 ? 'visible' : 'hidden';
-            if (ufvNext) ufvNext.style.visibility = total > 1 ? 'visible' : 'hidden';
-
-            let html = '';
-            if (type === 'image') {
-                html = `<img src="${url}" alt="${name || ''}" class="ufv-image" loading="lazy">`;
-            } else if (type === 'pdf') {
-                html = `<iframe src="${url}" class="ufv-iframe" title="${name || ''}"></iframe>`;
-            } else if (type === 'video') {
-                html = `<video class="ufv-video" controls><source src="${url}"></video>`;
-            } else if (type === 'audio') {
-                html = `<div class="ufv-audio-wrap">
-                          <i class="fi fi-rr-music ufv-media-icon"></i>
-                          <p class="ufv-media-name">${name || ''}</p>
-                          <audio controls class="ufv-audio"><source src="${url}"></audio>
-                        </div>`;
+            if (isPdf) {
+                if (iframe) {
+                    iframe.src = src;
+                    iframe.classList.remove('hidden');
+                }
+                if (img) img.classList.add('hidden');
             } else {
-                // For unknown types, just render as an image instead of a download-only fallback
-                html = `<img src="${url}" alt="${name || ''}" class="ufv-image" loading="lazy">`;
+                if (img) {
+                    img.src = src;
+                    img.classList.remove('hidden');
+                }
+                if (iframe) iframe.classList.add('hidden');
             }
 
-            if (ufvViewport) ufvViewport.innerHTML = html;
-
-            if (ufvFilmstrip) {
-                let filmHtml = '';
-                ufvCurrentFiles.forEach((ff, i) => {
-                    const fName = ff.original_name || ff.file_path || '';
-                    const fType = fileTypeFromName(fName);
-                    const fUrl  = resolveUrl(ff.file_path);
-                    filmHtml += `<div class="ufv-film-thumb${i === ufvCurrentIndex ? ' ufv-film-active' : ''}" data-ufv-idx="${i}">`;
-                    if (fType === 'image') {
-                        filmHtml += `<img src="${fUrl}" alt="" loading="lazy">`;
-                    } else {
-                        const e2 = (fName.split('.').pop() || '').toUpperCase().slice(0,4);
-                        filmHtml += `<i class="fi fi-rr-file ufv-film-icon"></i><span class="ufv-film-ext">${e2}</span>`;
-                    }
-                    filmHtml += '</div>';
-                });
-                ufvFilmstrip.innerHTML = filmHtml;
-
-                ufvFilmstrip.querySelectorAll('.ufv-film-thumb').forEach((el) => {
-                    el.addEventListener('click', function () {
-                        ufvCurrentIndex = parseInt(el.dataset.ufvIdx, 10) || 0;
-                        renderUFV();
-                    });
-                });
-            }
-        }
-
-        function openUFV(files, startIndex) {
-            ufvCurrentFiles = Array.isArray(files)
-                ? files.map((f) => (typeof f === 'string' ? { file_path: f, original_name: f.split('/').pop() } : f))
-                : [{ file_path: files, original_name: (files && files.split ? files.split('/').pop() : '') }];
-            ufvCurrentIndex = Math.max(0, Math.min(startIndex || 0, ufvCurrentFiles.length - 1));
-            renderUFV();
-            if (ufvModal) {
-                ufvModal.classList.remove('hidden');
-                ufvModal.classList.add('flex');
-            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
             document.body.style.overflow = 'hidden';
+
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
+                setTimeout(function() {
+                    modalShell.classList.remove('scale-95', 'opacity-0');
+                    modalShell.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            }
         }
 
-        function closeUFV() {
-            if (ufvModal) {
-                ufvModal.classList.add('hidden');
-                ufvModal.classList.remove('flex');
+        function closeDocumentViewer() {
+            if (!modal) return;
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
+                modalShell.classList.remove('scale-100', 'opacity-100');
+                modalShell.classList.add('scale-95', 'opacity-0');
             }
-            if (ufvViewport)  ufvViewport.innerHTML  = '';
-            if (ufvFilmstrip) ufvFilmstrip.innerHTML = '';
-            ufvCurrentFiles = [];
-            ufvCurrentIndex = 0;
-            document.body.style.overflow = 'auto';
+            setTimeout(function() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = 'auto';
+                if (iframe) iframe.src = '';
+                if (img) img.src = '';
+            }, 200);
         }
 
-        if (ufvPrev) ufvPrev.addEventListener('click', () => {
-            if (ufvCurrentFiles.length > 1) {
-                ufvCurrentIndex = (ufvCurrentIndex - 1 + ufvCurrentFiles.length) % ufvCurrentFiles.length;
-                renderUFV();
+        // Delegated click handler for open buttons
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest && e.target.closest('.open-doc-btn');
+            if (btn) {
+                e.preventDefault();
+                const src = btn.getAttribute('data-doc-src');
+                const title = btn.getAttribute('data-doc-title') || 'Document';
+                if (src && src !== '#') {
+                    openDocumentViewer(src, title);
+                } else {
+                    showNotification('No document available', 'error');
+                }
             }
         });
-        if (ufvNext) ufvNext.addEventListener('click', () => {
-            if (ufvCurrentFiles.length > 1) {
-                ufvCurrentIndex = (ufvCurrentIndex + 1) % ufvCurrentFiles.length;
-                renderUFV();
-            }
-        });
-        if (ufvClose) ufvClose.addEventListener('click', closeUFV);
-        if (ufvModal) {
-            ufvModal.addEventListener('click', (e) => {
-                if (e.target === ufvModal) closeUFV();
+
+        // Close button
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeDocumentViewer);
+        }
+
+        // Close on backdrop click
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeDocumentViewer();
+                }
             });
         }
-        document.addEventListener('keydown', (e) => {
-            const isOpen = ufvModal && !ufvModal.classList.contains('hidden');
-            if (e.key === 'Escape' && isOpen) { closeUFV(); return; }
-            if (!isOpen) return;
-            if (e.key === 'ArrowLeft' && ufvCurrentFiles.length > 1) {
-                ufvCurrentIndex = (ufvCurrentIndex - 1 + ufvCurrentFiles.length) % ufvCurrentFiles.length;
-                renderUFV();
-            }
-            if (e.key === 'ArrowRight' && ufvCurrentFiles.length > 1) {
-                ufvCurrentIndex = (ufvCurrentIndex + 1) % ufvCurrentFiles.length;
-                renderUFV();
+
+        // Close on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeDocumentViewer();
             }
         });
 
-        // Helper for external callers (e.g., viewer-link)
-        window.openImageModal = function (urlOrFiles, titleOrIndex) {
-            if (Array.isArray(urlOrFiles)) {
-                openUFV(urlOrFiles, typeof titleOrIndex === 'number' ? titleOrIndex : 0);
-            } else if (typeof urlOrFiles === 'object' && urlOrFiles !== null) {
-                openUFV([urlOrFiles], 0);
-            } else {
-                const fileObj = {
-                    file_path: urlOrFiles,
-                    original_name:
-                        typeof titleOrIndex === 'string' && titleOrIndex
-                            ? titleOrIndex
-                            : (urlOrFiles ? urlOrFiles.split('/').pop() : '')
-                };
-                openUFV([fileObj], 0);
-            }
+        // Legacy support for old openImageModal calls
+        window.openImageModal = function(src, title) {
+            openDocumentViewer(src, title);
         };
-
-        window.closeImageModal = closeUFV;
-
-        // Delegate clicks on elements with class 'viewer-link' to UFV
-        document.addEventListener('click', function (e) {
-            const trigger = e.target.closest('.viewer-link');
-            if (!trigger) return;
-            e.preventDefault();
-            const src = trigger.dataset.docSrc || trigger.href || '#';
-            if (!src || src === '#') {
-                showNotification('No document available', 'error');
-                return;
-            }
-            openImageModal(src, trigger.id || 'Document');
-        });
+        window.closeImageModal = closeDocumentViewer;
     })();
 
     function setInitials(name) {
