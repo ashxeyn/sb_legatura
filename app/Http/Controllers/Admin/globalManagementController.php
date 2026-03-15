@@ -1550,7 +1550,7 @@ class globalManagementController extends Controller
         $type = $request->input('type', 'user');
         $query = $request->input('query', '');
         $page = max(1, (int) $request->input('page', 1));
-        $perPage = 15;
+        $perPage = max(1, (int) $request->input('per_page', 10));
 
         $results = match ($type) {
             'user'   => reportManagementClass::searchUsers($query, $page, $perPage),

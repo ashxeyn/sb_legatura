@@ -170,15 +170,6 @@
                   </div>
                   <div class="flex items-center gap-2 border border-blue-200 bg-blue-50 p-2 rounded-lg">
                     <div class="w-6 h-6 bg-white border border-blue-300 rounded-md grid place-items-center flex-shrink-0">
-                      <i class="fi fi-rr-phone-call text-blue-600 text-[10px]"></i>
-                    </div>
-                    <div>
-                      <p class="text-[10px] text-blue-600 font-medium">Contact</p>
-                      <p class="text-xs font-semibold text-blue-900">{{ $propertyOwner->phone_number ?? $propertyOwner->phone ?? 'N/A' }}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 border border-blue-200 bg-blue-50 p-2 rounded-lg">
-                    <div class="w-6 h-6 bg-white border border-blue-300 rounded-md grid place-items-center flex-shrink-0">
                       <i class="fi fi-rr-envelope text-blue-600 text-[10px]"></i>
                     </div>
                     <div>

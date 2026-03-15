@@ -575,11 +575,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (result.success) {
+                    // Show success toast
+                    showNotification('Post approved successfully!', 'success');
                     // Close modal and reload
                     approveModal.style.animation = "fadeOut 0.3s ease forwards";
                     setTimeout(() => {
                         window.location.href = window.location.pathname + window.location.search.replace(/[?&]view=\d+/, '').replace(/^&/, '?');
-                    }, 300);
+                    }, 1200);
                 } else {
                     throw new Error(
                         result.message || "Failed to approve posting"
@@ -587,6 +589,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             } catch (error) {
                 console.error("Error approving posting:", error);
+                showNotification(error.message || 'Failed to approve post', 'error');
             } finally {
                 // Remove loading state
                 this.disabled = false;
@@ -693,11 +696,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (result.success) {
+                    // Show success toast
+                    showNotification('Post declined successfully!', 'success');
                     // Close modal and reload
                     declineModal.style.animation = "fadeOut 0.3s ease forwards";
                     setTimeout(() => {
                         window.location.href = window.location.pathname + window.location.search.replace(/[?&]view=\d+/, '').replace(/^&/, '?');
-                    }, 300);
+                    }, 1200);
                 } else {
                     throw new Error(
                         result.message || "Failed to reject posting"
@@ -705,6 +710,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             } catch (error) {
                 console.error("Error rejecting posting:", error);
+                showNotification(error.message || 'Failed to decline post', 'error');
             } finally {
                 // Remove loading state
                 this.disabled = false;

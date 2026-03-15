@@ -199,13 +199,13 @@
     // Notification helper (matches propertyOwner style)
     function showNotification(message, type = "success") {
         const notification = document.createElement("div");
-        notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
+        notification.className = `fixed top-20 right-4 z-[60] max-w-[280px] px-3 py-2 rounded-md shadow-lg transform transition-all duration-500 translate-x-full ${
             type === "success" ? "bg-green-500" : "bg-red-500"
-        } text-white font-semibold flex items-center gap-3`;
+        } text-white text-xs font-semibold leading-tight flex items-center gap-1.5`;
         notification.innerHTML = `
       <i class="fi fi-rr-${
           type === "success" ? "check-circle" : "cross-circle"
-      } text-2xl"></i>
+      } text-base"></i>
       <span>${message}</span>
     `;
         document.body.appendChild(notification);

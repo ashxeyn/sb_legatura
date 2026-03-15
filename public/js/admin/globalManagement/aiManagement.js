@@ -443,12 +443,12 @@
         startBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin mr-2"></i> Analyzing...';
 
         progressStep.innerHTML = `
-            <div class="bg-white border border-indigo-200 rounded-xl p-8 shadow-sm">
-                <div class="flex flex-col items-center justify-center text-indigo-600">
-                    <div class="animate-spin h-16 w-16 border-4 border-indigo-600 border-t-transparent rounded-full mb-6"></div>
+            <div class="bg-white border border-orange-200 rounded-xl p-8 shadow-sm">
+                <div class="flex flex-col items-center justify-center text-orange-600">
+                    <div class="animate-spin h-16 w-16 border-4 border-orange-600 border-t-transparent rounded-full mb-6"></div>
                     <p class="text-base font-bold animate-pulse mb-2">Running Random Forest Model...</p>
-                    <p class="text-sm text-indigo-400 mb-6">Fetching Weather, Milestone Data & Contractor History</p>
-                    <div class="w-full max-w-md space-y-2 text-sm text-indigo-500">
+                    <p class="text-sm text-orange-400 mb-6">Fetching Weather, Milestone Data & Contractor History</p>
+                    <div class="w-full max-w-md space-y-2 text-sm text-orange-500">
                         <div class="flex items-center gap-2">
                             <i class="fi fi-rr-check-circle text-emerald-500"></i>
                             <p>Loading project data</p>
@@ -458,7 +458,7 @@
                             <p>Computing risk factors</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <div class="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                            <div class="animate-spin h-4 w-4 border-2 border-orange-500 border-t-transparent rounded-full"></div>
                             <p>Processing environment variables...</p>
                         </div>
                     </div>
@@ -504,7 +504,7 @@
                             </div>
                             <div class="text-center p-4 bg-white rounded-xl">
                                 <span class="text-xs font-bold text-gray-500 uppercase block mb-2">Status</span>
-                                <p class="text-2xl font-black text-indigo-600">Active</p>
+                                <p class="text-2xl font-black text-orange-600">Active</p>
                             </div>
                         </div>
                     </div>`;
@@ -601,104 +601,146 @@
     // SHOW DETAILS MODAL
     // ─────────────────────────────────────────────────────────────
 
+    function parseSnapshotPayload(payload) {
+        if (payload && typeof payload === "object") return payload;
+        if (typeof payload !== "string") return null;
+
+        const trimmed = payload.trim();
+        if (!trimmed) return null;
+
+        try {
+            return JSON.parse(trimmed);
+        } catch (_) {
+            const textarea = document.createElement("textarea");
+            textarea.innerHTML = trimmed;
+            const decoded = textarea.value;
+
+            try {
+                return JSON.parse(decoded);
+            } catch (_) {
+                return null;
+            }
+        }
+    }
+
     function showDetails(data) {
-        const modal = document.getElementById('detailsModal');
-        const body  = document.getElementById('modalBody');
-        const d     = (typeof data === 'string') ? JSON.parse(data) : data;
+        const modal = document.getElementById("detailsModal");
+        const body = document.getElementById("modalBody");
+        const d = parseSnapshotPayload(data);
 
         if (!modal || !body) return;
 
-        const isDelayed  = d.prediction.prediction === 'DELAYED';
-        const riskColor  = isDelayed ? 'text-red-600'   : 'text-emerald-600';
-        const riskBorder = isDelayed ? 'border-red-200' : 'border-emerald-200';
-        const riskBg     = isDelayed ? 'bg-red-50'      : 'bg-emerald-50';
-        const contractor = d.analysis_report.contractor_audit;
-        const isFlagged  = contractor.flagged || (contractor.status && contractor.status.includes('Flagged'));
+        if (!d || !d.prediction || !d.analysis_report) {
+            body.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <i class="fi fi-rr-exclamation text-red-600 text-xl mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-red-800 mb-1">Unable to load analysis details</p>
+                            <p class="text-xs text-red-700">This record has an invalid or incomplete AI snapshot.</p>
+                        </div>
+                    </div>
+                </div>`;
+            showModal("detailsModal");
+            toast("Unable to load full details for this analysis", "error");
+            return;
+        }
 
-        const details = d.analysis_report.pacing_status.details;
-        let pacingRows = '';
-        if (details && details.length > 0) {
-            pacingRows = details.map(item => {
-                const isRejected = item.status === 'rejected';
-                const isLate     = item.days_variance > 0;
+        const prediction = d.prediction || {};
+        const report = d.analysis_report || {};
+        const pacingStatus = report.pacing_status || {};
+        const contractor = report.contractor_audit || {};
+        const weather = d.weather || {};
+        const delayProbability = Number(prediction.delay_probability || 0);
+
+        const isDelayed = prediction.prediction === "DELAYED";
+        const riskColor = isDelayed ? "text-red-600" : "text-emerald-600";
+        const riskBorder = isDelayed ? "border-red-200" : "border-emerald-200";
+        const riskBg = isDelayed ? "bg-red-50" : "bg-emerald-50";
+        const isFlagged = Boolean(contractor.flagged || (contractor.status && String(contractor.status).includes("Flagged")));
+
+        const details = Array.isArray(pacingStatus.details) ? pacingStatus.details : [];
+        const pacingRows = details.length > 0
+            ? details.map(item => {
+                const isRejected = item.status === "rejected";
+                const variance = Number(item.days_variance || 0);
+                const isLate = variance > 0;
                 return `
                     <tr class="hover:bg-gray-50 transition">
-                        <td class="px-4 py-3 text-sm font-medium text-gray-700">${item.title}</td>
-                        <td class="px-4 py-3 text-xs font-bold uppercase ${isRejected ? 'text-red-600' : 'text-gray-500'}">${item.status}</td>
-                        <td class="px-4 py-3 font-mono text-sm ${isLate ? 'text-amber-600' : 'text-emerald-600'}">
-                            ${item.days_variance > 0 ? '+' + item.days_variance : item.days_variance} days
+                        <td class="px-4 py-3 text-sm font-medium text-gray-700">${item.title || "N/A"}</td>
+                        <td class="px-4 py-3 text-xs font-bold uppercase ${isRejected ? "text-red-600" : "text-gray-500"}">${item.status || "N/A"}</td>
+                        <td class="px-4 py-3 font-mono text-sm ${isLate ? "text-amber-600" : "text-emerald-600"}">
+                            ${variance > 0 ? "+" + variance : variance} days
                         </td>
                         <td class="px-4 py-3">
                             <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold
-                                ${isRejected ? 'bg-red-100 text-red-700' : isLate ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
-                                ${item.pacing_label}
+                                ${isRejected ? "bg-red-100 text-red-700" : isLate ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}">
+                                ${item.pacing_label || "N/A"}
                             </span>
                         </td>
                     </tr>`;
-            }).join('');
-        } else {
-            pacingRows = '<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500 italic">No milestone data available yet.</td></tr>';
-        }
+            }).join("")
+            : '<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500 italic">No milestone data available yet.</td></tr>';
 
-        const recs     = d.dds_recommendations || [];
+        const recs = Array.isArray(d.dds_recommendations) ? d.dds_recommendations : [];
         const recItems = recs.length > 0
-            ? recs.map(rec => `
-                <div class="flex gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
-                    <div class="flex-shrink-0 mt-1">
-                        ${rec.includes('QUALITY') ? '<i class="fi fi-rr-shield-exclamation text-red-500 text-xl"></i>'
-                          : rec.includes('WEATHER') || rec.includes('RAIN') ? '<i class="fi fi-rr-cloud-disabled text-orange-500 text-xl"></i>'
-                          : '<i class="fi fi-rr-bulb text-purple-500 text-xl"></i>'}
-                    </div>
-                    <p class="text-gray-700 text-sm font-medium leading-relaxed">${rec}</p>
-                </div>`).join('')
+            ? recs.map(rec => {
+                const text = String(rec);
+                return `
+                    <div class="flex gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+                        <div class="flex-shrink-0 mt-1">
+                            ${text.includes("QUALITY") ? '<i class="fi fi-rr-shield-exclamation text-red-500 text-xl"></i>'
+                              : text.includes("WEATHER") || text.includes("RAIN") ? '<i class="fi fi-rr-cloud-disabled text-orange-500 text-xl"></i>'
+                              : '<i class="fi fi-rr-bulb text-purple-500 text-xl"></i>'}
+                        </div>
+                        <p class="text-gray-700 text-sm font-medium leading-relaxed">${text}</p>
+                    </div>`;
+            }).join("")
             : '<p class="text-gray-400 italic text-sm">No recommendations generated.</p>';
 
-        const dots = [1,2,3,4,5].map(i =>
-            `<div class="w-2.5 h-2.5 rounded-full ${i <= d.weather_severity ? 'bg-orange-500' : 'bg-gray-300'}"></div>`
-        ).join('');
+        const dots = [1, 2, 3, 4, 5].map(i =>
+            `<div class="w-2.5 h-2.5 rounded-full ${i <= Number(d.weather_severity || 0) ? "bg-orange-500" : "bg-gray-300"}"></div>`
+        ).join("");
 
         body.innerHTML = `
-            <div class="bg-indigo-50 border-l-4 border-indigo-600 p-5 rounded-r-xl mb-6">
-                <h4 class="text-indigo-900 font-bold text-sm uppercase tracking-wider mb-2">Executive Summary</h4>
-                <p class="text-indigo-800 text-sm leading-relaxed">"${d.analysis_report.conclusion}"</p>
+            <div class="bg-orange-50 border-l-4 border-orange-500 p-5 rounded-r-xl mb-6">
+                <h4 class="text-orange-900 font-bold text-sm uppercase tracking-wider mb-2">Executive Summary</h4>
+                <p class="text-orange-800 text-sm leading-relaxed">"${report.conclusion || "No conclusion available."}"</p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-1 space-y-4">
-
                     <div class="${riskBg} border ${riskBorder} rounded-2xl p-5 shadow-sm">
                         <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Risk Assessment</h5>
                         <div class="flex items-center justify-between mb-4">
-                            <span class="text-3xl font-black ${riskColor}">${d.prediction.prediction}</span>
+                            <span class="text-3xl font-black ${riskColor}">${prediction.prediction || "N/A"}</span>
                             <div class="text-right">
                                 <span class="block text-xs text-gray-500 mb-1">Probability</span>
-                                <span class="text-2xl font-bold text-gray-900">${(d.prediction.delay_probability * 100).toFixed(1)}%</span>
+                                <span class="text-2xl font-bold text-gray-900">${(delayProbability * 100).toFixed(1)}%</span>
                             </div>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-3">
-                            <div class="h-3 rounded-full ${isDelayed ? 'bg-red-500' : 'bg-emerald-500'}"
-                                 style="width:${(d.prediction.delay_probability * 100)}%"></div>
+                            <div class="h-3 rounded-full ${isDelayed ? "bg-red-500" : "bg-emerald-500"}" style="width:${(delayProbability * 100)}%"></div>
                         </div>
-                        <p class="text-xs text-gray-600 mt-3 italic">${d.prediction.reason || ''}</p>
+                        <p class="text-xs text-gray-600 mt-3 italic">${prediction.reason || ""}</p>
                     </div>
 
                     <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-                        ${isFlagged ? '<div class="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-bl-lg">FLAGGED</div>' : ''}
+                        ${isFlagged ? '<div class="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-bl-lg">FLAGGED</div>' : ""}
                         <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Contractor Vetting</h5>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-600">Experience</span>
-                                <span class="text-sm font-bold text-gray-900">${contractor.experience}</span>
+                                <span class="text-sm font-bold text-gray-900">${contractor.experience || "N/A"}</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-600">Success Rate</span>
-                                <span class="text-sm font-bold ${isFlagged ? 'text-red-600' : 'text-emerald-600'}">${contractor.historical_success}</span>
+                                <span class="text-sm font-bold ${isFlagged ? "text-red-600" : "text-emerald-600"}">${contractor.historical_success || "N/A"}</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-600">Audit Status</span>
-                                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold
-                                    ${isFlagged ? 'text-red-700 bg-red-100' : 'text-emerald-700 bg-emerald-100'}">
-                                    ${contractor.status || (isFlagged ? 'High Risk' : 'Good Standing')}
+                                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${isFlagged ? "text-red-700 bg-red-100" : "text-emerald-700 bg-emerald-100"}">
+                                    ${contractor.status || (isFlagged ? "High Risk" : "Good Standing")}
                                 </span>
                             </div>
                         </div>
@@ -710,12 +752,12 @@
                             <div class="text-center p-3 bg-gray-50 rounded-xl">
                                 <i class="fi fi-rr-cloud-showers-heavy text-blue-500 text-2xl"></i>
                                 <p class="text-xs text-gray-500 mt-2">Rainfall</p>
-                                <p class="font-bold text-gray-800 text-lg">${d.weather.total_rain}mm</p>
+                                <p class="font-bold text-gray-800 text-lg">${weather.total_rain ?? 0}mm</p>
                             </div>
                             <div class="text-center p-3 bg-gray-50 rounded-xl">
                                 <i class="fi fi-rr-temperature-high text-orange-500 text-2xl"></i>
                                 <p class="text-xs text-gray-500 mt-2">ENSO</p>
-                                <p class="font-bold text-gray-800 text-lg">${d.enso_state}</p>
+                                <p class="font-bold text-gray-800 text-lg">${d.enso_state || "N/A"}</p>
                             </div>
                         </div>
                         <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
@@ -723,14 +765,12 @@
                             <div class="flex gap-1.5">${dots}</div>
                         </div>
                     </div>
-
                 </div>
 
                 <div class="lg:col-span-2 space-y-6">
-
                     <div>
                         <h5 class="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-                            <span class="w-1 h-6 bg-indigo-600 rounded-full"></span>
+                            <span class="w-1 h-6 bg-orange-500 rounded-full"></span>
                             Milestone Pacing Audit
                         </h5>
                         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -747,9 +787,9 @@
                             </table>
                             <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
                                 <span class="text-sm font-semibold text-gray-600">Average Pacing:</span>
-                                <span class="text-sm font-bold ${d.analysis_report.pacing_status.avg_delay_days > 0 ? 'text-red-600' : 'text-emerald-600'}">
-                                    ${d.analysis_report.pacing_status.avg_delay_days} days
-                                    ${d.analysis_report.pacing_status.avg_delay_days > 0 ? 'behind' : 'ahead'}
+                                <span class="text-sm font-bold ${Number(pacingStatus.avg_delay_days || 0) > 0 ? "text-red-600" : "text-emerald-600"}">
+                                    ${Number(pacingStatus.avg_delay_days || 0)} days
+                                    ${Number(pacingStatus.avg_delay_days || 0) > 0 ? "behind" : "ahead"}
                                 </span>
                             </div>
                         </div>
@@ -762,7 +802,6 @@
                         </h5>
                         <div class="space-y-3">${recItems}</div>
                     </div>
-
                 </div>
             </div>`;
 
@@ -785,18 +824,6 @@
         toast,
         applyFilters,
         resetFilters
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // EXPOSE PUBLIC API
-    // ─────────────────────────────────────────────────────────────
-
-    window.aiManagement = {
-        openAnalysisModal,
-        startAnalysis,
-        confirmDelete,
-        deleteAnalysis,
-        showDetails
     };
 
 })();

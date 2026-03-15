@@ -43,6 +43,11 @@ function animateProgressBars() {
 
 // Initialize number animations on page load
 document.addEventListener('DOMContentLoaded', function() {
+  const isUltraCompactDesktop = window.matchMedia('(min-width: 1024px)').matches;
+  const legendFontSize = isUltraCompactDesktop ? 11 : 13;
+  const legendPadding = isUltraCompactDesktop ? 12 : 20;
+  const axisTickFontSize = isUltraCompactDesktop ? 11 : 12;
+
   // Animate all stat numbers
   const statNumbers = document.querySelectorAll('.stat-number');
   statNumbers.forEach(element => {
@@ -104,9 +109,9 @@ document.addEventListener('DOMContentLoaded', function() {
             position: 'top',
             labels: {
               usePointStyle: true,
-              padding: 20,
+              padding: legendPadding,
               font: {
-                size: 13,
+                size: legendFontSize,
                 weight: '600'
               }
             }
@@ -139,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             ticks: {
               font: {
-                size: 12
+                size: axisTickFontSize
               },
               padding: 10
             }
@@ -151,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             ticks: {
               font: {
-                size: 12
+                size: axisTickFontSize
               },
               padding: 10
             }
@@ -203,9 +208,9 @@ document.addEventListener('DOMContentLoaded', function() {
             position: 'right',
             labels: {
               usePointStyle: true,
-              padding: 20,
+              padding: legendPadding,
               font: {
-                size: 13,
+                size: legendFontSize,
                 weight: '600'
               },
               generateLabels: function(chart) {

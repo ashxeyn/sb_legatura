@@ -30,6 +30,10 @@ async function fetchAndUpdateTeamMembers() {
         // Re-attach team member action listeners
         attachTeamMemberListeners();
 
+        // Re-apply current tab filter and pagination
+        applyCurrentTeamTabFilter();
+        updateTeamMembersPagination();
+
         // Also refresh the change representative modal list
         refreshRepresentativeModalList();
 
@@ -367,8 +371,102 @@ let currentDeactivatingRow = null;
 let currentReactivatingRow = null;
 
 // ============================================
-// TEAM MEMBERS TAB SWITCHING
+// TEAM MEMBERS TAB SWITCHING + PAGINATION
 // ============================================
+
+const TEAM_MEMBERS_PAGE_SIZE = 10;
+let currentTeamTab = 'active';
+let currentTeamPage = 1;
+
+function getVisibleTeamRows() {
+    return Array.from(document.querySelectorAll('.team-member-row')).filter(function (row) {
+        return !row.classList.contains('hidden');
+    });
+}
+
+function updateTeamMembersPagination() {
+    const visible = getVisibleTeamRows();
+    const total = visible.length;
+    const totalPages = Math.max(1, Math.ceil(total / TEAM_MEMBERS_PAGE_SIZE));
+    const page = Math.min(currentTeamPage, totalPages) || 1;
+    currentTeamPage = page;
+
+    // Remove pagination-off from all, then add to rows not on current page
+    document.querySelectorAll('.team-member-row').forEach(function (r) {
+        r.classList.remove('team-pagination-off');
+    });
+    const start = (page - 1) * TEAM_MEMBERS_PAGE_SIZE;
+    const end = start + TEAM_MEMBERS_PAGE_SIZE;
+    visible.forEach(function (row, i) {
+        if (i < start || i >= end) {
+            row.classList.add('team-pagination-off');
+        }
+    });
+
+    const from = total === 0 ? 0 : start + 1;
+    const to = total === 0 ? 0 : Math.min(end, total);
+
+    const wrap = document.getElementById('teamMembersPagination');
+    const emptyWrap = document.getElementById('teamMembersPaginationEmpty');
+    const fromEl = document.getElementById('teamMembersPaginationFrom');
+    const toEl = document.getElementById('teamMembersPaginationTo');
+    const totalEl = document.getElementById('teamMembersPaginationTotal');
+    const totalSingleEl = document.getElementById('teamMembersPaginationTotalSingle');
+    const prevBtn = document.getElementById('teamMembersPaginationPrev');
+    const nextBtn = document.getElementById('teamMembersPaginationNext');
+    const pagesEl = document.getElementById('teamMembersPaginationPages');
+
+    if (!wrap || !emptyWrap) return;
+
+    if (total === 0) {
+        wrap.classList.add('hidden');
+        emptyWrap.classList.remove('hidden');
+        if (totalSingleEl) totalSingleEl.textContent = '0';
+        return;
+    }
+
+    if (totalPages <= 1) {
+        wrap.classList.add('hidden');
+        emptyWrap.classList.remove('hidden');
+        if (totalSingleEl) totalSingleEl.textContent = total;
+        return;
+    }
+
+    emptyWrap.classList.add('hidden');
+    wrap.classList.remove('hidden');
+    if (fromEl) fromEl.textContent = from;
+    if (toEl) toEl.textContent = to;
+    if (totalEl) totalEl.textContent = total;
+    if (totalSingleEl) totalSingleEl.textContent = total;
+
+    if (prevBtn) {
+        prevBtn.disabled = page <= 1;
+    }
+    if (nextBtn) {
+        nextBtn.disabled = page >= totalPages;
+    }
+
+    // Page number links (same pattern as contractorTable)
+    if (pagesEl) {
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(totalPages, page + 2);
+        let html = '';
+        for (let p = startPage; p <= endPage; p++) {
+            if (p === page) {
+                html += '<span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-600 text-white font-semibold">' + p + '</span>';
+            } else {
+                html += '<button type="button" class="team-member-page-link px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition" data-page="' + p + '">' + p + '</button>';
+            }
+        }
+        pagesEl.innerHTML = html;
+        pagesEl.querySelectorAll('.team-member-page-link').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                currentTeamPage = parseInt(this.dataset.page, 10);
+                updateTeamMembersPagination();
+            });
+        });
+    }
+}
 
 function initTeamMemberTabs() {
     const tabs = document.querySelectorAll('.team-tab');
@@ -377,6 +475,8 @@ function initTeamMemberTabs() {
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             const tabName = this.dataset.tab;
+            currentTeamTab = tabName;
+            currentTeamPage = 1;
 
             // Update active tab styles
             tabs.forEach(t => {
@@ -389,7 +489,6 @@ function initTeamMemberTabs() {
             // Update column header and visibility based on tab
             if (tabName === 'deactivated') {
                 if (statusHeader) statusHeader.textContent = 'Reason';
-                // Show deletion reason, hide status badge
                 document.querySelectorAll('.status-cell').forEach(cell => {
                     const badge = cell.querySelector('.status-badge');
                     const reason = cell.querySelector('.deletion-reason');
@@ -398,7 +497,6 @@ function initTeamMemberTabs() {
                 });
             } else {
                 if (statusHeader) statusHeader.textContent = 'Status';
-                // Show status badge, hide deletion reason
                 document.querySelectorAll('.status-cell').forEach(cell => {
                     const badge = cell.querySelector('.status-badge');
                     const reason = cell.querySelector('.deletion-reason');
@@ -407,41 +505,79 @@ function initTeamMemberTabs() {
                 });
             }
 
-            // Filter table rows
+            // Filter table rows by tab
             const tableRows = document.querySelectorAll('.team-member-row');
             tableRows.forEach(row => {
                 const rowStatus = row.dataset.status;
                 if (tabName === 'active') {
-                    // Show only active members
-                    if (rowStatus === 'active') {
-                        row.classList.remove('hidden');
-                    } else {
-                        row.classList.add('hidden');
-                    }
+                    row.classList.toggle('hidden', rowStatus !== 'active');
                 } else if (tabName === 'pending') {
-                    // Show only pending invitations
-                    if (rowStatus === 'pending') {
-                        row.classList.remove('hidden');
-                    } else {
-                        row.classList.add('hidden');
-                    }
+                    row.classList.toggle('hidden', rowStatus !== 'pending');
                 } else if (tabName === 'cancelled') {
-                    // Show only cancelled invitations
-                    if (rowStatus === 'cancelled') {
-                        row.classList.remove('hidden');
-                    } else {
-                        row.classList.add('hidden');
-                    }
+                    row.classList.toggle('hidden', rowStatus !== 'cancelled');
                 } else if (tabName === 'deactivated') {
-                    // Show only deactivated members
-                    if (rowStatus === 'deactivated') {
-                        row.classList.remove('hidden');
-                    } else {
-                        row.classList.add('hidden');
-                    }
+                    row.classList.toggle('hidden', rowStatus !== 'deactivated');
                 }
             });
+
+            updateTeamMembersPagination();
         });
+    });
+
+    // Initial pagination (default tab = active)
+    updateTeamMembersPagination();
+}
+
+function initTeamMembersPaginationButtons() {
+    const prevBtn = document.getElementById('teamMembersPaginationPrev');
+    const nextBtn = document.getElementById('teamMembersPaginationNext');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function () {
+            if (currentTeamPage > 1) {
+                currentTeamPage--;
+                updateTeamMembersPagination();
+            }
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+            const visible = getVisibleTeamRows();
+            const totalPages = Math.max(1, Math.ceil(visible.length / TEAM_MEMBERS_PAGE_SIZE));
+            if (currentTeamPage < totalPages) {
+                currentTeamPage++;
+                updateTeamMembersPagination();
+            }
+        });
+    }
+}
+
+function applyCurrentTeamTabFilter() {
+    const statusHeader = document.getElementById('statusColumnHeader');
+    const tabName = currentTeamTab;
+    if (tabName === 'deactivated' && statusHeader) {
+        statusHeader.textContent = 'Reason';
+        document.querySelectorAll('.status-cell').forEach(cell => {
+            const badge = cell.querySelector('.status-badge');
+            const reason = cell.querySelector('.deletion-reason');
+            if (badge) badge.classList.add('hidden');
+            if (reason) reason.classList.remove('hidden');
+        });
+    } else {
+        if (statusHeader) statusHeader.textContent = 'Status';
+        document.querySelectorAll('.status-cell').forEach(cell => {
+            const badge = cell.querySelector('.status-badge');
+            const reason = cell.querySelector('.deletion-reason');
+            if (badge) badge.classList.remove('hidden');
+            if (reason) reason.classList.add('hidden');
+        });
+    }
+    const tableRows = document.querySelectorAll('.team-member-row');
+    tableRows.forEach(row => {
+        const rowStatus = row.dataset.status;
+        if (tabName === 'active') row.classList.toggle('hidden', rowStatus !== 'active');
+        else if (tabName === 'pending') row.classList.toggle('hidden', rowStatus !== 'pending');
+        else if (tabName === 'cancelled') row.classList.toggle('hidden', rowStatus !== 'cancelled');
+        else if (tabName === 'deactivated') row.classList.toggle('hidden', rowStatus !== 'deactivated');
     });
 }
 
@@ -694,29 +830,27 @@ async function searchPropertyOwners(searchTerm) {
                 return;
             }
 
-            // Populate dropdown
+            // Populate dropdown (compact items, consistent with modal design)
             teamMemberOwnerList.innerHTML = availableOwners.map(owner => {
                 const fullName = `${owner.first_name || ''} ${owner.middle_name || ''} ${owner.last_name || ''}`.trim();
                 const initials = `${owner.first_name?.[0] || ''}${owner.last_name?.[0] || ''}`.toUpperCase();
 
                 return `
-                    <div class="owner-option px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0"
+                    <div class="owner-option px-3 py-2 hover:bg-orange-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2.5"
                          data-owner-id="${owner.owner_id}"
                          data-owner-name="${fullName}"
                          data-owner-email="${owner.email}"
                          data-owner-username="${owner.username}"
                          data-owner-pic="${owner.profile_pic || ''}">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                                ${owner.profile_pic ?
-                                    `<img src="/storage/${owner.profile_pic}" alt="${fullName}" class="w-full h-full object-cover">` :
-                                    initials
-                                }
-                            </div>
-                            <div class="flex-1">
-                                <p class="font-semibold text-gray-800">${fullName}</p>
-                                <p class="text-sm text-gray-500">${owner.email}</p>
-                            </div>
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 overflow-hidden">
+                            ${owner.profile_pic ?
+                                `<img src="/storage/${owner.profile_pic}" alt="${fullName}" class="w-full h-full object-cover">` :
+                                initials
+                            }
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[13px] font-semibold text-gray-800 truncate">${fullName}</p>
+                            <p class="text-[11px] text-gray-500 truncate">${owner.email}</p>
                         </div>
                     </div>
                 `;
@@ -2200,9 +2334,10 @@ if (changeRepresentativeModal) {
 // TEAM MEMBERS INITIALIZATION
 // ============================================
 
-// Initialize team member tabs on page load
+// Initialize team member tabs and pagination on page load
 if (document.querySelector('.team-tab')) {
     initTeamMemberTabs();
+    initTeamMembersPaginationButtons();
 }
 
 // Team Members Modal Events

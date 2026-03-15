@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use App\Models\admin\disputeClass;
@@ -89,7 +90,7 @@ class projectManagementController extends Controller
                 Mail::raw($body, fn($m) => $m->to($row->accused_email)->subject('Dispute Resolved - Legatura'));
             }
         } catch (\Exception $e) {
-            \Log::error('Failed to send dispute resolved email: ' . $e->getMessage());
+            Log::error('Failed to send dispute resolved email: ' . $e->getMessage());
         }
 
         return back()->with('success', 'Dispute resolved.');
@@ -816,7 +817,7 @@ class projectManagementController extends Controller
                         );
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send penalty email: ' . $e->getMessage());
+                    Log::error('Failed to send penalty email: ' . $e->getMessage());
                 }
 
                 return true;
@@ -844,7 +845,7 @@ class projectManagementController extends Controller
                             );
                         }
                     } catch (\Exception $e) {
-                        \Log::error('Failed to send penalty email: ' . $e->getMessage());
+                        Log::error('Failed to send penalty email: ' . $e->getMessage());
                     }
 
                     if ($userType === 'contractor') {
@@ -942,7 +943,7 @@ class projectManagementController extends Controller
                     );
                 }
             } catch (\Exception $e) {
-                \Log::error('Failed to send new plan email: ' . $e->getMessage());
+                Log::error('Failed to send new plan email: ' . $e->getMessage());
             }
 
             return response()->json(['status' => 'success', 'message' => 'Subscription plan created successfully.', 'data' => $data], 201);
@@ -985,7 +986,7 @@ class projectManagementController extends Controller
                     );
                 }
             } catch (\Exception $e) {
-                \Log::error('Failed to send plan updated email: ' . $e->getMessage());
+                Log::error('Failed to send plan updated email: ' . $e->getMessage());
             }
 
             return response()->json(['status' => 'success', 'message' => 'Subscription plan updated successfully.', 'data' => $data]);
@@ -1023,7 +1024,7 @@ class projectManagementController extends Controller
                     );
                 }
             } catch (\Exception $e) {
-                \Log::error('Failed to send plan deleted email: ' . $e->getMessage());
+                Log::error('Failed to send plan deleted email: ' . $e->getMessage());
             }
 
             subscriptionClass::deletePlan($id, $request->reason);
@@ -1161,7 +1162,7 @@ class projectManagementController extends Controller
             $html = view('admin.projectManagement.partials.bidStatusModal', compact('bid'))->render();
             return response()->json(['success' => true, 'html' => $html]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching bid details: ' . $e->getMessage());
+            Log::error('Error fetching bid details: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to load bid details: ' . $e->getMessage()], 500);
         }
     }
@@ -1175,7 +1176,7 @@ class projectManagementController extends Controller
             $html = view('admin.projectManagement.partials.acceptBidModal', compact('bid'))->render();
             return response()->json(['success' => true, 'html' => $html]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching accept bid summary: ' . $e->getMessage());
+            Log::error('Error fetching accept bid summary: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to load bid summary: ' . $e->getMessage()], 500);
         }
     }
@@ -1194,7 +1195,7 @@ class projectManagementController extends Controller
                         ->join('projects', 'bids.project_id', '=', 'projects.project_id')
                         ->leftJoin('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
                         ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
-                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name', 'users.email as owner_email', 'property_owners.first_name as owner_name')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title', 'users.email as owner_email', 'property_owners.first_name as owner_name')
                         ->where('bids.bid_id', $bidId)
                         ->first();
 
@@ -1203,7 +1204,7 @@ class projectManagementController extends Controller
                         if (!empty($bid->company_email)) {
                             \Illuminate\Support\Facades\Mail::raw(
                                 "Dear {$bid->company_name},\n\n" .
-                                "Congratulations! Your bid for the project \"{$bid->project_name}\" has been accepted by the admin.\n\n" .
+                                "Congratulations! Your bid for the project \"{$bid->project_title}\" has been accepted by the admin.\n\n" .
                                 "Please log in to the app to proceed.\n\n" .
                                 "Best regards,\nLegatura",
                                 fn($m) => $m->to($bid->company_email)->subject('Bid Accepted - Legatura')
@@ -1213,7 +1214,7 @@ class projectManagementController extends Controller
                         if (!empty($bid->owner_email)) {
                             \Illuminate\Support\Facades\Mail::raw(
                                 "Dear {$bid->owner_name},\n\n" .
-                                "A bid for your project \"{$bid->project_name}\" has been accepted. The contractor {$bid->company_name} has been selected.\n\n" .
+                                "A bid for your project \"{$bid->project_title}\" has been accepted. The contractor {$bid->company_name} has been selected.\n\n" .
                                 "Please log in to the app for more details.\n\n" .
                                 "Best regards,\nLegatura",
                                 fn($m) => $m->to($bid->owner_email)->subject('Bid Accepted for Your Project - Legatura')
@@ -1221,13 +1222,13 @@ class projectManagementController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send bid accepted email: ' . $e->getMessage());
+                    Log::error('Failed to send bid accepted email: ' . $e->getMessage());
                 }
             }
 
             return response()->json($result);
         } catch (\Exception $e) {
-            \Log::error('Error accepting bid: ' . $e->getMessage());
+            Log::error('Error accepting bid: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to accept bid: ' . $e->getMessage()], 500);
         }
     }
@@ -1241,7 +1242,7 @@ class projectManagementController extends Controller
             $html = view('admin.projectManagement.partials.rejectBidModal', compact('bid'))->render();
             return response()->json(['success' => true, 'html' => $html]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching reject bid summary: ' . $e->getMessage());
+            Log::error('Error fetching reject bid summary: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to load bid summary: ' . $e->getMessage()], 500);
         }
     }
@@ -1259,27 +1260,27 @@ class projectManagementController extends Controller
                     $bid = DB::table('bids')
                         ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
                         ->join('projects', 'bids.project_id', '=', 'projects.project_id')
-                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
                         ->where('bids.bid_id', $bidId)
                         ->first();
 
                     if ($bid && !empty($bid->company_email)) {
                         \Illuminate\Support\Facades\Mail::raw(
                             "Dear {$bid->company_name},\n\n" .
-                            "We regret to inform you that your bid for the project \"{$bid->project_name}\" has been rejected by the admin.\n\n" .
+                            "We regret to inform you that your bid for the project \"{$bid->project_title}\" has been rejected by the admin.\n\n" .
                             ($reason ? "Reason: {$reason}\n\n" : '') .
                             "Best regards,\nLegatura",
                             fn($m) => $m->to($bid->company_email)->subject('Bid Rejected - Legatura')
                         );
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send bid rejected email: ' . $e->getMessage());
+                    Log::error('Failed to send bid rejected email: ' . $e->getMessage());
                 }
             }
 
             return response()->json($result);
         } catch (\Exception $e) {
-            \Log::error('Error rejecting bid: ' . $e->getMessage());
+            Log::error('Error rejecting bid: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to reject bid: ' . $e->getMessage()], 500);
         }
     }
@@ -1296,7 +1297,7 @@ class projectManagementController extends Controller
             $oldBid = DB::table('bids')
                 ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
                 ->join('projects', 'bids.project_id', '=', 'projects.project_id')
-                ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name')
+                ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
                 ->where('bids.project_id', $projectId)
                 ->where('bids.bid_status', 'accepted')
                 ->first();
@@ -1312,7 +1313,7 @@ class projectManagementController extends Controller
                     if ($oldBid && !empty($oldBid->company_email)) {
                         \Illuminate\Support\Facades\Mail::raw(
                             "Dear {$oldBid->company_name},\n\n" .
-                            "Please be informed that you have been removed as the selected bidder for the project \"{$oldBid->project_name}\" by the admin.\n\n" .
+                            "Please be informed that you have been removed as the selected bidder for the project \"{$oldBid->project_title}\" by the admin.\n\n" .
                             "Best regards,\nLegatura",
                             fn($m) => $m->to($oldBid->company_email)->subject('Bidder Change Notice - Legatura')
                         );
@@ -1322,28 +1323,28 @@ class projectManagementController extends Controller
                     $newBid = DB::table('bids')
                         ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
                         ->join('projects', 'bids.project_id', '=', 'projects.project_id')
-                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_name')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
                         ->where('bids.bid_id', $bidId)
                         ->first();
 
                     if ($newBid && !empty($newBid->company_email)) {
                         \Illuminate\Support\Facades\Mail::raw(
                             "Dear {$newBid->company_name},\n\n" .
-                            "Congratulations! You have been selected as the new bidder for the project \"{$newBid->project_name}\" by the admin.\n\n" .
+                            "Congratulations! You have been selected as the new bidder for the project \"{$newBid->project_title}\" by the admin.\n\n" .
                             "Please log in to the app to proceed.\n\n" .
                             "Best regards,\nLegatura",
                             fn($m) => $m->to($newBid->company_email)->subject('You Have Been Selected as Bidder - Legatura')
                         );
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send bidder change email: ' . $e->getMessage());
+                    Log::error('Failed to send bidder change email: ' . $e->getMessage());
                 }
             }
 
             return response()->json($result);
 
         } catch (\Exception $e) {
-            \Log::error('Error changing bidder: ' . $e->getMessage());
+            Log::error('Error changing bidder: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to change bidder: ' . $e->getMessage()
@@ -1360,7 +1361,7 @@ class projectManagementController extends Controller
             $html = view('admin.projectManagement.partials.cancelledProjectModal', compact('project'))->render();
             return response()->json(['success' => true, 'html' => $html]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching terminated project details: ' . $e->getMessage());
+            Log::error('Error fetching terminated project details: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to load project details: ' . $e->getMessage()], 500);
         }
     }
@@ -1374,7 +1375,7 @@ class projectManagementController extends Controller
             $html = view('admin.projectManagement.partials.haltedProjectModal', compact('project'))->render();
             return response()->json(['success' => true, 'html' => $html]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching halted project details: ' . $e->getMessage());
+            Log::error('Error fetching halted project details: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to load project details: ' . $e->getMessage()], 500);
         }
     }
@@ -1388,7 +1389,7 @@ class projectManagementController extends Controller
             $html = view('admin.projectManagement.partials.haltDetailsModal', compact('project'))->render();
             return response()->json(['success' => true, 'html' => $html]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching halt details: ' . $e->getMessage());
+            Log::error('Error fetching halt details: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to load project details: ' . $e->getMessage()], 500);
         }
     }
@@ -1401,7 +1402,7 @@ class projectManagementController extends Controller
             if (!$success) return response()->json(['success' => false, 'message' => 'Project not found'], 404);
             return response()->json(['success' => true, 'message' => 'Project terminated successfully']);
         } catch (\Exception $e) {
-            \Log::error('Error terminating halted project: ' . $e->getMessage());
+            Log::error('Error terminating halted project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to terminate project: ' . $e->getMessage()], 500);
         }
     }
@@ -1414,7 +1415,7 @@ class projectManagementController extends Controller
             if (!$success) return response()->json(['success' => false, 'message' => 'Project not found'], 404);
             return response()->json(['success' => true, 'message' => 'Project resumed successfully']);
         } catch (\Exception $e) {
-            \Log::error('Error resuming halted project: ' . $e->getMessage());
+            Log::error('Error resuming halted project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to resume project: ' . $e->getMessage()], 500);
         }
     }
@@ -1625,7 +1626,7 @@ class projectManagementController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'showcases_html'  => view('admin.projectManagement.partials.showcaseTable', ['showcases' => $showcases])->render(),
-                'pagination_html' => (string) $showcases->links()
+                'pagination_html' => view('admin.projectManagement.partials.showcasePagination', ['showcases' => $showcases])->render(),
             ]);
         }
         return view('admin.projectManagement.showcaseManagement', compact('showcases', 'stats'));
@@ -1700,7 +1701,7 @@ class projectManagementController extends Controller
             'extension_type' => 'required|in:admin_override,request_behalf'
         ]);
         $model       = new projectClass();
-        $adminUserId = auth()->id();
+        $adminUserId = Auth::id();
         $result      = $model->adminExtendTimeline($id, [
             'new_end_date'   => $request->new_end_date,
             'reason'         => $request->reason,
@@ -1733,7 +1734,7 @@ class projectManagementController extends Controller
     {
         $request->validate(['notes' => 'nullable|string|max:500']);
         $model       = new projectClass();
-        $adminUserId = auth()->id();
+        $adminUserId = Auth::id();
         $result      = $model->adminApproveExtension($extensionId, $adminUserId, $request->notes);
         if ($result['success']) {
             AdminActivityLog::log('extension_approved', ['extension_id' => $extensionId]);
@@ -1746,7 +1747,7 @@ class projectManagementController extends Controller
     {
         $request->validate(['reason' => 'required|string|min:10|max:500']);
         $model       = new projectClass();
-        $adminUserId = auth()->id();
+        $adminUserId = Auth::id();
         $result      = $model->adminRejectExtension($extensionId, $adminUserId, $request->reason);
         if ($result['success']) {
             AdminActivityLog::log('extension_rejected', ['extension_id' => $extensionId, 'reason' => $request->reason]);
@@ -1759,7 +1760,7 @@ class projectManagementController extends Controller
     {
         $request->validate(['feedback' => 'required|string|min:10|max:500']);
         $model       = new projectClass();
-        $adminUserId = auth()->id();
+        $adminUserId = Auth::id();
         $result      = $model->adminRequestRevision($extensionId, $adminUserId, $request->feedback);
         if ($result['success']) {
             AdminActivityLog::log('extension_revision_requested', ['extension_id' => $extensionId]);
@@ -1821,14 +1822,14 @@ class projectManagementController extends Controller
     public function getPaymentHistory($id)
     {
         try {
-            \Log::info('Fetching payment history for project: ' . $id);
+            Log::info('Fetching payment history for project: ' . $id);
             $model  = new projectClass();
             $result = $model->fetchPaymentHistory($id);
-            \Log::info('Payment history result:', $result);
+            Log::info('Payment history result:', $result);
             return $result['success'] ? response()->json($result) : response()->json($result, 400);
         } catch (\Exception $e) {
-            \Log::error('Payment history error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Payment history error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json(['success' => false, 'message' => 'Error fetching payment history: ' . $e->getMessage()], 500);
         }
     }

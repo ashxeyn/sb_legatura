@@ -236,30 +236,30 @@ function showSkeleton() {
   if (!panel) return;
   panel.innerHTML = `
     <div class="overflow-x-auto">
-      <table class="w-full">
+      <table class="w-full sa-sub-table">
         <thead>
-          <tr class="border-b-2 border-gray-100">
+          <tr class="border-b border-gray-100 bg-gray-50">
             ${['Subscriber','Plan','Amount','Status','Subscribed','Expires','TXN #']
-                .map(h => `<th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">${h}</th>`)
+                .map(h => `<th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider">${h}</th>`)
                 .join('')}
           </tr>
         </thead>
         <tbody>
-          ${Array.from({ length: 8 }, (_, i) => `
+          ${Array.from({ length: 10 }, (_, i) => `
             <tr class="border-b border-gray-50" style="animation-delay:${i * 40}ms">
-              <td class="px-4 py-4"><div class="flex items-center gap-3">
-                <div class="skeleton w-10 h-10 rounded-full shrink-0"></div>
+              <td class="px-3 py-2"><div class="flex items-center gap-2">
+                <div class="skeleton w-7 h-7 rounded-full shrink-0"></div>
                 <div class="space-y-1.5 flex-1">
-                  <div class="skeleton h-3 w-32 rounded"></div>
-                  <div class="skeleton h-2 w-20 rounded"></div>
+                  <div class="skeleton h-2.5 w-28 rounded"></div>
+                  <div class="skeleton h-2 w-16 rounded"></div>
                 </div>
               </div></td>
-              <td class="px-4 py-4"><div class="skeleton h-5 w-16 rounded-full"></div></td>
-              <td class="px-4 py-4"><div class="skeleton h-3 w-20 rounded"></div></td>
-              <td class="px-4 py-4"><div class="skeleton h-5 w-18 rounded-full"></div></td>
-              <td class="px-4 py-4"><div class="skeleton h-3 w-24 rounded"></div></td>
-              <td class="px-4 py-4"><div class="skeleton h-3 w-24 rounded"></div></td>
-              <td class="px-4 py-4"><div class="skeleton h-3 w-28 rounded"></div></td>
+              <td class="px-3 py-2"><div class="skeleton h-4 w-14 rounded-full"></div></td>
+              <td class="px-3 py-2"><div class="skeleton h-2.5 w-16 rounded"></div></td>
+              <td class="px-3 py-2"><div class="skeleton h-4 w-14 rounded-full"></div></td>
+              <td class="px-3 py-2"><div class="skeleton h-2.5 w-20 rounded"></div></td>
+              <td class="px-3 py-2"><div class="skeleton h-2.5 w-20 rounded"></div></td>
+              <td class="px-3 py-2"><div class="skeleton h-2.5 w-24 rounded"></div></td>
             </tr>
           `).join('')}
         </tbody>
@@ -280,15 +280,15 @@ function renderSubscribers(data) {
 
   if (!data.data || data.data.length === 0) {
     panel.innerHTML = `
-      <div class="py-20 text-center">
-        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="py-16 text-center">
+        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
           </svg>
         </div>
-        <p class="text-gray-400 font-medium">No subscribers match your filters</p>
-        <p class="text-gray-300 text-sm mt-1">Try adjusting the search or clearing filters</p>
+        <p class="text-sm text-gray-400 font-medium">No subscribers match your filters</p>
+        <p class="text-xs text-gray-300 mt-1">Try adjusting the search or clearing filters</p>
       </div>`;
     return;
   }
@@ -300,72 +300,71 @@ function renderSubscribers(data) {
     pending:   { cls: 'status-pending',   dot: 'bg-yellow-500',  label: 'Pending' },
     cancelled: { cls: 'status-cancelled', dot: 'bg-gray-400',    label: 'Cancelled' },
   };
-  const grads = [
-    'from-indigo-400 to-indigo-600','from-violet-400 to-violet-600',
-    'from-emerald-400 to-emerald-600','from-amber-400 to-amber-600',
-    'from-rose-400 to-rose-600','from-cyan-400 to-cyan-600','from-fuchsia-400 to-fuchsia-600',
+  const avatarColors = [
+    { bg: 'bg-indigo-100',  text: 'text-indigo-700' },
+    { bg: 'bg-violet-100',  text: 'text-violet-700' },
+    { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    { bg: 'bg-amber-100',   text: 'text-amber-700' },
+    { bg: 'bg-rose-100',    text: 'text-rose-700' },
+    { bg: 'bg-cyan-100',    text: 'text-cyan-700' },
+    { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700' },
   ];
 
   const escape = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
 
   const rows = data.data.map((s, i) => {
-    const grad    = grads[i % grads.length];
+    const ac      = avatarColors[i % avatarColors.length];
     const badge   = tierBadge[s.plan_key]              ?? 'tier-other';
     const st      = statusCfg[s.subscription_status]   ?? statusCfg.cancelled;
     const typeClr = s.subscriber_type === 'Contractor' ? 'bg-indigo-50 text-indigo-600' : 'bg-teal-50 text-teal-700';
     const avatar  = s.avatar
-      ? `<img src="${escape(s.avatar)}" alt="${escape(s.subscriber_name)}" class="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow shrink-0">`
-      : `<div class="w-10 h-10 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white text-sm font-bold shadow ring-2 ring-white shrink-0">${escape(s.initials)}</div>`;
+      ? `<img src="${escape(s.avatar)}" alt="${escape(s.subscriber_name)}" class="w-7 h-7 rounded-full object-cover ring-1 ring-gray-100 shrink-0">`
+      : `<div class="w-7 h-7 rounded-full ${ac.bg} ${ac.text} flex items-center justify-center text-[10px] font-bold shrink-0">${escape(s.initials)}</div>`;
 
-    const repLine   = s.rep_name   && s.rep_name.trim() !== ' '
-      ? `<div class="text-xs text-gray-400 leading-tight truncate max-w-[180px]">${escape(s.rep_name)}</div>` : '';
     const emailLine = s.subscriber_email
-      ? `<div class="text-xs text-gray-300 truncate max-w-[180px]">${escape(s.subscriber_email)}</div>` : '';
+      ? `<div class="text-[10px] text-gray-400 truncate max-w-[160px]">${escape(s.subscriber_email)}</div>` : '';
 
     const expiringSoonBadge = s.expiring_soon
-      ? `<div class="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1"><span>⚠</span> Expiring soon</div>` : '';
-    const deactivationNote = s.deactivation_reason
-      ? `<div class="text-xs text-gray-400 mt-1 max-w-[130px] truncate" title="${escape(s.deactivation_reason)}">${escape(s.deactivation_reason.substring(0,25))}</div>` : '';
+      ? `<div class="text-[10px] text-amber-600 font-medium mt-0.5">⚠ Expiring soon</div>` : '';
 
     const expiryCell = s.expiration_fmt
-      ? `<div class="font-medium ${s.expiration_past ? 'text-red-500' : 'text-gray-800'}">${escape(s.expiration_fmt)}</div>
-         <div class="text-xs ${s.expiration_past ? 'text-red-400' : 'text-gray-400'}">${escape(s.expiration_rel)}</div>`
-      : `<span class="text-xs text-gray-300 italic">No expiry</span>`;
+      ? `<div class="text-[11px] font-medium ${s.expiration_past ? 'text-red-500' : 'text-gray-800'}">${escape(s.expiration_fmt)}</div>
+         <div class="text-[10px] ${s.expiration_past ? 'text-red-400' : 'text-gray-400'}">${escape(s.expiration_rel)}</div>`
+      : `<span class="text-[10px] text-gray-300 italic">No expiry</span>`;
 
     return `
       <tr class="sub-row border-b border-gray-50" style="animation: fadeIn .25s ease both; animation-delay:${i * 20}ms">
-        <td class="px-4 py-4">
-          <div class="flex items-center gap-3">
+        <td class="px-3 py-2">
+          <div class="flex items-center gap-2">
             ${avatar}
             <div class="min-w-0">
-              <div class="font-semibold text-gray-800 leading-tight truncate max-w-[180px]">${escape(s.subscriber_name)}</div>
-              ${repLine}${emailLine}
-              <span class="inline-flex items-center mt-0.5 px-1.5 py-px rounded text-[10px] font-semibold ${typeClr}">${escape(s.subscriber_type)}</span>
+              <div class="font-semibold text-gray-800 leading-tight truncate max-w-[160px] text-xs">${escape(s.subscriber_name)}</div>
+              ${emailLine}
+              <span class="inline-flex items-center px-1.5 py-px rounded text-[10px] font-semibold ${typeClr}">${escape(s.subscriber_type)}</span>
             </div>
           </div>
         </td>
-        <td class="px-4 py-4">
-          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badge}">${escape(s.plan_key.charAt(0).toUpperCase() + s.plan_key.slice(1))}</span>
-          <div class="text-xs text-gray-400 mt-1">${escape(s.plan_name)}</div>
-          <div class="text-xs text-gray-300 capitalize">${escape(s.billing_cycle)}</div>
+        <td class="px-3 py-2">
+          <span class="inline-flex items-center px-1.5 py-px rounded-full text-[10px] font-semibold ${badge}">${escape(s.plan_key.charAt(0).toUpperCase() + s.plan_key.slice(1))}</span>
+          <div class="text-[10px] text-gray-400 capitalize mt-0.5">${escape(s.billing_cycle)}</div>
         </td>
-        <td class="px-4 py-4">
-          <div class="font-bold text-gray-800">${escape(s.amount_fmt)}</div>
-          <div class="text-xs text-gray-400">${escape(s.payment_type ?? '')}</div>
+        <td class="px-3 py-2">
+          <div class="font-bold text-gray-800 text-xs">${escape(s.amount_fmt)}</div>
+          <div class="text-[10px] text-gray-400">${escape(s.payment_type ?? '')}</div>
         </td>
-        <td class="px-4 py-4">
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${st.cls}">
+        <td class="px-3 py-2">
+          <span class="inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[10px] font-semibold ${st.cls}">
             <span class="w-1.5 h-1.5 rounded-full ${st.dot} inline-block shrink-0"></span>${st.label}
           </span>
-          ${expiringSoonBadge}${deactivationNote}
+          ${expiringSoonBadge}
         </td>
-        <td class="px-4 py-4">
-          <div class="text-gray-800 font-medium">${escape(s.transaction_date_fmt)}</div>
-          <div class="text-xs text-gray-400">${escape(s.transaction_date_rel)}</div>
+        <td class="px-3 py-2">
+          <div class="text-[11px] text-gray-800 font-medium">${escape(s.transaction_date_fmt)}</div>
+          <div class="text-[10px] text-gray-400">${escape(s.transaction_date_rel)}</div>
         </td>
-        <td class="px-4 py-4">${expiryCell}</td>
-        <td class="px-4 py-4">
-          <div class="text-xs font-mono text-gray-400 max-w-[130px] truncate" title="${escape(s.transaction_number ?? '')}">${escape(s.transaction_number ?? '—')}</div>
+        <td class="px-3 py-2">${expiryCell}</td>
+        <td class="px-3 py-2">
+          <div class="text-[10px] font-mono text-gray-400 max-w-[120px] truncate" title="${escape(s.transaction_number ?? '')}">${escape(s.transaction_number ?? '—')}</div>
         </td>
       </tr>`;
   }).join('');
@@ -379,33 +378,33 @@ function renderSubscribers(data) {
     const end   = Math.min(last, cur + 2);
 
     const prevBtn = cur === 1
-      ? `<span class="px-3 py-2 rounded-lg text-sm text-gray-300 select-none">← Prev</span>`
-      : `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${cur - 1}">← Prev</button>`;
+      ? `<span class="px-2.5 py-1.5 rounded-lg text-xs text-gray-300 select-none">← Prev</span>`
+      : `<button class="page-btn px-2.5 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${cur - 1}">← Prev</button>`;
 
     let pages = '';
     if (start > 1) {
-      pages += `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="1">1</button>`;
-      if (start > 2) pages += `<span class="px-2 text-gray-300 text-sm">…</span>`;
+      pages += `<button class="page-btn px-2.5 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="1">1</button>`;
+      if (start > 2) pages += `<span class="px-1.5 text-gray-300 text-xs">…</span>`;
     }
     for (let p = start; p <= end; p++) {
       pages += p === cur
-        ? `<span class="px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white">${p}</span>`
-        : `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${p}">${p}</button>`;
+        ? `<span class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white">${p}</span>`
+        : `<button class="page-btn px-2.5 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${p}">${p}</button>`;
     }
     if (end < last) {
-      if (end < last - 1) pages += `<span class="px-2 text-gray-300 text-sm">…</span>`;
-      pages += `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${last}">${last}</button>`;
+      if (end < last - 1) pages += `<span class="px-1.5 text-gray-300 text-xs">…</span>`;
+      pages += `<button class="page-btn px-2.5 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${last}">${last}</button>`;
     }
 
     const nextBtn = cur < last
-      ? `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${cur + 1}">Next →</button>`
-      : `<span class="px-3 py-2 rounded-lg text-sm text-gray-300 select-none">Next →</span>`;
+      ? `<button class="page-btn px-2.5 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${cur + 1}">Next →</button>`
+      : `<span class="px-2.5 py-1.5 rounded-lg text-xs text-gray-300 select-none">Next →</span>`;
 
     pagHtml = `
-      <div class="mt-6 flex items-center justify-between px-1">
-        <div class="text-sm text-gray-500">
+      <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100" id="paginationRow">
+        <div class="text-xs text-gray-500">
           Showing <span class="font-semibold text-gray-700">${data.from}</span>
-          – <span class="font-semibold text-gray-700">${data.to}</span>
+          &ndash; <span class="font-semibold text-gray-700">${data.to}</span>
           of <span class="font-semibold text-gray-700">${data.total}</span>
         </div>
         <div class="flex items-center gap-1 flex-wrap">
@@ -417,11 +416,11 @@ function renderSubscribers(data) {
   panel.innerHTML = `
     <style>@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}</style>
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full text-sm sa-sub-table">
         <thead>
-          <tr class="border-b-2 border-gray-100">
+          <tr class="border-b border-gray-100 bg-gray-50">
             ${['Subscriber','Plan','Amount','Status','Subscribed','Expires','TXN #']
-                .map(h => `<th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">${h}</th>`)
+                .map(h => `<th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider">${h}</th>`)
                 .join('')}
           </tr>
         </thead>

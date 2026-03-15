@@ -58,14 +58,16 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
-  <div class="flex min-h-screen">
+  <div class="flex h-screen overflow-hidden">
 
     @include('admin.layouts.sidebar')
 
-    <main class="flex-1 overflow-x-hidden">
-      @include('admin.layouts.topnav', ['pageTitle' => 'Property Owners'])
+    <main class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex-shrink-0 sticky top-0 z-30">
+        @include('admin.layouts.topnav', ['pageTitle' => 'Property Owners'])
+      </div>
 
-      <div class="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+      <div class="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
         <!-- Controls Section -->
         <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-2.5">

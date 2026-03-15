@@ -102,18 +102,18 @@
         </td>
         <td class="px-2.5 py-2.5 whitespace-nowrap">
           <div class="flex items-center gap-1">
-            <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all" title="View" data-id="{{ $project->project_id }}">
+            <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 active:translate-y-0 transition-all" title="View" data-id="{{ $project->project_id }}">
               <i class="fi fi-rr-eye text-[13px] leading-none"></i>
             </button>
-            <button class="action-btn edit-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-orange-100 hover:shadow-sm hover:border-orange-300 hover:-translate-y-0.5 transition-all" title="Edit" data-id="{{ $project->project_id }}">
+            <button class="action-btn edit-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-orange-100 hover:shadow-sm hover:border-orange-300 hover:-translate-y-0.5 active:translate-y-0 transition-all" title="Edit" data-id="{{ $project->project_id }}">
               <i class="fi fi-rr-pencil text-[12px] leading-none"></i>
             </button>
             @if($project->project_status === 'deleted')
-            <button class="action-btn restore-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-green-200 bg-green-50 text-green-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-green-100 hover:shadow-sm hover:border-green-300 hover:-translate-y-0.5 transition-all" title="Restore" data-id="{{ $project->project_id }}">
+            <button class="action-btn restore-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-green-200 bg-green-50 text-green-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-green-100 hover:shadow-sm hover:border-green-300 hover:-translate-y-0.5 active:translate-y-0 transition-all" title="Restore" data-id="{{ $project->project_id }}">
               <i class="fi fi-rr-refresh text-[13px] leading-none"></i>
             </button>
             @else
-            <button class="action-btn delete-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all" title="Delete" data-id="{{ $project->project_id }}">
+            <button class="action-btn delete-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 active:translate-y-0 transition-all" title="Delete" data-id="{{ $project->project_id }}">
               <i class="fi fi-rr-trash text-[13px] leading-none"></i>
             </button>
             @endif

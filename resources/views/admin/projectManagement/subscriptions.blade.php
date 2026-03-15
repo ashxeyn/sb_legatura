@@ -53,86 +53,99 @@
           </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           @forelse($plans as $plan)
             @php
               $accentColor = 'border-indigo-200';
               $iconGradient = 'from-indigo-500 to-blue-600';
               $badgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+              $priceBg = 'bg-indigo-50';
+              $priceText = 'text-indigo-700';
               if (stripos($plan->plan_key, 'gold') !== false) {
                 $accentColor = 'border-yellow-200';
                 $iconGradient = 'from-yellow-400 to-yellow-600';
                 $badgeClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                $priceBg = 'bg-yellow-50';
+                $priceText = 'text-yellow-700';
               } elseif (stripos($plan->plan_key, 'silver') !== false) {
                 $accentColor = 'border-gray-200';
                 $iconGradient = 'from-gray-400 to-gray-500';
                 $badgeClass = 'bg-gray-100 text-gray-700 border-gray-200';
+                $priceBg = 'bg-gray-50';
+                $priceText = 'text-gray-700';
               } elseif (stripos($plan->plan_key, 'bronze') !== false) {
                 $accentColor = 'border-orange-200';
                 $iconGradient = 'from-orange-500 to-orange-700';
                 $badgeClass = 'bg-orange-50 text-orange-700 border-orange-200';
+                $priceBg = 'bg-orange-50';
+                $priceText = 'text-orange-700';
               }
               $benefits = json_decode($plan->benefits, true) ?? [];
             @endphp
-            <div class="subscription-card bg-white rounded-xl border {{ $accentColor }} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer relative"
+            <div class="subscription-card bg-white rounded-lg border {{ $accentColor }} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer relative flex flex-col"
               data-id="{{ $plan->id }}" data-name="{{ $plan->name }}" data-price="{{ $plan->amount / 100 }}"
               data-billing-cycle="{{ $plan->billing_cycle }}" data-duration="{{ $plan->duration_days }}"
               data-benefits="{{ json_encode($benefits) }}">
 
-              <div class="px-4 pt-4 pb-3 border-b border-gray-100">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br {{ $iconGradient }} flex items-center justify-center shadow-sm flex-shrink-0">
-                      <i class="fi fi-ss-star text-white text-xs"></i>
+              <!-- Header: Icon + Name + Badge -->
+              <div class="px-3 pt-3 pb-2">
+                <div class="flex items-start justify-between gap-1.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-md bg-gradient-to-br {{ $iconGradient }} flex items-center justify-center shadow-sm flex-shrink-0">
+                      <i class="fi fi-ss-star text-white text-[10px]"></i>
                     </div>
-                    <div>
-                      <h3 class="text-sm font-semibold text-gray-800 leading-tight">{{ $plan->name }}</h3>
-                      <p class="text-[11px] text-gray-500">{{ ucfirst($plan->billing_cycle) }} charge</p>
+                    <div class="min-w-0">
+                      <h3 class="text-xs font-bold text-gray-800 leading-tight truncate">{{ $plan->name }}</h3>
+                      <p class="text-[10px] text-gray-400">{{ ucfirst($plan->billing_cycle) }} charge</p>
                     </div>
                   </div>
-                  <div class="flex items-center gap-1 flex-shrink-0">
+                  <div class="flex-shrink-0">
                     @if($plan->for_contractor)
-                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border {{ $badgeClass }}">
-                        <i class="fi fi-ss-building text-[9px]"></i> Contractor
+                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border {{ $badgeClass }}">
+                        <i class="fi fi-ss-building text-[8px]"></i> Contractor
                       </span>
                     @else
-                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-purple-50 text-purple-700 border-purple-200">
-                        <i class="fi fi-ss-home text-[9px]"></i> Owner
+                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border bg-purple-50 text-purple-700 border-purple-200">
+                        <i class="fi fi-ss-home text-[8px]"></i> Owner
                       </span>
                     @endif
                   </div>
                 </div>
-                <div class="mt-3">
-                  <span class="text-2xl font-bold text-gray-800">₱{{ number_format($plan->amount / 100, 2) }}</span>
-                </div>
               </div>
 
-              <div class="px-4 py-3">
-                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Benefits</p>
-                <ul class="space-y-1.5">
+              <!-- Price -->
+              <div class="mx-3 px-2.5 py-1.5 rounded-md {{ $priceBg }}">
+                <span class="text-lg font-extrabold {{ $priceText }}">₱{{ number_format($plan->amount / 100, 2) }}</span>
+              </div>
+
+              <!-- Benefits (flex-1 to push footer down) -->
+              <div class="px-3 pt-2 pb-2 flex-1">
+                <p class="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Benefits</p>
+                <ul class="space-y-1">
                   @foreach($benefits as $benefit)
-                    <li class="flex items-start gap-1.5 text-[11px] text-gray-600">
-                      <i class="fi fi-ss-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
+                    <li class="flex items-start gap-1 text-[10px] text-gray-600">
+                      <i class="fi fi-ss-check-circle text-emerald-500 text-[10px] mt-0.5 flex-shrink-0"></i>
                       <span>{{ $benefit }}</span>
                     </li>
                   @endforeach
                 </ul>
               </div>
 
-              <div class="px-4 pb-4 flex gap-2 justify-end">
-                <button class="edit-icon w-7 h-7 inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition active:scale-95" title="Edit Plan">
-                  <i class="fi fi-rr-edit text-[11px] leading-none"></i>
+              <!-- Actions (always at bottom) -->
+              <div class="px-3 pb-2.5 pt-1.5 flex gap-1.5 justify-end border-t border-gray-100 mt-auto">
+                <button class="edit-icon w-6 h-6 inline-flex items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition active:scale-95" title="Edit Plan">
+                  <i class="fi fi-rr-edit text-[10px] leading-none"></i>
                 </button>
-                <button class="delete-icon w-7 h-7 inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition active:scale-95" title="Delete Plan">
-                  <i class="fi fi-rr-trash text-[11px] leading-none"></i>
+                <button class="delete-icon w-6 h-6 inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition active:scale-95" title="Delete Plan">
+                  <i class="fi fi-rr-trash text-[10px] leading-none"></i>
                 </button>
               </div>
             </div>
           @empty
-            <div class="col-span-3 text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
-              <i class="fi fi-rr-box-open text-3xl text-gray-300 block mb-2"></i>
-              <p class="text-sm font-medium text-gray-500">No active plans</p>
-              <p class="text-xs text-gray-400 mt-1">Click "Add Plan" to create one.</p>
+            <div class="col-span-4 text-center py-8 bg-white rounded-lg border border-dashed border-gray-300">
+              <i class="fi fi-rr-box-open text-2xl text-gray-300 block mb-1.5"></i>
+              <p class="text-xs font-medium text-gray-500">No active plans</p>
+              <p class="text-[10px] text-gray-400 mt-0.5">Click "Add Plan" to create one.</p>
             </div>
           @endforelse
         </div>
@@ -141,54 +154,69 @@
 
       <!-- Subscription Statistics Section -->
       <section class="px-4 pb-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Total Subscriptions -->
-          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-sm flex-shrink-0">
-              <i class="fi fi-rr-calendar-check text-white text-sm"></i>
-            </div>
-            <div>
-              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Total</p>
-              <p class="text-xl font-bold text-gray-800 leading-tight">{{ $stats['total'] ?? 0 }}</p>
-              <div class="w-full bg-gray-100 rounded-full h-1 mt-1">
-                <div class="bg-indigo-500 h-1 rounded-full" style="width: {{ min(($stats['total'] ?? 0) / 300 * 100, 100) }}%"></div>
+          <div class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+            <div class="flex justify-between items-start gap-3 mb-3">
+              <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Total Subscriptions</p>
+                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">{{ number_format($stats['total'] ?? 0) }}</h2>
+                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-100 mt-2 w-fit">
+                  <i class="fi fi-sr-database text-[10px] text-blue-600"></i>
+                  <span class="text-[11px] font-semibold text-blue-600">All records</span>
+                </div>
               </div>
+              <div class="stat-icon-wrap bg-blue-100 p-2.5 rounded-lg"><i class="fi fi-sr-calendar-check text-lg text-blue-600"></i></div>
             </div>
+            <p class="text-[11px] text-gray-400">All time</p>
           </div>
 
           <!-- Total Revenue -->
-          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-sm flex-shrink-0">
-              <i class="fi fi-rr-coins text-white text-sm"></i>
+          <div class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+            <div class="flex justify-between items-start gap-3 mb-3">
+              <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Total Revenue</p>
+                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">₱{{ $stats['revenue'] ?? '0.00' }}</h2>
+                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-100 mt-2 w-fit">
+                  <i class="fi fi-sr-coins text-[10px] text-emerald-600"></i>
+                  <span class="text-[11px] font-semibold text-emerald-600">Earnings</span>
+                </div>
+              </div>
+              <div class="stat-icon-wrap bg-emerald-100 p-2.5 rounded-lg"><i class="fi fi-sr-coins text-lg text-emerald-600"></i></div>
             </div>
-            <div class="min-w-0">
-              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Revenue</p>
-              <p class="text-xl font-bold text-gray-800 leading-tight truncate">₱{{ $stats['revenue'] ?? '0.00' }}</p>
-            </div>
+            <p class="text-[11px] text-gray-400">Accumulated</p>
           </div>
 
           <!-- Expiring Soon -->
-          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-sm flex-shrink-0">
-              <i class="fi fi-rr-clock text-white text-sm"></i>
+          <div class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+            <div class="flex justify-between items-start gap-3 mb-3">
+              <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Expiring Soon</p>
+                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">{{ number_format($stats['expiring_soon'] ?? 0) }}</h2>
+                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-orange-100 mt-2 w-fit">
+                  <i class="fi fi-sr-time-check text-[10px] text-orange-600"></i>
+                  <span class="text-[11px] font-semibold text-orange-600">Within 7 days</span>
+                </div>
+              </div>
+              <div class="stat-icon-wrap bg-orange-100 p-2.5 rounded-lg"><i class="fi fi-sr-time-check text-lg text-orange-600"></i></div>
             </div>
-            <div>
-              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Expiring Soon</p>
-              <p class="text-xl font-bold text-gray-800 leading-tight">{{ $stats['expiring_soon'] ?? 0 }}</p>
-              <p class="text-[10px] text-yellow-600">Within 7 days</p>
-            </div>
+            <p class="text-[11px] text-gray-400">Needs attention</p>
           </div>
 
           <!-- Expired -->
-          <div class="stats-card bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-sm flex-shrink-0">
-              <i class="fi fi-rr-exclamation text-white text-sm"></i>
+          <div class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+            <div class="flex justify-between items-start gap-3 mb-3">
+              <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Expired Subscriptions</p>
+                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">{{ number_format($stats['expired'] ?? 0) }}</h2>
+                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-100 mt-2 w-fit">
+                  <i class="fi fi-sr-cross-circle text-[10px] text-red-600"></i>
+                  <span class="text-[11px] font-semibold text-red-600">Needs renewal</span>
+                </div>
+              </div>
+              <div class="stat-icon-wrap bg-red-100 p-2.5 rounded-lg"><i class="fi fi-sr-cross-circle text-lg text-red-600"></i></div>
             </div>
-            <div>
-              <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Expired</p>
-              <p class="text-xl font-bold text-gray-800 leading-tight">{{ $stats['expired'] ?? 0 }}</p>
-              <p class="text-[10px] text-red-600">Needs renewal</p>
-            </div>
+            <p class="text-[11px] text-gray-400">Expired status</p>
           </div>
         </div>
       </section>

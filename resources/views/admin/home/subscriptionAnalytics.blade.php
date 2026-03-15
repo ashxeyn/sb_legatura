@@ -8,6 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/admin/home/subscriptionAnalytics.css') }}">
 
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
@@ -15,41 +16,6 @@
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
-
-  <style>
-    /* Tier badges */
-    .tier-gold   { background:linear-gradient(135deg,#fef08a,#fbbf24); color:#78350f; }
-    .tier-silver { background:linear-gradient(135deg,#e0f2fe,#60a5fa); color:#1e3a5f; }
-    .tier-bronze { background:linear-gradient(135deg,#fed7aa,#f97316); color:#7c2d12; }
-    .tier-boost  { background:linear-gradient(135deg,#e9d5ff,#a855f7); color:#4c1d95; }
-    .tier-other  { background:linear-gradient(135deg,#f1f5f9,#94a3b8); color:#334155; }
-
-    /* Status badges */
-    .status-active    { background:#dcfce7; color:#166534; }
-    .status-expired   { background:#fee2e2; color:#991b1b; }
-    .status-pending   { background:#fef9c3; color:#854d0e; }
-    .status-cancelled { background:#f1f5f9; color:#475569; }
-
-    /* Table row hover */
-    .sub-row { transition: background 0.15s ease; }
-    .sub-row:hover { background: rgba(99,102,241,0.04); }
-
-    /* Skeleton pulse */
-    @keyframes shimmer {
-      0%   { background-position:-800px 0; }
-      100% { background-position: 800px 0; }
-    }
-    .skeleton {
-      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-      background-size: 800px 100%;
-      animation: shimmer 1.4s infinite linear;
-      border-radius: 6px;
-    }
-
-    /* Revenue chart tier buttons */
-    .tier-btn { transition: all 0.2s ease; }
-    .tier-btn.active { box-shadow: 0 0 0 2px white, 0 0 0 4px currentColor; }
-  </style>
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -60,136 +26,137 @@
   <main class="flex-1">
     @include('admin.layouts.topnav', ['pageTitle' => 'Subscription Analytics'])
 
-    <div class="p-8 space-y-8">
+    <div class="sa-shell p-4 lg:p-5 space-y-3.5">
 
-      {{-- ── GLOBAL DATE FILTER ──────────────────────────────────────────── --}}
-      <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm" id="globalDateFilter">
-        <div class="flex items-center gap-4 flex-wrap">
-          <span class="text-sm font-semibold text-gray-700 whitespace-nowrap">
-            <i class="fi fi-sr-calendar" style="font-size:1rem; vertical-align:middle; margin-right:.35rem;"></i>
-            Filter Period:
+      {{-- DATE FILTER --}}
+      <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm" id="globalDateFilter">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="text-xs font-semibold text-gray-600 whitespace-nowrap flex items-center gap-1.5">
+            <i class="fi fi-sr-calendar" style="font-size:.85rem; vertical-align:middle;"></i>
+            Filter Period
           </span>
-          <div class="flex gap-2 flex-wrap" id="presetButtons">
-            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last3months">Last 3 Months</button>
-            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last6months">Last 6 Months</button>
-            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="thisyear">This Year</button>
-            <button class="date-preset-btn px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="lastyear">Last Year</button>
-            <button class="date-preset-btn active px-3 py-1.5 rounded-full border border-indigo-500 text-sm font-semibold text-white bg-indigo-500 transition-all" data-range="all">All Time</button>
+          <div class="flex gap-1.5 flex-wrap" id="presetButtons">
+            <button class="date-preset-btn px-2.5 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last3months">Last 3 Months</button>
+            <button class="date-preset-btn px-2.5 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="last6months">Last 6 Months</button>
+            <button class="date-preset-btn px-2.5 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="thisyear">This Year</button>
+            <button class="date-preset-btn px-2.5 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="lastyear">Last Year</button>
+            <button class="date-preset-btn active px-2.5 py-1 rounded-full border border-indigo-400 text-xs font-semibold text-white bg-indigo-500 transition-all" data-range="all">All Time</button>
           </div>
-          <div class="flex items-center gap-2 ml-auto">
-            <label class="text-xs font-medium text-gray-500">From</label>
-            <input type="date" id="globalDateFrom" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
-            <label class="text-xs font-medium text-gray-500">To</label>
-            <input type="date" id="globalDateTo" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
-            <button id="applyGlobalDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+          <div class="flex items-center gap-2 ml-auto flex-wrap">
+            <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+              <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2 self-stretch">
+                <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
+                <span class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+              </div>
+              <input type="date" id="globalDateFrom" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
+            </div>
+            <span class="text-gray-300 font-bold text-base">→</span>
+            <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+              <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2 self-stretch">
+                <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
+                <span class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+              </div>
+              <input type="date" id="globalDateTo" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
+            </div>
+            <button id="applyGlobalDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-xs font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
           </div>
-          <div id="filterLoading" class="hidden flex items-center gap-1 ml-2">
-            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0s"></span>
-            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.1s"></span>
-            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay:0.2s"></span>
+          <div id="filterLoading" class="hidden flex items-center gap-1 ml-1">
+            <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0.1s"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0.2s"></span>
           </div>
         </div>
       </div>
 
-      {{-- ── KPI HERO CARDS ───────────────────────────────────────────────── --}}
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      {{-- KPI CARDS --}}
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
 
         {{-- Total Subscriptions --}}
-        <div class="relative bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
-          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
-          <div class="relative">
-            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
-              <i class="fi fi-sr-users-alt text-white text-xl leading-none"></i>
+        <div class="sa-kpi bg-white border border-gray-200 border-l-4 border-l-indigo-400 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="bg-indigo-50 p-2 rounded-lg">
+              <i class="fi fi-sr-users-alt text-indigo-500" style="font-size:1rem; line-height:1;"></i>
             </div>
-            <div class="text-white/80 text-sm font-medium mb-1">Total Subscriptions</div>
-            <div class="text-white text-4xl font-bold mb-2 stat-counter" data-target="{{ $subscriptionMetrics['total'] }}">0</div>
-            <div class="flex items-center gap-1 text-white/80 text-xs">
-              @if($subscriptionMetrics['mom_growth'] >= 0)
-                <svg class="w-3 h-3 text-emerald-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-                <span class="text-emerald-300 font-semibold">+{{ $subscriptionMetrics['mom_growth'] }}%</span>
-              @else
-                <svg class="w-3 h-3 text-red-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                <span class="text-red-300 font-semibold">{{ $subscriptionMetrics['mom_growth'] }}%</span>
-              @endif
-              <span>vs last month</span>
-            </div>
+            @if($subscriptionMetrics['mom_growth'] >= 0)
+              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                +{{ $subscriptionMetrics['mom_growth'] }}%
+              </span>
+            @else
+              <span class="text-[11px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{{ $subscriptionMetrics['mom_growth'] }}%</span>
+            @endif
           </div>
+          <div class="text-2xl font-bold text-gray-900 stat-counter" data-target="{{ $subscriptionMetrics['total'] }}">0</div>
+          <div class="text-xs font-medium text-gray-500 mt-0.5">Total Subscriptions</div>
+          <div class="text-[11px] text-gray-400 mt-0.5">vs last month</div>
         </div>
 
         {{-- Active --}}
-        <div class="relative bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
-          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
-          <div class="relative">
-            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
-              <i class="fi fi-sr-badge-check text-white text-xl leading-none"></i>
+        <div class="sa-kpi bg-white border border-gray-200 border-l-4 border-l-emerald-400 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="bg-emerald-50 p-2 rounded-lg">
+              <i class="fi fi-sr-badge-check text-emerald-500" style="font-size:1rem; line-height:1;"></i>
             </div>
-            <div class="text-white/80 text-sm font-medium mb-1">Active</div>
-            <div class="text-white text-4xl font-bold mb-2 stat-counter" data-target="{{ $subscriptionMetrics['active'] }}">0</div>
-            <div class="text-white/70 text-xs">
+            <span class="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
               {{ $subscriptionMetrics['total'] > 0 ? round(($subscriptionMetrics['active'] / $subscriptionMetrics['total']) * 100, 1) : 0 }}% of total
-            </div>
+            </span>
           </div>
+          <div class="text-2xl font-bold text-gray-900 stat-counter" data-target="{{ $subscriptionMetrics['active'] }}">0</div>
+          <div class="text-xs font-medium text-gray-500 mt-0.5">Active</div>
+          <div class="text-[11px] text-gray-400 mt-0.5">currently subscribed</div>
         </div>
 
         {{-- Revenue --}}
-        <div id="revenueCard" class="relative bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
-          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
-          <div class="relative">
-            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
-              <i class="fi fi-sr-peso-sign text-white text-xl leading-none"></i>
+        <div id="revenueCard" class="sa-kpi bg-white border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="bg-amber-50 p-2 rounded-lg">
+              <i class="fi fi-sr-peso-sign text-amber-500" style="font-size:1rem; line-height:1;"></i>
             </div>
-            <div class="text-white/80 text-sm font-medium mb-1">Total Revenue</div>
-            <div id="revenueValue" class="text-white text-4xl font-bold mb-2">
-              ₱{{ number_format($subscriptionMetrics['revenue'], 2) }}
-            </div>
-            <div class="text-white/70 text-xs">All approved contractor subs</div>
           </div>
+          <div id="revenueValue" class="text-2xl font-bold text-gray-900">₱{{ number_format($subscriptionMetrics['revenue'], 2) }}</div>
+          <div class="text-xs font-medium text-gray-500 mt-0.5">Total Revenue</div>
+          <div class="text-[11px] text-gray-400 mt-0.5">all approved contractor subs</div>
         </div>
 
-        {{-- Expiring / Expired --}}
-        <div id="expiringCard" class="relative bg-gradient-to-br from-rose-500 to-pink-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
-          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
-          <div class="relative">
-            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
-              <i class="fi fi-sr-alarm-clock text-white text-xl leading-none"></i>
-            </div>
-            <div class="text-white/80 text-sm font-medium mb-1">Expiring in 7 Days</div>
-            <div class="text-white text-4xl font-bold mb-2 stat-counter" data-target="{{ $subscriptionMetrics['expiring'] }}">0</div>
-            <div id="expiredCount" class="text-white/70 text-xs">
-              {{ $subscriptionMetrics['expired'] }} already expired
+        {{-- Expiring --}}
+        <div id="expiringCard" class="sa-kpi bg-white border border-gray-200 border-l-4 border-l-rose-400 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="bg-rose-50 p-2 rounded-lg">
+              <i class="fi fi-sr-alarm-clock text-rose-500" style="font-size:1rem; line-height:1;"></i>
             </div>
           </div>
+          <div class="text-2xl font-bold text-gray-900 stat-counter" data-target="{{ $subscriptionMetrics['expiring'] }}">0</div>
+          <div class="text-xs font-medium text-gray-500 mt-0.5">Expiring in 7 Days</div>
+          <div id="expiredCount" class="text-[11px] text-gray-400 mt-0.5">{{ $subscriptionMetrics['expired'] }} already expired</div>
         </div>
 
       </div>
 
-      {{-- ── REVENUE CHART + TIER BARS ────────────────────────────────────── --}}
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {{-- REVENUE CHART + TIER BARS --}}
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
 
-        {{-- Revenue Line Chart --}}
-        <div class="xl:col-span-2 bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-          <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+        {{-- Revenue Chart --}}
+        <div class="xl:col-span-2 bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow" style="position:relative;">
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
             <div>
-              <h3 class="text-xl font-bold text-gray-800">Subscription Revenue</h3>
-              <p class="text-sm text-gray-500 mt-0.5" id="revenueSubtitle">
+              <h3 class="text-sm font-semibold text-gray-800">Subscription Revenue</h3>
+              <p class="text-[11px] text-gray-400 mt-0.5" id="revenueSubtitle">
                 {{ $subscriptionRevenue['dateRange'] }} &nbsp;·&nbsp; Current vs Previous Year
               </p>
             </div>
-            {{-- Tier toggle --}}
-            <div class="flex gap-2 flex-wrap">
-              <button data-tier="all"    class="tier-btn active px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-800 text-white">All</button>
-              <button data-tier="gold"   class="tier-btn px-3 py-1.5 rounded-lg text-sm font-semibold tier-gold">Gold</button>
-              <button data-tier="silver" class="tier-btn px-3 py-1.5 rounded-lg text-sm font-semibold tier-silver">Silver</button>
-              <button data-tier="bronze" class="tier-btn px-3 py-1.5 rounded-lg text-sm font-semibold tier-bronze">Bronze</button>
+            <div class="flex gap-1.5 flex-wrap">
+              <button data-tier="all"    class="tier-btn active px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-800 text-white">All</button>
+              <button data-tier="gold"   class="tier-btn px-2.5 py-1 rounded-lg text-xs font-semibold tier-gold">Gold</button>
+              <button data-tier="silver" class="tier-btn px-2.5 py-1 rounded-lg text-xs font-semibold tier-silver">Silver</button>
+              <button data-tier="bronze" class="tier-btn px-2.5 py-1 rounded-lg text-xs font-semibold tier-bronze">Bronze</button>
             </div>
           </div>
 
-          {{-- Loading overlay --}}
-          <div id="revenueSpinner" class="hidden absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center z-10">
-            <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          <div id="revenueSpinner" class="hidden absolute inset-0 bg-white/70 rounded-xl flex items-center justify-center z-10">
+            <div class="w-6 h-6 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
           </div>
 
-          <div style="height:300px; position:relative;">
+          <div style="height:260px; position:relative;">
             <canvas id="revenueChart"
               data-months='@json($subscriptionRevenue["months"])'
               data-current='@json($subscriptionRevenue["currentYearData"])'
@@ -201,92 +168,85 @@
         </div>
 
         {{-- Tier Breakdown --}}
-        <div class="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-          <h3 class="text-xl font-bold text-gray-800 mb-1">Tier Breakdown</h3>
-          <p class="text-sm text-gray-500 mb-6">Approved subscriptions by plan</p>
-          <div class="space-y-5">
+        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <h3 class="text-sm font-semibold text-gray-800 mb-0.5">Tier Breakdown</h3>
+          <p class="text-[11px] text-gray-400 mb-4">Approved subscriptions by plan</p>
+          <div class="space-y-3">
             @php
-              $tierStyles = [
-                ['bg' => 'bg-yellow-50', 'bar' => 'bg-gradient-to-r from-yellow-300 to-yellow-500', 'text' => 'text-yellow-700'],
-                ['bg' => 'bg-blue-50',   'bar' => 'bg-gradient-to-r from-blue-300   to-blue-500',   'text' => 'text-blue-700'],
-                ['bg' => 'bg-orange-50', 'bar' => 'bg-gradient-to-r from-orange-300 to-orange-500', 'text' => 'text-orange-700'],
+              $tierMeta = [
+                ['bar' => '#fbbf24', 'text' => 'text-amber-700', 'bg' => 'bg-amber-50'],
+                ['bar' => '#60a5fa', 'text' => 'text-blue-700',  'bg' => 'bg-blue-50'],
+                ['bar' => '#f97316', 'text' => 'text-orange-700','bg' => 'bg-orange-50'],
               ];
             @endphp
             @foreach($subscriptionTiers['tiers'] as $i => $tier)
               @php
-                $s = $tierStyles[$i];
+                $m = $tierMeta[$i] ?? $tierMeta[0];
                 $w = $subscriptionTiers['maxCount'] > 0
-                      ? round(($tier['count'] / $subscriptionTiers['maxCount']) * 100)
-                      : 0;
+                      ? round(($tier['count'] / $subscriptionTiers['maxCount']) * 100) : 0;
                 $pct = $subscriptionTiers['total'] > 0
-                        ? round(($tier['count'] / $subscriptionTiers['total']) * 100, 1)
-                        : 0;
+                        ? round(($tier['count'] / $subscriptionTiers['total']) * 100, 1) : 0;
               @endphp
-              <div class="{{ $s['bg'] }} rounded-xl p-4">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-sm font-semibold {{ $s['text'] }}">{{ $tier['label'] }}</span>
-                  <span class="text-lg font-bold {{ $s['text'] }}">{{ $tier['count'] }}</span>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-semibold {{ $m['text'] }}">{{ $tier['label'] }}</span>
+                  <span class="text-xs font-bold text-gray-700">{{ $tier['count'] }} <span class="text-gray-400 font-normal">({{ $pct }}%)</span></span>
                 </div>
-                <div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden">
-                  <div class="{{ $s['bar'] }} h-2.5 rounded-full tier-bar"
-                       data-width="{{ $w }}" style="width:0%; transition:width 0.9s cubic-bezier(.34,1.56,.64,1)"></div>
+                <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div class="h-1.5 rounded-full tier-bar"
+                       data-width="{{ $w }}" style="width:0%; background:{{ $m['bar'] }}; transition:width 0.9s cubic-bezier(.34,1.56,.64,1)"></div>
                 </div>
-                <div class="text-xs {{ $s['text'] }} opacity-70 mt-1">{{ $pct }}% of all</div>
               </div>
             @endforeach
-            <div class="pt-2 border-t border-gray-100 flex items-center justify-between">
-              <span class="text-sm text-gray-500">Total approved</span>
-              <span class="text-xl font-bold text-gray-800">{{ $subscriptionTiers['total'] }}</span>
+            <div class="pt-2.5 border-t border-gray-100 flex items-center justify-between">
+              <span class="text-xs text-gray-500">Total approved</span>
+              <span class="text-lg font-bold text-gray-800">{{ $subscriptionTiers['total'] }}</span>
             </div>
           </div>
         </div>
+
       </div>
 
-      {{-- ── SUBSCRIBER LIST ──────────────────────────────────────────────── --}}
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      {{-- SUBSCRIBER LIST --}}
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
 
         {{-- Header --}}
-        <div class="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-8 py-6">
-          <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="px-5 py-3 bg-gray-50 border-b border-gray-200">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 class="text-2xl font-bold text-white">Subscribers</h3>
-              <p class="text-indigo-200 text-sm mt-0.5" id="subscriberMeta">
+              <h3 class="text-sm font-semibold text-gray-800">Subscribers</h3>
+              <p class="text-[11px] text-gray-400" id="subscriberMeta">
                 {{ $subscribers->total() }} total &nbsp;·&nbsp;
                 Showing {{ $subscribers->firstItem() ?? 0 }}–{{ $subscribers->lastItem() ?? 0 }}
               </p>
             </div>
-            <button id="exportCsvBtn" class="bg-white text-indigo-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors shadow flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <button id="exportCsvBtn" class="flex items-center gap-1.5 bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Export CSV
             </button>
           </div>
         </div>
 
-        {{-- Filter/Search Bar
-             NOTE: No <form> submission — JS intercepts everything and does AJAX
-             BUG 4 FIX: preserves scroll position via history.pushState
-        --}}
-        <div class="px-8 py-5 border-b border-gray-100 bg-gray-50">
-          <div class="flex flex-wrap gap-3 items-end">
+        {{-- Filter Bar --}}
+        <div class="px-5 py-3 border-b border-gray-100 bg-white">
+          <div class="flex flex-wrap gap-2 items-end">
 
-            {{-- Search --}}
-            <div class="flex-1 min-w-[200px]">
-              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Search</label>
+            <div class="flex-1 min-w-[180px]">
+              <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Search</label>
               <div class="relative">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
                 <input id="searchInput" type="text"
                   value="{{ $filters['search'] }}"
                   placeholder="Name, email, plan, transaction…"
-                  class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all">
+                  class="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all">
               </div>
             </div>
 
-            {{-- Plan --}}
-            <div class="min-w-[140px]">
-              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Plan</label>
-              <select id="planFilter" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all">
+            <div class="min-w-[120px]">
+              <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Plan</label>
+              <select id="planFilter" class="w-full px-2.5 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all">
                 <option value=""       {{ $filters['plan'] === ''       ? 'selected' : '' }}>All Plans</option>
                 <option value="gold"   {{ $filters['plan'] === 'gold'   ? 'selected' : '' }}>Gold</option>
                 <option value="silver" {{ $filters['plan'] === 'silver' ? 'selected' : '' }}>Silver</option>
@@ -295,10 +255,9 @@
               </select>
             </div>
 
-            {{-- Status --}}
-            <div class="min-w-[140px]">
-              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Status</label>
-              <select id="statusFilter" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all">
+            <div class="min-w-[120px]">
+              <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Status</label>
+              <select id="statusFilter" class="w-full px-2.5 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all">
                 <option value=""         {{ $filters['status'] === ''         ? 'selected' : '' }}>All Statuses</option>
                 <option value="active"   {{ $filters['status'] === 'active'   ? 'selected' : '' }}>Active</option>
                 <option value="expired"  {{ $filters['status'] === 'expired'  ? 'selected' : '' }}>Expired</option>
@@ -307,10 +266,9 @@
               </select>
             </div>
 
-            {{-- Sort --}}
-            <div class="min-w-[160px]">
-              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Sort By</label>
-              <select id="sortFilter" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all">
+            <div class="min-w-[140px]">
+              <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Sort By</label>
+              <select id="sortFilter" class="w-full px-2.5 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all">
                 <option value="newest"      {{ $filters['sort'] === 'newest'      ? 'selected' : '' }}>Newest First</option>
                 <option value="oldest"      {{ $filters['sort'] === 'oldest'      ? 'selected' : '' }}>Oldest First</option>
                 <option value="amount_desc" {{ $filters['sort'] === 'amount_desc' ? 'selected' : '' }}>Amount ↓</option>
@@ -319,11 +277,10 @@
               </select>
             </div>
 
-            {{-- Clear --}}
             <div>
-              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block opacity-0">x</label>
+              <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block opacity-0">x</label>
               <button id="clearFiltersBtn"
-                class="{{ ($filters['search'] || $filters['plan'] || $filters['status'] || $filters['sort'] !== 'newest') ? '' : 'invisible' }} px-4 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
+                class="{{ ($filters['search'] || $filters['plan'] || $filters['status'] || $filters['sort'] !== 'newest') ? '' : 'invisible' }} px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors">
                 Clear
               </button>
             </div>
@@ -331,8 +288,8 @@
           </div>
         </div>
 
-        {{-- Subscriber Table (server-rendered first, AJAX-replaced on filter) --}}
-        <div class="p-6" id="subscriberPanel">
+        {{-- Subscriber Table --}}
+        <div id="subscriberPanel">
           @include('admin.home.subscriberTable', ['subscribers' => $subscribers, 'filters' => $filters])
         </div>
 
@@ -342,13 +299,12 @@
   </main>
 </div>
 
-{{-- Pass AJAX URL and initial filter state to JS --}}
 <script>
   window.SubConfig = {
-    ajaxUrl:  '{{ route("admin.analytics.subscription.subscribers") }}',
+    ajaxUrl:    '{{ route("admin.analytics.subscription.subscribers") }}',
     revenueUrl: '{{ route("admin.analytics.subscription.revenue") }}',
-    filters: @json($filters),
-    csrfToken: '{{ csrf_token() }}'
+    filters:    @json($filters),
+    csrfToken:  '{{ csrf_token() }}'
   };
 </script>
 <script src="{{ asset('js/admin/home/subscriptionAnalytics.js') }}" defer></script>

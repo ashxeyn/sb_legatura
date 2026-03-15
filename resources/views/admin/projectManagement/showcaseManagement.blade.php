@@ -23,6 +23,18 @@
 
     <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
+    <style>
+        .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0.5;
+            cursor: pointer;
+            filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+        }
+
+        .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+    </style>
+
 
 </head>
 
@@ -37,65 +49,88 @@
             <div class="p-8 space-y-6">
 
                 <!-- Stats Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <!-- Total -->
                     <div
-                        class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow duration-200">
-                        <div class="flex items-center justify-between">
+                        class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                        <div class="flex justify-between items-start gap-3 mb-3">
                             <div>
-                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Showcases</p>
-                                <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ $stats->total }}</p>
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Total Showcases</p>
+                                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">{{ number_format($stats->total) }}</h2>
+                                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-100 mt-2 w-fit">
+                                    <i class="fi fi-sr-database text-[10px] text-blue-600"></i>
+                                    <span class="text-[11px] font-semibold text-blue-600">All records</span>
+                                </div>
                             </div>
-                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <i class="fi fi-sr-layers text-blue-600 text-xl"></i>
+                            <div class="stat-icon-wrap bg-blue-100 p-2.5 rounded-lg">
+                                <i class="fi fi-sr-layers text-lg text-blue-600"></i>
                             </div>
                         </div>
+                        <p class="text-[11px] text-gray-400">All time</p>
                     </div>
-                    <!-- Published -->
+
+                    <!-- Approved -->
                     <div
-                        class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow duration-200">
-                        <div class="flex items-center justify-between">
+                        class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                        <div class="flex justify-between items-start gap-3 mb-3">
                             <div>
-                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Approved</p>
-                                <p class="text-3xl font-extrabold text-green-600 mt-1">{{ $stats->approved }}</p>
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Approved Showcases</p>
+                                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">{{ number_format($stats->approved) }}</h2>
+                                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 mt-2 w-fit">
+                                    <i class="fi fi-sr-check-circle text-[10px] text-green-600"></i>
+                                    <span class="text-[11px] font-semibold text-green-600">Published posts</span>
+                                </div>
                             </div>
-                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                                <i class="fi fi-sr-check-circle text-green-600 text-xl"></i>
+                            <div class="stat-icon-wrap bg-green-100 p-2.5 rounded-lg">
+                                <i class="fi fi-sr-check-circle text-lg text-green-600"></i>
                             </div>
                         </div>
+                        <p class="text-[11px] text-gray-400">Approved status</p>
                     </div>
-                    <!-- Under Review -->
+
+                    <!-- Pending -->
                     <div
-                        class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow duration-200">
-                        <div class="flex items-center justify-between">
+                        class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                        <div class="flex justify-between items-start gap-3 mb-3">
                             <div>
-                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Pending Review</p>
-                                <p class="text-3xl font-extrabold text-amber-600 mt-1">{{ $stats->pending }}</p>
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Pending Review</p>
+                                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">{{ number_format($stats->pending) }}</h2>
+                                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-orange-100 mt-2 w-fit">
+                                    <i class="fi fi-sr-time-check text-[10px] text-orange-600"></i>
+                                    <span class="text-[11px] font-semibold text-orange-600">Awaiting review</span>
+                                </div>
                             </div>
-                            <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                                <i class="fi fi-sr-time-quarter-past text-amber-600 text-xl"></i>
+                            <div class="stat-icon-wrap bg-orange-100 p-2.5 rounded-lg">
+                                <i class="fi fi-sr-time-quarter-past text-lg text-orange-600"></i>
                             </div>
                         </div>
+                        <p class="text-[11px] text-gray-400">Pending status</p>
                     </div>
+
                     <!-- Rejected -->
                     <div
-                        class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow duration-200">
-                        <div class="flex items-center justify-between">
+                        class="stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                        <div class="flex justify-between items-start gap-3 mb-3">
                             <div>
-                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Rejected</p>
-                                <p class="text-3xl font-extrabold text-red-600 mt-1">{{ $stats->rejected }}</p>
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Rejected Showcases</p>
+                                <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number">{{ number_format($stats->rejected) }}</h2>
+                                <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-100 mt-2 w-fit">
+                                    <i class="fi fi-sr-cross-circle text-[10px] text-red-600"></i>
+                                    <span class="text-[11px] font-semibold text-red-600">Marked invalid</span>
+                                </div>
                             </div>
-                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                                <i class="fi fi-sr-cross-circle text-red-600 text-xl"></i>
+                            <div class="stat-icon-wrap bg-red-100 p-2.5 rounded-lg">
+                                <i class="fi fi-sr-cross-circle text-lg text-red-600"></i>
                             </div>
                         </div>
+                        <p class="text-[11px] text-gray-400">Rejected status</p>
                     </div>
                 </div>
 
                 <!-- Filter Bar -->
                 <div
-                    class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center gap-3 flex-wrap">
+                    class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2.5">
                         <div
                             class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
                             <i class="fi fi-rr-filter text-gray-500"></i>
@@ -104,25 +139,55 @@
 
                         <!-- Status Filter -->
                         <div class="relative">
-                            <select id="statusFilter"
-                                class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition cursor-pointer">
-                                <option value="">All Status</option>
-                                <option value="approved">Approved</option>
-                                <option value="pending">Pending Review</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                            <i
-                                class="fi fi-rr-angle-small-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+                            <div
+                                class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                                <div
+                                    class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                                    <i class="fi fi-rr-apps text-white text-sm leading-none"></i>
+                                    <span
+                                        class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Status</span>
+                                </div>
+                                <select id="statusFilter"
+                                    class="appearance-none bg-white text-sm text-gray-700 font-medium pl-3 pr-8 py-2.5 focus:outline-none cursor-pointer min-w-[140px] border-0">
+                                    <option value="">All Status</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="pending">Pending Review</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                                <i
+                                    class="fi fi-rr-angle-small-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+                            </div>
                         </div>
 
                         <!-- Date Range -->
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm font-medium text-gray-700">From:</label>
-                            <input type="date" id="dateFrom"
-                                class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
-                            <label class="text-sm font-medium text-gray-700">To:</label>
-                            <input type="date" id="dateTo"
-                                class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- From -->
+                            <div
+                                class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                                <div
+                                    class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                                    <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                                    <span
+                                        class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                                </div>
+                                <input type="date" id="dateFrom"
+                                    class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                            </div>
+
+                            <span class="text-gray-300 font-bold text-lg">→</span>
+
+                            <!-- To -->
+                            <div
+                                class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                                <div
+                                    class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
+                                    <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
+                                    <span
+                                        class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                                </div>
+                                <input type="date" id="dateTo"
+                                    class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                            </div>
                         </div>
                     </div>
 
@@ -134,28 +199,28 @@
                 </div>
 
                 <!-- Table Section -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full" id="showcaseTable">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
+                        <table class="w-full table-fixed" id="showcaseTable">
+                            <thead>
+                                <tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
                                     <th
-                                        class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[22%]">
                                         Contractor</th>
                                     <th
-                                        class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[28%]">
                                         Showcase Title</th>
                                     <th
-                                        class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">
                                         Linked Project</th>
                                     <th
-                                        class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[14%]">
                                         Date Posted</th>
                                     <th
-                                        class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[10%]">
                                         Status</th>
                                     <th
-                                        class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[10%]">
                                         Action</th>
                                 </tr>
                             </thead>
@@ -164,11 +229,10 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
 
-                <!-- Pagination Container -->
-                <div class="mt-4" id="paginationLinks">
-                    {{ $showcases->links() }}
+                    <div id="paginationLinks">
+                        @include('admin.projectManagement.partials.showcasePagination', ['showcases' => $showcases])
+                    </div>
                 </div>
 
             </div>
@@ -204,49 +268,45 @@
     </div>
 
     <!-- View Showcase Modal -->
-    <div id="viewShowcaseModal"
-        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="viewShowcaseModal" data-status="pending"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-3">
         <div
-            class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 modal-content">
+            class="modal-content bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[84vh] flex flex-col">
             <!-- Header -->
-            <div
-                class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5 flex items-center justify-between rounded-t-2xl">
-                <h3 class="text-xl font-bold text-white flex items-center gap-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    Showcase Details
-                </h3>
-                <button class="text-white hover:text-gray-200 transition-colors duration-200 close-modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
+            <div id="viewShowcaseHeader"
+                class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 border-b border-orange-600 text-white flex-shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div id="viewShowcaseHeaderIcon"
+                        class="w-9 h-9 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shadow-sm">
+                        <i class="fi fi-rr-picture text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-[15px] font-bold leading-tight">Showcase Details</h3>
+                        <p id="viewShowcaseHeaderSubtitle" class="text-[10px] text-orange-100">Review showcase information</p>
+                    </div>
+                </div>
+                <button id="viewShowcaseHeaderClose"
+                    class="p-1.5 rounded-xl hover:bg-white/20 text-white/80 hover:text-white transition close-modal">
+                    <i class="fi fi-rr-cross-small text-lg"></i>
                 </button>
             </div>
 
             <!-- Body: populated by server-rendered HTML via AJAX -->
-            <div class="p-6 space-y-5" id="modalBodyContent">
-                <div class="flex items-center justify-center py-12">
-                    <svg class="w-8 h-8 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z">
-                        </path>
-                    </svg>
-                    <span class="ml-3 text-gray-500 font-medium">Loading showcase details...</span>
+            <div class="modal-scroll-hidden flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-4 space-y-3" id="modalBodyContent">
+                <div class="flex items-center justify-center py-10">
+                    <span class="text-sm text-gray-500 font-medium">Loading showcase details...</span>
                 </div>
             </div>
 
             <!-- Footer -->
-            <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+            <div id="viewShowcaseFooter"
+                class="flex items-center justify-end gap-2 px-4 py-3 bg-gray-50 border-t border-gray-200 flex-shrink-0">
                 <button id="viewModalCloseBtn"
-                    class="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors duration-200 close-modal">Close</button>
+                    class="px-3.5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition text-[12px] font-medium close-modal">Close</button>
                 <button id="viewModalRejectBtn"
-                    class="hidden px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200">Reject</button>
+                    class="hidden px-3.5 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition text-[12px] font-medium">Reject</button>
                 <button id="viewModalApproveBtn"
-                    class="hidden px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200">Approve</button>
+                    class="hidden px-3.5 py-2 rounded-lg bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 transition text-[12px] font-medium">Approve</button>
             </div>
         </div>
     </div>

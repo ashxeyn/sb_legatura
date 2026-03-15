@@ -403,7 +403,7 @@ class analyticsController extends authController
             default: $query->orderBy('pp.transaction_date', 'desc');
         }
 
-        return $query->paginate(15)->withQueryString();
+        return $query->paginate(10)->withQueryString();
     }
 
 

@@ -41,8 +41,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteButtons = document.querySelectorAll('.delete-btn');
     const restoreButtons = document.querySelectorAll('.restore-btn');
 
+    // Helper: clone button to remove all old event listeners, then attach fresh one
+    function freshListener(btn, handler) {
+      const fresh = btn.cloneNode(true);
+      btn.parentNode.replaceChild(fresh, btn);
+      fresh.addEventListener('click', handler);
+    }
+
     viewButtons.forEach(btn => {
-      btn.addEventListener('click', function(e) {
+      freshListener(btn, function(e) {
         e.stopPropagation();
         addRipple(this, e);
         const id = this.getAttribute('data-id');
@@ -55,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     editButtons.forEach(btn => {
-      btn.addEventListener('click', function(e) {
+      freshListener(btn, function(e) {
         e.stopPropagation();
         addRipple(this, e);
         const id = this.getAttribute('data-id');
@@ -68,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     deleteButtons.forEach(btn => {
-      btn.addEventListener('click', function(e) {
+      freshListener(btn, function(e) {
         e.stopPropagation();
         addRipple(this, e);
         const id = this.getAttribute('data-id');
@@ -81,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     restoreButtons.forEach(btn => {
-      btn.addEventListener('click', function(e) {
+      freshListener(btn, function(e) {
         e.stopPropagation();
         addRipple(this, e);
         const id = this.getAttribute('data-id');
@@ -271,26 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
   function attachCompletedModalListeners() {
     // No additional listeners needed as onclick handlers are in the HTML
   }
-
-  // Helper function to show milestone details
-  window.showMilestoneDetails = function(itemId) {
-    // Hide the default message
-    const container = document.getElementById('completedDetailsContent');
-    if (container) {
-      const defaultMsg = container.querySelector('.text-gray-500');
-      if (defaultMsg) defaultMsg.classList.add('hidden');
-    }
-
-    // Hide all detail divs
-    const allDetails = document.querySelectorAll('[id^="milestone-detail-"]');
-    allDetails.forEach(detail => detail.classList.add('hidden'));
-
-    // Show the selected detail
-    const selectedDetail = document.getElementById(`milestone-detail-${itemId}`);
-    if (selectedDetail) {
-      selectedDetail.classList.remove('hidden');
-    }
-  };
 
   // Toggle completed details visibility
   window.toggleCompletedDetails = function() {
@@ -940,6 +927,15 @@ document.addEventListener('DOMContentLoaded', function() {
           const existingModal = document.getElementById('deleteProjectModal');
           if (existingModal) {
             existingModal.classList.remove('hidden');
+            existingModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            const modalContent = existingModal.querySelector('.modal-content');
+            if (modalContent) {
+              setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+              }, 10);
+            }
           }
         }
       } else {
@@ -954,9 +950,17 @@ document.addEventListener('DOMContentLoaded', function() {
   // Hide delete project modal
   window.hideDeleteProjectModal = function() {
     const modal = document.getElementById('deleteProjectModal');
-    if (modal) {
-      modal.classList.add('hidden');
+    if (!modal) return;
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) {
+      modalContent.classList.remove('scale-100', 'opacity-100');
+      modalContent.classList.add('scale-95', 'opacity-0');
     }
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      document.body.style.overflow = '';
+    }, 250);
   };
 
   // Confirm delete project
@@ -1190,12 +1194,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Show terminated milestone details (interactive timeline)
   window.showTerminatedMilestoneDetail = function(itemId) {
-    // Hide the default message if exists
-    const container = document.getElementById('terminatedDetailsContent');
-    if (container) {
-      const defaultMsg = container.querySelector('.text-gray-500');
-      if (defaultMsg) defaultMsg.classList.add('hidden');
-    }
+    // Hide the empty-state placeholder
+    const noMilestoneMsg = document.getElementById('cancelledNoMilestoneMsg');
+    if (noMilestoneMsg) noMilestoneMsg.classList.add('hidden');
 
     // Hide all milestone detail divs
     const allDetails = document.querySelectorAll('[id^="term-detail-"]');
@@ -1522,6 +1523,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize PSGC location dropdowns
         await initializeEditLocationDropdowns();
 
+        // Sync original values AFTER location dropdowns are populated
+        // so that pre-filled location fields are not counted as changes
+        document.querySelectorAll('.change-detector').forEach(function(field) {
+          field.setAttribute('data-original-value', field.value);
+        });
+
+        // Attach change-detection listeners for validation
+        initEditProjectChangeListeners();
+
         // Show modal
         modal.classList.remove('hidden');
         
@@ -1538,6 +1548,57 @@ document.addEventListener('DOMContentLoaded', function() {
       showNotification('An error occurred while loading the modal', 'error');
     }
   };
+
+  // Validate that at least one field has changed before saving
+  window.validateAndEditProject = function() {
+    const errorDiv = document.getElementById('editProjectValidationError');
+    const fields = document.querySelectorAll('.change-detector');
+    let hasAnyChange = false;
+
+    fields.forEach(function(field) {
+      if (field.getAttribute('data-original-value') !== field.value) {
+        hasAnyChange = true;
+      }
+    });
+
+    if (!hasAnyChange) {
+      if (errorDiv) {
+        errorDiv.style.display = 'block';
+        errorDiv.classList.remove('hidden');
+        const contentArea = errorDiv.closest('.overflow-y-auto');
+        if (contentArea) contentArea.scrollTop = 0;
+      }
+      return false;
+    }
+
+    if (errorDiv) {
+      errorDiv.style.display = 'none';
+      errorDiv.classList.add('hidden');
+    }
+    if (typeof showEditProjectConfirmModal === 'function') {
+      showEditProjectConfirmModal();
+    }
+  };
+
+  // Attach input/change listeners to hide validation error on any edit
+  function initEditProjectChangeListeners() {
+    document.querySelectorAll('.change-detector').forEach(function(field) {
+      field.addEventListener('change', function() {
+        const errorDiv = document.getElementById('editProjectValidationError');
+        if (errorDiv) {
+          errorDiv.style.display = 'none';
+          errorDiv.classList.add('hidden');
+        }
+      });
+      field.addEventListener('input', function() {
+        const errorDiv = document.getElementById('editProjectValidationError');
+        if (errorDiv) {
+          errorDiv.style.display = 'none';
+          errorDiv.classList.add('hidden');
+        }
+      });
+    });
+  }
 
   // Hide Edit Project Modal
   window.hideEditProjectModal = function() {
@@ -2018,7 +2079,25 @@ document.addEventListener('DOMContentLoaded', function() {
           modalContainer.innerHTML = result.html;
           const existingModal = document.getElementById('editMilestoneModal');
           if (existingModal) {
+            existingModal.classList.remove('em-leave', 'em-visible');
+            existingModal.classList.add('em-enter');
             existingModal.classList.remove('hidden');
+            void existingModal.offsetWidth; // force reflow
+            existingModal.classList.remove('em-enter');
+            existingModal.classList.add('em-visible');
+
+            // Capture original values and attach change listeners
+            existingModal.querySelectorAll('.milestone-change-detector').forEach(function(field) {
+              field.setAttribute('data-original-value', field.value);
+              const hideError = function() {
+                const errDiv = document.getElementById('editMilestoneValidationError');
+                if (errDiv) {
+                  errDiv.classList.add('hidden');
+                }
+              };
+              field.addEventListener('change', hideError);
+              field.addEventListener('input', hideError);
+            });
           }
         }
       } else {
@@ -2033,14 +2112,37 @@ document.addEventListener('DOMContentLoaded', function() {
   // Hide edit milestone modal
   window.hideEditMilestoneModal = function() {
     const modal = document.getElementById('editMilestoneModal');
-    if (modal) {
+    if (!modal) return;
+    modal.classList.remove('em-visible');
+    modal.classList.add('em-leave');
+    modal.addEventListener('transitionend', () => {
       modal.classList.add('hidden');
-    }
+      modal.classList.remove('em-leave');
+    }, { once: true });
   };
 
   // Save milestone edit
   window.saveMilestoneEdit = async function() {
     try {
+      // Check that at least one field has changed
+      const validationErrorDiv = document.getElementById('editMilestoneValidationError');
+      const detectorFields = document.querySelectorAll('#editMilestoneModal .milestone-change-detector');
+      let hasAnyChange = false;
+      detectorFields.forEach(function(field) {
+        if (field.getAttribute('data-original-value') !== field.value) {
+          hasAnyChange = true;
+        }
+      });
+      if (!hasAnyChange) {
+        if (validationErrorDiv) {
+          validationErrorDiv.classList.remove('hidden');
+          const scrollArea = validationErrorDiv.closest('.overflow-y-auto');
+          if (scrollArea) scrollArea.scrollTop = 0;
+        }
+        return;
+      }
+      if (validationErrorDiv) validationErrorDiv.classList.add('hidden');
+
       // Clear all previous errors
       const errorElements = document.querySelectorAll('[id^="error-"]');
       errorElements.forEach(el => {
@@ -2399,39 +2501,38 @@ window.toggleChangeAuditLog = function() {
 window.showMilestoneDetails = function(itemId) {
   console.log('showMilestoneDetails called with itemId:', itemId);
   
+  // The Details section uses completedDetailsContent structure from completedModalContent.blade.php
+  const detailsContent = document.getElementById('completedDetailsContent');
+  if (!detailsContent) {
+    console.error('completedDetailsContent not found');
+    return;
+  }
+
+  // Hide the placeholder text
+  const placeholder = detailsContent.querySelector('.text-xs.text-gray-400.text-center');
+  if (placeholder) {
+    placeholder.classList.add('hidden');
+    console.log('Hidden placeholder');
+  }
+
   // Hide all milestone details
-  const allDetails = document.querySelectorAll('[id^="milestone-detail-"]');
-  console.log('Found milestone detail panels:', allDetails.length);
+  const allDetails = detailsContent.querySelectorAll('[id^="milestone-detail-"]');
   allDetails.forEach(detail => {
     detail.classList.add('hidden');
-    console.log('Hiding panel:', detail.id);
   });
-
-  // Hide the "Select a milestone" message
-  const noSelection = document.querySelector('#completedDetailsContent > div.text-sm.text-gray-500');
-  if (noSelection) {
-    noSelection.classList.add('hidden');
-    console.log('Hiding "Select a milestone" message');
-  }
+  console.log('Hidden all detail divs');
 
   // Show the selected milestone details
   const selectedDetail = document.getElementById(`milestone-detail-${itemId}`);
-  console.log('Looking for panel:', `milestone-detail-${itemId}`, 'Found:', selectedDetail);
   if (selectedDetail) {
     selectedDetail.classList.remove('hidden');
-    console.log('Showing panel:', selectedDetail.id);
+    console.log(`Showed milestone-detail-${itemId}`);
   } else {
-    console.error('Milestone detail panel not found for itemId:', itemId);
+    console.warn(`milestone-detail-${itemId} not found`);
   }
 
-  // Store selected milestone ID for edit button
+  // Store selected milestone ID
   window.selectedMilestoneItemId = itemId;
-
-  // Show edit button if it exists
-  const editBtn = document.getElementById('editMilestoneBtn');
-  if (editBtn) {
-    editBtn.classList.remove('hidden');
-  }
 };
 
 /**
@@ -2579,9 +2680,19 @@ window.toggleHaltComparison = function() {
 /**
  * Show milestone details in the halted project modal
  */
-window.showHaltedMilestoneDetail = function(itemId) {
+window.showHaltedMilestoneDetail = function(itemId, rowEl) {
   // Store the selected item ID globally
   window.selectedMilestoneItemId = itemId;
+
+  // Clear active highlight from all rows
+  document.querySelectorAll('.milestone-row').forEach(row => {
+    row.classList.remove('bg-rose-50', 'ring-1', 'ring-rose-200');
+  });
+
+  // Highlight the clicked row
+  if (rowEl) {
+    rowEl.classList.add('bg-rose-50', 'ring-1', 'ring-rose-200');
+  }
 
   // Hide all milestone details
   const allDetails = document.querySelectorAll('[id^="halted-milestone-detail-"]');
@@ -2589,8 +2700,8 @@ window.showHaltedMilestoneDetail = function(itemId) {
     detail.classList.add('hidden');
   });
 
-  // Hide the "Select a milestone" message
-  const noSelection = document.querySelector('#haltedDetailsContent > div.text-sm.text-gray-500');
+  // Hide the "Click a milestone" placeholder
+  const noSelection = document.getElementById('haltedNoSelection');
   if (noSelection) {
     noSelection.classList.add('hidden');
   }

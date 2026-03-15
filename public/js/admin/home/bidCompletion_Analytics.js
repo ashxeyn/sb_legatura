@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function updateRecentBidsTable(bids, avgBidValueK) {
-    const tbody = document.querySelector('.bg-gradient-to-r.from-violet-500 + .overflow-x-auto tbody');
+    const tbody = document.getElementById('recentBidsBody');
     if (!tbody) return;
     if (!bids || bids.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>No bid activity yet</td></tr>';
@@ -276,21 +276,21 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function updateOwnerActivityTable(activities) {
-    const tbody = document.querySelector('.bg-gradient-to-r.from-teal-500 tbody');
+    const tbody = document.getElementById('ownerActivityBody');
     if (!tbody) return;
     if (!activities || activities.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400 text-sm">No recent activity</td></tr>';
       return;
     }
-    const statusMap = { accepted: { cls: 'bg-green-100 text-green-800', label: 'Accepted' }, submitted: { cls: 'bg-yellow-100 text-yellow-800', label: 'Pending' }, under_review: { cls: 'bg-purple-100 text-purple-800', label: 'Under Review' }, rejected: { cls: 'bg-red-100 text-red-800', label: 'Rejected' }, cancelled: { cls: 'bg-gray-100 text-gray-700', label: 'Cancelled' } };
+    const statusMap = { accepted: { cls: 'bg-green-100 text-green-700', label: 'Accepted' }, submitted: { cls: 'bg-amber-100 text-amber-700', label: 'Pending' }, under_review: { cls: 'bg-purple-100 text-purple-700', label: 'Under Review' }, rejected: { cls: 'bg-red-100 text-red-700', label: 'Rejected' }, cancelled: { cls: 'bg-gray-100 text-gray-600', label: 'Cancelled' } };
     tbody.innerHTML = activities.map(a => {
       const st = statusMap[a.bid_status] || statusMap.submitted;
       const cost = a.proposed_cost >= 1000000 ? '₱' + (a.proposed_cost / 1000000).toFixed(1) + 'M' : '₱' + Math.round(a.proposed_cost / 1000) + 'K';
-      return '<tr class="hover:bg-gray-50 transition-colors duration-150">' +
-        '<td class="px-4 py-4"><div class="font-semibold text-gray-800 text-sm">'+esc(a.project_title?.substring(0,30))+'</div><div class="text-xs text-gray-500">'+esc(a.project_location)+'</div></td>' +
-        '<td class="px-4 py-4"><div class="font-medium text-gray-700 text-sm">'+esc(a.company_name)+'</div></td>' +
-        '<td class="px-4 py-4"><div class="font-bold text-gray-800 text-sm">'+cost+'</div></td>' +
-        '<td class="px-4 py-4"><span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold '+st.cls+'">'+st.label+'</span></td></tr>';
+      return '<tr class="hover:bg-gray-50 transition-colors">' +
+        '<td class="px-4 py-2.5"><div class="text-xs font-semibold text-gray-800">'+esc(a.project_title?.substring(0,30))+'</div><div class="text-[11px] text-gray-400">'+esc(a.project_location)+'</div></td>' +
+        '<td class="px-4 py-2.5"><div class="text-xs font-medium text-gray-700">'+esc(a.company_name)+'</div></td>' +
+        '<td class="px-4 py-2.5"><div class="text-xs font-semibold text-gray-800">'+cost+'</div></td>' +
+        '<td class="px-4 py-2.5"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold '+st.cls+'">'+st.label+'</span></td></tr>';
     }).join('');
   }
 

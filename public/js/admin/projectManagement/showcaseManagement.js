@@ -9,13 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentShowcaseTitle = '';
     const tableBody = document.getElementById('showcaseTableBody');
 
-    // Loading spinner HTML for the modal body
+    // Non-animated loading state for the modal body
     const loadingHTML = '<div class="flex items-center justify-center py-12">' +
-        '<svg class="w-8 h-8 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">' +
-        '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
-        '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>' +
-        '</svg>' +
-        '<span class="ml-3 text-gray-500 font-medium">Loading showcase details...</span>' +
+        '<span class="text-gray-500 font-medium">Loading showcase details...</span>' +
         '</div>';
 
     // ── AJAX: Fetch Showcases (table reload) ──
@@ -57,7 +53,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.view-showcase-btn').forEach(function (btn) {
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                openViewModal(parseInt(this.dataset.id));
+                var statusHint = this.dataset.status || (this.closest('.showcase-row') && this.closest('.showcase-row').dataset.status);
+                openViewModal(parseInt(this.dataset.id), statusHint);
             });
         });
 
@@ -77,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll('.showcase-row').forEach(function (row) {
             row.addEventListener('click', function () {
-                openViewModal(parseInt(this.dataset.id));
+                openViewModal(parseInt(this.dataset.id), this.dataset.status);
             });
         });
     }
@@ -89,6 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('deleteReason').value = '';
         document.getElementById('deleteReason').classList.remove('border-red-500');
         document.getElementById('deleteReasonError').classList.add('hidden');
+        document.body.classList.add('overflow-hidden');
         document.getElementById('deleteShowcaseModal').classList.remove('hidden');
     }
 
@@ -96,11 +94,35 @@ document.addEventListener('DOMContentLoaded', function () {
         currentShowcaseId = id;
         currentShowcaseTitle = title;
         document.getElementById('restoreModalTitle').textContent = title;
+        document.body.classList.add('overflow-hidden');
         document.getElementById('restoreShowcaseModal').classList.remove('hidden');
     }
 
+    function normalizeShowcaseStatus(status) {
+        var normalized = String(status || '').toLowerCase();
+
+        if (normalized === 'pending_review' || normalized === 'under_review') {
+            return 'pending';
+        }
+        if (normalized === 'approved' || normalized === 'rejected' || normalized === 'pending') {
+            return normalized;
+        }
+
+        return 'pending';
+    }
+
+    function applyViewModalTheme(status) {
+        var modal = document.getElementById('viewShowcaseModal');
+        if (!modal) return 'pending';
+
+        var normalizedStatus = normalizeShowcaseStatus(status);
+        modal.setAttribute('data-status', normalizedStatus);
+
+        return normalizedStatus;
+    }
+
     // ── Open View Modal (fetches server-rendered HTML) ──
-    function openViewModal(id) {
+    function openViewModal(id, statusHint) {
         currentShowcaseId = id;
 
         var modal = document.getElementById('viewShowcaseModal');
@@ -112,6 +134,8 @@ document.addEventListener('DOMContentLoaded', function () {
         bodyContent.innerHTML = loadingHTML;
         approveBtn.classList.add('hidden');
         rejectBtn.classList.add('hidden');
+        applyViewModalTheme(statusHint || 'pending');
+        document.body.classList.add('overflow-hidden');
         modal.classList.remove('hidden');
 
         // Fetch server-rendered HTML
@@ -129,9 +153,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Inject the server-rendered HTML into the modal body
                 bodyContent.innerHTML = result.html;
                 currentShowcaseTitle = result.title || '';
+                var normalizedStatus = applyViewModalTheme(result.status);
 
                 // Show/hide approve/reject buttons based on status
-                if (result.status === 'pending') {
+                if (normalizedStatus === 'pending') {
                     approveBtn.classList.remove('hidden');
                     rejectBtn.classList.remove('hidden');
                 } else {
@@ -141,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(function (error) {
                 console.error('Error fetching showcase details:', error);
+                applyViewModalTheme('pending');
                 bodyContent.innerHTML = '<div class="text-center py-12"><p class="text-red-500 font-medium">Failed to load showcase details.</p></div>';
             });
     }
@@ -153,6 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!currentShowcaseId) return;
         document.getElementById('approveModalTitle').textContent = currentShowcaseTitle;
         document.getElementById('viewShowcaseModal').classList.add('hidden');
+        document.body.classList.add('overflow-hidden');
         document.getElementById('approveShowcaseModal').classList.remove('hidden');
     });
 
@@ -195,6 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('rejectModalTitle').textContent = currentShowcaseTitle;
         document.getElementById('rejectReason').value = '';
         document.getElementById('viewShowcaseModal').classList.add('hidden');
+        document.body.classList.add('overflow-hidden');
         document.getElementById('rejectShowcaseModal').classList.remove('hidden');
     });
 
@@ -342,6 +370,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('rejectShowcaseModal').classList.add('hidden');
         document.getElementById('deleteShowcaseModal')?.classList.add('hidden');
         document.getElementById('restoreShowcaseModal')?.classList.add('hidden');
+        applyViewModalTheme('pending');
+        document.body.classList.remove('overflow-hidden');
 
         var rejectReason = document.getElementById('rejectReason');
         if (rejectReason) {

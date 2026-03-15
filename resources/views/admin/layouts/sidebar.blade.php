@@ -124,8 +124,6 @@ User card reads from session('user').
          class="submenu-link {{ request()->routeIs('admin.projectManagement.disputesReports') ? 'active' : '' }}">Disputes/Reports</a> --}}
         <a href="{{ route('admin.projectManagement.showcaseManagement') }}"
           class="submenu-link {{ request()->routeIs('admin.projectManagement.showcaseManagement') ? 'active' : '' }}">Showcase</a>
-        <a href="{{ route('admin.progressFeed') }}"
-          class="submenu-link {{ request()->routeIs('admin.progressFeed') ? 'active' : '' }}">Progress Feed</a>
       </div>
     </div>
 
@@ -223,7 +221,7 @@ User card reads from session('user').
 
   {{-- User Menu Dropdown (outside sidebar to avoid overflow issues) --}}
   <div id="userMenuDropdown"
-    class="fixed w-48 bg-white rounded-xl shadow-2xl border hidden z-[60]" style="border-color: rgba(228, 143, 0, 0.24);">
+    class="fixed w-48 bg-white rounded-xl shadow-2xl border hidden z-[60] overflow-hidden" style="border-color: rgba(228, 143, 0, 0.24);">
     {{-- Header --}}
     <div class="px-3 py-2 border-b" style="background: linear-gradient(135deg, #F9A600 0%, #C97700 100%); border-color: rgba(228, 143, 0, 0.24);">
       <div class="flex items-center gap-2">

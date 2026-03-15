@@ -163,25 +163,56 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ── Global Date Filter ───────────────────────────────────────────────────
+  // ── Global Date Filter (inline design; presets + From/To pills + Apply + Reset) ──
   const globalFilterBtns = document.querySelectorAll('#globalFilterOptions .global-filter-btn');
   const globalFilterLoading = document.getElementById('globalFilterLoading');
-  const customRangeBtn     = document.getElementById('globalCustomRangeBtn');
-  const customPicker       = document.getElementById('globalCustomPicker');
   const customRangeStart   = document.getElementById('customRangeStart');
   const customRangeEnd     = document.getElementById('customRangeEnd');
+  const customApplyBtn     = document.getElementById('customPickerApply');
+  const resetFilterBtn     = document.getElementById('dashboardResetFilterBtn');
   let currentRange = 'thisyear';
 
-  // Seed default values (current year)
-  if (customRangeStart && customRangeEnd) {
-    const now  = new Date();
-    const yyyy = now.getFullYear();
-    const pad  = n => String(n).padStart(2, '0');
-    customRangeStart.value = yyyy + '-01-01';
-    customRangeEnd.value   = yyyy + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-    // Keep date inputs within valid bounds
-    const todayStr = yyyy + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+  const pad = n => String(n).padStart(2, '0');
+  function getTodayStr() {
+    const now = new Date();
+    return now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+  }
+  function setDateInputsForRange(range) {
+    if (!customRangeStart || !customRangeEnd) return;
+    const now = new Date();
+    const todayStr = getTodayStr();
     customRangeEnd.max = todayStr;
+    if (range === 'thisyear') {
+      customRangeStart.value = now.getFullYear() + '-01-01';
+      customRangeEnd.value   = todayStr;
+    } else if (range === 'lastyear') {
+      const y = now.getFullYear() - 1;
+      customRangeStart.value = y + '-01-01';
+      customRangeEnd.value   = y + '-12-31';
+    } else if (range === 'last6months') {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 6);
+      customRangeStart.value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      customRangeEnd.value   = todayStr;
+    } else if (range === 'last3months') {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 3);
+      customRangeStart.value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      customRangeEnd.value   = todayStr;
+    }
+  }
+
+  // Seed default values (current year) and From/To constraints
+  setDateInputsForRange('thisyear');
+  if (customRangeStart && customRangeEnd) {
+    customRangeStart.addEventListener('change', function () {
+      if (this.value) customRangeEnd.min = this.value;
+      if (customRangeEnd.value && customRangeEnd.value < this.value) customRangeEnd.value = '';
+    });
+    customRangeEnd.addEventListener('change', function () {
+      if (this.value) customRangeStart.max = this.value;
+      if (customRangeStart.value && customRangeStart.value > this.value) customRangeStart.value = '';
+    });
   }
 
   // Preset pill buttons
@@ -191,30 +222,18 @@ document.addEventListener('DOMContentLoaded', function() {
       if (range === currentRange) return;
 
       globalFilterBtns.forEach(b => b.classList.remove('active'));
-      if (customRangeBtn) customRangeBtn.classList.remove('active');
       this.classList.add('active');
       currentRange = range;
+      setDateInputsForRange(range);
 
-      if (customPicker) customPicker.classList.remove('open');
       if (globalFilterLoading) globalFilterLoading.classList.add('visible');
-
       fetchDashboardData(range);
     });
   });
 
-  // Custom range picker toggle
-  if (customRangeBtn && customPicker) {
-    customRangeBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      customPicker.classList.toggle('open');
-    });
-
-    document.getElementById('customPickerCancel').addEventListener('click', function (e) {
-      e.stopPropagation();
-      customPicker.classList.remove('open');
-    });
-
-    document.getElementById('customPickerApply').addEventListener('click', function (e) {
+  // Apply custom range (From/To pills)
+  if (customApplyBtn && customRangeStart && customRangeEnd) {
+    customApplyBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       var start = customRangeStart.value;
       var end   = customRangeEnd.value;
@@ -228,22 +247,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      // Activate the custom button, deactivate presets
       globalFilterBtns.forEach(b => b.classList.remove('active'));
-      customRangeBtn.classList.add('active');
       currentRange = 'custom';
-
-      customPicker.classList.remove('open');
       if (globalFilterLoading) globalFilterLoading.classList.add('visible');
-
       fetchDashboardData('custom', start, end);
     });
+  }
 
-    // Close picker when clicking anywhere outside
-    document.addEventListener('click', function (e) {
-      if (customPicker && !customPicker.contains(e.target) && e.target !== customRangeBtn) {
-        customPicker.classList.remove('open');
-      }
+  // Reset filter: This Year and refetch
+  if (resetFilterBtn) {
+    resetFilterBtn.addEventListener('click', function () {
+      currentRange = 'thisyear';
+      setDateInputsForRange('thisyear');
+      globalFilterBtns.forEach(b => b.classList.remove('active'));
+      var firstPreset = document.querySelector('#globalFilterOptions .global-filter-btn[data-range="thisyear"]');
+      if (firstPreset) firstPreset.classList.add('active');
+      if (globalFilterLoading) globalFilterLoading.classList.add('visible');
+      fetchDashboardData('thisyear');
     });
   }
 
@@ -387,81 +407,99 @@ document.addEventListener('DOMContentLoaded', function() {
       activeChart.update('none');
     }
 
-    // ── 4. Top Contractors list ────────────────────────────────────────────
+    // ── 4. Top Contractors list (match Blade layout so filter doesn’t break) ──
     var contractorsContainer = document.querySelector('[data-list="top-contractors"]');
     if (contractorsContainer && Array.isArray(payload.topContractors)) {
       if (!payload.topContractors.length) {
-        contractorsContainer.innerHTML = '<p class="empty-state">No contractors found for this period</p>';
+        contractorsContainer.innerHTML = '<p class="empty-state text-[12px] text-gray-500 py-5 text-center">No contractors found for this period</p>';
       } else {
-        contractorsContainer.innerHTML = payload.topContractors.map(function (c) {
+        contractorsContainer.innerHTML = payload.topContractors.map(function (c, idx) {
           var initial = c.company_name ? c.company_name.charAt(0).toUpperCase() : '?';
           var avatar  = (c.profile_pic && c.profile_pic.trim())
-            ? '<img src="' + escHtml((window.storageBaseUrl || '/storage') + '/' + c.profile_pic) + '" alt="' + escHtml(c.company_name) + '">'
+            ? '<img src="' + escHtml((window.storageBaseUrl || '/storage') + '/' + c.profile_pic) + '" alt="' + escHtml(c.company_name) + '" class="w-full h-full object-cover">'
             : escHtml(initial);
           var count = (c.period_count !== undefined && c.period_count !== null) ? c.period_count : c.completed_projects;
-          return '<div class="item-card">'
-            + '<div class="item-left">'
-            +   '<div class="item-avatar avatar-contractor">' + avatar + '</div>'
-            +   '<div class="item-info">'
-            +     '<h3 class="item-name">' + escHtml(c.company_name) + '</h3>'
-            +     '<p class="item-type">' + escHtml(c.type_name) + '</p>'
+          return '<div class="item-card contractor-item flex items-center justify-between p-2.5 rounded-xl border border-gray-100 transition">'
+            + '<div class="item-left flex items-center gap-2.5 min-w-0">'
+            +   '<span class="item-rank">#' + (idx + 1) + '</span>'
+            +   '<div class="item-avatar avatar-contractor w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold overflow-hidden">' + avatar + '</div>'
+            +   '<div class="item-info min-w-0">'
+            +     '<h3 class="item-name text-[13px] font-semibold text-gray-800 truncate">' + escHtml(c.company_name) + '</h3>'
+            +     '<p class="item-type text-[11px] text-gray-500">' + escHtml(c.type_name || '') + '</p>'
             +   '</div>'
             + '</div>'
-            + '<div class="item-right">'
-            +   '<p class="item-count">' + count + '</p>'
-            +   '<p class="item-label">Projects in Period</p>'
+            + '<div class="item-right text-right flex-shrink-0">'
+            +   '<p class="item-count text-sm font-bold text-gray-800">' + count + '</p>'
+            +   '<p class="item-label text-[10px] text-gray-500">Projects in Period</p>'
             + '</div>'
             + '</div>';
         }).join('');
       }
     }
 
-    // ── 5. Top Property Owners list ───────────────────────────────────────
+    // ── 5. Top Property Owners list (match Blade layout) ────────────────────
     var ownersContainer = document.querySelector('[data-list="top-owners"]');
     if (ownersContainer && Array.isArray(payload.topPropertyOwners)) {
       if (!payload.topPropertyOwners.length) {
-        ownersContainer.innerHTML = '<p class="empty-state">No property owners found for this period</p>';
+        ownersContainer.innerHTML = '<p class="empty-state text-[12px] text-gray-500 py-5 text-center">No property owners found for this period</p>';
       } else {
-        ownersContainer.innerHTML = payload.topPropertyOwners.map(function (o) {
-          var name    = escHtml(((o.first_name || '') + ' ' + (o.last_name || '')).trim());
+        ownersContainer.innerHTML = payload.topPropertyOwners.map(function (o, idx) {
+          var name    = ((o.first_name || '') + ' ' + (o.last_name || '')).trim();
           var initial = o.first_name ? o.first_name.charAt(0).toUpperCase() : '?';
           var avatar  = (o.profile_pic && o.profile_pic.trim())
-            ? '<img src="' + escHtml((window.storageBaseUrl || '/storage') + '/' + o.profile_pic) + '" alt="' + name + '">'
+            ? '<img src="' + escHtml((window.storageBaseUrl || '/storage') + '/' + o.profile_pic) + '" alt="' + escHtml(name) + '" class="w-full h-full object-cover">'
             : escHtml(initial);
-          return '<div class="item-card">'
-            + '<div class="item-left">'
-            +   '<div class="item-avatar avatar-owner">' + avatar + '</div>'
-            +   '<div class="item-info">'
-            +     '<h3 class="item-name">' + name + '</h3>'
-            +     '<p class="item-type">Property Owner</p>'
+          var count = (o.period_count !== undefined && o.period_count !== null) ? o.period_count : (o.completed_projects || 0);
+          return '<div class="item-card owner-item flex items-center justify-between p-2.5 rounded-xl border border-gray-100 transition">'
+            + '<div class="item-left flex items-center gap-2.5 min-w-0">'
+            +   '<span class="item-rank">#' + (idx + 1) + '</span>'
+            +   '<div class="item-avatar avatar-owner w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold overflow-hidden">' + avatar + '</div>'
+            +   '<div class="item-info min-w-0">'
+            +     '<h3 class="item-name text-[13px] font-semibold text-gray-800 truncate">' + escHtml(name) + '</h3>'
+            +     '<p class="item-type text-[11px] text-gray-500">Property Owner</p>'
             +   '</div>'
             + '</div>'
-            + '<div class="item-right">'
-            +   '<p class="item-count">' + (o.completed_projects || 0) + '</p>'
-            +   '<p class="item-label">Projects in Period</p>'
+            + '<div class="item-right text-right flex-shrink-0">'
+            +   '<p class="item-count text-sm font-bold text-gray-800">' + count + '</p>'
+            +   '<p class="item-label text-[10px] text-gray-500">Projects in Period</p>'
             + '</div>'
             + '</div>';
         }).join('');
       }
     }
 
-    // ── 6. Top Projects with Bids table ───────────────────────────────────
+    // ── 6. Top Projects with Bids table (match Blade + status pill classes) ─
+    function getProjectStatusPillClass(status) {
+      var s = (status || '').toString().toLowerCase();
+      if (s === 'active') return 'bg-emerald-100 text-emerald-700';
+      if (s === 'completed') return 'bg-indigo-100 text-indigo-700';
+      if (s === 'cancelled') return 'bg-red-100 text-red-700';
+      if (s === 'pending') return 'bg-amber-100 text-amber-700';
+      if (s === 'ongoing') return 'bg-blue-100 text-blue-700';
+      return 'bg-gray-100 text-gray-600';
+    }
     var projectsTbody = document.getElementById('topProjectsTbody');
+    var projectsCountChip = document.getElementById('topProjectsCountChip');
     if (projectsTbody && Array.isArray(payload.topProjects)) {
+      if (projectsCountChip) {
+        projectsCountChip.textContent = payload.topProjects.length + ' Ranked';
+      }
       if (!payload.topProjects.length) {
-        projectsTbody.innerHTML = '<tr><td colspan="4" class="empty-state">No projects found for this period</td></tr>';
+        projectsTbody.innerHTML = '<tr><td colspan="4" class="px-3 py-10 text-center"><div class="top-projects-empty text-[12px] text-gray-500">No projects found for this period</div></td></tr>';
       } else {
-        projectsTbody.innerHTML = payload.topProjects.map(function (p) {
-          var initial     = p.project_title ? p.project_title.charAt(0).toUpperCase() : '?';
-          var statusClass = escHtml((p.project_status || '').toString().toLowerCase());
-          return '<tr>'
-            + '<td><div class="project-info">'
-            +   '<span class="project-avatar">' + escHtml(initial) + '</span>'
-            +   '<span class="project-name">'  + escHtml(p.project_title || '') + '</span>'
+        projectsTbody.innerHTML = payload.topProjects.map(function (p, idx) {
+          var initial   = p.project_title ? p.project_title.charAt(0).toUpperCase() : '?';
+          var statusCls = getProjectStatusPillClass(p.project_status);
+          var ownerName = ((p.first_name || '') + ' ' + (p.last_name || '')).trim();
+          return '<tr class="top-project-row transition">'
+            + '<td class="px-3 py-2.5"><div class="project-info flex items-center gap-2.5">'
+            +   '<span class="project-rank">#' + (idx + 1) + '</span>'
+            +   '<span class="project-avatar w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">' + escHtml(initial) + '</span>'
+            +   '<span class="project-name text-[12px] font-semibold text-gray-800 truncate max-w-[180px]">' + escHtml(p.project_title || '') + '</span>'
             + '</div></td>'
-            + '<td><span class="project-owner">' + escHtml(((p.first_name || '') + ' ' + (p.last_name || '')).trim()) + '</span></td>'
-            + '<td><span class="project-bid-count">' + (p.bid_count || 0) + '</span></td>'
-            + '<td><span class="project-status ' + statusClass + '">' + escHtml(p.status_label || '') + '</span></td>'
+            + '<td class="px-3 py-2.5"><div class="project-owner inline-flex items-center gap-2"><span class="owner-dot"></span><span class="text-[12px] font-medium text-gray-700">' + escHtml(ownerName) + '</span></div></td>'
+            + '<td class="px-3 py-2.5"><span class="project-bid-count text-[12px] font-semibold text-indigo-600">' + (p.bid_count || 0) + ' Bids</span></td>'
+            + '<td class="px-3 py-2.5"><span class="project-status inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ' + statusCls + '">' + escHtml(p.status_label || '') + '</span></td>'
             + '</tr>';
         }).join('');
       }

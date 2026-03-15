@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('globalErrorMsg').textContent = data.message || 'Unknown error.';
       document.getElementById('profileSkeleton').classList.add('hidden');
       document.getElementById('logCount').textContent = 'error';
-      document.getElementById('activityTableBody').innerHTML = '<tr><td colspan="4" class="px-5 py-6 text-center text-red-400 text-sm">' + esc(data.message || 'Could not load.') + '</td></tr>';
+      document.getElementById('activityTableBody').innerHTML = '<tr><td colspan="4" class="px-4 py-7 text-center text-red-500 text-sm">' + esc(data.message || 'Could not load.') + '</td></tr>';
       return;
     }
     const a = data.data.admin;
@@ -240,16 +240,16 @@ document.addEventListener('DOMContentLoaded', () => {
     nextBtn.disabled = myLogsPage >= totalPages;
 
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="px-5 py-10 text-center text-gray-400 text-sm">' + (allMyLogs.length ? 'No logs match the selected date range.' : 'No activity recorded yet. Actions like editing your profile or changing your password will appear here.') + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400 text-sm">' + (allMyLogs.length ? 'No logs match the selected filters.' : 'No activity recorded yet. Actions like editing your profile or changing your password will appear here.') + '</td></tr>';
       pageMeta.textContent = 'Showing 0-0 of 0';
       return;
     }
     tbody.innerHTML = pageRows.map(function(log) {
-      return '<tr class="border-t border-gray-50 hover:bg-gray-50/60 transition">'
-        + '<td class="px-5 py-3">' + badgeFor(log.action) + '</td>'
-        + '<td class="px-5 py-3 text-gray-500 text-xs max-w-xs">' + prettyDetails(log.details) + '</td>'
-        + '<td class="px-5 py-3 font-mono text-xs text-gray-400">' + esc(log.ip_address ?? '-') + '</td>'
-        + '<td class="px-5 py-3 text-xs text-gray-400">' + formatDate(log.created_at) + '</td>'
+      return '<tr class="activity-log-row">'
+        + '<td class="px-4 py-3">' + badgeFor(log.action) + '</td>'
+        + '<td class="px-4 py-3 text-slate-500 text-xs max-w-xs">' + prettyDetails(log.details) + '</td>'
+        + '<td class="px-4 py-3 font-mono text-xs text-slate-400">' + esc(log.ip_address ?? '-') + '</td>'
+        + '<td class="px-4 py-3 text-xs text-slate-400">' + formatDate(log.created_at) + '</td>'
         + '</tr>';
     }).join('');
     pageMeta.textContent = 'Showing ' + (startIdx + 1) + '-' + (startIdx + pageRows.length) + ' of ' + filtered.length;
@@ -318,11 +318,33 @@ document.addEventListener('DOMContentLoaded', () => {
     else { errEl.textContent = data.message || 'Failed.'; errEl.classList.remove('hidden'); }
   });
 
-  document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
-    if (!confirm('Are you sure? This will permanently deactivate your admin account.')) return;
-    const { ok, data } = await apiFetch('/admin/settings/security/delete', { method:'POST' });
-    if (ok && data.success) window.location.href = '/login';
-    else toast(data.message || 'Could not delete account.', 'error');
+  document.getElementById('deleteAccountBtn').addEventListener('click', () => {
+    document.getElementById('deleteAccountError').classList.add('hidden');
+    openModal('deleteAccountModal');
+  });
+
+  document.getElementById('confirmDeleteAccountBtn').addEventListener('click', async () => {
+    const errEl = document.getElementById('deleteAccountError');
+    const spinner = document.getElementById('deleteAccountSpinner');
+    const btn = document.getElementById('confirmDeleteAccountBtn');
+    errEl.classList.add('hidden');
+    spinner.classList.remove('hidden');
+    btn.disabled = true;
+
+    const { ok, data, redirect } = await apiFetch('/admin/settings/security/delete', { method:'POST' });
+
+    spinner.classList.add('hidden');
+    btn.disabled = false;
+
+    if (redirect) { window.location.href = '/login'; return; }
+    if (ok && data.success) {
+      closeModal('deleteAccountModal');
+      window.location.href = '/login';
+      return;
+    }
+
+    errEl.textContent = (data && data.message) ? data.message : 'Could not delete account.';
+    errEl.classList.remove('hidden');
   });
 
   // =========================================================
@@ -331,27 +353,39 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadMembers() {
     const { ok, data, redirect } = await apiFetch('/admin/settings/security/members');
     if (redirect) { window.location.href = '/login'; return; }
-    if (!ok || !data.success) { document.getElementById('membersTableBody').innerHTML = '<tr><td colspan="6" class="px-5 py-6 text-center text-red-400">' + esc(data.message) + '</td></tr>'; return; }
+    if (!ok || !data.success) {
+      document.getElementById('membersTableBody').innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-500 text-sm">' + esc(data.message) + '</td></tr>';
+      const countBadgeErr = document.getElementById('memberCountBadge');
+      if (countBadgeErr) countBadgeErr.textContent = 'error';
+      return;
+    }
     renderMembersTable(data.data.members);
   }
 
   function renderMembersTable(members) {
     const tbody = document.getElementById('membersTableBody');
-    if (!members.length) { tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-10 text-center text-gray-400 text-sm">No other admin accounts found.</td></tr>'; return; }
+    const countBadge = document.getElementById('memberCountBadge');
+    if (countBadge) countBadge.textContent = members.length ? (members.length + ' admins') : '0 admins';
+
+    if (!members.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-10 text-center text-gray-400 text-sm">No other admin accounts found.</td></tr>';
+      return;
+    }
+
     tbody.innerHTML = members.map(function(m) {
       var name = esc(((m.first_name || '') + ' ' + (m.last_name || '')).trim()) || '-';
       var statusBadge = m.is_active
-        ? '<span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">&#9679; Active</span>'
-        : '<span class="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">&#9679; Inactive</span>';
-      return '<tr class="border-t border-gray-50 hover:bg-gray-50/50 transition">'
-        + '<td class="px-5 py-3"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">' + esc(initials(m.first_name, m.last_name)) + '</div><span class="font-medium text-gray-700">' + name + '</span></div></td>'
-        + '<td class="px-5 py-3 text-gray-500">@' + esc(m.username) + '</td>'
-        + '<td class="px-5 py-3 text-gray-500">'  + esc(m.email) + '</td>'
-        + '<td class="px-5 py-3">' + statusBadge + '</td>'
-        + '<td class="px-5 py-3 text-xs text-gray-400">' + formatDate(m.created_at) + '</td>'
-        + '<td class="px-5 py-3 text-center"><div class="flex items-center justify-center gap-2">'
-        +   '<button class="view-member-btn text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-3 py-1.5 rounded-lg transition" data-id="' + esc(m.admin_id) + '">View / Edit</button>'
-        +   '<button class="delete-member-btn text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-1.5 rounded-lg transition" data-id="' + esc(m.admin_id) + '" data-name="' + name + '">Delete</button>'
+        ? '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">&#9679; Active</span>'
+        : '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">&#9679; Inactive</span>';
+      return '<tr class="member-row">'
+        + '<td class="px-4 py-3"><div class="flex items-center gap-2.5"><div class="w-9 h-9 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">' + esc(initials(m.first_name, m.last_name)) + '</div><span class="font-medium text-slate-700 text-xs">' + name + '</span></div></td>'
+        + '<td class="px-4 py-3 text-slate-500 text-xs">@' + esc(m.username) + '</td>'
+        + '<td class="px-4 py-3 text-slate-500 text-xs">'  + esc(m.email) + '</td>'
+        + '<td class="px-4 py-3">' + statusBadge + '</td>'
+        + '<td class="px-4 py-3 text-xs text-slate-400">' + formatDate(m.created_at) + '</td>'
+        + '<td class="px-4 py-3 text-center"><div class="flex items-center justify-center gap-2">'
+        +   '<button class="view-member-btn text-[11px] font-semibold px-3 py-1.5" data-id="' + esc(m.admin_id) + '">View / Edit</button>'
+        +   '<button class="delete-member-btn" data-id="' + esc(m.admin_id) + '" data-name="' + name + '">Deactivate</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -393,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logs = data.data.logs;
     const logsBody = document.getElementById('memberLogsBody');
     if (!logs || !logs.length) { logsBody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-300 text-xs">No activity yet.</td></tr>'; }
-    else { logsBody.innerHTML = logs.map(function(log) { return '<tr class="border-t border-gray-50 hover:bg-gray-50/50"><td class="px-4 py-2.5">' + badgeFor(log.action) + '</td><td class="px-4 py-2.5 text-gray-400 text-xs">' + prettyDetails(log.details) + '</td><td class="px-4 py-2.5 font-mono text-xs text-gray-400">' + esc(log.ip_address ?? '-') + '</td><td class="px-4 py-2.5 text-xs text-gray-400">' + formatDate(log.created_at) + '</td></tr>'; }).join(''); }
+    else { logsBody.innerHTML = logs.map(function(log) { return '<tr class="border-t border-blue-50 hover:bg-blue-50/50"><td class="px-4 py-2.5">' + badgeFor(log.action) + '</td><td class="px-4 py-2.5 text-slate-500 text-xs">' + prettyDetails(log.details) + '</td><td class="px-4 py-2.5 font-mono text-xs text-slate-400">' + esc(log.ip_address ?? '-') + '</td><td class="px-4 py-2.5 text-xs text-slate-400">' + formatDate(log.created_at) + '</td></tr>'; }).join(''); }
   }
 
   document.getElementById('memberEditForm').addEventListener('submit', async e => {
@@ -429,10 +463,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const teamCountEl = document.getElementById('teamLogCount');
     const tbody = document.getElementById('teamActivityBody');
     teamCountEl.textContent = 'loading...';
-    tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-10 text-center text-gray-400">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400 text-sm">Loading...</td></tr>';
     const { ok, data, redirect } = await apiFetch('/admin/settings/security/team-activity');
     if (redirect) { window.location.href = '/login'; return; }
-    if (!ok || !data.success) { tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-6 text-center text-red-400">' + esc(data.message) + '</td></tr>'; teamCountEl.textContent = 'error'; return; }
+    if (!ok || !data.success) { tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-red-500 text-sm">' + esc(data.message) + '</td></tr>'; teamCountEl.textContent = 'error'; return; }
     allTeamLogs = Array.isArray(data.data.logs) ? data.data.logs : [];
     teamLogsPage = 1;
     populateActionFilter(allTeamLogs, 'teamLogActionFilter');
@@ -467,17 +501,17 @@ document.addEventListener('DOMContentLoaded', () => {
     prevBtn.disabled = teamLogsPage <= 1;
     nextBtn.disabled = teamLogsPage >= totalPages;
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-10 text-center text-gray-400 text-sm">' + (allTeamLogs.length ? 'No logs match the selected filters.' : 'No team activity recorded yet.') + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400 text-sm">' + (allTeamLogs.length ? 'No logs match the selected filters.' : 'No team activity recorded yet.') + '</td></tr>';
       pageMeta.textContent = 'Showing 0-0 of 0';
       return;
     }
     tbody.innerHTML = pageRows.map(function(log) {
-      return '<tr class="border-t border-gray-50 hover:bg-gray-50/50 transition">'
-        + '<td class="px-5 py-3 font-medium text-gray-700">' + esc((log.admin_name || '').trim() || log.admin_id) + '</td>'
-        + '<td class="px-5 py-3">' + badgeFor(log.action) + '</td>'
-        + '<td class="px-5 py-3 text-gray-400 text-xs max-w-xs">' + prettyDetails(log.details) + '</td>'
-        + '<td class="px-5 py-3 font-mono text-xs text-gray-400">' + esc(log.ip_address ?? '-') + '</td>'
-        + '<td class="px-5 py-3 text-xs text-gray-400">' + formatDate(log.created_at) + '</td>'
+      return '<tr class="team-log-row">'
+        + '<td class="px-4 py-3 font-medium text-slate-700 text-xs">' + esc((log.admin_name || '').trim() || log.admin_id) + '</td>'
+        + '<td class="px-4 py-3">' + badgeFor(log.action) + '</td>'
+        + '<td class="px-4 py-3 text-slate-500 text-xs max-w-xs">' + prettyDetails(log.details) + '</td>'
+        + '<td class="px-4 py-3 font-mono text-xs text-slate-400">' + esc(log.ip_address ?? '-') + '</td>'
+        + '<td class="px-4 py-3 text-xs text-slate-400">' + formatDate(log.created_at) + '</td>'
         + '</tr>';
     }).join('');
     pageMeta.textContent = 'Showing ' + (startIdx + 1) + '-' + (startIdx + pageRows.length) + ' of ' + filtered.length;

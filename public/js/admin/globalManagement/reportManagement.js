@@ -37,37 +37,55 @@
     // ── Badge helpers ──
     function getStatusBadge(status) {
         const map = {
-            pending: "bg-amber-100 text-amber-700",
-            under_review: "bg-blue-100 text-blue-700",
-            resolved: "bg-emerald-100 text-emerald-700",
-            dismissed: "bg-red-100 text-red-700",
+            pending: "bg-amber-100 text-amber-700 border-amber-200",
+            under_review: "bg-blue-100 text-blue-700 border-blue-200",
+            resolved: "bg-emerald-100 text-emerald-700 border-emerald-200",
+            dismissed: "bg-red-100 text-red-700 border-red-200",
         };
-        const cls = map[status] || "bg-gray-100 text-gray-700";
+        const cls = map[status] || "bg-gray-100 text-gray-700 border-gray-200";
         const label = (status || "-").toUpperCase().replace(/_/g, " ");
-        return `<span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold ${cls}">${label}</span>`;
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}">${label}</span>`;
     }
 
     function getSourceBadge(source) {
         const colors = {
-            project: "bg-blue-100 text-blue-700",
-            showcase: "bg-teal-100 text-teal-700",
-            review: "bg-purple-100 text-purple-700",
-            user: "bg-cyan-100 text-cyan-700",
-            dispute: "bg-orange-100 text-orange-700",
+            project: "bg-blue-100 text-blue-700 border-blue-200",
+            showcase: "bg-teal-100 text-teal-700 border-teal-200",
+            review: "bg-purple-100 text-purple-700 border-purple-200",
+            user: "bg-cyan-100 text-cyan-700 border-cyan-200",
+            dispute: "bg-orange-100 text-orange-700 border-orange-200",
         };
         const labels = { project: "Project", showcase: "Showcase", review: "Review", user: "User", dispute: "Dispute" };
-        const cls = colors[source] || "bg-gray-100 text-gray-700";
-        return `<span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold ${cls}">${labels[source] || source}</span>`;
+        const cls = colors[source] || "bg-gray-100 text-gray-700 border-gray-200";
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}">${labels[source] || source}</span>`;
     }
 
     function getCaseTypeBadge(type) {
         const colors = {
-            report: "bg-indigo-100 text-indigo-700",
-            dispute: "bg-orange-100 text-orange-700",
+            report: "bg-indigo-100 text-indigo-700 border-indigo-200",
+            dispute: "bg-orange-100 text-orange-700 border-orange-200",
         };
-        const cls = colors[type] || "bg-gray-100 text-gray-700";
+        const cls = colors[type] || "bg-gray-100 text-gray-700 border-gray-200";
         const label = (type || "-").charAt(0).toUpperCase() + (type || "-").slice(1);
-        return `<span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold ${cls}">${label}</span>`;
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}">${label}</span>`;
+    }
+
+    function getAdminActionBadge(adminAction) {
+        const val = (adminAction || "").trim();
+        if (!val || val === "-") {
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-gray-100 text-gray-500 border-gray-200" title="">—</span>`;
+        }
+        const key = val.toLowerCase().replace(/\s+/g, "_");
+        const colors = {
+            warned: "bg-amber-100 text-amber-700 border-amber-200",
+            terminated: "bg-red-100 text-red-700 border-red-200",
+            halted: "bg-rose-100 text-rose-700 border-rose-200",
+            suspended: "bg-red-100 text-red-700 border-red-200",
+            resumed: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        };
+        const cls = colors[key] || "bg-gray-100 text-gray-700 border-gray-200";
+        const label = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}" title="${escapeHtml(val)}">${escapeHtml(label)}</span>`;
     }
 
     function formatUserName(user) {
@@ -291,6 +309,75 @@
     });
 
     // ══════════════════════════════════════════════════════
+    // TAB 2: REPORTER STATS — client-side pagination
+    // ══════════════════════════════════════════════════════
+    const REPORTER_STATS_PER_PAGE = 10;
+    let reporterStatsPage = 1;
+
+    function getAllReporterRows() {
+        return Array.from(document.querySelectorAll("#reporterStatsBody .reporter-row"));
+    }
+
+    function getFilteredReporterRows() {
+        const filter = document.getElementById("historyFilter")?.value || "all";
+        return getAllReporterRows().filter((row) => {
+            if (filter === "super") return row.dataset.super === "1";
+            if (filter === "abusers") return row.dataset.abuser === "1";
+            return true;
+        });
+    }
+
+    function renderReporterStatsPage() {
+        const allRows = getAllReporterRows();
+        const filtered = getFilteredReporterRows();
+        const total = filtered.length;
+        const lastPage = Math.max(1, Math.ceil(total / REPORTER_STATS_PER_PAGE));
+
+        if (reporterStatsPage > lastPage) reporterStatsPage = lastPage;
+
+        const from = total ? (reporterStatsPage - 1) * REPORTER_STATS_PER_PAGE + 1 : 0;
+        const to = total ? Math.min(reporterStatsPage * REPORTER_STATS_PER_PAGE, total) : 0;
+
+        // Hide all rows then show only the current page slice
+        allRows.forEach((row) => (row.style.display = "none"));
+        filtered.slice(from - 1, to).forEach((row) => (row.style.display = ""));
+
+        const bar = document.getElementById("reporterStatsPaginationBar");
+        const infoEl = document.getElementById("reporterStatsPaginationInfo");
+        const indicator = document.getElementById("reporterStatsPageIndicator");
+        const prevBtn = document.getElementById("reporterStatsPrevPage");
+        const nextBtn = document.getElementById("reporterStatsNextPage");
+
+        if (bar) bar.classList.toggle("hidden", total === 0);
+
+        if (infoEl) {
+            infoEl.innerHTML = total
+                ? `Showing <strong>${from}</strong>–<strong>${to}</strong> of <strong>${total}</strong> reporters`
+                : `Showing <strong>0</strong> reporters`;
+        }
+        if (indicator) indicator.textContent = `Page ${reporterStatsPage} of ${lastPage}`;
+        if (prevBtn) prevBtn.disabled = reporterStatsPage <= 1;
+        if (nextBtn) nextBtn.disabled = reporterStatsPage >= lastPage;
+    }
+
+    document.getElementById("historyFilter")?.addEventListener("change", () => {
+        reporterStatsPage = 1;
+        renderReporterStatsPage();
+    });
+
+    document.getElementById("reporterStatsPrevPage")?.addEventListener("click", () => {
+        if (reporterStatsPage > 1) { reporterStatsPage--; renderReporterStatsPage(); }
+    });
+
+    document.getElementById("reporterStatsNextPage")?.addEventListener("click", () => {
+        const lastPage = Math.max(1, Math.ceil(getFilteredReporterRows().length / REPORTER_STATS_PER_PAGE));
+        if (reporterStatsPage < lastPage) { reporterStatsPage++; renderReporterStatsPage(); }
+    });
+
+    // Initial render for reporter stats
+    renderReporterStatsPage();
+
+    // ══════════════════════════════════════════════════════
     // FETCH & RENDER REPORTS TABLE
     // ══════════════════════════════════════════════════════
     async function fetchReports() {
@@ -309,7 +396,7 @@
         if (dateFrom) params.set("date_from", dateFrom);
         if (dateTo) params.set("date_to", dateTo);
         params.set("page", moderationCurrentPage);
-        params.set("per_page", 15);
+        params.set("per_page", 10);
 
         try {
             const res = await fetch(
@@ -339,7 +426,7 @@
         if (!tbody) return;
 
         if (!reports.length) {
-            tbody.innerHTML = `<tr><td colspan="10" class="px-6 py-12 text-center text-gray-500 text-sm">No moderation cases found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-12 text-center text-gray-400"><i class="fi fi-sr-file-invoice text-3xl block mb-2"></i><p class="text-base font-medium text-gray-500">No moderation cases found</p><p class="text-xs mt-1">Try adjusting your search or filter criteria.</p></td></tr>`;
             return;
         }
 
@@ -348,19 +435,19 @@
                 const date = r.created_at
                     ? new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                     : "-";
-                return `<tr class="hover:bg-gray-50 transition" data-id="${r.case_ref_id}" data-source="${r.source}" data-case-type="${r.case_type}" data-status="${r.status}">
-                    <td class="px-6 py-4 text-sm font-mono text-gray-700">${r.case_id || "-"}</td>
-                    <td class="px-6 py-4">${getCaseTypeBadge(r.case_type)}</td>
-                    <td class="px-6 py-4">${getSourceBadge(r.source_type)}</td>
-                    <td class="px-6 py-4 text-sm text-gray-700 font-medium">${escapeHtml(r.reporter || "-")}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${escapeHtml(r.target || "")}">${escapeHtml(r.target || "-")}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${escapeHtml(r.reason || "")}">${escapeHtml(r.reason || "-")}</td>
-                    <td class="px-6 py-4">${getStatusBadge(r.status)}</td>
-                    <td class="px-6 py-4 text-sm text-gray-700">${escapeHtml(r.admin_action || "-")}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">${date}</td>
-                    <td class="px-6 py-4 text-center">
-                        <button class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition view-report-btn" data-id="${r.case_ref_id}" data-source="${r.source}" data-case-type="${r.case_type}">
-                            <i class="fi fi-rr-eye mr-1"></i> View
+                return `<tr class="hover:bg-indigo-50/60 transition-colors" data-id="${r.case_ref_id}" data-source="${r.source}" data-case-type="${r.case_type}" data-status="${r.status}">
+                    <td class="px-2.5 py-2.5 text-[11px] font-mono text-gray-700 truncate" title="${escapeHtml(r.case_id || "")}">${escapeHtml(r.case_id || "-")}</td>
+                    <td class="px-2.5 py-2.5">${getCaseTypeBadge(r.case_type)}</td>
+                    <td class="px-2.5 py-2.5">${getSourceBadge(r.source_type)}</td>
+                    <td class="px-2.5 py-2.5 text-[11px] text-gray-700 font-medium truncate" title="${escapeHtml(r.reporter || "")}">${escapeHtml(r.reporter || "-")}</td>
+                    <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml(r.target || "")}">${escapeHtml(r.target || "-")}</td>
+                    <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml(r.reason || "")}">${escapeHtml(r.reason || "-")}</td>
+                    <td class="px-2.5 py-2.5 whitespace-nowrap">${getStatusBadge(r.status)}</td>
+                    <td class="px-2.5 py-2.5">${getAdminActionBadge(r.admin_action)}</td>
+                    <td class="px-2.5 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">${date}</td>
+                    <td class="px-2.5 py-2.5 text-center">
+                        <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all view-report-btn" title="View" data-id="${r.case_ref_id}" data-source="${r.source}" data-case-type="${r.case_type}">
+                            <i class="fi fi-rr-eye text-[13px] leading-none"></i>
                         </button>
                     </td>
                 </tr>`;
@@ -399,7 +486,7 @@
 
         const total = pagination.total || 0;
         const page = pagination.page || 1;
-        const perPage = pagination.per_page || 15;
+        const perPage = pagination.per_page || 10;
         const lastPage = pagination.last_page || 1;
 
         moderationCurrentPage = page;
@@ -408,7 +495,7 @@
         const from = total ? (page - 1) * perPage + 1 : 0;
         const to = total ? Math.min(page * perPage, total) : 0;
 
-        if (info) info.textContent = total ? `Showing ${from}-${to} of ${total} cases` : "No cases found";
+        if (info) info.innerHTML = total ? `Showing <strong>${from}</strong>–<strong>${to}</strong> of <strong>${total}</strong> cases` : "No cases found";
         if (indicator) indicator.textContent = `Page ${page} of ${lastPage}`;
         if (prev) prev.disabled = page <= 1;
         if (next) next.disabled = page >= lastPage;
@@ -639,6 +726,8 @@
                     resolveBtn.classList.toggle("opacity-60", !canHalt);
                     resolveBtn.title = canHalt ? "" : "Project action already completed for this dispute.";
                     resolveBtn.innerHTML = '<i class="fi fi-rr-briefcase mr-1"></i> Halt Project';
+                    resolveBtn.classList.remove("from-emerald-600", "to-teal-600", "hover:from-emerald-700", "hover:to-teal-700");
+                    resolveBtn.classList.add("from-red-600", "to-rose-600", "hover:from-red-700", "hover:to-rose-700");
                 } else {
                     const canResolve = status === "under_review" && !!(currentReport?.action_completed);
                     resolveBtn.classList.toggle("hidden", status !== "under_review");
@@ -646,6 +735,8 @@
                     resolveBtn.classList.toggle("opacity-60", !canResolve);
                     resolveBtn.title = canResolve ? "" : "Complete the required project action first.";
                     resolveBtn.innerHTML = '<i class="fi fi-rr-check mr-1"></i> Approve';
+                    resolveBtn.classList.remove("from-red-600", "to-rose-600", "hover:from-red-700", "hover:to-rose-700");
+                    resolveBtn.classList.add("from-emerald-600", "to-teal-600", "hover:from-emerald-700", "hover:to-teal-700");
                 }
             }
             if (rejectBtn) rejectBtn.classList.toggle("hidden", !actionable);
@@ -1068,6 +1159,9 @@
         const label = document.getElementById("disputeProjectDecisionLabel");
         const reason = document.getElementById("disputeProjectDecisionReason");
         const remarks = document.getElementById("disputeProjectDecisionRemarks");
+        const header = document.getElementById("disputeProjectDecisionHeader");
+        const banner = document.getElementById("disputeProjectDecisionBanner");
+        const confirmBtn = document.getElementById("confirmDisputeProjectDecisionBtn");
 
         if (!modal) return;
 
@@ -1082,6 +1176,34 @@
         }
         if (reason) reason.value = "";
         if (remarks) remarks.value = "";
+
+        const isResume = actionType === "resume_project";
+        if (header) {
+            header.className = "flex items-center justify-between px-4 py-3.5 border-b text-white " +
+                (isResume ? "bg-gradient-to-r from-emerald-600 to-teal-600 border-emerald-600" : "bg-gradient-to-r from-red-600 to-rose-600 border-red-600");
+        }
+        if (banner) {
+            banner.className = "flex items-start gap-3 p-3 rounded-lg " +
+                (isResume ? "bg-emerald-50 border-l-4 border-emerald-500" : "bg-red-50 border-l-4 border-red-500");
+            const icon = banner.querySelector(".fi-rr-info-circle");
+            const labelEl = banner.querySelector(".flex-1 p:first-child");
+            const subEl = banner.querySelector(".flex-1 p:last-child");
+            if (icon) icon.className = "fi fi-rr-info-circle text-base mt-0.5 " + (isResume ? "text-emerald-600" : "text-red-600");
+            if (labelEl) labelEl.className = "text-[12px] font-semibold mb-0.5 " + (isResume ? "text-emerald-900" : "text-red-900");
+            if (subEl) subEl.className = "text-[10px] " + (isResume ? "text-emerald-800" : "text-red-800");
+        }
+        if (reason) {
+            reason.className = "w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-[12px] transition resize-none " +
+                (isResume ? "focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300" : "focus:ring-2 focus:ring-red-300 focus:border-red-300");
+        }
+        if (remarks) {
+            remarks.className = "w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-[12px] transition resize-none " +
+                (isResume ? "focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300" : "focus:ring-2 focus:ring-red-300 focus:border-red-300");
+        }
+        if (confirmBtn) {
+            confirmBtn.className = "px-3.5 py-2 rounded-lg text-white text-[12px] font-semibold transition " +
+                (isResume ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700" : "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700");
+        }
 
         modal.classList.remove("hidden");
         modal.classList.add("flex");
@@ -1215,12 +1337,15 @@
     // ── Suspension type toggle ──
     function setSuspensionType(type) {
         document.querySelectorAll(".susp-type-btn").forEach((btn) => {
+            const icon = btn.querySelector("i");
             if (btn.dataset.type === type) {
-                btn.classList.add("border-blue-500", "bg-blue-50");
-                btn.classList.remove("border-gray-200", "bg-white");
+                btn.classList.add("border-red-500", "bg-red-50", "text-red-700");
+                btn.classList.remove("border-gray-200", "bg-white", "text-gray-700");
+                if (icon) { icon.classList.add("text-red-600"); icon.classList.remove("text-gray-400"); }
             } else {
-                btn.classList.remove("border-blue-500", "bg-blue-50");
-                btn.classList.add("border-gray-200", "bg-white");
+                btn.classList.remove("border-red-500", "bg-red-50", "text-red-700");
+                btn.classList.add("border-gray-200", "bg-white", "text-gray-700");
+                if (icon) { icon.classList.remove("text-red-600"); icon.classList.add("text-gray-400"); }
             }
         });
 
@@ -1253,7 +1378,7 @@
         }
 
         // Determine type
-        const activeTypeBtn = document.querySelector(".susp-type-btn.border-blue-500");
+        const activeTypeBtn = document.querySelector(".susp-type-btn.border-red-500");
         const suspensionType = activeTypeBtn?.dataset.type || "temporary";
 
         let suspensionUntil = null;
@@ -1793,10 +1918,10 @@
         const tbody = document.getElementById("adminSearchBody");
         if (!tbody) return;
 
-        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400 text-sm"><i class="fi fi-rr-loading-spinner animate-spin text-xl"></i><br>Loading...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-2.5 py-8 text-center text-gray-400 text-sm"><i class="fi fi-rr-loading-spinner animate-spin text-xl"></i><br>Loading...</td></tr>`;
 
         try {
-            const params = new URLSearchParams({ type, query, page: adminCurrentPage });
+            const params = new URLSearchParams({ type, query, page: adminCurrentPage, per_page: 10 });
             const res = await fetch(`/admin/global-management/report-management/admin-search?${params.toString()}`, {
                 headers: { "X-Requested-With": "XMLHttpRequest" },
             });
@@ -1838,7 +1963,7 @@
 
         const total = pagination.total || 0;
         const page = pagination.page || 1;
-        const perPage = pagination.per_page || 15;
+        const perPage = pagination.per_page || 10;
         const lastPage = pagination.last_page || 1;
 
         if (total === 0) { bar.classList.add("hidden"); return; }
@@ -1847,7 +1972,7 @@
         const to = Math.min(page * perPage, total);
 
         bar.classList.remove("hidden");
-        if (info) info.textContent = `Showing ${from}-${to} of ${total} results`;
+        if (info) info.innerHTML = `Showing <strong>${from}</strong>–<strong>${to}</strong> of <strong>${total}</strong> results`;
         if (indicator) indicator.textContent = `Page ${page} of ${lastPage}`;
         if (prevBtn) prevBtn.disabled = page <= 1;
         if (nextBtn) nextBtn.disabled = page >= lastPage;
@@ -1859,17 +1984,17 @@
     }
 
     function renderAdminUserResults(thead, tbody, users) {
-        thead.innerHTML = `<tr>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">User</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Username</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+        thead.innerHTML = `<tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">User</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Username</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+            <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
         </tr>`;
 
         if (!users.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-gray-500 text-sm">No users found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-gray-400"><i class="fi fi-sr-users text-3xl block mb-2"></i><p class="text-base font-medium text-gray-500">No users found</p></td></tr>`;
             return;
         }
 
@@ -1878,20 +2003,18 @@
                 ? (u.contractor_is_active !== 0)
                 : (u.owner_is_active !== 0);
             const statusBadge = isActive
-                ? `<span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Active</span>`
-                : `<span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Suspended</span>`;
+                ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-emerald-100 text-emerald-700 border-emerald-200">Active</span>`
+                : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-red-100 text-red-700 border-red-200">Suspended</span>`;
             const role = (u.user_type || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
-            return `<tr class="hover:bg-gray-50 transition border-b border-gray-100">
-                <td class="px-6 py-4 text-sm font-medium text-gray-800">${escapeHtml((u.first_name || "") + " " + (u.last_name || ""))}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">@${escapeHtml(u.username || "")}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(u.email || "")}</td>
-                <td class="px-6 py-4"><span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">${role}</span></td>
-                <td class="px-6 py-4">${statusBadge}</td>
-                <td class="px-6 py-4 text-center">
-                    ${isActive ? `<button class="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-suspend-btn" data-user-id="${u.user_id}">
-                        <i class="fi fi-rr-ban mr-1"></i> Suspend
-                    </button>` : `<span class="text-xs text-gray-400">Already suspended</span>`}
+            return `<tr class="hover:bg-indigo-50/60 transition-colors">
+                <td class="px-2.5 py-2.5 text-[11px] font-medium text-gray-800 truncate" title="${escapeHtml((u.first_name || "") + " " + (u.last_name || ""))}">${escapeHtml((u.first_name || "") + " " + (u.last_name || ""))}</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-600">@${escapeHtml(u.username || "")}</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml(u.email || "")}">${escapeHtml(u.email || "")}</td>
+                <td class="px-2.5 py-2.5"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-indigo-100 text-indigo-700 border-indigo-200">${role}</span></td>
+                <td class="px-2.5 py-2.5">${statusBadge}</td>
+                <td class="px-2.5 py-2.5 text-center">
+                    ${isActive ? `<button class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all admin-suspend-btn" title="Suspend" data-user-id="${u.user_id}"><i class="fi fi-rr-ban text-[13px] leading-none"></i></button>` : `<span class="text-[11px] text-gray-400 italic">Suspended</span>`}
                 </td>
             </tr>`;
         }).join("");
@@ -1903,36 +2026,34 @@
         adminDirectItemCache.showcase.clear();
         const uniquePosts = Array.from(new Map((posts || []).map((p) => [String(p.post_id), p])).values());
 
-        thead.innerHTML = `<tr>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Title</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Author</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+        thead.innerHTML = `<tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">ID</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Title</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Author</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+            <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
         </tr>`;
 
         if (!uniquePosts.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-gray-500 text-sm">No posts found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-gray-400"><i class="fi fi-sr-picture text-3xl block mb-2"></i><p class="text-base font-medium text-gray-500">No posts found</p></td></tr>`;
             return;
         }
 
         tbody.innerHTML = uniquePosts.map(p => {
             adminDirectItemCache.showcase.set(String(p.post_id), p);
             const date = p.created_at ? new Date(p.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-";
-            return `<tr class="hover:bg-gray-50 transition border-b border-gray-100">
-                <td class="px-6 py-4 text-sm font-mono text-gray-700">#${p.post_id}</td>
-                <td class="px-6 py-4 text-sm font-medium text-gray-800 max-w-xs truncate" title="${escapeHtml(p.title || "")}">${escapeHtml(p.title || "Untitled")}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml((p.first_name || "") + " " + (p.last_name || ""))} (@${escapeHtml(p.username || "")})</td>
-                <td class="px-6 py-4"><span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">${(p.status || "").toUpperCase()}</span></td>
-                <td class="px-6 py-4 text-sm text-gray-500">${date}</td>
-                <td class="px-6 py-4 text-center">
-                    <button class="px-4 py-2 mr-2 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-view-item-btn" data-item-type="showcase" data-item-id="${p.post_id}">
-                        <i class="fi fi-rr-eye mr-1"></i> View
-                    </button>
-                    ${p.status === 'deleted' ? `<span class="text-xs text-gray-400">Already hidden</span>` : `<button class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-hide-post-btn" data-post-id="${p.post_id}" data-post-title="${escapeHtml(p.title || 'Untitled')}" data-post-author="${escapeHtml((p.first_name || '') + ' ' + (p.last_name || ''))}">
-                        <i class="fi fi-rr-eye-crossed mr-1"></i> Hide Post
-                    </button>`}
+            return `<tr class="hover:bg-indigo-50/60 transition-colors">
+                <td class="px-2.5 py-2.5 text-[11px] font-mono text-gray-700">#${p.post_id}</td>
+                <td class="px-2.5 py-2.5 text-[11px] font-medium text-gray-800 truncate" title="${escapeHtml(p.title || "")}">${escapeHtml(p.title || "Untitled")}</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml((p.first_name || "") + " " + (p.last_name || ""))}">${escapeHtml((p.first_name || "") + " " + (p.last_name || ""))} (@${escapeHtml(p.username || "")})</td>
+                <td class="px-2.5 py-2.5"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-blue-100 text-blue-700 border-blue-200">${(p.status || "").toUpperCase()}</span></td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">${date}</td>
+                <td class="px-2.5 py-2.5 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                        <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-gray-100 hover:shadow-sm hover:-translate-y-0.5 transition-all admin-view-item-btn" title="View" data-item-type="showcase" data-item-id="${p.post_id}"><i class="fi fi-rr-eye text-[13px] leading-none"></i></button>
+                        ${p.status === 'deleted' ? `<span class="text-[11px] text-gray-400 italic">Hidden</span>` : `<button class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-amber-100 hover:shadow-sm hover:border-amber-300 hover:-translate-y-0.5 transition-all admin-hide-post-btn" title="Hide Post" data-post-id="${p.post_id}" data-post-title="${escapeHtml(p.title || 'Untitled')}" data-post-author="${escapeHtml((p.first_name || '') + ' ' + (p.last_name || ''))}"><i class="fi fi-rr-eye-crossed text-[13px] leading-none"></i></button>`}
+                    </div>
                 </td>
             </tr>`;
         }).join("");
@@ -1944,17 +2065,17 @@
     function renderAdminProjectResults(thead, tbody, projects) {
         adminDirectItemCache.project.clear();
 
-        thead.innerHTML = `<tr>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Project Title</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Owner</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+        thead.innerHTML = `<tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">ID</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Project Title</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Owner</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Location</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+            <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
         </tr>`;
 
         if (!projects.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-gray-500 text-sm">No project posts found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-gray-400"><i class="fi fi-sr-building text-3xl block mb-2"></i><p class="text-base font-medium text-gray-500">No project posts found</p></td></tr>`;
             return;
         }
 
@@ -1964,19 +2085,17 @@
             const normalizedStatus = String(p.project_status || "").toLowerCase();
             const isHidden = normalizedStatus === "deleted_post";
 
-            return `<tr class="hover:bg-gray-50 transition border-b border-gray-100">
-                <td class="px-6 py-4 text-sm font-mono text-gray-700">#${p.project_id}</td>
-                <td class="px-6 py-4 text-sm font-medium text-gray-800 max-w-xs truncate" title="${escapeHtml(p.project_title || "")}">${escapeHtml(p.project_title || "Untitled")}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(owner || "Unknown")} (@${escapeHtml(p.username || "")})</td>
-                <td class="px-6 py-4 text-sm text-gray-600 max-w-[180px] truncate" title="${escapeHtml(p.project_location || "")}">${escapeHtml(p.project_location || "N/A")}</td>
-                <td class="px-6 py-4"><span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">${escapeHtml((p.project_status || "").toUpperCase().replace(/_/g, " "))}</span></td>
-                <td class="px-6 py-4 text-center">
-                    <button class="px-4 py-2 mr-2 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-view-item-btn" data-item-type="project" data-item-id="${p.project_id}">
-                        <i class="fi fi-rr-eye mr-1"></i> View
-                    </button>
-                    ${isHidden ? `<span class="text-xs text-gray-400">Already hidden</span>` : `<button class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-hide-post-btn admin-hide-project-btn" data-post-id="${p.project_id}" data-post-title="${escapeHtml(p.project_title || 'Untitled')}" data-post-author="${escapeHtml(owner || 'Unknown')}" data-hide-kind="project">
-                        <i class="fi fi-rr-eye-crossed mr-1"></i> Hide Project
-                    </button>`}
+            return `<tr class="hover:bg-indigo-50/60 transition-colors">
+                <td class="px-2.5 py-2.5 text-[11px] font-mono text-gray-700">#${p.project_id}</td>
+                <td class="px-2.5 py-2.5 text-[11px] font-medium text-gray-800 truncate" title="${escapeHtml(p.project_title || "")}">${escapeHtml(p.project_title || "Untitled")}</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml(owner)}">${escapeHtml(owner || "Unknown")} (@${escapeHtml(p.username || "")})</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml(p.project_location || "")}">${escapeHtml(p.project_location || "N/A")}</td>
+                <td class="px-2.5 py-2.5"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-blue-100 text-blue-700 border-blue-200">${escapeHtml((p.project_status || "").toUpperCase().replace(/_/g, " "))}</span></td>
+                <td class="px-2.5 py-2.5 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                        <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-gray-100 hover:shadow-sm hover:-translate-y-0.5 transition-all admin-view-item-btn" title="View" data-item-type="project" data-item-id="${p.project_id}"><i class="fi fi-rr-eye text-[13px] leading-none"></i></button>
+                        ${isHidden ? `<span class="text-[11px] text-gray-400 italic">Hidden</span>` : `<button class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-amber-100 hover:shadow-sm hover:border-amber-300 hover:-translate-y-0.5 transition-all admin-hide-post-btn admin-hide-project-btn" title="Hide Project" data-post-id="${p.project_id}" data-post-title="${escapeHtml(p.project_title || 'Untitled')}" data-post-author="${escapeHtml(owner || 'Unknown')}" data-hide-kind="project"><i class="fi fi-rr-eye-crossed text-[13px] leading-none"></i></button>`}
+                    </div>
                 </td>
             </tr>`;
         }).join("");
@@ -1988,39 +2107,37 @@
     function renderAdminReviewResults(thead, tbody, reviews) {
         adminDirectItemCache.review.clear();
 
-        thead.innerHTML = `<tr>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Project</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reviewer</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Rating</th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Comment</th>
-            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+        thead.innerHTML = `<tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">ID</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Project</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Reviewer</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Rating</th>
+            <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Comment</th>
+            <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
         </tr>`;
 
         if (!reviews.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-gray-500 text-sm">No reviews found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-gray-400"><i class="fi fi-sr-star text-3xl block mb-2"></i><p class="text-base font-medium text-gray-500">No reviews found</p></td></tr>`;
             return;
         }
 
         tbody.innerHTML = reviews.map(r => {
             adminDirectItemCache.review.set(String(r.review_id), r);
             const stars = "★".repeat(r.rating || 0) + "☆".repeat(5 - (r.rating || 0));
-            return `<tr class="hover:bg-gray-50 transition border-b border-gray-100">
-                <td class="px-6 py-4 text-sm font-mono text-gray-700">#${r.review_id}</td>
-                <td class="px-6 py-4 text-sm text-gray-700 max-w-[150px] truncate" title="${escapeHtml(r.project_title || "")}">${escapeHtml(r.project_title || "N/A")}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml((r.reviewer_first_name || "") + " " + (r.reviewer_last_name || ""))} (@${escapeHtml(r.reviewer_username || "")})</td>
-                <td class="px-6 py-4 text-sm text-amber-600 font-bold">${stars}</td>
-                <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${escapeHtml(r.comment || "")}">${escapeHtml(r.comment || "No comment")}</td>
-                <td class="px-6 py-4 text-center">
-                    <button class="px-3 py-2 mr-2 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-view-item-btn" data-item-type="review" data-item-id="${r.review_id}">
-                        <i class="fi fi-rr-eye mr-1"></i> View
-                    </button>
-                    ${r.is_deleted ? `<span class="text-xs text-gray-400">Already hidden</span>` : `<button class="px-3 py-2 mr-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-hide-review-btn" data-review-id="${r.review_id}" data-review-author="${escapeHtml((r.reviewer_first_name || '') + ' ' + (r.reviewer_last_name || ''))}" data-review-rating="${"★".repeat(r.rating || 0) + "☆".repeat(5 - (r.rating || 0))}">
-                        <i class="fi fi-rr-eye-crossed mr-1"></i> Hide Review
-                    </button>
-                    <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition admin-remove-review-btn" data-review-id="${r.review_id}">
-                        <i class="fi fi-rr-trash mr-1"></i> Remove
-                    </button>`}
+            return `<tr class="hover:bg-indigo-50/60 transition-colors">
+                <td class="px-2.5 py-2.5 text-[11px] font-mono text-gray-700">#${r.review_id}</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-700 truncate" title="${escapeHtml(r.project_title || "")}">${escapeHtml(r.project_title || "N/A")}</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml((r.reviewer_first_name || "") + " " + (r.reviewer_last_name || ""))}">${escapeHtml((r.reviewer_first_name || "") + " " + (r.reviewer_last_name || ""))} (@${escapeHtml(r.reviewer_username || "")})</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-amber-600 font-bold">${stars}</td>
+                <td class="px-2.5 py-2.5 text-[11px] text-gray-600 truncate" title="${escapeHtml(r.comment || "")}">${escapeHtml(r.comment || "No comment")}</td>
+                <td class="px-2.5 py-2.5 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                        <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-gray-100 hover:shadow-sm hover:-translate-y-0.5 transition-all admin-view-item-btn" title="View" data-item-type="review" data-item-id="${r.review_id}"><i class="fi fi-rr-eye text-[13px] leading-none"></i></button>
+                        ${r.is_deleted ? `<span class="text-[11px] text-gray-400 italic">Hidden</span>` : `
+                            <button class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-amber-100 hover:shadow-sm hover:border-amber-300 hover:-translate-y-0.5 transition-all admin-hide-review-btn" title="Hide Review" data-review-id="${r.review_id}" data-review-author="${escapeHtml((r.reviewer_first_name || '') + ' ' + (r.reviewer_last_name || ''))}" data-review-rating="${"★".repeat(r.rating || 0) + "☆".repeat(5 - (r.rating || 0))}"><i class="fi fi-rr-eye-crossed text-[13px] leading-none"></i></button>
+                            <button class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all admin-remove-review-btn" title="Remove" data-review-id="${r.review_id}"><i class="fi fi-rr-trash text-[13px] leading-none"></i></button>
+                        `}
+                    </div>
                 </td>
             </tr>`;
         }).join("");

@@ -65,6 +65,10 @@
       border-width: 1px;
       font-size: 0.75rem;
     }
+
+    .team-member-row.team-pagination-off {
+      display: none;
+    }
   </style>
 
 
@@ -109,14 +113,13 @@
             <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <!-- Cover Photo -->
               <div class="relative h-28 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 overflow-hidden">
-                @if(isset($contractor->company_banner) && $contractor->company_banner)
-                  <img id="companyCoverImg" src="{{ asset('storage/' . $contractor->company_banner) }}" alt="Cover Photo" class="w-full h-full object-cover">
+                @if(isset($contractor->cover_photo) && $contractor->cover_photo)
+                  <img id="companyCoverImg" src="{{ asset($contractor->cover_photo) }}" alt="Cover Photo" class="w-full h-full object-cover">
                 @else
                   <img id="companyCoverImg" src="" alt="Cover Photo" class="w-full h-full object-cover hidden">
                 @endif
                 <!-- Decorative circles (visible when no cover photo set) -->
-                <div id="coverPhotoPlaceholder" class="{{ isset($contractor->company_banner) && $contractor->company_banner ? 'hidden' : '' }} absolute inset-0 opacity-10 pointer-events-none">
-
+                <div id="coverPhotoPlaceholder" class="{{ isset($contractor->cover_photo) && $contractor->cover_photo ? 'hidden' : '' }} absolute inset-0 opacity-10 pointer-events-none">
                   <div class="absolute top-2 right-8 w-20 h-20 rounded-full border-4 border-white"></div>
                   <div class="absolute -top-4 right-16 w-32 h-32 rounded-full border-4 border-white"></div>
                   <div class="absolute bottom-2 left-1/3 w-16 h-16 rounded-full border-2 border-white"></div>
@@ -142,15 +145,14 @@
                 <div class="-mt-8 mb-3 relative z-10">
                   <div class="relative inline-block">
                     <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center overflow-hidden shadow-lg ring-[3px] ring-white">
-                      @if(isset($contractor->company_logo) && $contractor->company_logo)
-                        <img id="companyLogoImg" src="{{ asset('storage/' . $contractor->company_logo) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
+                      @if(isset($contractor->profile_pic) && $contractor->profile_pic)
+                        <img id="companyLogoImg" src="{{ asset($contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
                         <i id="companyLogoIcon" class="fi fi-sr-building text-white text-xl hidden"></i>
                       @else
                         <img id="companyLogoImg" src="" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover hidden">
                         <i id="companyLogoIcon" class="fi fi-sr-building text-white text-xl"></i>
                       @endif
                     </div>
-
                     <label for="companyLogoUpload" class="absolute bottom-0 right-0 bg-orange-500 hover:bg-orange-600 text-white p-1 rounded-full cursor-pointer shadow-md transition-all hover:-translate-y-0.5 active:scale-95">
                       <i class="fi fi-rr-camera text-xs"></i>
                       <input type="file" id="companyLogoUpload" class="hidden" accept="image/*">
@@ -171,13 +173,12 @@
                     <!-- Header row with larger avatar -->
                     <div class="flex gap-4 mb-4 pb-4 border-b border-blue-200">
                       <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-md ring-2 ring-blue-100 flex-shrink-0">
-                        @if(isset($contractor->company_logo) && $contractor->company_logo)
-                          <img src="{{ asset('storage/' . $contractor->company_logo) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
+                        @if(isset($contractor->profile_pic) && $contractor->profile_pic)
+                          <img src="{{ asset($contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
                         @else
-                          <i class="fi fi-sr-building text-white text-2xl"></i>
+                          <i class="fi fi-rr-user text-white text-2xl"></i>
                         @endif
                       </div>
-
                       <div class="flex-1 flex flex-col justify-center">
                         <h3 class="text-sm font-bold text-blue-700 flex items-center gap-1.5 mb-1">
                           <i class="fi fi-rr-user text-base text-blue-600"></i>
@@ -386,25 +387,21 @@
                 </div>
               </div>
 
-              <!-- Team Members Table -->
+              <!-- Team Members Table (compact, consistent with contractorTable) -->
               <div class="overflow-x-auto">
                 <table class="w-full table-fixed">
                   <thead>
                     <tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
-                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[34%]">Member</th>
-                      <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Position</th>
-                      <th class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Date Added</th>
-                      <th id="statusColumnHeader" class="px-2.5 py-2.5 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Status</th>
-                      <th class="px-2.5 py-2.5 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Action</th>
+                      <th class="px-2.5 py-2 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[34%]">Member</th>
+                      <th class="px-2.5 py-2 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Position</th>
+                      <th class="px-2.5 py-2 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Date Added</th>
+                      <th id="statusColumnHeader" class="px-2.5 py-2 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Status</th>
+                      <th class="px-2.5 py-2 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[16%]">Action</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200" id="teamMembersTable">
                     @forelse($contractor->team_members ?? [] as $index => $member)
                       <?php
-                        // Generate color based on index
-                        $colors = ['purple', 'blue', 'green', 'red', 'yellow', 'pink', 'indigo', 'orange'];
-                        $color = $colors[$index % count($colors)];
-
                         // Generate initials
                         $fname = $member->first_name ?? '';
                         $lname = $member->last_name ?? '';
@@ -434,32 +431,32 @@
                           $displayRole = ucfirst($member->role_if_others);
                         }
                       ?>
-                      <tr class="hover:bg-indigo-50/60 transition-colors group {{ $statusClass }}"
+                      <tr class="hover:bg-indigo-50/60 transition-colors group team-member-row {{ $statusClass }}"
                           data-status="{{ $dataStatus }}"
                           data-email="{{ $member->email ?? '' }}"
                           data-contact="">
-                        <td class="px-2.5 py-2.5">
+                        <td class="px-2.5 py-2">
                           <div class="flex items-center gap-1.5 {{ $member->is_suspended ? 'opacity-60' : '' }}">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-{{ $color }}-400 to-{{ $color }}-600 flex items-center justify-center overflow-hidden shadow flex-shrink-0">
+                            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center overflow-hidden shadow flex-shrink-0">
                               @if($member->profile_pic)
                                 <img src="{{ asset('storage/' . $member->profile_pic) }}" alt="{{ $fname . ' ' . $lname }}" class="w-full h-full object-cover">
                               @else
-                                <span class="text-white font-bold text-[11px]">{{ $initials }}</span>
+                                <span class="text-white font-bold text-[10px]">{{ $initials }}</span>
                               @endif
                             </div>
                             <div class="min-w-0">
-                              <p class="font-medium text-gray-800 leading-tight text-xs truncate {{ $member->is_suspended ? 'text-gray-600' : 'group-hover:text-blue-600' }} transition" title="{{ $fname . ' ' . ($member->middle_name ?? '') . ' ' . $lname }}">
+                              <p class="font-medium text-gray-800 leading-tight text-xs truncate max-w-[140px] {{ $member->is_suspended ? 'text-gray-600' : 'group-hover:text-indigo-600' }} transition" title="{{ $fname . ' ' . ($member->middle_name ?? '') . ' ' . $lname }}">
                                 {{ $fname . ' ' . ($member->middle_name ?? '') . ' ' . $lname }}
                               </p>
-                              <p class="text-[11px] text-gray-500 truncate" title="{{ $member->email ?? 'N/A' }}">
+                              <p class="text-[11px] text-gray-500 truncate max-w-[140px]" title="{{ $member->email ?? 'N/A' }}">
                                 {{ $member->email ?? 'N/A' }}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td class="px-2.5 py-2.5 text-center text-[11px] text-gray-700">{{ $displayRole }}</td>
-                        <td class="px-2.5 py-2.5 text-center whitespace-nowrap text-[11px] text-gray-700">{{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('F j, Y') : 'N/A' }}</td>
-                        <td class="px-2.5 py-2.5 text-center status-cell">
+                        <td class="px-2.5 py-2 text-center text-[11px] text-gray-700">{{ $displayRole }}</td>
+                        <td class="px-2.5 py-2 text-center whitespace-nowrap text-[11px] text-gray-700">{{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('F j, Y') : 'N/A' }}</td>
+                        <td class="px-2.5 py-2 text-center status-cell">
                           @if($dataStatus == 'deactivated')
                             <span class="status-badge inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-gray-100 text-gray-600 border-gray-200 hidden">
                               Suspended
@@ -479,34 +476,34 @@
                             </span>
                           @endif
                         </td>
-                        <td class="px-2.5 py-2.5">
+                        <td class="px-2.5 py-2 whitespace-nowrap">
                           <div class="flex items-center gap-1">
                             @if($dataStatus == 'deactivated')
-                              <button class="team-reactivate-btn p-1.5 rounded-xl border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm hover:border-green-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Reactivate Account"
+                              <button class="team-reactivate-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm hover:border-green-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Reactivate Account"
                                       data-member-id="{{ $member->staff_id }}"
                                       data-member-name="{{ $fname . ' ' . ($member->middle_name ?? '') . ' ' . $lname }}">
-                                <i class="fi fi-rr-check-circle"></i>
+                                <i class="fi fi-rr-check-circle text-[13px] leading-none"></i>
                               </button>
                             @elseif($dataStatus == 'active')
-                              <button class="team-edit-btn p-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:shadow-sm hover:border-orange-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Edit Member" data-member-id="{{ $member->staff_id }}">
-                                <i class="fi fi-rr-pencil"></i>
+                              <button class="team-edit-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:shadow-sm hover:border-orange-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Edit Member" data-member-id="{{ $member->staff_id }}">
+                                <i class="fi fi-rr-pencil text-[13px] leading-none"></i>
                               </button>
-                              <button class="team-deactivate-btn p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Suspend Account"
+                              <button class="team-deactivate-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Suspend Account"
                                       data-member-id="{{ $member->staff_id }}"
                                       data-member-name="{{ $fname . ' ' . ($member->middle_name ?? '') . ' ' . $lname }}">
-                                <i class="fi fi-rr-ban"></i>
+                                <i class="fi fi-rr-ban text-[13px] leading-none"></i>
                               </button>
                             @elseif($dataStatus == 'pending')
-                              <button class="team-cancel-invitation-btn p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Cancel Invitation"
+                              <button class="team-cancel-invitation-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Cancel Invitation"
                                       data-member-id="{{ $member->staff_id }}"
                                       data-member-name="{{ $fname . ' ' . ($member->middle_name ?? '') . ' ' . $lname }}">
-                                <i class="fi fi-rr-cross-circle"></i>
+                                <i class="fi fi-rr-cross-circle text-[13px] leading-none"></i>
                               </button>
                             @elseif($dataStatus == 'cancelled')
-                              <button class="team-reapply-invitation-btn p-1.5 rounded-xl border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm hover:border-green-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Reapply Invitation"
+                              <button class="team-reapply-invitation-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:shadow-sm hover:border-green-300 hover:-translate-y-0.5 transition-all active:scale-95" title="Reapply Invitation"
                                       data-member-id="{{ $member->staff_id }}"
                                       data-member-name="{{ $fname . ' ' . ($member->middle_name ?? '') . ' ' . $lname }}">
-                                <i class="fi fi-rr-rotate-right"></i>
+                                <i class="fi fi-rr-rotate-right text-[13px] leading-none"></i>
                               </button>
                             @endif
                           </div>
@@ -514,15 +511,31 @@
                       </tr>
                     @empty
                       <tr>
-                        <td colspan="5" class="px-4 py-12 text-center text-gray-400">
-                          <i class="fi fi-sr-users text-3xl block mb-2"></i>
-                          <p class="text-base font-medium text-gray-500">No team members found</p>
-                          <p class="text-xs mt-1">Try adding a team member to populate this table.</p>
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-400">
+                          <i class="fi fi-sr-users text-2xl block mb-1.5"></i>
+                          <p class="text-sm font-medium text-gray-500">No team members found</p>
+                          <p class="text-[11px] mt-0.5">Try adding a team member to populate this table.</p>
                         </td>
                       </tr>
                     @endforelse
                   </tbody>
                 </table>
+
+                <!-- Team Members Pagination (Active / Pending / Cancelled / Suspended) -->
+                <div id="teamMembersPagination" class="px-4 py-2.5 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2 hidden">
+                  <p class="text-xs text-gray-500">
+                    Showing <strong id="teamMembersPaginationFrom">0</strong>–<strong id="teamMembersPaginationTo">0</strong>
+                    of <strong id="teamMembersPaginationTotal">0</strong> results
+                  </p>
+                  <div class="flex items-center gap-1">
+                    <button type="button" id="teamMembersPaginationPrev" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">‹ Prev</button>
+                    <span id="teamMembersPaginationPages" class="flex items-center gap-1"></span>
+                    <button type="button" id="teamMembersPaginationNext" class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">Next ›</button>
+                  </div>
+                </div>
+                <div id="teamMembersPaginationEmpty" class="px-4 py-2.5 border-t border-gray-200 hidden">
+                  <p class="text-xs text-gray-500">Showing <strong id="teamMembersPaginationTotalSingle">0</strong> result(s)</p>
+                </div>
               </div>
             </section>
 
@@ -1332,64 +1345,28 @@
         </button>
       </div>
     </div>
-  </div>  <!-- Universal File Viewer (UFV) -->
-  <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
-        <div class="flex items-center gap-3 min-w-0">
-          <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
-          <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
-            <i class="fi fi-rr-download"></i>
-          </a>
-          <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
-            <i class="fi fi-rr-cross text-sm"></i>
+  </div>
+
+  <!-- Document Viewer Modal -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fi fi-rr-file-document text-orange-500"></i> Document Viewer</h3>
+        <div class="flex items-center gap-2">
+          <button id="closeDocumentViewerBtn" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg">
+            <i class="fi fi-rr-cross text-xl"></i>
           </button>
         </div>
       </div>
-      <!-- Viewport -->
-      <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
-        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
-        <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
-      </div>
-    </div>
-  </div>
 
-
-  <!-- Upload Confirmation Modal -->
-  <div id="uploadConfirmModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4 animate-fadeIn">
-    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden border border-gray-200">
-      <div class="px-6 py-4 flex items-center gap-3 border-b border-gray-100 bg-gray-50">
-        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm border border-blue-200">
-          <i class="fi fi-rr-cloud-upload mt-1"></i>
-        </div>
-        <h2 class="text-lg font-bold text-gray-800">Confirm Upload</h2>
-      </div>
-      <div class="px-6 py-5 bg-white text-center">
-        <p id="uploadConfirmMessage" class="text-gray-600 text-sm mb-4">Are you sure you want to update this image?</p>
-        <div class="flex flex-col items-center">
-          <div class="w-32 h-32 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50 mb-2">
-            <img id="uploadConfirmPreview" src="" alt="Preview" class="max-w-full max-h-full object-contain">
-          </div>
-          <p class="text-[10px] text-gray-400">New Image Preview</p>
-        </div>
-      </div>
-      <div class="bg-gray-50 px-6 py-4 flex items-center justify-center gap-3 border-t border-gray-200">
-        <button id="cancelUploadBtn" class="flex-1 px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-all font-semibold active:scale-95">
-          Cancel
-        </button>
-        <button id="confirmUploadBtn" class="flex-1 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-semibold shadow-md active:scale-95">
-          Upload
-        </button>
+      <div class="p-4 max-h-[calc(90vh-120px)] overflow-auto flex items-center justify-center bg-gray-50">
+        <iframe id="documentViewerFrame" src="" class="w-full h-[70vh] border-0 hidden"></iframe>
+        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-[70vh] object-contain hidden" />
       </div>
     </div>
   </div>
 
   <script src="{{ asset('js/admin/userManagement/contractor.js') }}" defer></script>
-
   <script src="{{ asset('js/admin/userManagement/contractor_Views.js') }}" defer></script>
 
 </body>

@@ -63,7 +63,7 @@ class showcaseClass
         // Sort: Latest first
         $query->orderBy('pp.created_at', 'desc');
 
-        return $query->paginate(10);
+        return $query->paginate(10)->withQueryString();
     }
 
     /**

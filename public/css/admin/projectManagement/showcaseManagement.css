@@ -1,8 +1,49 @@
 /* Showcase Management - supplemental styles (Tailwind handles most) */
 
+/* Statistics Cards Styling */
+.stat-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 100%;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card .stat-number {
+    cursor: default;
+    line-height: 1;
+    transition: color 0.18s ease;
+}
+
+.stat-card .stat-badge,
+.stat-card .stat-icon-wrap {
+    transition: background-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.stat-card .stat-badge {
+    border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.stat-card .stat-icon-wrap {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.stat-card:hover .stat-number {
+    color: #c2410c;
+}
+
+@media (max-width: 768px) {
+    .stat-card:hover {
+        transform: none;
+    }
+}
+
 /* Table row hover */
 #showcaseTable tbody tr:hover td {
-    background: linear-gradient(to right, #fff, #fffaf5);
+    background: rgba(238, 242, 255, 0.6);
 }
 
 /* Smooth modal fade-in animation */
@@ -22,6 +63,66 @@
 #approveShowcaseModal:not(.hidden) .modal-content,
 #rejectShowcaseModal:not(.hidden) .modal-content {
     animation: modalFadeIn 0.3s ease-out;
+}
+
+/* View Showcase Modal Theme by Status */
+#viewShowcaseModal[data-status="pending"] #viewShowcaseHeader {
+    background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
+    border-bottom-color: #ea580c;
+}
+
+#viewShowcaseModal[data-status="pending"] #viewShowcaseHeaderSubtitle {
+    color: #ffedd5;
+}
+
+#viewShowcaseModal[data-status="pending"] #viewModalCloseBtn {
+    border-color: #fdba74;
+    color: #c2410c;
+}
+
+#viewShowcaseModal[data-status="pending"] #viewModalCloseBtn:hover {
+    background: #ffedd5;
+}
+
+#viewShowcaseModal[data-status="approved"] #viewShowcaseHeader {
+    background: linear-gradient(90deg, #16a34a 0%, #059669 100%);
+    border-bottom-color: #047857;
+}
+
+#viewShowcaseModal[data-status="approved"] #viewShowcaseHeaderSubtitle {
+    color: #dcfce7;
+}
+
+#viewShowcaseModal[data-status="approved"] #viewModalCloseBtn {
+    border-color: #86efac;
+    color: #166534;
+}
+
+#viewShowcaseModal[data-status="approved"] #viewModalCloseBtn:hover {
+    background: #dcfce7;
+}
+
+#viewShowcaseModal[data-status="rejected"] #viewShowcaseHeader {
+    background: linear-gradient(90deg, #ef4444 0%, #e11d48 100%);
+    border-bottom-color: #be123c;
+}
+
+#viewShowcaseModal[data-status="rejected"] #viewShowcaseHeaderSubtitle {
+    color: #ffe4e6;
+}
+
+#viewShowcaseModal[data-status="rejected"] #viewModalCloseBtn {
+    border-color: #fda4af;
+    color: #be123c;
+}
+
+#viewShowcaseModal[data-status="rejected"] #viewModalCloseBtn:hover {
+    background: #ffe4e6;
+}
+
+#viewShowcaseModal #viewShowcaseFooter {
+    background: #ffffff;
+    border-top-color: #e5e7eb;
 }
 
 /* Stat card hover lift */
@@ -61,23 +162,16 @@
     transition: background-color .2s, color .2s, box-shadow .2s;
 }
 
-/* Smooth scrollbar for modal content */
-#viewShowcaseModal .modal-content::-webkit-scrollbar {
-    width: 8px;
+/* Hide scrollbars while keeping modal body scrollable */
+.modal-scroll-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
-#viewShowcaseModal .modal-content::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 10px;
-}
-
-#viewShowcaseModal .modal-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #f59e0b, #f97316);
-    border-radius: 10px;
-}
-
-#viewShowcaseModal .modal-content::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #d97706, #ea580c);
+.modal-scroll-hidden::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 /* Responsive adjustments */

@@ -92,7 +92,7 @@
     }
 
     .add-contractor-field.error:focus {
-      ring-color: rgb(248, 113, 113) !important;
+      box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.35) !important;
       border-color: rgb(239, 68, 68) !important;
     }
 
@@ -121,14 +121,16 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
-  <div class="flex min-h-screen">
+  <div class="flex h-screen overflow-hidden">
 
     @include('admin.layouts.sidebar')
 
-    <main class="flex-1 overflow-x-hidden">
-      @include('admin.layouts.topnav', ['pageTitle' => 'Contractors'])
+    <main class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex-shrink-0 sticky top-0 z-30">
+        @include('admin.layouts.topnav', ['pageTitle' => 'Contractors'])
+      </div>
 
-      <div class="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+      <div class="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
         <!-- Controls Section -->
         <div
           class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -883,9 +885,14 @@
 
   <!-- Delete Contractor Modal -->
   <div id="deleteContractorModal"
-    class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4" style="z-index:99999;">
+    class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-2">
     <div
-      class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0 modal-content" style="z-index:100000;">
+      class="bg-white rounded-2xl shadow-lg max-w-xs w-full transform transition-all duration-300 scale-95 opacity-0 modal-content relative">
+      <button id="closeDeleteModalBtn" type="button"
+        class="absolute top-2 right-2 w-6 h-6 rounded-md border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition flex items-center justify-center">
+        <i class="fi fi-rr-cross text-[10px]"></i>
+      </button>
+
       <!-- Icon Section -->
       <div class="flex justify-center pt-3 pb-2">
         <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center relative">
@@ -900,8 +907,8 @@
       <div class="px-3 pb-3 text-center">
         <h2 class="text-sm font-bold text-gray-800 mb-1.5">Delete Contractor</h2>
         <p class="text-[11px] text-gray-600 leading-relaxed mb-2.5">
-          Permanently delete <span class="font-bold text-gray-800" id="deleteContractorName">GTH Builders and
-            Developers</span>? This action cannot be undone.
+          Permanently delete <span class="font-bold text-gray-800" id="deleteContractorName">this contractor</span>?
+          This action cannot be undone.
         </p>
 
         <div class="text-left">

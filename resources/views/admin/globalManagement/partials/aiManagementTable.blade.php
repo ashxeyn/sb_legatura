@@ -3,20 +3,20 @@
 @endphp
 
 <div class="overflow-hidden">
-    <div class="px-4 py-3 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-transparent flex justify-between items-start">
+    <div class="px-4 py-3 border-b border-orange-100 bg-gradient-to-r from-orange-50 to-transparent flex justify-between items-start">
         <div>
-            <h3 class="text-xs font-semibold text-blue-700 flex items-center gap-1.5">
-                <i class="fi fi-rr-time-past text-blue-600 text-xs"></i>
+            <h3 class="text-xs font-semibold text-orange-700 flex items-center gap-1.5">
+                <i class="fi fi-rr-time-past text-orange-600 text-xs"></i>
                 Prediction History Logs
             </h3>
             <p class="text-[11px] text-gray-500 mt-0.5">Analysis records and project risk assessments</p>
         </div>
-        <span class="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">Latest Results</span>
+        <span class="text-xs font-semibold text-gray-600 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100">Latest Results</span>
     </div>
 
     <table class="w-full table-fixed">
         <thead>
-            <tr class="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+            <tr class="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-gray-200">
                 <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[15%]">Analyzed</th>
                 <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[30%]">Project</th>
                 <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[12%]">Verdict</th>
@@ -27,7 +27,7 @@
         </thead>
         <tbody class="divide-y divide-gray-200" id="predictionTableBody">
             @forelse($predictionLogs as $log)
-            <tr class="hover:bg-indigo-50/60 transition-colors duration-200 ease-in-out"
+            <tr class="hover:bg-orange-50/60 transition-colors duration-200 ease-in-out"
                 data-project="{{ strtolower($log->project_title) }}"
                 data-verdict="{{ $log->prediction }}"
                 data-date="{{ $log->created_at }}">
@@ -48,9 +48,10 @@
                 </td>
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <div class="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div class="h-full {{ $log->prediction === 'DELAYED' ? 'bg-red-500' : 'bg-green-500' }}" style="width: {{ $log->delay_probability * 100 }}%"></div>
-                        </div>
+                        <svg class="w-16 h-1.5" viewBox="0 0 100 6" preserveAspectRatio="none">
+                            <rect x="0" y="0" width="100" height="6" rx="3" fill="#e5e7eb"/>
+                            <rect x="0" y="0" width="{{ $log->delay_probability * 100 }}" height="6" rx="3" fill="{{ $log->prediction === 'DELAYED' ? '#ef4444' : '#22c55e' }}"/>
+                        </svg>
                         <span class="font-mono font-bold text-gray-700 text-xs min-w-[45px]">{{ number_format($log->delay_probability * 100, 1) }}%</span>
                     </div>
                 </td>
@@ -64,13 +65,16 @@
                 <td class="px-4 py-3 whitespace-nowrap">
                     <div class="flex items-center gap-1">
                         <button
-                            onclick="window.aiManagement.showDetails({{ json_encode(json_decode($log->ai_response_snapshot), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) }})"
-                            class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all active:scale-95"
+                            data-ai-snapshot="{{ htmlspecialchars(json_encode(json_decode($log->ai_response_snapshot), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') }}"
+                            onclick="window.aiManagement.showDetails(this.dataset.aiSnapshot)"
+                            class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-orange-100 hover:shadow-sm hover:border-orange-300 hover:-translate-y-0.5 transition-all active:scale-95"
                             title="View Details">
                             <i class="fi fi-rr-eye text-[13px] leading-none"></i>
                         </button>
                         <button
-                            onclick="window.aiManagement.confirmDelete({{ $log->id }}, '{{ addslashes($log->project_title) }}')"
+                            data-log-id="{{ $log->id }}"
+                            data-project-title="{{ $log->project_title }}"
+                            onclick="window.aiManagement.confirmDelete(Number(this.dataset.logId), this.dataset.projectTitle)"
                             class="action-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95"
                             title="Delete">
                             <i class="fi fi-rr-trash text-[13px] leading-none"></i>
@@ -112,7 +116,7 @@
 
             @foreach($predictionLogs->getUrlRange(max(1, $predictionLogs->currentPage() - 2), min($predictionLogs->lastPage(), $predictionLogs->currentPage() + 2)) as $page => $url)
                 @if($page == $predictionLogs->currentPage())
-                    <span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-600 text-white font-semibold">{{ $page }}</span>
+                    <span class="px-2.5 py-1 rounded-lg text-xs bg-orange-500 text-white font-semibold">{{ $page }}</span>
                 @else
                     <a href="{{ $url }}" class="prediction-page-link px-2.5 py-1 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition">{{ $page }}</a>
                 @endif

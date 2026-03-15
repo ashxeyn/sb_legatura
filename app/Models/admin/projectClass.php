@@ -1385,6 +1385,7 @@ class projectClass
             ->leftJoin('contract_terminations', 'projects.project_id', '=', 'contract_terminations.project_id')
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
             ->leftJoin('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
             ->leftJoin('property_owners as c_po', 'contractors.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as contractor_user_email', 'c_po.user_id', '=', 'contractor_user_email.user_id')
@@ -1395,6 +1396,11 @@ class projectClass
                 'contract_terminations.remarks',
                 'contract_terminations.terminated_at',
                 DB::raw("'Admin' as terminated_by"),  // Default to 'Admin' since we don't have the user tracking
+                // Owner info
+                'owner_users.first_name as owner_first_name',
+                'owner_users.middle_name as owner_middle_name',
+                'owner_users.last_name as owner_last_name',
+                'property_owners.profile_pic as owner_profile_pic',
                 // Contractor info
                 DB::raw("CONCAT(contractor_user_email.first_name, ' ', contractor_user_email.last_name) as contractor_name"),
                 'contractors.company_name',
@@ -1412,6 +1418,12 @@ class projectClass
 
         if (!$project) {
             return null;
+        }
+
+        // Format owner name
+        $project->owner_name = trim(($project->owner_first_name ?? '') . ' ' . ($project->owner_middle_name ?? '') . ' ' . ($project->owner_last_name ?? ''));
+        if (empty($project->owner_name)) {
+            $project->owner_name = 'Unknown Owner';
         }
 
         // Get timeline from milestones

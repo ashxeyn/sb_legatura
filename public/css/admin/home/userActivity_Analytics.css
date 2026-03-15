@@ -1,0 +1,77 @@
+﻿/* =========================================================
+   userActivity_Analytics.css
+   Compact, neutral, professional design
+   ========================================================= */
+
+/* Date pill calendar icon */
+.date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+}
+.date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Shell */
+.ua-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* KPI cards */
+.ua-kpi {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Distribution chart + legend side by side */
+.ua-dist-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.ua-dist-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+/* Activity table */
+.ua-activity-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ua-activity-table th {
+  white-space: nowrap;
+}
+.ua-activity-table td {
+  vertical-align: middle;
+}
+
+/* Activity row hover */
+.ua-activity-row {
+  transition: background 0.12s;
+}
+.ua-activity-row:hover {
+  background: #fafafa;
+}
+
+/* Date preset active state */
+.date-preset-btn.active {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .ua-activity-table { min-width: 680px; }
+}
+@media (max-width: 640px) {
+  .ua-shell .grid.grid-cols-2 { grid-template-columns: 1fr; }
+  .ua-dist-wrap { flex-direction: column; align-items: flex-start; }
+}

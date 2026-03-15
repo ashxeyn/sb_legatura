@@ -181,7 +181,7 @@ class projectAdminController extends Controller
 
         try {
             $project = DB::table('projects')->where('project_id', $projectId)->first();
-            $projectName = $project->project_name ?? "Project #{$projectId}";
+            $projectName = $project->project_title ?? "Project #{$projectId}";
 
             // Email contractor
             $contractorOwner = DB::table('property_owners')->where('owner_id', $contractor->owner_id)->first();

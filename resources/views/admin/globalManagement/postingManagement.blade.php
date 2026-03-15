@@ -119,113 +119,178 @@
       </div>
 
       <!-- View Modal -->
-      <div id="viewModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-2 sm:p-3">
-        <div class="bg-white rounded-xl shadow-2xl max-w-xl w-full max-h-[84vh] overflow-hidden flex flex-col transform transition-all duration-300 scale-95 modal-content">
-          <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-4 sm:px-5 py-3 sm:py-3.5 flex items-center justify-between rounded-t-xl sticky top-0 z-10">
-            <h3 class="text-base sm:text-lg font-bold text-white">Post Details</h3>
-            <button class="text-white hover:text-gray-200 transition-colors duration-200 close-modal p-1.5 rounded-md hover:bg-white hover:bg-opacity-20">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          <div class="p-4 sm:p-5 space-y-3.5 flex-1 min-h-0 overflow-y-auto modal-scroll-hidden">
-            <!-- Header Info -->
-            <div class="flex items-center gap-3 pb-3 border-b">
-              <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg overflow-hidden" id="modalAvatar">GD</div>
-              <div>
-                <h4 class="text-base sm:text-lg font-bold text-gray-800" id="modalName">Loading...</h4>
-                <div class="flex items-center gap-2">
-                  <p class="text-xs text-gray-500" id="modalType">Loading...</p>
+      <div id="viewModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-3 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col transform transition-all duration-300 scale-95 modal-content" style="max-height:90vh;">
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 rounded-t-xl flex-shrink-0">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center overflow-hidden ring-2 ring-white/30 text-white font-bold text-sm" id="modalAvatar">GD</div>
+                <div class="text-white min-w-0">
+                  <h3 class="text-sm font-bold truncate" id="modalName">Loading...</h3>
+                  <p class="text-[10px] opacity-80 flex items-center gap-1.5">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <span id="modalType">Loading...</span>
+                  </p>
                 </div>
               </div>
+              <button class="w-7 h-7 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors text-white close-modal">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
             </div>
+          </div>
 
-            <!-- Quick meta -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Date Registered</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalDate">Loading...</p>
+          <style>.post-detail-scroll::-webkit-scrollbar{display:none}</style>
+          <div class="post-detail-scroll p-3 space-y-3 overflow-y-auto flex-1" style="scrollbar-width:none;-ms-overflow-style:none;">
+
+            <!-- Quick Meta Cards -->
+            <div class="grid grid-cols-2 gap-2">
+              <div class="bg-blue-50 rounded-lg p-2.5 border border-blue-100">
+                <div class="flex items-center justify-between mb-1">
+                  <p class="text-[10px] text-gray-500 font-medium">Date Registered</p>
+                  <div class="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
+                    <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                  </div>
+                </div>
+                <p class="text-xs font-bold text-gray-900" id="modalDate">Loading...</p>
               </div>
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Account Type</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalAccountType">Loading...</p>
+              <div class="bg-indigo-50 rounded-lg p-2.5 border border-indigo-100">
+                <div class="flex items-center justify-between mb-1">
+                  <p class="text-[10px] text-gray-500 font-medium">Account Type</p>
+                  <div class="w-5 h-5 rounded bg-indigo-100 flex items-center justify-center">
+                    <svg class="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                </div>
+                <p class="text-xs font-bold text-gray-900" id="modalAccountType">Loading...</p>
               </div>
             </div>
 
             <!-- Project Description -->
-            <div class="bg-gray-50 rounded-xl p-3">
-              <h5 class="text-xs font-semibold text-gray-700 mb-1.5">Project Description</h5>
-              <p class="text-base font-bold text-gray-800 mb-1.5" id="modalProjectTitle">Loading title...</p>
-              <p class="text-xs text-gray-700" id="modalDescription">Loading...</p>
+            <div class="bg-white border border-gray-200 rounded-lg p-2 space-y-1">
+              <h3 class="font-bold text-gray-900 text-xs border-b border-gray-200 pb-2 flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-md bg-blue-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                Project Description
+              </h3>
+              <div class="px-1 pt-1">
+                <p class="text-sm font-bold text-gray-900 mb-1" id="modalProjectTitle">Loading title...</p>
+                <p class="text-[11px] text-gray-600 leading-relaxed" id="modalDescription">Loading...</p>
+              </div>
             </div>
 
             <!-- Project Details -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Location</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalLocation">Loading...</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Property Type</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalPropertyType">Loading...</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Budget Range</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalBudget">Loading...</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Lot Size</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalLotSize">Loading...</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Floor Area</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalFloorArea">Loading...</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Timeline</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalTimeline">Loading...</p>
-              </div>
-            </div>
-
-            <!-- Post Files Section -->
-            <div class="rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2.5 border-b border-gray-200">
-                <h5 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            <div class="bg-white border border-gray-200 rounded-lg p-2 space-y-1">
+              <h3 class="font-bold text-gray-900 text-xs border-b border-gray-200 pb-2 flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-md bg-orange-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                   </svg>
-                  Post Files
-                </h5>
-              </div>
-              <div class="px-4 py-3">
-                <div id="fileViewer" class="mb-3"></div>
-                <div id="postFilesContainer">
-                  <p class="text-xs text-gray-500 text-center py-3">Loading files...</p>
+                </div>
+                Project Details
+              </h3>
+              <div class="space-y-0.5 text-[11px]">
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-orange-50">
+                  <span class="text-gray-500">Location</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalLocation">Loading...</span>
+                </div>
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-orange-50">
+                  <span class="text-gray-500">Property Type</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalPropertyType">Loading...</span>
+                </div>
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-orange-50">
+                  <span class="text-gray-500">Budget Range</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalBudget">Loading...</span>
+                </div>
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-orange-50">
+                  <span class="text-gray-500">Lot Size</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalLotSize">Loading...</span>
+                </div>
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-orange-50">
+                  <span class="text-gray-500">Floor Area</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalFloorArea">Loading...</span>
+                </div>
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-orange-50">
+                  <span class="text-gray-500">Timeline</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalTimeline">Loading...</span>
                 </div>
               </div>
             </div>
 
-            <!-- Additional info -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Email</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalEmail">Loading...</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-600 mb-1">Phone</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalPhone">Loading...</p>
-              </div>
-              <div class="col-span-2">
-                <p class="text-xs text-gray-600 mb-1">Post Status</p>
-                <p class="text-sm font-semibold text-gray-800" id="modalPostStatus">Loading...</p>
+            <!-- Post Files Section -->
+            <div class="bg-white border border-gray-200 rounded-lg p-2 space-y-1">
+              <h3 class="font-bold text-gray-900 text-xs border-b border-gray-200 pb-2 flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-md bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                Post Files
+              </h3>
+              <div class="pt-1">
+                <div id="fileViewer" class="mb-2"></div>
+                <div id="postFilesContainer">
+                  <p class="text-[10px] text-gray-400 text-center py-3">Loading files...</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="px-4 sm:px-5 py-3 bg-gray-50 rounded-b-xl flex justify-end gap-2 sticky bottom-0 z-10 border-t border-gray-200">
-            <button id="viewModalCloseBtn" class="px-3.5 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs font-semibold rounded-lg transition-colors duration-200 close-modal hidden">Close</button>
-            <button id="viewModalDeclineBtn" class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors duration-200">Decline</button>
-            <button id="viewModalApproveBtn" class="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors duration-200">Approve</button>
+
+            <!-- Contact Information -->
+            <div class="bg-white border border-gray-200 rounded-lg p-2 space-y-1">
+              <h3 class="font-bold text-gray-900 text-xs border-b border-gray-200 pb-2 flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-md bg-teal-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                Contact Information
+              </h3>
+              <div class="space-y-0.5 text-[11px]">
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-teal-50">
+                  <span class="text-gray-500">Email</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalEmail">Loading...</span>
+                </div>
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-teal-50">
+                  <span class="text-gray-500">Phone</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalPhone">Loading...</span>
+                </div>
+                <div class="flex justify-between items-start py-0.5 px-1 rounded hover:bg-teal-50">
+                  <span class="text-gray-500">Post Status</span>
+                  <span class="font-semibold text-gray-900 text-right" id="modalPostStatus">Loading...</span>
+                </div>
+              </div>
+            </div>
+
+          </div>{{-- end scrollable body --}}
+
+          <!-- Footer -->
+          <div class="border-t border-gray-200 px-4 py-3 bg-gray-50 rounded-b-xl flex justify-end items-center gap-2 flex-shrink-0">
+            <button id="viewModalCloseBtn" class="px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-100 transition-colors flex items-center gap-1.5 close-modal hidden">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              Close
+            </button>
+            <button id="viewModalDeclineBtn" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+              </svg>
+              Decline
+            </button>
+            <button id="viewModalApproveBtn" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Approve
+            </button>
           </div>
         </div>
       </div>

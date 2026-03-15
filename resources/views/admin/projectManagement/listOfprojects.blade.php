@@ -20,8 +20,40 @@
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
+  <style>
+    .action-btn {
+      position: relative;
+      overflow: hidden;
+    }
 
-</head>
+    .action-btn i {
+      position: relative;
+      z-index: 1;
+      display: block;
+      line-height: 1;
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+
+    .action-btn .ripple,
+    .action-btn .ripple-effect {
+      position: absolute;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.45);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0.5;
+      cursor: pointer;
+      filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+    }
+
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
+    }
+  </style>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
   <div class="flex min-h-screen">
