@@ -195,14 +195,50 @@ class contractorClass extends Model
             ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
             ->select(
-                'contractors.*',
+                'contractors.contractor_id',
+                'contractors.owner_id',
+                'contractors.company_logo',
+                'contractors.company_banner',
+                'contractors.company_name',
+                'contractors.company_start_date',
+                'contractors.years_of_experience',
+                'contractors.type_id',
+                'contractors.contractor_type_other',
+                'contractors.services_offered',
+                'contractors.business_address',
+                'contractors.company_email',
+                'contractors.company_website',
+                'contractors.company_social_media',
+                'contractors.company_description',
+                'contractors.picab_number',
+                'contractors.picab_category',
+                'contractors.picab_expiration_date',
+                'contractors.business_permit_number',
+                'contractors.business_permit_city',
+                'contractors.business_permit_expiration',
+                'contractors.tin_business_reg_number',
+                'contractors.dti_sec_registration_photo',
+                'contractors.verification_status',
+                'contractors.verification_date',
+                'contractors.is_active',
+                'contractors.suspension_until',
+                'contractors.suspension_reason',
+                'contractors.deletion_reason',
+                'contractors.rejection_reason',
+                'contractors.completed_projects',
+                'contractors.created_at',
+                'contractors.updated_at',
                 'users.user_id',
-                'users.email',
                 'users.username',
                 'users.first_name',
                 'users.middle_name',
                 'users.last_name',
+                'users.email as owner_email',
                 'property_owners.profile_pic',
+                'property_owners.owner_id as owner_id',
+                'users.first_name as owner_first_name',
+                'users.middle_name as owner_middle_name',
+                'users.last_name as owner_last_name',
                 DB::raw("CASE WHEN contractor_types.type_name = 'Others' OR contractor_types.type_name IS NULL THEN contractors.contractor_type_other ELSE contractor_types.type_name END as contractor_type_name")
             )
             ->where('contractors.contractor_id', $id)
@@ -349,6 +385,11 @@ class contractorClass extends Model
                 'tin_business_reg_number' => $data['tin_business_reg_number'],
                 'updated_at' => now()
             ];
+
+            // Update owner_id if provided in data
+            if (array_key_exists('owner_id', $data)) {
+                $contractorUpdateData['owner_id'] = $data['owner_id'];
+            }
 
             if (isset($data['dti_sec_registration_photo'])) {
                 $contractorUpdateData['dti_sec_registration_photo'] = $data['dti_sec_registration_photo'];
