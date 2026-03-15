@@ -1281,7 +1281,6 @@ class authController extends Controller
             'first_name' => $step2['first_name'],
             'middle_name' => $step2['middle_name'],
             'last_name' => $step2['last_name'],
-            'phone_number' => $step2['phone_number'] ?? ''
         ]);
 
         // Send account pending approval email notification
@@ -1341,7 +1340,6 @@ class authController extends Controller
             'occupation_id' => $request->occupation_id,
             'occupation_other' => $request->occupation_other_text ?? $request->occupation_other,
             'date_of_birth' => $request->date_of_birth,
-            'phone_number' => $request->phone_number,
             'age' => $age,
             'address' => $address
         ];
@@ -1940,7 +1938,6 @@ class authController extends Controller
         $step1['first_name'] = !empty($step1['first_name'] ?? '') ? ucwords(strtolower($step1['first_name'])) : '';
         $step1['last_name'] = !empty($step1['last_name'] ?? '') ? ucwords(strtolower($step1['last_name'])) : '';
         $step1['middle_name'] = !empty($step1['middle_name']) ? ucwords(strtolower($step1['middle_name'])) : null;
-        $step1['phone_number'] = $step1['phone_number'] ?? '';
         $step1['date_of_birth'] = $step1['date_of_birth'] ?? null;
         $step1['age'] = $step1['age'] ?? null;
         $step1['occupation_id'] = $step1['occupation_id'] ?? null;
@@ -2194,7 +2191,6 @@ class authController extends Controller
             'last_name' => $step1['last_name'],
             'middle_name' => $step1['middle_name'] ?? null,
             'first_name' => $step1['first_name'],
-            'phone_number' => $step1['phone_number'],
             'valid_id_id' => $step4['valid_id_id'],
             'valid_id_photo' => $step4['valid_id_photo'],
             'valid_id_back_photo' => $step4['valid_id_back_photo'],
@@ -2872,7 +2868,6 @@ class authController extends Controller
             }
 
             $ownerData = DB::table('property_owners')->where('user_id', $userId)->first();
-            $userPhone = is_object($user) ? ($user->phone_number ?? '') : ($user['phone_number'] ?? '');
 
             // If a contractors row already exists for this user, update it and set verification back to pending.
             list($col, $lookupId) = $this->resolveContractorIdentifier($userId);
@@ -2893,7 +2888,6 @@ class authController extends Controller
                     'services_offered' => $step1['services_offered'] ?? '',
                     'business_address' => $businessAddress,
                     'company_email' => $userEmail,
-                    'phone_number' => $userPhone,
                     'company_description' => $step1['company_description'] ?? null,
                     'company_website' => $step1['company_website'] ?? null,
                     'company_social_media' => $step1['company_social_media'] ?? null,
@@ -2927,7 +2921,6 @@ class authController extends Controller
                     'services_offered' => $step1['services_offered'] ?? '',
                     'business_address' => $businessAddress,
                     'company_email' => $userEmail,
-                    'phone_number' => $userPhone,
                     'company_description' => $step1['company_description'] ?? null,
                     'company_website' => $step1['company_website'] ?? null,
                     'company_social_media' => $step1['company_social_media'] ?? null,
@@ -2965,7 +2958,6 @@ class authController extends Controller
                 $auth_fname = $step2['first_name'] ?? (is_object($user) ? ($user->first_name ?? '') : ($user['first_name'] ?? ''));
                 $auth_mname = $step2['middle_name'] ?? (is_object($user) ? ($user->middle_name ?? null) : ($user['middle_name'] ?? null));
                 $auth_lname = $step2['last_name'] ?? (is_object($user) ? ($user->last_name ?? '') : ($user['last_name'] ?? ''));
-                $auth_phone = (is_object($user) ? ($user->phone_number ?? null) : ($user['phone_number'] ?? null)) ?? '';
 
                 // Update names on users table
                 DB::table('users')->where('user_id', $userId)->update([
@@ -3287,7 +3279,6 @@ class authController extends Controller
             if (!empty($validated['first_name'])) $nameUpdate['first_name'] = $validated['first_name'];
             if (array_key_exists('middle_name', $validated)) $nameUpdate['middle_name'] = $validated['middle_name'];
             if (!empty($validated['last_name'])) $nameUpdate['last_name'] = $validated['last_name'];
-            if (!empty($validated['phone_number'])) $nameUpdate['phone_number'] = $validated['phone_number'];
             if (!empty($nameUpdate)) {
                 DB::table('users')->where('user_id', $user->user_id)->update($nameUpdate);
             }

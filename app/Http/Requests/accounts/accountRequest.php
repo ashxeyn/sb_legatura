@@ -190,11 +190,6 @@ class accountRequest extends FormRequest
                 'date',
                 'before:-18 years'
             ],
-            'phone_number' => [
-                'required',
-                'string',
-                'regex:/^09[0-9]{9}$/'
-            ],
             'occupation_id' => 'required|integer',
             'occupation_other_text' => 'nullable|string|max:255',
             'occupation_other' => 'nullable|string|max:255',
@@ -316,11 +311,6 @@ class accountRequest extends FormRequest
                 'date',
                 'before:-18 years'
             ],
-            'phone_number' => [
-                'required',
-                'string',
-                'regex:/^09[0-9]{9}$/'
-            ],
             'occupation_id' => 'required|integer',
             'occupation_other_text' => 'nullable|string|max:255',
             'occupation_other' => 'nullable|string|max:255',
@@ -339,7 +329,6 @@ class accountRequest extends FormRequest
             'founded_date.required' => 'Founding date is required.',
             'founded_date.before' => 'Founding date must be a past date.',
 
-            'phone_number.regex' => 'Phone number must be 11 digits starting with 09 (e.g., 09171234567)',
             'password.min' => 'Password must be at least 8 characters',
             'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character',
             'picab_expiration_date.after' => 'PICAB expiration date must be in the future',

@@ -345,7 +345,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
       prefill.first_name = ownerData.first_name || '';
       prefill.middle_name = ownerData.middle_name || '';
       prefill.last_name = ownerData.last_name || '';
-      prefill.phone_number = ownerData.phone_number || '';
       prefill.date_of_birth = ownerData.date_of_birth || '';
 
       // Occupation
@@ -383,7 +382,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
         prefill.first_name = existingData.first_name || '';
         prefill.middle_name = existingData.middle_name || '';
         prefill.last_name = existingData.last_name || '';
-        prefill.phone_number = existingData.phone_number || '';
       }
     }
 
@@ -694,7 +692,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
           if (!formData.first_name?.trim()) errors.push('First name is required');
           if (!formData.last_name?.trim()) errors.push('Last name is required');
           if (!formData.date_of_birth) errors.push('Date of birth is required');
-          if (!formData.phone_number?.trim()) errors.push('Phone number is required');
           if (!formData.occupation_id) errors.push('Occupation is required');
           if (!formData.owner_address_street?.trim()) errors.push('Address street is required');
           if (!formData.owner_address_barangay) errors.push('Barangay is required');
@@ -731,7 +728,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
             occupation_id: formData.occupation_id,
             occupation_other_text: formData.occupation_other_text,
             date_of_birth: formData.date_of_birth,
-            phone_number: formData.phone_number,
             owner_address_street: formData.owner_address_street,
             owner_address_barangay: formData.owner_address_barangay,
             owner_address_city: formData.owner_address_city,
@@ -778,7 +774,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
               occupation_id: formData.occupation_id,
               occupation_other: formData.occupation_other_text,
               date_of_birth: formData.date_of_birth,
-              phone_number: formData.phone_number,
               address: address,
               age: computeYears(formData.date_of_birth),
             },
@@ -1247,7 +1242,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Middle Name</Text><Text style={styles.previewValue}>{formData.middle_name || '—'}</Text></View>
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Last Name</Text><Text style={styles.previewValue}>{formData.last_name || '—'}</Text></View>
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Date of Birth</Text><Text style={styles.previewValue}>{formData.date_of_birth ? formatDateForDisplay(formData.date_of_birth) : '—'}</Text></View>
-                    <View style={styles.previewRow}><Text style={styles.previewLabel}>Phone Number</Text><Text style={styles.previewValue}>{formData.phone_number || '—'}</Text></View>
                     <View style={styles.previewRow}><Text style={styles.previewLabel}>Occupation</Text><Text style={styles.previewValue}>{(() => { const occ = (dropdowns.occupations || []).find((o: any) => `${o.id}` === `${formData.occupation_id}`); return occ?.name || '—'; })()}</Text></View>
                     {(() => { const occ = (dropdowns.occupations || []).find((o: any) => `${o.id}` === `${formData.occupation_id}`); const isOther = ((occ?.name || '').toLowerCase()).includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Occupation Other</Text><Text style={styles.previewValue}>{formData.occupation_other_text || '—'}</Text></View>) : null; })()}
                   </View>
@@ -1339,15 +1333,6 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
                   <Ionicons name="calendar" size={20} color="#666" />
                 </View>
               </TouchableOpacity>
-              <Text style={styles.inputLabel}>Phone Number *</Text>
-              <TextInput
-                style={[styles.input, prefilledFields.phone_number && styles.prefilledInput]}
-                value={formData.phone_number || ''}
-                onChangeText={(t) => updateForm({ phone_number: t })}
-                keyboardType="phone-pad"
-                placeholder="Phone Number *"
-                placeholderTextColor="#999"
-              />
               <Text style={styles.inputLabel}>Occupation *</Text>
               <TouchableOpacity style={styles.input} onPress={() => setShowOccupationModal(true)}>
                 <View style={styles.dropdownInputWrapper}>

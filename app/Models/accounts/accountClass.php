@@ -218,7 +218,6 @@ class accountClass
             $staffId = DB::table('contractor_staff')->insertGetId([
                 'contractor_id' => $data['contractor_id'],
                 'owner_id' => $ownerId,
-                'phone_number' => $data['phone_number'] ?? '',
                 'company_role' => 'owner',
                 'is_active' => 0,
                 'created_at' => now()
@@ -258,9 +257,6 @@ class accountClass
             }
             if (Schema::hasColumn('property_owners', 'first_name')) {
                 $payload['first_name'] = $data['first_name'] ?? null;
-            }
-            if (Schema::hasColumn('property_owners', 'phone_number')) {
-                $payload['phone_number'] = $data['phone_number'] ?? null;
             }
 
             // Address components (preferred). If the DB has dedicated columns, store them.

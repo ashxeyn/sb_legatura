@@ -269,7 +269,7 @@ class ProfileService
                 ->join('users as po_u', 'po.user_id', '=', 'po_u.user_id')
                 ->leftJoin('occupations as o', 'po.occupation_id', '=', 'o.id')
                 ->where('po.user_id', $userId)
-                ->select('po.*', 'po_u.first_name', 'po_u.middle_name', 'po_u.last_name', 'po_u.phone_number', 'o.occupation_name')
+                ->select('po.*', 'po_u.first_name', 'po_u.middle_name', 'po_u.last_name', 'o.occupation_name')
                 ->first();
 
             if ($owner) {
@@ -278,7 +278,6 @@ class ProfileService
                     'middle_name'         => $owner->middle_name ?? null,
                     'last_name'           => $owner->last_name,
                     'bio'                 => $owner->bio ?? null,
-                    'phone_number'        => $owner->phone_number ?? null,
                     'address'             => $owner->address ?? null,
                     'date_of_birth'       => $owner->date_of_birth ?? null,
                     'occupation'          => $owner->occupation_name ?? ($owner->occupation_other ?? null),

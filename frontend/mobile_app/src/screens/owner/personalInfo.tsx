@@ -35,7 +35,6 @@ export interface PropertyOwnerPersonalInfo {
   occupation_id: string;
   occupation_other?: string;
   date_of_birth: string;
-  phone_number: string;
   // Address fields
   owner_address_street: string;
   owner_address_province: string;
@@ -52,7 +51,6 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
   const [occupationId, setOccupationId] = useState(initialData?.occupation_id || '');
   const [occupationOther, setOccupationOther] = useState(initialData?.occupation_other || '');
   const [dateOfBirth, setDateOfBirth] = useState(initialData?.date_of_birth || '');
-  const [phoneNumber, setPhoneNumber] = useState(initialData?.phone_number || '');
 
   // Address fields (matching Laravel backend)
   const [addressStreet, setAddressStreet] = useState(initialData?.owner_address_street || '');
@@ -73,7 +71,6 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
             if (parsed.occupationId) setOccupationId(parsed.occupationId);
             if (parsed.occupationOther) setOccupationOther(parsed.occupationOther);
             if (parsed.dateOfBirth) { setDateOfBirth(parsed.dateOfBirth); setSelectedDate(new Date(parsed.dateOfBirth)); }
-            if (parsed.phoneNumber) setPhoneNumber(parsed.phoneNumber);
             if (parsed.addressStreet) setAddressStreet(parsed.addressStreet);
             if (parsed.addressProvince) setAddressProvince(parsed.addressProvince);
             if (parsed.addressCity) setAddressCity(parsed.addressCity);
@@ -88,13 +85,13 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
   useEffect(() => {
     const cache = {
       firstName, middleName, lastName, occupationId, occupationOther, dateOfBirth,
-      phoneNumber, addressStreet, addressProvince, addressCity, addressBarangay, addressPostal
+      addressStreet, addressProvince, addressCity, addressBarangay, addressPostal
     };
     const timer = setTimeout(() => {
       AsyncStorage.setItem('signup_po_personalInfo', JSON.stringify(cache)).catch(() => {});
     }, 500);
     return () => clearTimeout(timer);
-  }, [firstName, middleName, lastName, occupationId, occupationOther, dateOfBirth, phoneNumber, addressStreet, addressProvince, addressCity, addressBarangay, addressPostal]);
+  }, [firstName, middleName, lastName, occupationId, occupationOther, dateOfBirth, addressStreet, addressProvince, addressCity, addressBarangay, addressPostal]);
 
   // UI states
   const [isLoading, setIsLoading] = useState(false);
@@ -286,13 +283,11 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
       occupationId.trim() !== '' &&
       (!isOthersOccupation() || occupationOther.trim() !== '') &&
       dateOfBirth.trim() !== '' &&
-      phoneNumber.trim() !== '' &&
       addressStreet.trim() !== '' &&
       addressProvince.trim() !== '' &&
       addressCity.trim() !== '' &&
       addressBarangay.trim() !== '' &&
-      addressPostal.trim() !== '' &&
-      /^09[0-9]{9}$/.test(phoneNumber); // PHP pattern validation
+      addressPostal.trim() !== '';
   };
 
   const handleNext = async () => {
@@ -308,11 +303,6 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
     if (!occupationId.trim()) errors.occupation_id = ['Please select an occupation.'];
     if (isOthersOccupation() && !occupationOther.trim()) errors.occupation_other_text = ['Please specify your occupation.'];
     if (!dateOfBirth.trim()) errors.date_of_birth = ['Date of birth is required.'];
-    if (!phoneNumber.trim()) {
-      errors.phone_number = ['Phone number is required.'];
-    } else if (!/^09[0-9]{9}$/.test(phoneNumber)) {
-      errors.phone_number = ['Phone number must be 11 digits starting with 09.'];
-    }
     if (!addressStreet.trim()) errors.owner_address_street = ['Street address is required.'];
     if (!addressProvince.trim()) errors.owner_address_province = ['Please select a province.'];
     if (!addressCity.trim()) errors.owner_address_city = ['Please select a city.'];
@@ -332,8 +322,7 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
       last_name: lastName.trim(),
       occupation_id: occupationId,
       occupation_other: isOthersOccupation() ? occupationOther.trim() : undefined,
-      date_of_birth: dateOfBirth, // YYYY-MM-DD format
-      phone_number: phoneNumber.trim(),
+      date_of_birth: dateOfBirth,
       // Address fields
       owner_address_street: addressStreet.trim(),
       owner_address_province: addressProvince,
@@ -472,19 +461,6 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
                 minimumDate={getMinDate()}
               />
             )}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, fieldErrors.phone_number && styles.inputError]}
-              value={phoneNumber}
-              onChangeText={(text) => { setPhoneNumber(text); setFieldErrors(prev => { const { phone_number, ...rest } = prev; return rest; }); }}
-              placeholder="Phone Number * (e.g., 09171234567)"
-              placeholderTextColor="#999"
-              keyboardType="phone-pad"
-              maxLength={11}
-            />
-            {fieldErrors.phone_number ? <Text style={styles.fieldErrorText}>{fieldErrors.phone_number[0]}</Text> : <Text style={styles.fieldHint}>11 digits starting with 09</Text>}
           </View>
 
           {/* Address Section */}
