@@ -27,12 +27,14 @@ const COLORS = {
   textSecondary: '#6B7280',
   border: '#E6E9EE',
   error: '#EF4444',
+  info: '#2563EB',
 };
 
 export default function Members({ userData, onClose }: { userData?: any; onClose?: () => void }) {
   const insets = useSafeAreaInsets();
   const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
+  const [ownerInfo, setOwnerInfo] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -49,6 +51,17 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   const [ownerSearchResults, setOwnerSearchResults] = useState([]);
   const [searchingOwners, setSearchingOwners] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
+
+  // Reason modal — shared for suspend & cancel-invitation (both require a typed reason)
+  const [reasonModalVisible, setReasonModalVisible] = useState(false);
+  const [reasonModalConfig, setReasonModalConfig] = useState<{
+    title: string;
+    placeholder: string;
+    minLength: number;
+    onSubmit: (reason: string) => Promise<void>;
+  } | null>(null);
+  const [reasonText, setReasonText] = useState('');
+  const [reasonSubmitting, setReasonSubmitting] = useState(false);
 
   // Authorization hook - member management is owner-only; all active members can view
   const { canManageMembers, canViewMembers, isLoading: authLoading, role } = useContractorAuth();
@@ -103,6 +116,18 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     return isMemberActive(rawStatus);
   };
 
+  /**
+   * Returns the semantic status of a staff member:
+   *   'pending'   — is_active = 0 (invitation not yet accepted)
+   *   'suspended' — is_active = 1 but is_suspended = 1
+   *   'active'    — is_active = 1 and is_suspended = 0
+   */
+  const getMemberStatus = (member: any): 'active' | 'suspended' | 'pending' => {
+    if (!isMemberActive(member.is_active)) return 'pending';
+    if (member.is_suspended == 1 || member.is_suspended === true) return 'suspended';
+    return 'active';
+  };
+
   // Define functions before any early returns
   const fetchMembers = async () => {
     setLoading(true);
@@ -119,16 +144,26 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       const endpoint = `${api_config.endpoints.contractor_members.list}?user_id=${userId}`;
       const res = await api_request(endpoint, { method: 'GET' });
       if (res.success && res.data) {
-        const rawMembers = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-            ? res.data
+        const payload = res.data;
+
+        // Store the owner info (separate from staff list)
+        const ownerData = payload?.owner ?? null;
+        setOwnerInfo(ownerData ?? null);
+
+        const rawMembers = Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload)
+            ? payload
             : [];
 
-        const membersData = rawMembers.map((m: any) => ({
-          ...m,
-          is_active: resolveMemberActive(m),
-        }));
+        // Safety: also strip out the contractor owner in case of stale data
+        const ownerOwnerId = ownerData?.owner_id ? Number(ownerData.owner_id) : null;
+        const membersData = rawMembers
+          .filter((m: any) => !ownerOwnerId || Number(m.owner_id) !== ownerOwnerId)
+          .map((m: any) => ({
+            ...m,
+            is_active: resolveMemberActive(m),
+          }));
 
         console.log('Fetched members:', membersData.map(m => ({
           id: m.id,
@@ -171,10 +206,9 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       filtered = filtered.filter(member => member.role === roleFilter);
     }
 
-    // Apply status filter
+    // Apply status filter: active | suspended | pending
     if (statusFilter !== 'all') {
-      const isActive = statusFilter === 'active';
-      filtered = filtered.filter(member => isMemberActive(member.is_active) === isActive);
+      filtered = filtered.filter(member => getMemberStatus(member) === statusFilter);
     }
 
     setFilteredMembers(filtered);
@@ -270,11 +304,20 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
           <Text style={styles.memberUsername}>{`@${item.username || 'unknown'}`}</Text>
 
           <View style={styles.memberInlineActions}>
-            <View style={[styles.statusBadge, { backgroundColor: isMemberActive(item.is_active) ? '#DCFCE7' : '#F3F4F6' }]}> 
-              <Text style={[styles.statusText, { color: isMemberActive(item.is_active) ? '#16A34A' : '#6B7280' }]}>
-                {isMemberActive(item.is_active) ? 'Active' : 'Inactive'}
-              </Text>
-            </View>
+            {(() => {
+              const ms = getMemberStatus(item);
+              const statusConfig = {
+                active:    { bg: '#DCFCE7', color: '#16A34A', label: 'Active' },
+                suspended: { bg: '#FEE2E2', color: '#DC2626', label: 'Suspended' },
+                pending:   { bg: '#FEF3C7', color: '#D97706', label: 'Pending' },
+              };
+              const sc = statusConfig[ms];
+              return (
+                <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                  <Text style={[styles.statusText, { color: sc.color }]}>{sc.label}</Text>
+                </View>
+              );
+            })()}
 
             <TouchableOpacity
               style={styles.inlineActionBtn}
@@ -284,19 +327,39 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
               <Ionicons name="eye-outline" size={17} color={COLORS.primary} />
             </TouchableOpacity>
 
-            {/* Owner/representative actions are further restricted per target role. */}
-            {canManageTargetMember(item) && (
-              <>
-                <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="edit" onPress={() => openEdit(item)}>
-                  <Ionicons name="pencil" size={16} color={COLORS.primary} />
-                </TouchableOpacity>
-                {canDeleteTargetMember(item) && (
-                  <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="remove" onPress={() => confirmDelete(item)}>
-                    <Ionicons name="trash" size={16} color="#E53935" />
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
+            {canManageTargetMember(item) && (() => {
+              const ms = getMemberStatus(item);
+              return (
+                <>
+                  {ms !== 'pending' && (
+                    <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="edit" onPress={() => openEdit(item)}>
+                      <Ionicons name="pencil" size={16} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  )}
+                  {ms === 'active' && (
+                    <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="suspend" onPress={() => openReasonModal('suspend', item)}>
+                      <Ionicons name="pause-circle-outline" size={17} color="#F59E0B" />
+                    </TouchableOpacity>
+                  )}
+                  {ms === 'suspended' && (
+                    <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="unsuspend" onPress={() => unsuspendMember(item)}>
+                      <Ionicons name="checkmark-circle-outline" size={17} color="#16A34A" />
+                    </TouchableOpacity>
+                  )}
+                  {ms === 'pending' ? (
+                    <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="cancel-invitation" onPress={() => openReasonModal('cancel_invitation', item)}>
+                      <Ionicons name="close-circle-outline" size={17} color="#E53935" />
+                    </TouchableOpacity>
+                  ) : (
+                    canDeleteTargetMember(item) && (
+                      <TouchableOpacity style={styles.inlineActionBtn} accessibilityLabel="remove" onPress={() => confirmDelete(item)}>
+                        <Ionicons name="trash" size={16} color="#E53935" />
+                      </TouchableOpacity>
+                    )
+                  )}
+                </>
+              );
+            })()}
           </View>
         </View>
         <Text style={styles.memberRole}>{item.role ? (item.role.charAt(0).toUpperCase() + item.role.slice(1)) : item.role}</Text>
@@ -485,6 +548,148 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     }
   };
 
+  // -----------------------------------------------------------------------
+  // REASON MODAL — shared for suspend & cancel-invitation
+  // -----------------------------------------------------------------------
+
+  const openReasonModal = (action: 'suspend' | 'cancel_invitation', item: any) => {
+    const config = action === 'suspend'
+      ? {
+          title: 'Suspend Member',
+          placeholder: 'Reason for suspension (required, min 5 chars)',
+          minLength: 5,
+          onSubmit: async (reason: string) => {
+            const storedUser = await storage_service.get_user_data();
+            const userId = storedUser?.user_id || storedUser?.id;
+            const endpoint = `${api_config.endpoints.contractor_members.suspend(item.id)}?user_id=${userId}`;
+            const res = await api_request(endpoint, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason }),
+            });
+            if (res.success) {
+              fetchMembers();
+              Alert.alert('Done', 'Member suspended successfully.');
+            } else {
+              throw new Error(res.message || 'Failed to suspend member.');
+            }
+          },
+        }
+      : {
+          title: 'Cancel Invitation',
+          placeholder: 'Reason for cancelling (required, min 3 chars)',
+          minLength: 3,
+          onSubmit: async (reason: string) => {
+            const storedUser = await storage_service.get_user_data();
+            const userId = storedUser?.user_id || storedUser?.id;
+            const endpoint = `${api_config.endpoints.contractor_members.cancel_invitation(item.id)}?user_id=${userId}`;
+            const res = await api_request(endpoint, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason }),
+            });
+            if (res.success) {
+              fetchMembers();
+              Alert.alert('Done', 'Invitation cancelled.');
+            } else {
+              throw new Error(res.message || 'Failed to cancel invitation.');
+            }
+          },
+        };
+    setReasonText('');
+    setReasonModalConfig(config);
+    setReasonModalVisible(true);
+  };
+
+  const submitReasonModal = async () => {
+    if (!reasonModalConfig) return;
+    const trimmed = reasonText.trim();
+    if (trimmed.length < reasonModalConfig.minLength) {
+      Alert.alert('Validation', `Reason must be at least ${reasonModalConfig.minLength} characters.`);
+      return;
+    }
+    setReasonSubmitting(true);
+    try {
+      await reasonModalConfig.onSubmit(trimmed);
+      setReasonModalVisible(false);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'An error occurred.');
+    } finally {
+      setReasonSubmitting(false);
+    }
+  };
+
+  // -----------------------------------------------------------------------
+  // UNSUSPEND
+  // -----------------------------------------------------------------------
+
+  const unsuspendMember = (item: any) => {
+    Alert.alert(
+      'Unsuspend Member',
+      `Reactivate ${item.first_name || 'this member'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unsuspend',
+          onPress: async () => {
+            try {
+              const storedUser = await storage_service.get_user_data();
+              const userId = storedUser?.user_id || storedUser?.id;
+              const endpoint = `${api_config.endpoints.contractor_members.unsuspend(item.id)}?user_id=${userId}`;
+              const res = await api_request(endpoint, { method: 'PATCH' });
+              if (res.success) {
+                fetchMembers();
+                Alert.alert('Done', 'Member reactivated.');
+              } else {
+                Alert.alert('Error', res.message || 'Failed to unsuspend.');
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Network error');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // -----------------------------------------------------------------------
+  // CHANGE REPRESENTATIVE (owner only)
+  // -----------------------------------------------------------------------
+
+  const changeRepresentative = (item: any) => {
+    Alert.alert(
+      'Set as Representative',
+      `Assign ${item.first_name || 'this member'} as the company representative?\n\nThe current representative (if any) will be demoted, and the new representative must accept before the role activates.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              const storedUser = await storage_service.get_user_data();
+              const userId = storedUser?.user_id || storedUser?.id;
+              const endpoint = `${api_config.endpoints.contractor_members.change_representative}?user_id=${userId}`;
+              const res = await api_request(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ staff_id: item.id }),
+              });
+              if (res.success) {
+                closeView();
+                fetchMembers();
+                Alert.alert('Done', res.message || 'Representative assigned. They must accept to activate their role.');
+              } else {
+                Alert.alert('Error', res.message || 'Failed to change representative.');
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Network error');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, { paddingTop: 12 }]}> 
       <View style={styles.header}>
@@ -529,7 +734,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         <View style={styles.readOnlyBanner}>
           <Ionicons name="information-circle-outline" size={16} color={COLORS.info} />
           <Text style={styles.readOnlyBannerText}>
-            View-only access. Only owner/representative can manage members, and only owner can add new members.
+            View-only access. Only the company owner can manage members.
           </Text>
         </View>
       )}
@@ -552,7 +757,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
               {[
                 { label: 'All', value: 'all' },
                 { label: 'Representative', value: 'representative' },
-                { label: 'Owner', value: 'owner' },
+                { label: 'Manager', value: 'manager' },
                 { label: 'Engineer', value: 'engineer' },
                 { label: 'Architect', value: 'architect' },
                 { label: 'Others', value: 'others' },
@@ -582,7 +787,8 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
               {[
                 { label: 'All', value: 'all' },
                 { label: 'Active', value: 'active' },
-                { label: 'Inactive', value: 'inactive' },
+                { label: 'Suspended', value: 'suspended' },
+                { label: 'Pending', value: 'pending' },
               ].map(({ label, value }) => (
                 <TouchableOpacity
                   key={value}
@@ -615,26 +821,53 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         <View style={{ padding: 16 }}>
           <ActivityIndicator />
         </View>
-      ) : filteredMembers.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Feather name="users" size={48} color={COLORS.border} />
-          <Text style={styles.emptyStateText}>
-            {members.length === 0 ? 'No members yet. Start by inviting verified property owners.' : 'No members match your filters'}
-          </Text>
-          {members.length > 0 && (
-            <TouchableOpacity onPress={clearFilters} style={styles.clearFiltersButton}>
-              <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
-            </TouchableOpacity>
-          )}
-        </View>
       ) : (
-        <FlatList
-          data={filteredMembers}
-          keyExtractor={(item) => (item.user_id ? String(item.user_id) : item.id)}
-          contentContainerStyle={{ padding: 8 }}
-          renderItem={renderMember}
-          ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
-        />
+        <>
+          {/* Owner card — shown to staff members only; the owner does not see themselves */}
+          {ownerInfo && !isOwnerRole && (
+            <View style={styles.ownerCard}>
+              <MemberImage
+                uri={ownerInfo.profile_pic}
+                style={styles.avatar}
+                fallback={require('../../../assets/images/pictures/members_default.png')}
+              />
+              <View style={styles.memberInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.memberName}>
+                    {`${ownerInfo.first_name || ''}${ownerInfo.middle_name ? ' ' + ownerInfo.middle_name : ''}${ownerInfo.last_name ? ' ' + ownerInfo.last_name : ''}`.trim()}
+                  </Text>
+                  <View style={styles.ownerBadge}>
+                    <Text style={styles.ownerBadgeText}>Owner</Text>
+                  </View>
+                </View>
+                <Text style={styles.memberUsername}>@{ownerInfo.username || 'unknown'}</Text>
+                <Text style={[styles.memberRole, { color: COLORS.primary }]}>Company Owner</Text>
+              </View>
+            </View>
+          )}
+
+          {filteredMembers.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Feather name="users" size={48} color={COLORS.border} />
+              <Text style={styles.emptyStateText}>
+                {members.length === 0 ? 'No staff members yet. Start by inviting verified property owners.' : 'No members match your filters'}
+              </Text>
+              {members.length > 0 && (
+                <TouchableOpacity onPress={clearFilters} style={styles.clearFiltersButton}>
+                  <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <FlatList
+              data={filteredMembers}
+              keyExtractor={(item) => (item.user_id ? String(item.user_id) : item.id)}
+              contentContainerStyle={{ padding: 8 }}
+              renderItem={renderMember}
+              ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+            />
+          )}
+        </>
       )}
 
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -691,20 +924,50 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
               {/* Role picker implemented as simple inline options to avoid extra deps */}
               <View style={{ marginBottom: 8 }}>
                 <Text style={styles.sectionHeader}>Role</Text>
-                <TouchableOpacity onPress={() => setForm({ ...form, showRoleOptions: !form.showRoleOptions })} style={[styles.input, { justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center' }] }>
-                  <Text style={{ color: COLORS.text }}>{form.role ? (form.role.charAt(0).toUpperCase() + form.role.slice(1)) : 'Select role'}</Text>
-                  <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
-                </TouchableOpacity>
-                {form.showRoleOptions && (
-                  <View style={{ marginTop: 6, borderWidth: 1, borderColor: COLORS.border, borderRadius: 6, overflow: 'hidden' }}>
-                    {['representative', 'manager', 'engineer', 'architect', 'others']
-                      .map((r) => (
-                      <TouchableOpacity key={r} onPress={() => setForm({ ...form, role: r, showRoleOptions: false })} style={{ padding: 10, backgroundColor: form.role === r ? '#F5F7FA' : '#FFF' }}>
-                        <Text style={{ color: COLORS.text }}>{r.charAt(0).toUpperCase() + r.slice(1)}</Text>
+                {(() => {
+                  // A representative already exists (active or pending) — hide the option
+                  // unless we are editing the current representative themselves
+                  const existingRep = members.find((m: any) => m.role === 'representative');
+                  const repTaken = !!existingRep && String(existingRep.id) !== String(editingId);
+                  const repIsPending = repTaken && getMemberStatus(existingRep) === 'pending';
+                  const repFullName = existingRep
+                    ? `${existingRep.first_name || ''}${existingRep.middle_name ? ' ' + existingRep.middle_name : ''}${existingRep.last_name ? ' ' + existingRep.last_name : ''}`.trim() || 'Someone'
+                    : 'Someone';
+                  const availableRoles = ['representative', 'manager', 'engineer', 'architect', 'others']
+                    .filter(r => !(r === 'representative' && repTaken));
+                  return (
+                    <>
+                      <TouchableOpacity onPress={() => setForm({ ...form, showRoleOptions: !form.showRoleOptions })} style={[styles.input, { justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center' }]}>
+                        <Text style={{ color: COLORS.text }}>{form.role ? (form.role.charAt(0).toUpperCase() + form.role.slice(1)) : 'Select role'}</Text>
+                        <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                      {form.showRoleOptions && (
+                        <View style={{ marginTop: 6, borderWidth: 1, borderColor: COLORS.border, borderRadius: 6, overflow: 'hidden' }}>
+                          {availableRoles.map((r) => (
+                            <TouchableOpacity key={r} onPress={() => setForm({ ...form, role: r, showRoleOptions: false })} style={{ padding: 10, backgroundColor: form.role === r ? '#F5F7FA' : '#FFF' }}>
+                              <Text style={{ color: COLORS.text }}>{r.charAt(0).toUpperCase() + r.slice(1)}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                      {repTaken && (
+                        <Text style={{ fontSize: 11, color: COLORS.textSecondary, marginTop: 2 }}>
+                          {repIsPending ? (
+                            <>
+                              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{repFullName}</Text>
+                              {' has been invited as representative but hasn\'t accepted yet. Wait for them to accept or cancel the invitation first.'}
+                            </>
+                          ) : (
+                            <>
+                              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{repFullName}</Text>
+                              {' is already the active representative. Use "Set as Representative" on another member to replace them.'}
+                            </>
+                          )}
+                        </Text>
+                      )}
+                    </>
+                  );
+                })()}
               </View>
 
 
@@ -743,50 +1006,165 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
       <Modal visible={viewModalVisible} animationType="fade" transparent>
         <View style={styles.viewModalOverlay}>
-          <View style={styles.viewModalCard}>
+          <View style={[styles.viewModalCard, { maxHeight: '90%' }]}>
             <Text style={styles.viewModalTitle}>Member Details</Text>
 
-            <View style={styles.viewAvatarWrap}>
-              <MemberImage
-                key={selectedMember?.profile_pic || selectedMember?.member_profile_pic || selectedMember?.avatar}
-                uri={selectedMember?.member_profile_pic || selectedMember?.profile_pic || selectedMember?.avatar}
-                style={styles.viewAvatar}
-                fallback={require('../../../assets/images/pictures/members_default.png')}
-              />
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.viewAvatarWrap}>
+                <MemberImage
+                  key={selectedMember?.profile_pic || selectedMember?.member_profile_pic || selectedMember?.avatar}
+                  uri={selectedMember?.member_profile_pic || selectedMember?.profile_pic || selectedMember?.avatar}
+                  style={styles.viewAvatar}
+                  fallback={require('../../../assets/images/pictures/members_default.png')}
+                />
+              </View>
 
-            <View style={styles.viewFieldRow}>
-              <Text style={styles.viewFieldLabel}>Name</Text>
-              <Text style={styles.viewFieldValue}>
-                {`${selectedMember?.first_name || ''} ${selectedMember?.middle_name || ''} ${selectedMember?.last_name || ''}`.replace(/\s+/g, ' ').trim() || 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.viewFieldRow}>
+                <Text style={styles.viewFieldLabel}>Name</Text>
+                <Text style={styles.viewFieldValue}>
+                  {`${selectedMember?.first_name || ''} ${selectedMember?.middle_name || ''} ${selectedMember?.last_name || ''}`.replace(/\s+/g, ' ').trim() || 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.viewFieldRow}>
-              <Text style={styles.viewFieldLabel}>Username</Text>
-              <Text style={styles.viewFieldValue}>@{selectedMember?.username || 'unknown'}</Text>
-            </View>
+              <View style={styles.viewFieldRow}>
+                <Text style={styles.viewFieldLabel}>Username</Text>
+                <Text style={styles.viewFieldValue}>@{selectedMember?.username || 'unknown'}</Text>
+              </View>
 
-            <View style={styles.viewFieldRow}>
-              <Text style={styles.viewFieldLabel}>Email</Text>
-              <Text style={styles.viewFieldValue}>{selectedMember?.email || 'N/A'}</Text>
-            </View>
+              <View style={styles.viewFieldRow}>
+                <Text style={styles.viewFieldLabel}>Email</Text>
+                <Text style={styles.viewFieldValue}>{selectedMember?.email || 'N/A'}</Text>
+              </View>
 
-            <View style={styles.viewFieldRow}>
-              <Text style={styles.viewFieldLabel}>Role</Text>
-              <Text style={styles.viewFieldValue}>
-                {selectedMember?.role ? (selectedMember.role.charAt(0).toUpperCase() + selectedMember.role.slice(1)) : 'N/A'}
-              </Text>
-            </View>
+              <View style={styles.viewFieldRow}>
+                <Text style={styles.viewFieldLabel}>Role</Text>
+                <Text style={styles.viewFieldValue}>
+                  {selectedMember?.role
+                    ? (selectedMember.role.charAt(0).toUpperCase() + selectedMember.role.slice(1)) +
+                      (selectedMember.role === 'others' && selectedMember.role_other
+                        ? ` (${selectedMember.role_other})`
+                        : '')
+                    : 'N/A'}
+                </Text>
+              </View>
 
-            <View style={styles.viewFieldRow}>
-              <Text style={styles.viewFieldLabel}>Status</Text>
-              <Text style={styles.viewFieldValue}>{isMemberActive(selectedMember?.is_active) ? 'Active' : 'Inactive'}</Text>
-            </View>
+              <View style={styles.viewFieldRow}>
+                <Text style={styles.viewFieldLabel}>Status</Text>
+                {(() => {
+                  if (!selectedMember) return <Text style={styles.viewFieldValue}>N/A</Text>;
+                  const ms = getMemberStatus(selectedMember);
+                  const statusColors = { active: '#16A34A', suspended: '#DC2626', pending: '#D97706' };
+                  const statusLabels = { active: 'Active', suspended: 'Suspended', pending: 'Pending Invitation' };
+                  return (
+                    <Text style={[styles.viewFieldValue, { color: statusColors[ms] }]}>{statusLabels[ms]}</Text>
+                  );
+                })()}
+              </View>
 
-            <TouchableOpacity style={styles.viewCloseBtn} onPress={closeView}>
+              {selectedMember?.is_suspended == 1 && selectedMember?.suspension_reason ? (
+                <View style={[styles.viewFieldRow, { backgroundColor: '#FEF2F2', padding: 8, borderRadius: 6, marginBottom: 8 }]}>
+                  <Text style={[styles.viewFieldLabel, { color: '#DC2626' }]}>Suspension Reason</Text>
+                  <Text style={[styles.viewFieldValue, { color: '#991B1B' }]}>{selectedMember.suspension_reason}</Text>
+                </View>
+              ) : null}
+
+              {selectedMember && !isMemberActive(selectedMember.is_active) ? (
+                <View style={[styles.viewFieldRow, { backgroundColor: '#FFFBEB', padding: 8, borderRadius: 6, marginBottom: 8 }]}>
+                  <Text style={[styles.viewFieldLabel, { color: '#D97706' }]}>Pending Invitation</Text>
+                  <Text style={[styles.viewFieldValue, { color: '#92400E', fontSize: 12 }]}>
+                    This member has not yet accepted the invitation.
+                  </Text>
+                </View>
+              ) : null}
+
+              {selectedMember?.created_at ? (
+                <View style={styles.viewFieldRow}>
+                  <Text style={styles.viewFieldLabel}>Invited On</Text>
+                  <Text style={styles.viewFieldValue}>
+                    {new Date(selectedMember.created_at).toLocaleDateString()}
+                  </Text>
+                </View>
+              ) : null}
+
+              {isOwnerRole && selectedMember && (() => {
+                const ms = getMemberStatus(selectedMember);
+                const isRep = selectedMember.role === 'representative';
+                return (
+                  <View style={{ marginTop: 12, gap: 8 }}>
+                    {ms === 'active' && !isRep && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#EFF6FF', borderRadius: 8, padding: 10, alignItems: 'center' }}
+                        onPress={() => changeRepresentative(selectedMember)}
+                      >
+                        <Text style={{ color: '#2563EB', fontWeight: '700', fontSize: 13 }}>Set as Representative</Text>
+                      </TouchableOpacity>
+                    )}
+                    {ms === 'active' && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#FFFBEB', borderRadius: 8, padding: 10, alignItems: 'center' }}
+                        onPress={() => { closeView(); openReasonModal('suspend', selectedMember); }}
+                      >
+                        <Text style={{ color: '#D97706', fontWeight: '700', fontSize: 13 }}>Suspend Member</Text>
+                      </TouchableOpacity>
+                    )}
+                    {ms === 'suspended' && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#F0FDF4', borderRadius: 8, padding: 10, alignItems: 'center' }}
+                        onPress={() => { closeView(); unsuspendMember(selectedMember); }}
+                      >
+                        <Text style={{ color: '#16A34A', fontWeight: '700', fontSize: 13 }}>Unsuspend Member</Text>
+                      </TouchableOpacity>
+                    )}
+                    {ms === 'pending' && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#FEF2F2', borderRadius: 8, padding: 10, alignItems: 'center' }}
+                        onPress={() => { closeView(); openReasonModal('cancel_invitation', selectedMember); }}
+                      >
+                        <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 13 }}>Cancel Invitation</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })()}
+            </ScrollView>
+
+            <TouchableOpacity style={[styles.viewCloseBtn, { marginTop: 12 }]} onPress={closeView}>
               <Text style={styles.viewCloseBtnText}>Close</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {/* Reason Modal — used for both Suspend and Cancel Invitation */}
+      <Modal visible={reasonModalVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 10, padding: 20 }}>
+            <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 12, color: COLORS.text }}>
+              {reasonModalConfig?.title}
+            </Text>
+            <TextInput
+              placeholder={reasonModalConfig?.placeholder}
+              placeholderTextColor="#9AA0A6"
+              value={reasonText}
+              onChangeText={setReasonText}
+              style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
+              multiline
+              numberOfLines={3}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setReasonModalVisible(false)}
+                style={[styles.newUserBtn, { backgroundColor: '#E6E9EE' }]}
+              >
+                <Text style={{ color: '#0F172A', fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={submitReasonModal} style={styles.newUserBtn} disabled={reasonSubmitting}>
+                {reasonSubmitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.newUserText}>Confirm</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1058,6 +1436,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  ownerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FED7AA',
+    borderTopWidth: 1,
+    borderTopColor: '#FED7AA',
+  },
+  ownerBadge: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  ownerBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   avatar: {
     width: 48,

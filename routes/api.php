@@ -17,6 +17,7 @@ use App\Http\Controllers\both\milestoneController;
 use App\Http\Controllers\both\projectUpdateController;
 use App\Http\Controllers\subs\payMongoController;
 use App\Http\Controllers\owner\downpaymentController;
+use App\Http\Controllers\verificationResubmitController;
 
 
 //role switch test endpoint moved outside middleware group
@@ -475,6 +476,9 @@ Route::middleware('auth:sanctum')->group(function () {
             ]);
         }
     );
+
+    // Verification resubmission (rejected users re-uploading documents)
+    Route::post('/verification/resubmit', [verificationResubmitController::class, 'resubmit']);
 
     // Dashboard
     Route::get('/dashboard', [\App\Http\Controllers\both\dashboardController::class, 'apiDashboard']);

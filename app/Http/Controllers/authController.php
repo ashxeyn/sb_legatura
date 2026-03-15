@@ -3787,6 +3787,13 @@ class authController extends Controller
                     'must_change_password' => $mustChangePassword,
                 ];
 
+                // Include resubmission data when user's verification was rejected
+                // with a RESUBMISSION: reason so the mobile app can show a modal.
+                if (!empty($result['requires_resubmission'])) {
+                    $responseData['requires_resubmission'] = true;
+                    $responseData['resubmission'] = $result['resubmission'];
+                }
+
                 /**
                  * DASHBOARD ROUTING RULES:
                  * - user_type === 'staff' â†’ contractor dashboard (staff are contractor team members)

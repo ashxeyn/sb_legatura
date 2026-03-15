@@ -91,10 +91,12 @@ type NotificationType =
   | 'review_submitted'
   // Payment fully paid
   | 'payment_fully_paid'
+  // Admin
+  | 'admin_announcement'
   // Fallback
   | 'general';
 
-type NotificationCategory = 'all' | 'projects' | 'bids' | 'payments' | 'messages';
+type NotificationCategory = 'all' | 'projects' | 'bids' | 'payments' | 'messages' | 'announcements';
 
 interface Notification {
   id: number;
@@ -334,6 +336,15 @@ const getNotificationStyle = (type: NotificationType) => {
         iconColor: COLORS.primary,
       };
 
+    // ── Admin Announcements ── megaphone ──
+    case 'admin_announcement':
+      return {
+        icon: 'megaphone-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: '#EDE9FE',
+        iconColor: '#7C3AED',
+      };
+
     // ── Default / General ──
     default:
       return {
@@ -356,7 +367,7 @@ const getTypeLabel = (type: NotificationType): string => {
 const formatRelativeTime = (timestamp: string): string => {
   if (!timestamp) return '';
   const now = new Date();
-  const date = new Date(timestamp.replace(' ', 'T')); // ensure ISO-like parse
+  const date = new Date(timestamp.replace(' ', 'T') + 'Z'); // backend timestamps are UTC
   if (isNaN(date.getTime())) return '';
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -380,7 +391,7 @@ const groupNotificationsByDate = (notifications: Notification[]) => {
   yesterday.setDate(yesterday.getDate() - 1);
 
   notifications.forEach((notification) => {
-    const date = new Date((notification.timestamp || '').replace(' ', 'T'));
+    const date = new Date((notification.timestamp || '').replace(' ', 'T') + 'Z');
     if (isNaN(date.getTime())) {
       // unparseable – put in EARLIER
       if (!groups['EARLIER']) groups['EARLIER'] = [];
@@ -422,6 +433,7 @@ const getNotificationCategory = (type: NotificationType): NotificationCategory =
   if (type.startsWith('dispute_') || type.startsWith('team_')) return 'messages';
   if (type.startsWith('review_')) return 'projects';
   if (type === 'payment_fully_paid') return 'payments';
+  if (type === 'admin_announcement') return 'announcements';
   return 'all';
 };
 
@@ -429,13 +441,16 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<NotificationCategory>('all');
+  const [activeFilters, setActiveFilters] = useState<NotificationCategory[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeRole, setActiveRole] = useState<'contractor' | 'owner' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [invitationModalVisible, setInvitationModalVisible] = useState(false);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [selectedInvitation, setSelectedInvitation] = useState<Notification | null>(null);
@@ -448,6 +463,7 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
     { id: 'bids', label: 'Bids' },
     { id: 'payments', label: 'Payments' },
     { id: 'messages', label: 'Messages' },
+    { id: 'announcements', label: 'Announcements' },
   ];
 
   useEffect(() => {
@@ -456,7 +472,7 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
 
   useEffect(() => {
     filterNotifications();
-  }, [notifications, selectedCategory]);
+  }, [notifications, activeFilters, searchQuery]);
 
   const loadNotifications = async (page: number = 1, append: boolean = false) => {
     if (page === 1) setLoading(true);
@@ -507,13 +523,29 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   };
 
   const filterNotifications = () => {
-    if (selectedCategory === 'all') {
-      setFilteredNotifications(notifications);
-    } else {
-      setFilteredNotifications(
-        notifications.filter((n) => getNotificationCategory(n.type) === selectedCategory)
+    const q = searchQuery.trim().toLowerCase();
+    let result = notifications;
+    if (activeFilters.length > 0) {
+      result = result.filter((n) => activeFilters.includes(getNotificationCategory(n.type)));
+    }
+    if (q) {
+      result = result.filter(
+        (n) =>
+          n.title.toLowerCase().includes(q) ||
+          n.message.toLowerCase().includes(q)
       );
     }
+    setFilteredNotifications(result);
+  };
+
+  const toggleFilter = (cat: NotificationCategory) => {
+    if (cat === 'all') {
+      setActiveFilters([]);
+      return;
+    }
+    setActiveFilters((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
   };
 
   const onRefresh = useCallback(async () => {
@@ -624,6 +656,12 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
       return;
     }
 
+    // Types with no navigation target — mark as read and exit silently
+    if (notification.type === 'admin_announcement' || notification.type === 'general') {
+      if (!notification.is_read) void markAsRead(notification.id);
+      return;
+    }
+
     // Optimistic UI update: mark as read immediately
     setNotifications((prev) =>
       prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
@@ -669,7 +707,7 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   };
 
   const renderCategoryTab = (category: { id: NotificationCategory; label: string }) => {
-    const isSelected = selectedCategory === category.id;
+    const isSelected = category.id === 'all' ? activeFilters.length === 0 : activeFilters.includes(category.id);
     const unreadCount = getUnreadCount(category.id);
 
     return (
@@ -694,7 +732,10 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
 
   const renderNotificationItem = (notification: Notification) => {
     const defaultStyle = getNotificationStyle(notification.type);
-    const style = isContractorStaffInvitation(notification)
+    const isWelcome = notification.type === 'general' && notification.title.toLowerCase().includes('welcome');
+    const style = isWelcome
+      ? { icon: 'gift-outline' as const, iconComponent: 'ionicons', bgColor: '#FEF9C3', iconColor: '#B45309' }
+      : isContractorStaffInvitation(notification)
       ? {
           icon: 'person-add-outline' as const,
           iconComponent: 'ionicons',
@@ -703,6 +744,59 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
         }
       : defaultStyle;
     const typeLabel = getTypeLabel(notification.type);
+
+    // ── Admin Announcement ── special banner card ──────────────────────────────
+    if (notification.type === 'admin_announcement') {
+      const priority = notification.priority || 'normal';
+      const priorityColor =
+        priority === 'critical' ? COLORS.error :
+        priority === 'high'     ? COLORS.warning :
+                                  '#7C3AED';
+      const priorityBg =
+        priority === 'critical' ? COLORS.errorLight :
+        priority === 'high'     ? COLORS.warningLight :
+                                  '#EDE9FE';
+
+      return (
+        <TouchableOpacity
+          key={notification.id}
+          style={[styles.announcementItem, !notification.is_read && styles.announcementItemUnread]}
+          onPress={() => handleNotificationPress(notification)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.announcementBadgeRow}>
+            <View style={[styles.announcementBadge, { backgroundColor: priorityBg }]}>
+              <Ionicons name="megaphone-outline" size={12} color={priorityColor} style={{ marginRight: 4 }} />
+              <Text style={[styles.announcementBadgeText, { color: priorityColor }]}>ANNOUNCEMENT</Text>
+            </View>
+            {priority !== 'normal' && (
+              <View style={[styles.announcementPriorityBadge, { backgroundColor: priorityBg }]}>
+                <Text style={[styles.announcementBadgeText, { color: priorityColor }]}>
+                  {priority.toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <Text style={styles.notificationTime}>{formatRelativeTime(notification.timestamp)}</Text>
+          </View>
+
+          <View style={styles.announcementBody}>
+            <View style={[styles.announcementIcon, { backgroundColor: priorityBg }]}>
+              <Ionicons name="megaphone-outline" size={22} color={priorityColor} />
+            </View>
+            <View style={styles.notificationContent}>
+              <Text style={[styles.notificationTitle, { color: COLORS.text }]} numberOfLines={2}>
+                {notification.title}
+              </Text>
+              <Text style={styles.notificationMessage} numberOfLines={3}>
+                {notification.message}
+              </Text>
+            </View>
+            {!notification.is_read && <View style={styles.unreadDot} />}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     return (
       <TouchableOpacity
@@ -752,23 +846,14 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
     );
   };
 
-  const renderDateGroup = (dateLabel: string, items: Notification[]) => {
-    const unreadInGroup = items.filter((n) => !n.is_read).length;
-
-    return (
-      <View key={dateLabel} style={styles.dateGroup}>
-        <View style={styles.dateGroupHeader}>
-          <Text style={styles.dateGroupLabel}>{dateLabel}</Text>
-          {unreadInGroup > 0 && (
-            <TouchableOpacity onPress={() => markAllAsRead(dateLabel)}>
-              <Text style={styles.markAllReadText}>Mark all as read</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        {items.map(renderNotificationItem)}
+  const renderDateGroup = (dateLabel: string, items: Notification[]) => (
+    <View key={dateLabel} style={styles.dateGroup}>
+      <View style={styles.dateGroupHeader}>
+        <Text style={styles.dateGroupLabel}>{dateLabel}</Text>
       </View>
-    );
-  };
+      {items.map(renderNotificationItem)}
+    </View>
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -777,9 +862,13 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
       </View>
       <Text style={styles.emptyTitle}>No Notifications</Text>
       <Text style={styles.emptyMessage}>
-        {selectedCategory === 'all'
+        {searchQuery.trim()
+          ? `No results for "${searchQuery.trim()}".`
+          : activeFilters.length === 0
           ? "You're all caught up! Check back later for updates."
-          : `No ${selectedCategory} notifications yet.`}
+          : activeFilters.length === 1 && activeFilters[0] === 'announcements'
+          ? 'No announcements from admin yet.'
+          : `No ${activeFilters.map((f) => categories.find((c) => c.id === f)?.label ?? f).join(', ')} notifications yet.`}
       </Text>
     </View>
   );
@@ -808,25 +897,85 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
           )}
         </View>
         <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => {
-            // TODO: Navigate to notification settings
-          }}
+          style={styles.markAllHeaderButton}
+          onPress={() => markAllAsRead()}
+          disabled={notifications.filter((n) => !n.is_read).length === 0}
         >
-          <Feather name="settings" size={22} color={COLORS.textSecondary} />
+          <Text style={[
+            styles.markAllHeaderText,
+            notifications.filter((n) => !n.is_read).length === 0 && { opacity: 0.3 },
+          ]}>
+            Mark all as read
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Category Tabs */}
-      <View style={styles.categoryContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScrollContent}
+      {/* Search + Filter Row */}
+      <View style={styles.searchContainer}>
+        <View style={[styles.searchInputWrapper, searchFocused && styles.searchInputWrapperFocused]}>
+          <Feather name="search" size={16} color={searchFocused ? COLORS.primary : COLORS.textMuted} style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search notifications..."
+            placeholderTextColor={COLORS.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather name="x" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity
+          style={[styles.filterButton, activeFilters.length > 0 && styles.filterButtonActive]}
+          onPress={() => setFilterModalVisible(true)}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
-          {categories.map(renderCategoryTab)}
-        </ScrollView>
+          <Ionicons
+            name="filter-outline"
+            size={20}
+            color={activeFilters.length > 0 ? COLORS.surface : COLORS.textSecondary}
+          />
+          {activeFilters.length > 0 && <View style={styles.filterActiveDot} />}
+        </TouchableOpacity>
       </View>
+
+      {/* Active filter chips */}
+      {activeFilters.length > 0 && (
+        <View style={styles.activeFilterRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.activeFilterScrollContent}
+          >
+            <Text style={styles.activeFilterLabel}>Filters:</Text>
+            {activeFilters.map((f) => (
+              <View key={f} style={styles.activeFilterChip}>
+                <Text style={styles.activeFilterChipText}>
+                  {categories.find((c) => c.id === f)?.label ?? f}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setActiveFilters((prev) => prev.filter((c) => c !== f))}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Feather name="x" size={12} color={COLORS.primary} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity onPress={() => setActiveFilters([])} style={styles.activeFilterClearBtn}>
+              <Text style={styles.activeFilterClearText}>Clear all</Text>
+            </TouchableOpacity>
+          </ScrollView>
+          <Text style={styles.activeFilterCount}>
+            {filteredNotifications.length} result{filteredNotifications.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      )}
 
       {/* Notifications List */}
       <ScrollView
@@ -983,6 +1132,62 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
           </View>
         </View>
       </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={filterModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.filterModalOverlay}
+          activeOpacity={1}
+          onPress={() => setFilterModalVisible(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.filterModalCard}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Filter by Type</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <Feather name="x" size={20} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.filterOptionsGrid}>
+              {categories.map((cat) => {
+                const isActive = cat.id === 'all' ? activeFilters.length === 0 : activeFilters.includes(cat.id);
+                const unread = getUnreadCount(cat.id);
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.filterOptionItem, isActive && styles.filterOptionItemActive]}
+                    onPress={() => toggleFilter(cat.id)}
+                  >
+                    <Text style={[styles.filterOptionLabel, isActive && styles.filterOptionLabelActive]}>
+                      {cat.label}
+                    </Text>
+                    {unread > 0 && (
+                      <View style={[styles.filterOptionBadge, isActive && styles.filterOptionBadgeActive]}>
+                        <Text style={[styles.filterOptionBadgeText, isActive && styles.filterOptionBadgeTextActive]}>
+                          {unread > 99 ? '99+' : unread}
+                        </Text>
+                      </View>
+                    )}
+                    {isActive && (
+                      <Ionicons name="checkmark" size={14} color={isActive && cat.id !== 'all' ? COLORS.surface : COLORS.text} style={{ marginLeft: 'auto' }} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TouchableOpacity
+              style={styles.filterDoneBtn}
+              onPress={() => setFilterModalVisible(false)}
+            >
+              <Text style={styles.filterDoneBtnText}>Done</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1018,6 +1223,205 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  markAllHeaderButton: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 2,
+  },
+  markAllHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+    flexShrink: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    gap: 10,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchInputWrapperFocused: {
+    borderColor: COLORS.primary,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+    paddingVertical: 0,
+  },
+  filterButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 6,
+    backgroundColor: COLORS.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    position: 'relative',
+  },
+  filterButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterActiveDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.surface,
+  },
+  activeFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: COLORS.primaryLight,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFD9A8',
+  },
+  activeFilterScrollContent: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  activeFilterLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginRight: 6,
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginRight: 0,
+  },
+  activeFilterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  activeFilterCount: {
+    paddingHorizontal: 12,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    flexShrink: 0,
+  },
+  activeFilterClearBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  activeFilterClearText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textDecorationLine: 'underline',
+  },
+  // ── Filter Modal ──────────────────────────────────────────────────────────
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  filterModalCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    padding: 18,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  filterModalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  filterOptionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  filterOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    minWidth: '45%',
+    flex: 1,
+  },
+  filterOptionItemActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterOptionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  filterOptionLabelActive: {
+    color: COLORS.surface,
+    fontWeight: '600',
+  },
+  filterOptionBadge: {
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    backgroundColor: COLORS.borderLight,
+    minWidth: 22,
+    alignItems: 'center',
+  },
+  filterOptionBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  filterOptionBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  filterOptionBadgeTextActive: {
+    color: COLORS.surface,
+  },
+  filterDoneBtn: {
+    marginTop: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 6,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  filterDoneBtnText: {
+    color: COLORS.surface,
+    fontWeight: '700',
+    fontSize: 14,
   },
   categoryContainer: {
     backgroundColor: COLORS.surface,
@@ -1162,7 +1566,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 4,
     marginTop: 2,
   },
   typePillText: {
@@ -1285,5 +1689,53 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 12,
     backgroundColor: COLORS.background,
+  },
+  // ── Announcement banner styles ────────────────────────────────────────────
+  announcementItem: {
+    backgroundColor: '#FAFAFE',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    borderLeftWidth: 4,
+    borderLeftColor: '#7C3AED',
+  },
+  announcementItemUnread: {
+    backgroundColor: '#F5F3FF',
+  },
+  announcementBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 6,
+  },
+  announcementBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  announcementPriorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  announcementBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  announcementBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  announcementIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
 });

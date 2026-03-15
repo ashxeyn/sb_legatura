@@ -24,8 +24,8 @@ export type ContractorRole = 'owner' | 'representative' | 'manager' | 'engineer'
 // Roles with full access for core contractor operations (bid, milestones)
 export const FULL_ACCESS_ROLES: ContractorRole[] = ['owner', 'representative'];
 
-// Roles allowed to manage members (add/remove/edit)
-export const MEMBER_MANAGEMENT_ROLES: ContractorRole[] = ['owner', 'representative'];
+// Roles allowed to manage members (add/remove/edit) — OWNER ONLY per the tier system
+export const MEMBER_MANAGEMENT_ROLES: ContractorRole[] = ['owner'];
 
 // Roles with limited access (view, upload progress, approve payments only)
 export const LIMITED_ACCESS_ROLES: ContractorRole[] = ['manager', 'engineer', 'architect', 'others'];

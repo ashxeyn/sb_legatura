@@ -1577,14 +1577,24 @@ class userManagementController extends authController
             } else {
                 $profile = DB::table('property_owners')->where('user_id', $id)->first();
                 $firstName = $profile->first_name ?? '';
+                $lastName  = $profile->last_name ?? '';
             }
 
-            // In-app notification
+            if ($targetRole === 'contractor') {
+                // Contractors are companies — use company name
+                $contractorProfile = DB::table('contractors')->where('user_id', $id)->first();
+                $displayName = $contractorProfile->company_name ?? $firstName;
+            } else {
+                $displayName = trim($firstName . ' ' . ($lastName ?? ''));
+                if ($displayName === '') $displayName = 'there';
+            }
+
+            // In-app welcome notification
             NotificationService::create(
                 (int) $id,
-                'project_update',
-                'Account Verified',
-                "Your {$roleLabel} account has been verified and approved. You can now access all platform features.",
+                'general',
+                "Welcome to Legatura, {$displayName}!",
+                "Your {$roleLabel} account has been verified and approved. You can now access all platform features. Welcome aboard!",
                 'high',
                 null,
                 null,
@@ -1655,7 +1665,7 @@ class userManagementController extends authController
             // In-app notification
             NotificationService::create(
                 (int) $id,
-                'project_update',
+                'general',
                 $isResubmission ? 'Account Verification — Resubmission Required' : 'Account Verification Rejected',
                 $isResubmission
                     ? "Your {$roleLabel} account requires resubmission of documents. Reason: {$cleanReason}. Please log in and resubmit."
