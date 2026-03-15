@@ -55,10 +55,13 @@ class propertyOwnerRequest extends FormRequest
             'occupation_other' => 'required_if:occupation_id,others|nullable|string|max:200',
 
             'province' => 'required|string',
+            'province_name' => 'nullable|string',
             'city' => 'required|string',
+            'city_name' => 'nullable|string',
             'barangay' => 'required|string',
-            'street_address' => 'required|string|max:255',
-            'zip_code' => 'required|string|max:10',
+            'barangay_name' => 'nullable|string',
+            'street_address' => 'nullable|string|max:255',
+            'zip_code' => 'nullable|string|max:10',
 
             'valid_id_id' => 'required|exists:valid_ids,id',
             'profile_pic' => 'nullable|image|max:5120',

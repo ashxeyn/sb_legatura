@@ -255,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
       'addLastName': 'addLastNameError',
       'occupationSelect': 'addOccupationError',
       'addEmail': 'addEmailError',
+      'addDateOfBirth': 'addDateOfBirthError',
       'owner_address_province': 'addProvinceError',
       'owner_address_city': 'addCityError',
       'owner_address_barangay': 'addBarangayError',
@@ -309,6 +310,27 @@ document.addEventListener('DOMContentLoaded', function () {
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
         errors['addEmailError'] = 'Please enter a valid email address';
         isValid = false;
+      }
+
+      // Check Date of Birth
+      const dateOfBirth = document.getElementById('addDateOfBirth');
+      if (!dateOfBirth || !dateOfBirth.value) {
+        errors['addDateOfBirthError'] = 'Date of birth is required';
+        isValid = false;
+      } else {
+        // Check if user is at least 15 years old
+        const birthDate = new Date(dateOfBirth.value);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        const dayDiff = today.getDate() - birthDate.getDate();
+        
+        const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+        
+        if (actualAge < 15) {
+          errors['addDateOfBirthError'] = 'User must be at least 15 years old';
+          isValid = false;
+        }
       }
 
       // Check Province
@@ -412,6 +434,17 @@ document.addEventListener('DOMContentLoaded', function () {
       if (csrfToken) {
         formData.append('_token', csrfToken.content);
       }
+
+      // Debug: Log all form data being sent
+      console.log('=== Form Data Being Sent ===');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(key + ':', value.name, '(' + value.size + ' bytes)');
+        } else {
+          console.log(key + ':', value);
+        }
+      }
+      console.log('============================');
 
       modal.querySelectorAll('.error-message').forEach(el => el.remove());
       modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
@@ -710,8 +743,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Clear validation error messages
     const validationErrorIds = [
       'addFirstNameError', 'addLastNameError', 'addOccupationError', 'addEmailError',
-      'addProvinceError', 'addCityError', 'addBarangayError', 'addValidIdTypeError',
-      'addIdFrontError', 'addIdBackError', 'addPoliceClearanceError'
+      'addDateOfBirthError', 'addProvinceError', 'addCityError', 'addBarangayError', 
+      'addValidIdTypeError', 'addIdFrontError', 'addIdBackError', 'addPoliceClearanceError'
     ];
     
     validationErrorIds.forEach(errorId => {
@@ -908,12 +941,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const occupationSelect = document.getElementById('edit_occupationSelect');
       const occupationOtherInput = document.getElementById('edit_occupationOtherInput');
+      
+      // Check if occupation_id exists and if occupation_other has a value
       if (owner.occupation_id) {
         occupationSelect.value = owner.occupation_id;
-        occupationOtherInput.classList.add('hidden');
+        
+        // If occupation_other has a value, it means the occupation is "Others"
+        if (owner.occupation_other && owner.occupation_other.trim() !== '') {
+          occupationSelect.value = 'others';
+          occupationOtherInput.value = owner.occupation_other;
+          occupationOtherInput.classList.remove('hidden');
+        } else {
+          occupationOtherInput.classList.add('hidden');
+          occupationOtherInput.value = '';
+        }
       } else {
+        // No occupation_id means it's a custom occupation
         occupationSelect.value = 'others';
-        occupationOtherInput.value = owner.occupation;
+        occupationOtherInput.value = owner.occupation || '';
         occupationOtherInput.classList.remove('hidden');
       }
 
@@ -1009,19 +1054,19 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('edit_valid_id_id').value = owner.valid_id_id;
 
       if (owner.valid_id_photo) {
-        currentIdFront.innerHTML = `Current: <a href="/storage/${owner.valid_id_photo}" onclick="event.preventDefault(); event.stopPropagation(); openImageModal('/storage/${owner.valid_id_photo}', 'Valid ID (Front)')" class="text-orange-500 hover:underline">View File</a>`;
+        currentIdFront.innerHTML = `Current: <a href="#" class="text-orange-500 hover:underline open-doc-btn" data-doc-src="/storage/${owner.valid_id_photo}" data-doc-title="Valid ID (Front)">View File</a>`;
       } else {
         currentIdFront.innerHTML = '';
       }
 
       if (owner.valid_id_back_photo) {
-        currentIdBack.innerHTML = `Current: <a href="/storage/${owner.valid_id_back_photo}" onclick="event.preventDefault(); event.stopPropagation(); openImageModal('/storage/${owner.valid_id_back_photo}', 'Valid ID (Back)')" class="text-orange-500 hover:underline">View File</a>`;
+        currentIdBack.innerHTML = `Current: <a href="#" class="text-orange-500 hover:underline open-doc-btn" data-doc-src="/storage/${owner.valid_id_back_photo}" data-doc-title="Valid ID (Back)">View File</a>`;
       } else {
         currentIdBack.innerHTML = '';
       }
 
       if (owner.police_clearance) {
-        currentPoliceClearance.innerHTML = `Current: <a href="/storage/${owner.police_clearance}" onclick="event.preventDefault(); event.stopPropagation(); openImageModal('/storage/${owner.police_clearance}', 'Police Clearance')" class="text-orange-500 hover:underline">View File</a>`;
+        currentPoliceClearance.innerHTML = `Current: <a href="#" class="text-orange-500 hover:underline open-doc-btn" data-doc-src="/storage/${owner.police_clearance}" data-doc-title="Police Clearance">View File</a>`;
       } else {
         currentPoliceClearance.innerHTML = '';
       }
@@ -1085,6 +1130,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (editModalContent) {
     editModalContent.addEventListener('click', function (e) {
+      // Allow clicks on document viewer buttons to bubble up
+      if (e.target.closest('.open-doc-btn')) {
+        return;
+      }
       e.stopPropagation();
     });
   }
@@ -1508,52 +1557,6 @@ document.addEventListener('DOMContentLoaded', function () {
       closeDeleteModal();
     }
   });
-  // Image viewer modal handlers
-  function openImageModal(url, title = '') {
-    const modal = document.getElementById('imageViewerModal');
-    const img = document.getElementById('imageViewerImg');
-    const titleEl = document.getElementById('imageViewerTitle');
-    if (!modal || !img) return;
-    img.src = url;
-    if (titleEl) titleEl.textContent = title || '';
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeImageModal() {
-    const modal = document.getElementById('imageViewerModal');
-    const img = document.getElementById('imageViewerImg');
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    document.body.style.overflow = 'auto';
-    if (img) img.src = '';
-  }
-
-  const imageViewerModal = document.getElementById('imageViewerModal');
-  const closeImageViewerBtn = document.getElementById('closeImageViewerBtn');
-
-  if (closeImageViewerBtn) {
-    closeImageViewerBtn.addEventListener('click', closeImageModal);
-  }
-
-  if (imageViewerModal) {
-    imageViewerModal.addEventListener('click', function (e) {
-      if (e.target === imageViewerModal) {
-        closeImageModal();
-      }
-    });
-  }
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && imageViewerModal && !imageViewerModal.classList.contains('hidden')) {
-      closeImageModal();
-    }
-  });
-
-  window.openImageModal = openImageModal;
-  window.closeImageModal = closeImageModal;
 
   window.openDeleteModal = openDeleteModal;
   window.openEditModal = openEditModal;
@@ -1601,3 +1604,119 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
+
+
+// ============================================
+// Universal File Viewer (UFV) for Property Owner Page
+// ============================================
+(function() {
+    console.log('UFV: Initializing...');
+    const modal = document.getElementById('documentViewerModal');
+    const iframe = document.getElementById('documentViewerFrame');
+    const img = document.getElementById('documentViewerImg');
+    const closeBtn = document.getElementById('closeDocumentViewerBtn');
+
+    console.log('UFV: Modal found?', !!modal);
+    console.log('UFV: Iframe found?', !!iframe);
+    console.log('UFV: Img found?', !!img);
+
+    if (!modal) {
+        console.error('UFV: documentViewerModal not found!');
+        return;
+    }
+
+    function openDocumentViewer(src, title) {
+        console.log('UFV: Opening viewer with src:', src, 'title:', title);
+        if (!modal) return;
+        const isPdf = /\.pdf(\?|$)/i.test(src);
+        const titleEl = document.getElementById('documentViewerTitle');
+        const downloadLink = document.getElementById('documentViewerDownload');
+
+        if (titleEl) titleEl.textContent = title || 'Document Viewer';
+        if (downloadLink) downloadLink.href = src;
+
+        if (isPdf) {
+            if (iframe) {
+                iframe.src = src;
+                iframe.classList.remove('hidden');
+            }
+            if (img) img.classList.add('hidden');
+        } else {
+            if (img) {
+                img.src = src;
+                img.classList.remove('hidden');
+            }
+            if (iframe) iframe.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            setTimeout(function() {
+                modalShell.classList.remove('scale-95', 'opacity-0');
+                modalShell.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+    }
+
+    function closeDocumentViewer() {
+        console.log('UFV: Closing viewer');
+        if (!modal) return;
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            modalShell.classList.remove('scale-100', 'opacity-100');
+            modalShell.classList.add('scale-95', 'opacity-0');
+        }
+        setTimeout(function() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            if (iframe) iframe.src = '';
+            if (img) img.src = '';
+        }, 200);
+    }
+
+    // Delegated click handler for open buttons
+    document.addEventListener('click', function(e) {
+        console.log('UFV: Click detected on:', e.target);
+        const btn = e.target.closest && e.target.closest('.open-doc-btn');
+        console.log('UFV: Closest .open-doc-btn:', btn);
+        if (btn) {
+            console.log('UFV: Button clicked!');
+            e.preventDefault();
+            e.stopPropagation();
+            const src = btn.getAttribute('data-doc-src');
+            const title = btn.getAttribute('data-doc-title') || 'Document';
+            console.log('UFV: src:', src, 'title:', title);
+            if (src) {
+                openDocumentViewer(src, title);
+            }
+        }
+    }, true); // Use capture phase
+
+    // Close button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeDocumentViewer);
+    }
+
+    // Close on backdrop click
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeDocumentViewer();
+            }
+        });
+    }
+
+    // Close on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeDocumentViewer();
+        }
+    });
+
+    console.log('UFV: Initialization complete');
+})();

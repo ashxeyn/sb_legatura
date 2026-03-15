@@ -201,9 +201,10 @@
                 class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Date of birth</label>
-              <input type="date" name="date_of_birth"
+              <label class="block text-xs font-medium text-gray-700 mb-1">Date of birth <span class="text-red-500">*</span></label>
+              <input type="date" name="date_of_birth" id="addDateOfBirth"
                 class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              <p id="addDateOfBirthError" class="text-red-500 text-xs mt-1 hidden"></p>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Last name <span class="text-red-500">*</span></label>
@@ -653,15 +654,28 @@
     </div>
   </div>
 
-  <!-- Image Viewer Modal -->
-  <div id="imageViewerModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden items-center justify-center p-4">
-    <div class="max-w-4xl w-full relative">
-      <button id="closeImageViewerBtn" class="absolute top-2 right-2 text-white bg-black bg-opacity-50 p-2 rounded-full z-20">
-        <i class="fi fi-rr-cross text-2xl"></i>
-      </button>
-      <div class="flex flex-col items-center justify-center">
-        <h3 id="imageViewerTitle" class="text-white text-lg mb-3"></h3>
-        <img id="imageViewerImg" src="" alt="Document" class="max-h-[80vh] w-auto rounded-lg shadow-xl" />
+  <!-- Universal File Viewer (UFV) -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
+          <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
+            <i class="fi fi-rr-download"></i>
+          </a>
+          <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
+            <i class="fi fi-rr-cross text-sm"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Viewport -->
+      <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
+        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
+        <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
       </div>
     </div>
   </div>

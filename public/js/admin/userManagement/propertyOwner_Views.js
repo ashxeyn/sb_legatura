@@ -44,39 +44,140 @@ document.addEventListener('DOMContentLoaded', function() {
     const ownerCoverImg = document.getElementById('ownerCoverImg');
     const ownerCoverPlaceholder = document.getElementById('ownerCoverPlaceholder');
 
+    // Upload Confirmation Modal Elements
+    const uploadConfirmModal = document.getElementById('uploadConfirmModal');
+    const uploadConfirmModalContent = uploadConfirmModal ? uploadConfirmModal.querySelector('.modal-content') : null;
+    const uploadConfirmPreview = document.getElementById('uploadConfirmPreview');
+    const uploadConfirmMessage = document.getElementById('uploadConfirmMessage');
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+    const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+
+    let currentUploadFile = null;
+    let currentUploadType = null; // 'profile' or 'cover'
+
+    function openUploadConfirmModal(file, type) {
+        if (!uploadConfirmModal || !uploadConfirmModalContent) return;
+
+        currentUploadFile = file;
+        currentUploadType = type;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (uploadConfirmPreview) uploadConfirmPreview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        if (uploadConfirmMessage) {
+            uploadConfirmMessage.textContent = type === 'profile' ? 
+                'Are you sure you want to update the profile picture?' : 
+                'Are you sure you want to update the cover photo?';
+        }
+
+        uploadConfirmModal.classList.remove('hidden');
+        uploadConfirmModal.classList.add('flex');
+        setTimeout(() => {
+            uploadConfirmModalContent.classList.remove('scale-95', 'opacity-0');
+            uploadConfirmModalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeUploadConfirmModal() {
+        if (!uploadConfirmModalContent) return;
+
+        uploadConfirmModalContent.classList.remove('scale-100', 'opacity-100');
+        uploadConfirmModalContent.classList.add('scale-95', 'opacity-0');
+
+        setTimeout(() => {
+            uploadConfirmModal.classList.add('hidden');
+            uploadConfirmModal.classList.remove('flex');
+            currentUploadFile = null;
+            currentUploadType = null;
+            // Reset the file inputs so the change event can fire again for the same file if needed
+            if (ownerProfileUpload) ownerProfileUpload.value = '';
+            if (ownerCoverUpload) ownerCoverUpload.value = '';
+        }, 300);
+    }
+
+    if (cancelUploadBtn) {
+        cancelUploadBtn.addEventListener('click', closeUploadConfirmModal);
+    }
+
     if (ownerProfileUpload && ownerProfileImg) {
         ownerProfileUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                ownerProfileImg.src = event.target.result;
-                ownerProfileImg.classList.remove('hidden');
-                if (ownerProfileInitials) {
-                    ownerProfileInitials.classList.add('hidden');
-                }
-            };
-            reader.readAsDataURL(file);
+            if (file) openUploadConfirmModal(file, 'profile');
         });
     }
 
     if (ownerCoverUpload && ownerCoverImg) {
         ownerCoverUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                ownerCoverImg.src = event.target.result;
-                ownerCoverImg.classList.remove('hidden');
-                if (ownerCoverPlaceholder) {
-                    ownerCoverPlaceholder.classList.add('hidden');
-                }
-            };
-            reader.readAsDataURL(file);
+            if (file) openUploadConfirmModal(file, 'cover');
         });
     }
+
+    if (confirmUploadBtn) {
+        confirmUploadBtn.addEventListener('click', function() {
+            if (!currentUploadFile || !currentUploadType) return;
+
+            const ownerId = document.body.dataset.ownerId;
+            const formData = new FormData();
+            
+            let url = '';
+            if (currentUploadType === 'profile') {
+                formData.append('profile_pic', currentUploadFile);
+                url = `/admin/user-management/property-owners/${ownerId}/update-profile-pic`;
+            } else {
+                formData.append('cover_photo', currentUploadFile);
+                url = `/admin/user-management/property-owners/${ownerId}/update-cover-photo`;
+            }
+
+            confirmUploadBtn.disabled = true;
+            const originalBtnText = confirmUploadBtn.innerHTML;
+            confirmUploadBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin mt-1"></i> Uploading...';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    // Update the image on the page
+                    if (currentUploadType === 'profile') {
+                        if (ownerProfileImg) {
+                            ownerProfileImg.src = data.path;
+                            ownerProfileImg.classList.remove('hidden');
+                        }
+                        if (ownerProfileInitials) ownerProfileInitials.classList.add('hidden');
+                    } else {
+                        if (ownerCoverImg) {
+                            ownerCoverImg.src = data.path;
+                            ownerCoverImg.classList.remove('hidden');
+                        }
+                        if (ownerCoverPlaceholder) ownerCoverPlaceholder.classList.add('hidden');
+                    }
+                    closeUploadConfirmModal();
+                } else {
+                    showNotification(data.message || 'Upload failed', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('An error occurred during upload', 'error');
+            })
+            .finally(() => {
+                confirmUploadBtn.disabled = false;
+                confirmUploadBtn.innerHTML = originalBtnText;
+            });
+        });
+    }
+
 
     const suspendBtn = document.getElementById('suspendPropertyOwnerBtn');
     const suspendModal = document.getElementById('suspendAccountModal');
@@ -313,35 +414,102 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-window.openImageModal = function(src, title) {
-    const modal = document.getElementById('imageViewerModal');
-    const img = document.getElementById('imageModalPreview');
-    const titleEl = document.getElementById('imageModalTitle');
+// ============================================
+// Universal File Viewer (UFV) - Dark Theme
+// ============================================
+(function() {
+    const modal = document.getElementById('documentViewerModal');
+    const iframe = document.getElementById('documentViewerFrame');
+    const img = document.getElementById('documentViewerImg');
+    const closeBtn = document.getElementById('closeDocumentViewerBtn');
 
-    img.classList.remove('scale-100', 'opacity-100');
-    img.classList.add('scale-95', 'opacity-0');
+    if (!modal) return;
 
-    img.src = src;
-    titleEl.textContent = title;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+    function openDocumentViewer(src, title) {
+        if (!modal) return;
+        const isPdf = /\.pdf(\?|$)/i.test(src);
+        const titleEl = document.getElementById('documentViewerTitle');
+        const downloadLink = document.getElementById('documentViewerDownload');
 
-    setTimeout(() => {
-        img.classList.remove('scale-95', 'opacity-0');
-        img.classList.add('scale-100', 'opacity-100');
-    }, 50);
-};
+        if (titleEl) titleEl.textContent = title || 'Document Viewer';
+        if (downloadLink) downloadLink.href = src;
 
-window.closeImageModal = function() {
-    const modal = document.getElementById('imageViewerModal');
-    const img = document.getElementById('imageModalPreview');
+        if (isPdf) {
+            if (iframe) {
+                iframe.src = src;
+                iframe.classList.remove('hidden');
+            }
+            if (img) img.classList.add('hidden');
+        } else {
+            if (img) {
+                img.src = src;
+                img.classList.remove('hidden');
+            }
+            if (iframe) iframe.classList.add('hidden');
+        }
 
-    img.classList.remove('scale-100', 'opacity-100');
-    img.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
 
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        img.src = ''; // Clear src to stop loading/playing
-    }, 300);
-};
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            setTimeout(function() {
+                modalShell.classList.remove('scale-95', 'opacity-0');
+                modalShell.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+    }
+
+    function closeDocumentViewer() {
+        if (!modal) return;
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            modalShell.classList.remove('scale-100', 'opacity-100');
+            modalShell.classList.add('scale-95', 'opacity-0');
+        }
+        setTimeout(function() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            if (iframe) iframe.src = '';
+            if (img) img.src = '';
+        }, 200);
+    }
+
+    // Delegated click handler for open buttons
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest && e.target.closest('.open-doc-btn');
+        if (btn) {
+            e.preventDefault();
+            const src = btn.getAttribute('data-doc-src');
+            const title = btn.getAttribute('data-doc-title') || 'Document';
+            if (src) {
+                openDocumentViewer(src, title);
+            }
+        }
+    });
+
+    // Close button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeDocumentViewer);
+    }
+
+    // Close on backdrop click
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeDocumentViewer();
+            }
+        });
+    }
+
+    // Close on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeDocumentViewer();
+        }
+    });
+})();
+
+

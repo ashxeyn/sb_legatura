@@ -39,7 +39,8 @@
 
 </head>
 
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans" data-owner-id="{{ $propertyOwner->owner_id }}">
+
   <div class="flex min-h-screen">
 
     @include('admin.layouts.sidebar')
@@ -80,7 +81,8 @@
               <!-- Cover Photo -->
               <div class="relative h-28 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 overflow-hidden">
                 @if(isset($propertyOwner->cover_photo) && $propertyOwner->cover_photo)
-                  <img id="ownerCoverImg" src="{{ asset('storage/cover/' . $propertyOwner->cover_photo) }}" alt="Profile Cover" class="w-full h-full object-cover">
+                  <img id="ownerCoverImg" src="{{ asset('storage/' . $propertyOwner->cover_photo) }}" alt="Profile Cover" class="w-full h-full object-cover">
+
                 @else
                   <img id="ownerCoverImg" src="" alt="Profile Cover" class="w-full h-full object-cover hidden">
                 @endif
@@ -112,6 +114,7 @@
                     <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center overflow-hidden shadow-lg ring-[3px] ring-white">
                       @if($propertyOwner->profile_pic)
                         <img id="ownerProfileImg" src="{{ asset('storage/' . $propertyOwner->profile_pic) }}" alt="Profile" class="w-full h-full object-cover">
+
                         <span id="ownerProfileInitials" class="hidden text-white font-bold text-lg">
                           {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
                         </span>
@@ -320,7 +323,7 @@
               <div class="p-3 space-y-2">
                 <!-- Police clearance -->
                 @if($propertyOwner->police_clearance)
-                <div class="flex items-center gap-2 p-2 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition cursor-pointer" data-image="{{ asset('storage/' . $propertyOwner->police_clearance) }}" data-title="Police Clearance" onclick="openImageModal(this.dataset.image, this.dataset.title)">
+                <div class="open-doc-btn flex items-center gap-2 p-2 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition cursor-pointer" data-doc-src="{{ asset('storage/' . $propertyOwner->police_clearance) }}" data-doc-title="Police Clearance">
                   <div class="w-7 h-7 bg-blue-100 rounded-md grid place-items-center flex-shrink-0">
                     <i class="fi fi-rr-file text-blue-600 text-xs"></i>
                   </div>
@@ -336,7 +339,7 @@
 
                 <!-- Valid ID -->
                 @if($propertyOwner->valid_id_photo)
-                <div class="flex items-center gap-2 p-2 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition cursor-pointer" data-image="{{ asset('storage/' . $propertyOwner->valid_id_photo) }}" data-title="Valid ID ({{ $propertyOwner->valid_id_name }})" onclick="openImageModal(this.dataset.image, this.dataset.title)">
+                <div class="open-doc-btn flex items-center gap-2 p-2 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition cursor-pointer" data-doc-src="{{ asset('storage/' . $propertyOwner->valid_id_photo) }}" data-doc-title="Valid ID ({{ $propertyOwner->valid_id_name }})">
                   <div class="w-7 h-7 bg-blue-100 rounded-md grid place-items-center flex-shrink-0">
                     <i class="fi fi-rr-id-badge text-blue-600 text-xs"></i>
                   </div>
@@ -352,7 +355,7 @@
 
                 <!-- Valid ID (Back) -->
                 @if($propertyOwner->valid_id_back_photo)
-                <div class="flex items-center gap-2 p-2 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition cursor-pointer" data-image="{{ asset('storage/' . $propertyOwner->valid_id_back_photo) }}" data-title="Valid ID (Back)" onclick="openImageModal(this.dataset.image, this.dataset.title)">
+                <div class="open-doc-btn flex items-center gap-2 p-2 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition cursor-pointer" data-doc-src="{{ asset('storage/' . $propertyOwner->valid_id_back_photo) }}" data-doc-title="Valid ID (Back)">
                   <div class="w-7 h-7 bg-blue-100 rounded-md grid place-items-center flex-shrink-0">
                     <i class="fi fi-rr-id-badge text-blue-600 text-xs"></i>
                   </div>
@@ -791,16 +794,32 @@
     </div>
   </div>
 
-  <!-- Image Viewer Modal -->
-  <div id="imageViewerModal" class="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4" onclick="closeImageModal()">
-    <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
-      <button onclick="closeImageModal()" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors p-2">
-        <i class="fi fi-rr-cross text-2xl"></i>
-      </button>
-      <h3 id="imageModalTitle" class="text-white text-xl font-bold mb-4">Document Preview</h3>
-      <img id="imageModalPreview" src="" alt="Document Preview" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl transform transition-all duration-300 scale-95 opacity-0">
+  <!-- Universal File Viewer (UFV) -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
+          <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
+            <i class="fi fi-rr-download"></i>
+          </a>
+          <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
+            <i class="fi fi-rr-cross text-sm"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Viewport -->
+      <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
+        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
+        <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
+      </div>
     </div>
   </div>
+
 
   {{-- <script>
     function openImageModal(src, title) {
@@ -839,9 +858,8 @@
     }
   </script> --}}
 
-  <script src="{{ asset('js/admin/userManagement/propertyOwner.js') }}" defer></script>
   <script src="{{ asset('js/account.js') }}" defer></script>
-  <script src="{{ asset('js/admin/userManagement/propertyOwner_Views.js') }}" defer></script>
+  <script src="{{ asset('js/admin/userManagement/propertyOwner_Views.js') }}?v={{ time() }}" defer></script>
 
   <!-- Suspend Account Modal Validation -->
   <script>
@@ -935,6 +953,36 @@
     });
   </script>
 
+  <!-- Upload Confirmation Modal -->
+  <div id="uploadConfirmModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4 animate-fadeIn">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden border border-gray-200">
+      <div class="px-6 py-4 flex items-center gap-3 border-b border-gray-100 bg-gray-50">
+        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm border border-blue-200">
+          <i class="fi fi-rr-cloud-upload mt-1"></i>
+        </div>
+        <h2 class="text-lg font-bold text-gray-800">Confirm Upload</h2>
+      </div>
+      <div class="px-6 py-5 bg-white text-center">
+        <p id="uploadConfirmMessage" class="text-gray-600 text-sm mb-4">Are you sure you want to update this image?</p>
+        <div class="flex flex-col items-center">
+          <div class="w-32 h-32 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50 mb-2">
+            <img id="uploadConfirmPreview" src="" alt="Preview" class="max-w-full max-h-full object-contain">
+          </div>
+          <p class="text-[10px] text-gray-400">New Image Preview</p>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-6 py-4 flex items-center justify-center gap-3 border-t border-gray-200">
+        <button id="cancelUploadBtn" class="flex-1 px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-all font-semibold active:scale-95">
+          Cancel
+        </button>
+        <button id="confirmUploadBtn" class="flex-1 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-semibold shadow-md active:scale-95">
+          Upload
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
+
 
 </html>
