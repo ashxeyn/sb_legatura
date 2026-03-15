@@ -104,6 +104,9 @@ class contractorRequest extends FormRequest
             'profile_pic' => 'nullable|image|max:5120',
             'dti_sec_registration_photo' => 'nullable|image|max:5120',
 
+            // Owner linking (allow updating the linked property owner)
+            'owner_id' => 'nullable|exists:property_owners,owner_id',
+
             // Email/password optional on update
             'company_email' => 'nullable|email|max:100',
             'password' => 'nullable|min:8',

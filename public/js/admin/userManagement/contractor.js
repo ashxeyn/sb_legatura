@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
     try {
-        console.log('[contractor.js] DOMContentLoaded');
-
         const dateFromInput = document.getElementById('dateFrom');
     const dateToInput = document.getElementById('dateTo');
     const searchInput = document.getElementById('searchInput') || document.getElementById('topNavSearch');
@@ -379,15 +377,6 @@ document.addEventListener('DOMContentLoaded', function () {
             clearModalErrors();
             modal.querySelectorAll('.add-contractor-field.error').forEach(el => el.classList.remove('error'));
             modal.querySelectorAll('.add-contractor-error').forEach(el => el.classList.add('hidden'));
-            
-            // Ensure an existing property owner was selected
-            const ownerIdInputCheck = document.getElementById('selectedOwnerId');
-            if (ownerIdInputCheck && (!ownerIdInputCheck.value || ownerIdInputCheck.value.trim() === '')) {
-                showModalErrors(['Please select an existing verified property owner before saving.']);
-                const ownerSearchInputCheck = document.getElementById('ownerSearchInput');
-                if (ownerSearchInputCheck) ownerSearchInputCheck.classList.add('border-red-500');
-                return;
-            }
 
             const formData = new FormData();
 
@@ -399,6 +388,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 } else if (input.type === 'checkbox' || input.type === 'radio') {
                     if (input.checked) {
+                        formData.append(input.name, input.value);
+                    }
+                } else if (input.type === 'hidden') {
+                    // Only append hidden inputs if they have a value
+                    if (input.value && input.value.trim() !== '') {
                         formData.append(input.name, input.value);
                     }
                 } else if (input.tagName === 'SELECT') {
@@ -422,6 +416,20 @@ document.addEventListener('DOMContentLoaded', function () {
             if (csrfToken) {
                 formData.append('_token', csrfToken.content);
             }
+
+            // Debug: Log the owner_id value
+            const ownerIdDebug = document.getElementById('selectedOwnerId');
+            console.log('=== FORM SUBMISSION DEBUG ===');
+            console.log('Owner ID input element:', ownerIdDebug);
+            console.log('Owner ID value before submit:', ownerIdDebug ? ownerIdDebug.value : 'not found');
+            console.log('Owner ID value length:', ownerIdDebug ? ownerIdDebug.value.length : 0);
+            console.log('FormData has owner_id:', formData.has('owner_id'));
+            console.log('FormData owner_id value:', formData.get('owner_id'));
+            console.log('All FormData entries:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}:`, value);
+            }
+            console.log('=== END DEBUG ===');
 
             const originalText = this.innerHTML;
             this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
@@ -454,27 +462,55 @@ document.addEventListener('DOMContentLoaded', function () {
                             const errorMsg = Array.isArray(messages) ? messages[0] : messages;
                             errorMessages.push(errorMsg);
                             
-                            // Mark field with error class
+                            // Mark field with error class and show inline error
                             if (key === 'owner_id') {
                                 const ownerSearch = modal.querySelector('#ownerSearchInput');
                                 if (ownerSearch) {
                                     ownerSearch.classList.add('error');
-                                }
-                            } else {
-                                const input = modal.querySelector(`[name="${key}"]`);
-                                if (input && input.classList.contains('add-contractor-field')) {
-                                    input.classList.add('error');
-                                    const errorElement = input.parentElement.querySelector('.add-contractor-error');
+                                    const errorElement = ownerSearch.parentElement.querySelector('.add-contractor-error');
                                     if (errorElement) {
                                         errorElement.textContent = errorMsg;
                                         errorElement.classList.remove('hidden');
                                     }
                                 }
+                            } else {
+                                // Try to find the input by name
+                                let input = modal.querySelector(`[name="${key}"]`);
+                                
+                                // If not found, try by data-field attribute
+                                if (!input) {
+                                    input = modal.querySelector(`[data-field="${key}"]`);
+                                }
+                                
+                                if (input) {
+                                    // Handle file upload dropzones
+                                    if (input.type === 'file' && input.id === 'dtiUpload') {
+                                        const dropzone = document.getElementById('dtiDropzone');
+                                        if (dropzone) {
+                                            dropzone.classList.add('error');
+                                            const errorElement = dropzone.parentElement.querySelector('.add-contractor-error');
+                                            if (errorElement) {
+                                                errorElement.textContent = errorMsg;
+                                                errorElement.classList.remove('hidden');
+                                            }
+                                        }
+                                    } else {
+                                        // Add error class to the input
+                                        input.classList.add('error');
+                                        
+                                        // Find and show the error message element
+                                        const errorElement = input.parentElement.querySelector('.add-contractor-error');
+                                        if (errorElement) {
+                                            errorElement.textContent = errorMsg;
+                                            errorElement.classList.remove('hidden');
+                                        }
+                                    }
+                                }
                             }
                         }
                         
-                        // Show all errors in the modal alert
-                        showModalErrors(errorMessages);
+                        // Don't show the modal alert, only inline errors
+                        // showModalErrors(errorMessages);
                     } else {
                         showModalErrors([result.message || 'An error occurred']);
                     }
@@ -530,7 +566,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         div.dataset.lastName = owner.last_name || '';
                         div.dataset.email = owner.email || '';
                         div.addEventListener('click', function () {
-                            if (selectedOwnerIdInput) selectedOwnerIdInput.value = this.dataset.ownerId;
+                            if (selectedOwnerIdInput) {
+                                selectedOwnerIdInput.value = this.dataset.ownerId;
+                                console.log('Owner selected! ID:', this.dataset.ownerId);
+                            }
                             if (selectedOwnerName) selectedOwnerName.textContent = `${this.dataset.firstName} ${this.dataset.lastName}`;
                             if (selectedOwnerEmail) selectedOwnerEmail.textContent = this.dataset.email;
                             if (selectedOwnerSummary) selectedOwnerSummary.classList.remove('hidden');
@@ -541,8 +580,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             const ownerSearchEl = document.getElementById('ownerSearchInput');
                             if (ownerSearchEl) {
                                 ownerSearchEl.classList.remove('border-red-500');
+                                ownerSearchEl.classList.remove('error');
                                 const err = ownerSearchEl.parentElement.querySelector('.error-message');
                                 if (err) err.remove();
+                                
+                                // Clear inline error message
+                                const errorElement = ownerSearchEl.parentElement.querySelector('.add-contractor-error');
+                                if (errorElement) {
+                                    errorElement.classList.add('hidden');
+                                    errorElement.textContent = '';
+                                }
                             }
 
                             // Also remove any error attached to the hidden input parent
@@ -934,7 +981,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (editMiddleNameEl) editMiddleNameEl.value = data.middle_name || '';
             const editLastNameEl = document.getElementById('edit_last_name');
             if (editLastNameEl) editLastNameEl.value = data.last_name || '';
-            document.getElementById('edit_company_email').value = data.email || '';
+            document.getElementById('edit_company_email').value = data.company_email || '';
             document.getElementById('edit_username').value = data.username || '';
 
             document.getElementById('edit_business_address_street').value = data.business_address_street || '';
@@ -968,7 +1015,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     const openDocBtn = dtiLinkContainer.querySelector('.open-doc-btn');
                     if (openDocBtn) {
                         openDocBtn.setAttribute('data-doc-src', `/storage/${data.dti_sec_registration_photo}`);
-                        openDocBtn.setAttribute('data-doc-scope', 'edit-dti');
                     } else {
                         // Fallback for older markup that used an <a>
                         const anchor = dtiLinkContainer.querySelector('a');
@@ -977,7 +1023,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             // Mark the anchor so the delegated handler can pick it up
                             anchor.classList.add('open-doc-btn');
                             anchor.setAttribute('data-doc-src', `/storage/${data.dti_sec_registration_photo}`);
-                            anchor.setAttribute('data-doc-scope', 'edit-dti');
                         }
                     }
                 } else {
@@ -985,13 +1030,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            if (data.profile_pic) {
-                editProfilePreview.src = `/storage/${data.profile_pic}`;
+            if (data.company_logo) {
+                editProfilePreview.src = `/storage/${data.company_logo}`;
                 editProfilePreview.classList.remove('hidden');
                 editProfileIcon.classList.add('hidden');
             } else {
                 editProfilePreview.classList.add('hidden');
                 editProfileIcon.classList.remove('hidden');
+            }
+
+            // Populate owner information if exists
+            const editSelectedOwnerIdInput = document.getElementById('edit_selectedOwnerId');
+            const editSelectedOwnerSummary = document.getElementById('edit_selectedOwnerSummary');
+            const editOwnerDisplayName = document.getElementById('edit_ownerDisplayName');
+            const editOwnerDisplayEmail = document.getElementById('edit_ownerDisplayEmail');
+
+            if (data.owner_id && editSelectedOwnerIdInput) {
+                editSelectedOwnerIdInput.value = data.owner_id;
+                
+                if (editSelectedOwnerSummary && editOwnerDisplayName && editOwnerDisplayEmail) {
+                    // Construct owner name from available data
+                    const ownerName = [data.owner_first_name, data.owner_middle_name, data.owner_last_name]
+                        .filter(Boolean)
+                        .join(' ') || 'N/A';
+                    
+                    editOwnerDisplayName.textContent = ownerName;
+                    editOwnerDisplayEmail.textContent = data.owner_email || 'N/A';
+                    editSelectedOwnerSummary.classList.remove('hidden');
+                }
+            } else if (editSelectedOwnerSummary) {
+                editSelectedOwnerSummary.classList.add('hidden');
+                if (editSelectedOwnerIdInput) editSelectedOwnerIdInput.value = '';
             }
 
             const provinceSelect = document.getElementById('edit_contractor_address_province');
@@ -1170,6 +1239,60 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Edit DTI/SEC Upload Handler
+    const editDtiDropzone = document.getElementById('editDtiDropzone');
+    const editDtiUpload = document.getElementById('editDtiUpload');
+    const editDtiFileName = document.getElementById('editDtiFileName');
+
+    if (editDtiDropzone && editDtiUpload) {
+        const editHighlight = () => editDtiDropzone.classList.add('ring-2', 'ring-orange-400');
+        const editUnhighlight = () => editDtiDropzone.classList.remove('ring-2', 'ring-orange-400');
+
+        editDtiDropzone.addEventListener('click', () => editDtiUpload.click());
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            editDtiDropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editHighlight();
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            editDtiDropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editUnhighlight();
+            });
+        });
+
+        editDtiDropzone.addEventListener('drop', (e) => {
+            const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (file) {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                editDtiUpload.files = dataTransfer.files;
+
+                if (editDtiFileName) {
+                    const sizeKB = Math.round(file.size / 1024);
+                    editDtiFileName.textContent = `${file.name} • ${sizeKB} KB`;
+                }
+
+                editDtiDropzone.classList.remove('border-red-500');
+                const errorMsg = editDtiDropzone.parentElement.querySelector('.error-message');
+                if (errorMsg) errorMsg.remove();
+            }
+        });
+
+        editDtiUpload.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file && editDtiFileName) {
+                const sizeKB = Math.round(file.size / 1024);
+                editDtiFileName.textContent = `${file.name} • ${sizeKB} KB`;
+            }
+        });
+    }
+
     const editProvince = document.getElementById('edit_contractor_address_province');
     const editCity = document.getElementById('edit_contractor_address_city');
     const editBarangay = document.getElementById('edit_contractor_address_barangay');
@@ -1335,6 +1458,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             formData.append('_method', 'PUT');
+
+            // Debug: Log owner_id value
+            console.log('=== Edit Contractor Form Data ===');
+            console.log('owner_id input element:', document.getElementById('edit_selectedOwnerId'));
+            console.log('owner_id value:', document.getElementById('edit_selectedOwnerId')?.value);
+            console.log('FormData has owner_id:', formData.has('owner_id'));
+            console.log('FormData owner_id value:', formData.get('owner_id'));
+            console.log('All FormData entries:');
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`${key}:`, value.name, `(${value.size} bytes)`);
+                } else {
+                    console.log(`${key}:`, value);
+                }
+            }
+            console.log('================================');
 
             const originalContent = this.innerHTML;
             this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
@@ -1657,93 +1796,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3000);
     }
 
-    // Inline file viewer modal (image/pdf)
-    function createViewModalIfNeeded() {
-        if (document.getElementById('viewFileModal')) return;
-        const modal = document.createElement('div');
-        modal.id = 'viewFileModal';
-        modal.className = 'fixed inset-0 bg-black bg-opacity-60 z-50 hidden items-center justify-center p-4';
-        modal.innerHTML = `
-            <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden modal-content relative">
-              <button id="closeViewFileModalBtn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 p-2 rounded-md">
-                <i class="fi fi-rr-cross text-2xl"></i>
-              </button>
-              <div class="p-4 flex items-center justify-center h-full">
-                <img id="viewFileImage" src="" alt="Preview" class="max-w-full max-h-[75vh] object-contain hidden" />
-                <iframe id="viewFileIframe" src="" class="w-full h-[75vh] border-0 hidden"></iframe>
-              </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) closeViewFileModal();
-        });
-
-        const closeBtn = modal.querySelector('#closeViewFileModalBtn');
-        if (closeBtn) closeBtn.addEventListener('click', closeViewFileModal);
-    }
-
-    function openViewFileModal(src) {
-        try {
-            createViewModalIfNeeded();
-            const modal = document.getElementById('viewFileModal');
-            if (!modal) return;
-            const img = modal.querySelector('#viewFileImage');
-            const iframe = modal.querySelector('#viewFileIframe');
-
-            if (img) { img.src = ''; img.classList.add('hidden'); }
-            if (iframe) { iframe.src = ''; iframe.classList.add('hidden'); }
-
-            const cleaned = String(src || '').split('?')[0].toLowerCase();
-            const isPdf = cleaned.endsWith('.pdf');
-
-            if (isPdf) {
-                if (iframe) {
-                    iframe.src = src;
-                    iframe.classList.remove('hidden');
-                }
-            } else {
-                if (img) {
-                    img.src = src;
-                    img.classList.remove('hidden');
-                }
-            }
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            document.body.style.overflow = 'hidden';
-        } catch (err) {
-            console.error('openViewFileModal error:', err);
-        }
-    }
-
-    function closeViewFileModal() {
-        const modal = document.getElementById('viewFileModal');
-        if (!modal) return;
-        const img = modal.querySelector('#viewFileImage');
-        const iframe = modal.querySelector('#viewFileIframe');
-        if (img) { img.src = ''; img.classList.add('hidden'); }
-        if (iframe) { iframe.src = ''; iframe.classList.add('hidden'); }
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        document.body.style.overflow = 'auto';
-    }
-
-    // Delegated click handler for DTI/SEC viewer — strictly scoped by data attribute
-    document.addEventListener('click', function (e) {
-        // Only targets elements explicitly marked for the edit-modal DTI viewer
-        const trigger = e.target.closest('[data-doc-scope="edit-dti"]');
-        if (!trigger) return;
-
-        // Extra safety: ensure it's inside the edit modal
-        if (!trigger.closest('#editContractorModal')) return;
-
-        e.preventDefault();
-        const src = trigger.getAttribute('data-doc-src') || trigger.href;
-        if (!src) return;
-        openViewFileModal(src);
-    });
+    // Removed old light-themed viewFileModal - now using dark UFV modal
 
     // Owner live-search for Edit Contractor modal
     const editOwnerSearchInput = document.getElementById('edit_ownerSearchInput');
@@ -1852,3 +1905,102 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+
+
+// ============================================
+// Universal File Viewer (UFV) for Contractor Page
+// ============================================
+(function() {
+    const modal = document.getElementById('documentViewerModal');
+    const iframe = document.getElementById('documentViewerFrame');
+    const img = document.getElementById('documentViewerImg');
+    const closeBtn = document.getElementById('closeDocumentViewerBtn');
+
+    if (!modal) return;
+
+    function openDocumentViewer(src, title) {
+        if (!modal) return;
+        const isPdf = /\.pdf(\?|$)/i.test(src);
+        const titleEl = document.getElementById('documentViewerTitle');
+        const downloadLink = document.getElementById('documentViewerDownload');
+
+        if (titleEl) titleEl.textContent = title || 'Document Viewer';
+        if (downloadLink) downloadLink.href = src;
+
+        if (isPdf) {
+            if (iframe) {
+                iframe.src = src;
+                iframe.classList.remove('hidden');
+            }
+            if (img) img.classList.add('hidden');
+        } else {
+            if (img) {
+                img.src = src;
+                img.classList.remove('hidden');
+            }
+            if (iframe) iframe.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            setTimeout(function() {
+                modalShell.classList.remove('scale-95', 'opacity-0');
+                modalShell.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+    }
+
+    function closeDocumentViewer() {
+        if (!modal) return;
+        const modalShell = modal.querySelector('.modal-shell');
+        if (modalShell) {
+            modalShell.classList.remove('scale-100', 'opacity-100');
+            modalShell.classList.add('scale-95', 'opacity-0');
+        }
+        setTimeout(function() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+            if (iframe) iframe.src = '';
+            if (img) img.src = '';
+        }, 200);
+    }
+
+    // Delegated click handler for open buttons
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest && e.target.closest('.open-doc-btn');
+        if (btn) {
+            e.preventDefault();
+            const src = btn.getAttribute('data-doc-src');
+            const title = btn.getAttribute('data-doc-title') || 'Document';
+            if (src) {
+                openDocumentViewer(src, title);
+            }
+        }
+    });
+
+    // Close button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeDocumentViewer);
+    }
+
+    // Close on backdrop click
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeDocumentViewer();
+            }
+        });
+    }
+
+    // Close on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeDocumentViewer();
+        }
+    });
+})();

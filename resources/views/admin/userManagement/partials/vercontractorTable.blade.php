@@ -26,9 +26,13 @@
     <tr class="hover:bg-indigo-50/60 transition-colors">
       <td class="px-2.5 py-2.5">
         <div class="flex items-center gap-1.5">
-          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0">
-            {{ $companyInitials }}
-          </div>
+          @if($request->company_logo)
+            <img src="{{ asset('storage/' . $request->company_logo) }}" alt="{{ $request->company_name }}" class="w-7 h-7 rounded-full object-cover shadow flex-shrink-0">
+          @else
+            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0">
+              {{ $companyInitials }}
+            </div>
+          @endif
           <div class="min-w-0">
             <div class="font-medium text-gray-800 leading-tight text-xs truncate max-w-[170px]" title="{{ $request->company_name }}">{{ $request->company_name }}</div>
           </div>

@@ -315,6 +315,7 @@ class globalManagementController extends Controller
                 'projects.project_title',
                 'contractors.company_name',
                 'contractors.company_email',
+                'contractors.company_logo',
                 'contractors.picab_number',
                 'contractors.picab_category',
                 'contractors.picab_expiration_date',
@@ -475,6 +476,7 @@ class globalManagementController extends Controller
                 DB::raw("CONCAT(owner_u.first_name, ' ', owner_u.last_name) as owner_name"),
                 'c.company_name',
                 'c.company_email',
+                'c.company_logo',
                 'mi.milestone_item_title'
             );
 

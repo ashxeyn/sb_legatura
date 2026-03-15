@@ -27,104 +27,95 @@ class userManagementController extends authController
     /**
      * Show property owners list
      */
-    public function propertyOwners(Request $request)
+    public function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $perPage = 15, $page = null, $onlyEligible = false)
     {
-        $search = $request->query('search');
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
-        $page = $request->query('page', 1);
+        $query = DB::table('property_owners')
+            ->leftJoin('occupations', 'property_owners.occupation_id', '=', 'occupations.id')
+            ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+            ->select(
+                'property_owners.*',
+                'users.email',
+                'users.username',
+                'users.first_name',
+                'users.middle_name',
+                'users.last_name',
+                DB::raw("CASE WHEN occupations.occupation_name = 'Others' OR occupations.occupation_name IS NULL THEN property_owners.occupation_other ELSE occupations.occupation_name END as occupation")
+            );
 
-        $propertyOwners = $this->getPropertyOwners($search, null, $dateFrom, $dateTo, $page);
+        // If requesting only eligible owners for contractor creation,
+        // exclude owners who already have a contractor company or are listed as contractor staff.
+        if ($onlyEligible) {
+            $query->leftJoin('contractors', function($join) {
+                $join->on('property_owners.owner_id', '=', 'contractors.owner_id')
+                     ->where('contractors.verification_status', '!=', 'deleted')
+                     ->where('contractors.is_active', 1);
+            });
 
-        if ($request->ajax()) {
-            return response()->json([
-                'html' => view('admin.userManagement.partials.ownerTable', ['propertyOwners' => $propertyOwners])->render(),
-            ]);
+            $query->leftJoin('contractor_staff', function($join) {
+                $join->on('property_owners.owner_id', '=', 'contractor_staff.owner_id')
+                     ->whereNull('contractor_staff.deletion_reason')
+                     ->where('contractor_staff.is_active', 1);
+            });
+
+            $query->whereNull('contractors.contractor_id')
+                  ->whereNull('contractor_staff.staff_id');
         }
 
-        $accountModel = new accountClass();
-        $psgcService = new PsgcApiService();
-
-        $occupations = $accountModel->getOccupations();
-        $validIds = $accountModel->getValidIds();
-        $provinces = $psgcService->getProvinces();
-
-        return view('admin.userManagement.propertyOwner', [
-            'propertyOwners' => $propertyOwners,
-            'occupations' => $occupations,
-            'validIds' => $validIds,
-            'provinces' => $provinces
+        // Posted Projects Count
+        $query->addSelect([
+            'posted_projects_count' => DB::table('project_relationships')
+                ->select(DB::raw('COUNT(*)'))
+                ->whereColumn('project_relationships.owner_id', 'property_owners.owner_id')
+                ->where('project_relationships.project_post_status', 'approved')
         ]);
-    }
 
-    public function addPropertyOwner(propertyOwnerRequest $request)
-    {
-        $validated = $request->validated();
+        // Ongoing Projects Count
+        $query->addSelect([
+            'ongoing_projects_count' => DB::table('projects')
+                ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->join('milestones', 'projects.project_id', '=', 'milestones.project_id')
+                ->whereColumn('project_relationships.owner_id', 'property_owners.owner_id')
+                ->whereNotNull('project_relationships.selected_contractor_id')
+                ->where(function($q) {
+                    $q->where('milestones.milestone_status', 'approved')
+                      ->orWhere('milestones.setup_status', 'approved');
+                })
+                ->select(DB::raw('COUNT(DISTINCT projects.project_id)'))
+        ]);
 
-        try {
-            // Handle File Uploads
-            $profilePicPath = null;
-            if ($request->hasFile('profile_pic')) {
-                $profilePicPath = $request->file('profile_pic')->store('profiles', 'public');
-            }
-
-            $validIdFrontPath = $request->file('valid_id_photo')->store('validID/front', 'public');
-            $validIdBackPath = $request->file('valid_id_back_photo')->store('validID/back', 'public');
-            $policeClearancePath = $request->file('police_clearance')->store('policeClearance', 'public');
-
-            // Calculate Age
-            $dob = new \DateTime($validated['date_of_birth']);
-            $now = new \DateTime();
-            $age = $now->diff($dob)->y;
-
-            // Construct Address
-            $address = $validated['street_address'] . ', ' . $request->input('barangay_name') . ', ' . $request->input('city_name') . ', ' . $request->input('province_name') . ' ' . $validated['zip_code'];
-
-            // Prepare Data for Model
-            $data = [
-                'profile_pic' => $profilePicPath,
-                'email' => $validated['email'],
-                'last_name' => $validated['last_name'],
-                'middle_name' => $validated['middle_name'],
-                'first_name' => $validated['first_name'],
-                'valid_id_id' => $validated['valid_id_id'],
-                'valid_id_photo' => $validIdFrontPath,
-                'valid_id_back_photo' => $validIdBackPath,
-                'police_clearance' => $policeClearancePath,
-                'date_of_birth' => $validated['date_of_birth'],
-                'age' => $age,
-                'occupation_id' => $validated['occupation_id'] === 'others' ? null : $validated['occupation_id'],
-                'occupation_other' => $validated['occupation_id'] === 'others' ? $validated['occupation_other'] : null,
-                'address' => $address
-            ];
-
-            // Call Model to Create User and Property Owner
-            $propertyOwnerModel = new propertyOwnerClass();
-            $result = $propertyOwnerModel->addPropertyOwner($data);
-
-            // Send Email
-            try {
-                \Illuminate\Support\Facades\Mail::raw(
-                    "Your account is successfully created by the admin.\n\n" .
-                    "Login with:\n" .
-                    "Username: " . $result['username'] . "\n" .
-                    "Password: owner123@!\n\n" .
-                    "Please change your password after logging in.",
-                    function ($message) use ($result) {
-                        $message->to($result['email'])
-                            ->subject('Account Created - Legatura');
-                    }
-                );
-            } catch (\Exception $e) {
-                // Log email error but don't fail the request
-                \Illuminate\Support\Facades\Log::error('Failed to send account creation email: ' . $e->getMessage());
-            }
-
-            return response()->json(['success' => true, 'message' => 'Property Owner added successfully']);
-
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('users.first_name', 'like', "%{$search}%")
+                  ->orWhere('users.last_name', 'like', "%{$search}%")
+                  ->orWhere('users.email', 'like', "%{$search}%")
+                  ->orWhere('users.username', 'like', "%{$search}%");
+            });
         }
+
+        // Only pure property owners, not 'both' or owner staff
+        $query->where('users.user_type', 'property_owner');
+
+        // Only show active users (not suspended or deleted)
+        $query->where('property_owners.is_active', 1);
+
+        // Exclude deleted users
+        $query->where('property_owners.verification_status', '!=', 'deleted');
+
+        if ($status) {
+            $query->where('property_owners.verification_status', $status === 'verified' ? 'approved' : 'pending');
+        } else {
+            $query->where('property_owners.verification_status', 'approved');
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('property_owners.created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('property_owners.created_at', '<=', $dateTo);
+        }
+
+        return $query->orderBy('property_owners.created_at', 'desc')->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function addContractor(contractorRequest $request)
@@ -232,6 +223,16 @@ class userManagementController extends authController
     {
         $validated = $request->validated();
 
+        // Debug: Log owner_id
+        \Log::info('=== Update Contractor Debug ===');
+        \Log::info('Contractor ID:', ['id' => $id]);
+        \Log::info('Request has owner_id:', ['has' => $request->has('owner_id')]);
+        \Log::info('Request owner_id value:', ['value' => $request->input('owner_id')]);
+        \Log::info('Validated has owner_id:', ['has' => array_key_exists('owner_id', $validated)]);
+        \Log::info('Validated owner_id value:', ['value' => $validated['owner_id'] ?? 'NOT SET']);
+        \Log::info('All validated keys:', ['keys' => array_keys($validated)]);
+        \Log::info('==============================');
+
         try {
             // Merge with existing contractor so updates can be partial
             $contractorModel = new contractorClass();
@@ -317,6 +318,11 @@ class userManagementController extends authController
                 'business_permit_expiration' => $validated['business_permit_expiration'] ?? ($existing->business_permit_expiration ?? null),
                 'tin_business_reg_number' => $validated['tin_business_reg_number'] ?? ($existing->tin_business_reg_number ?? null),
             ];
+
+            // Update owner_id if provided (allow changing the linked property owner)
+            if (array_key_exists('owner_id', $validated)) {
+                $data['owner_id'] = $validated['owner_id'] ?: null;
+            }
 
             // Files / logos
             if (isset($validated['profile_pic'])) {
@@ -406,6 +412,135 @@ class userManagementController extends authController
             'success' => true,
             'data' => $contractor
         ]);
+    }
+
+    /**
+     * Add a new property owner
+     */
+    public function addPropertyOwner(propertyOwnerRequest $request)
+    {
+        $validated = $request->validated();
+
+        // Debug: Log validated data
+        \Log::info('=== Add Property Owner - Validated Data ===');
+        \Log::info('Address fields:', [
+            'street_address' => $validated['street_address'] ?? 'NOT SET',
+            'barangay' => $validated['barangay'] ?? 'NOT SET',
+            'barangay_name' => $validated['barangay_name'] ?? 'NOT SET',
+            'city' => $validated['city'] ?? 'NOT SET',
+            'city_name' => $validated['city_name'] ?? 'NOT SET',
+            'province' => $validated['province'] ?? 'NOT SET',
+            'province_name' => $validated['province_name'] ?? 'NOT SET',
+            'zip_code' => $validated['zip_code'] ?? 'NOT SET',
+        ]);
+        \Log::info('Valid ID field:', [
+            'valid_id_id' => $validated['valid_id_id'] ?? 'NOT SET',
+        ]);
+        \Log::info('==========================================');
+
+        try {
+            $profilePicPath = null;
+            if ($request->hasFile('profile_pic')) {
+                $profilePicPath = $request->file('profile_pic')->store('profile_pics', 'public');
+            }
+
+            $validIdPath = null;
+            if ($request->hasFile('valid_id_photo')) {
+                $validIdPath = $request->file('valid_id_photo')->store('valid_ids', 'public');
+            }
+
+            $validIdBackPath = null;
+            if ($request->hasFile('valid_id_back_photo')) {
+                $validIdBackPath = $request->file('valid_id_back_photo')->store('valid_ids', 'public');
+            }
+
+            $policeClearancePath = null;
+            if ($request->hasFile('police_clearance')) {
+                $policeClearancePath = $request->file('police_clearance')->store('police_clearance', 'public');
+            }
+
+            // Construct Address from form fields
+            $addressParts = [];
+            if (!empty($validated['street_address'])) {
+                $addressParts[] = $validated['street_address'];
+            }
+            if (!empty($validated['barangay_name'])) {
+                $addressParts[] = $validated['barangay_name'];
+            }
+            if (!empty($validated['city_name'])) {
+                $addressParts[] = $validated['city_name'];
+            }
+            if (!empty($validated['province_name'])) {
+                $addressParts[] = $validated['province_name'];
+            }
+            if (!empty($validated['zip_code'])) {
+                $addressParts[] = $validated['zip_code'];
+            }
+            $address = implode(', ', $addressParts);
+
+            // Debug: Log constructed address
+            \Log::info('Constructed address:', ['address' => $address, 'parts' => $addressParts]);
+
+            // Calculate age from birthdate
+            $age = null;
+            if (isset($validated['date_of_birth'])) {
+                $birthDate = new \DateTime($validated['date_of_birth']);
+                $today = new \DateTime();
+                $age = $today->diff($birthDate)->y;
+            }
+
+            // Handle occupation - if occupation_id is 'others' or non-numeric, find the 'Others' occupation ID
+            $occupationId = $validated['occupation_id'] ?? null;
+            if ($occupationId && !is_numeric($occupationId)) {
+                // Find the 'Others' occupation ID from the database
+                $othersOccupation = DB::table('occupations')
+                    ->where('occupation_name', 'Others')
+                    ->first();
+                $occupationId = $othersOccupation ? $othersOccupation->id : null;
+            }
+
+            // Prepare Data for Model
+            $data = [
+                'profile_pic' => $profilePicPath,
+                'first_name' => $validated['first_name'],
+                'middle_name' => $validated['middle_name'] ?? null,
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'valid_id_id' => $validated['valid_id_id'] ?? null,
+                'valid_id_photo' => $validIdPath,
+                'valid_id_back_photo' => $validIdBackPath,
+                'police_clearance' => $policeClearancePath,
+                'date_of_birth' => $validated['date_of_birth'] ?? null,
+                'age' => $age,
+                'occupation_id' => $occupationId,
+                'occupation_other' => $validated['occupation_other'] ?? null,
+                'address' => $address,
+            ];
+
+            // Call Model to create property owner
+            $ownerModel = new propertyOwnerClass();
+            $result = $ownerModel->addPropertyOwner($data);
+
+            if ($result && isset($result['owner_id'])) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Property owner added successfully!',
+                    'data' => $result
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to add property owner'
+                ], 422);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Add Property Owner Error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function fetchPropertyOwner($id)
@@ -606,6 +741,41 @@ class userManagementController extends authController
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Show property owners list page
+     */
+    public function propertyOwners(Request $request)
+    {
+        $search = $request->query('search');
+        $status = $request->query('status');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+
+        $propertyOwners = $this->getPropertyOwners($search, $status, $dateFrom, $dateTo, 10);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.userManagement.partials.ownerTable', compact('propertyOwners'))->render()
+            ]);
+        }
+
+        $accountModel = new accountClass();
+        $psgcService = new PsgcApiService();
+
+        $occupations = $accountModel->getOccupations();
+        $validIds = $accountModel->getValidIds();
+        $provinces = $psgcService->getProvinces();
+        $allCities = $psgcService->getAllCities();
+
+        return view('admin.userManagement.propertyOwner', [
+            'propertyOwners' => $propertyOwners,
+            'occupations' => $occupations,
+            'validIds' => $validIds,
+            'provinces' => $provinces,
+            'allCities' => $allCities
+        ]);
     }
 
     /**
@@ -1271,7 +1441,8 @@ class userManagementController extends authController
             'contractors.contractor_id',
             'contractors.verification_status',
             'contractors.created_at as request_date',
-            'contractors.company_name'
+            'contractors.company_name',
+            'contractors.company_logo'
         )
             ->orderBy('contractors.created_at', 'desc')
             ->orderBy('contractors.contractor_id', 'desc')
@@ -1304,7 +1475,8 @@ class userManagementController extends authController
             'property_owners.verification_status',
             'property_owners.created_at as request_date',
             'users.first_name',
-            'users.last_name'
+            'users.last_name',
+            'property_owners.profile_pic'
         )
             ->orderBy('property_owners.created_at', 'desc')
             ->orderBy('property_owners.owner_id', 'desc')
@@ -1380,7 +1552,11 @@ class userManagementController extends authController
 
                 DB::table('users')->where('user_id', $id)->update($updateData);
             } elseif ($hasContractor) {
-                DB::table('users')->where('user_id', $id)->update(['user_type' => 'contractor']);
+                // Note: 'contractor' is not a valid ENUM value for user_type
+                // Contractors without owner role should remain as their current type or use 'staff'
+                // Only update if they also have owner role (which would be 'both')
+                // For pure contractors, the contractor record itself indicates the role
+                \Log::info('User has contractor role only, not updating user_type to avoid ENUM error', ['user_id' => $id]);
             } elseif ($hasOwner) {
                 DB::table('users')->where('user_id', $id)->update(['user_type' => 'property_owner']);
             }
@@ -1731,17 +1907,6 @@ class userManagementController extends authController
     }
 
     /**
-     * Get all property owners with optional filters
-     */
-    private function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $page = 1, $onlyEligible = false)
-    {
-        $model = new propertyOwnerClass();
-        return $model->getPropertyOwners($search, $status, $dateFrom, $dateTo, 10, $page, $onlyEligible);
-    }
-
-
-
-    /**
      * Get pending verification contractors
      */
     private function getPendingVerificationContractors()
@@ -1797,10 +1962,11 @@ class userManagementController extends authController
         $search = $request->input('search');
         $status = $request->input('status');
         $page = $request->input('page', 1);
+        $perPage = $request->input('per_page', 10);
 
         $onlyEligible = $request->input('eligible') ? true : false;
 
-        $owners = $this->getPropertyOwners($search, $status, null, null, $page, $onlyEligible);
+        $owners = $this->getPropertyOwners($search, $status, null, null, $perPage, $page, $onlyEligible);
 
         return response()->json($owners);
     }
@@ -2033,11 +2199,12 @@ class userManagementController extends authController
                     }
                     DB::table('users')->where('user_id', $id)->update($updateData);
                 } else {
-                    // Only contractor profile exists; set to contractor unless already both
-                    $currentType = DB::table('users')->where('user_id', $id)->value('user_type');
-                    if ($currentType !== 'both' && $currentType !== 'contractor') {
-                        DB::table('users')->where('user_id', $id)->update(['user_type' => 'contractor']);
-                    }
+                    // Only contractor profile exists
+                    // Note: 'contractor' is not a valid ENUM value for user_type
+                    // The valid values are: 'property_owner', 'both', 'staff'
+                    // For pure contractors, we should not update user_type as it will cause SQL error
+                    // The contractor record itself indicates the contractor role
+                    \Log::info('User has contractor role only, not updating user_type to avoid ENUM error', ['user_id' => $id]);
                 }
             } catch (\Throwable $e) {
                 \Log::warning('approveContractorVerification: failed to update users.user_type', ['user_id' => $id, 'error' => $e->getMessage()]);
@@ -2145,5 +2312,122 @@ class userManagementController extends authController
 
         return response()->json(['data' => $accounts]);
     }
+
+    /**
+     * Update contractor logo
+     */
+    public function updateContractorLogo(Request $request, $id)
+    {
+        try {
+            if (!$request->hasFile('company_logo')) {
+                return response()->json(['success' => false, 'message' => 'No logo file provided'], 400);
+            }
+
+            $path = $request->file('company_logo')->store('contractors/logos', 'public');
+            
+            DB::table('contractors')
+                ->where('contractor_id', $id)
+                ->update([
+                    'company_logo' => $path,
+                    'updated_at' => now()
+                ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Company logo updated successfully',
+                'path' => asset('storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update contractor banner
+     */
+    public function updateContractorBanner(Request $request, $id)
+    {
+        try {
+            if (!$request->hasFile('company_banner')) {
+                return response()->json(['success' => false, 'message' => 'No banner file provided'], 400);
+            }
+
+            $path = $request->file('company_banner')->store('contractors/banners', 'public');
+            
+            DB::table('contractors')
+                ->where('contractor_id', $id)
+                ->update([
+                    'company_banner' => $path,
+                    'updated_at' => now()
+                ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Company banner updated successfully',
+                'path' => asset('storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update property owner profile picture
+     */
+    public function updatePropertyOwnerProfilePic(Request $request, $id)
+    {
+        try {
+            if (!$request->hasFile('profile_pic')) {
+                return response()->json(['success' => false, 'message' => 'No profile picture provided'], 400);
+            }
+
+            $path = $request->file('profile_pic')->store('owners/profiles', 'public');
+            
+            DB::table('property_owners')
+                ->where('owner_id', $id)
+                ->update([
+                    'profile_pic' => $path
+                ]);
+
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Profile picture updated successfully',
+                'path' => asset('storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update property owner cover photo
+     */
+    public function updatePropertyOwnerCoverPhoto(Request $request, $id)
+    {
+        try {
+            if (!$request->hasFile('cover_photo')) {
+                return response()->json(['success' => false, 'message' => 'No cover photo provided'], 400);
+            }
+
+            $path = $request->file('cover_photo')->store('owners/covers', 'public');
+            
+            DB::table('property_owners')
+                ->where('owner_id', $id)
+                ->update([
+                    'cover_photo' => $path
+                ]);
+
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Cover photo updated successfully',
+                'path' => asset('storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
 }
+
 

@@ -96,6 +96,11 @@
       border-color: rgb(239, 68, 68) !important;
     }
 
+    #dtiDropzone.error {
+      border-color: rgb(239, 68, 68) !important;
+      background-color: rgb(254, 242, 242) !important;
+    }
+
     #addContractorErrorAlert {
       animation: slideDown 0.3s ease-out;
     }
@@ -250,8 +255,7 @@
             <div class="h-0.5 flex-1 rounded-full bg-gradient-to-r from-orange-400 via-orange-200 to-orange-50"></div>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-2">Select Existing Verified Property Owner <span
-                class="text-gray-400">(optional)</span></label>
+            <label class="block text-xs font-medium text-gray-700 mb-2">Select Existing Verified Property Owner <span class="text-red-500">*</span></label>
             <input type="hidden" name="owner_id" id="selectedOwnerId">
             <div class="relative">
               <input type="text" id="ownerSearchInput" placeholder="Search by owner name or email"
@@ -285,39 +289,49 @@
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Province</label>
                   <select id="contractor_address_province" name="business_address_province"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                    data-field="business_address_province">
                     <option value="">Select Province</option>
                     @foreach($provinces as $province)
                       <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">{{ $province['name'] }}
                       </option>
                     @endforeach
                   </select>
+                  <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">City/Municipality</label>
                   <select id="contractor_address_city" name="business_address_city"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                    data-field="business_address_city"
                     disabled>
                     <option value="">Select City/Municipality</option>
                   </select>
+                  <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Barangay</label>
                   <select id="contractor_address_barangay" name="business_address_barangay"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                    data-field="business_address_barangay"
                     disabled>
                     <option value="">Select Barangay</option>
                   </select>
+                  <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Street Address / Unit No.</label>
                   <input type="text" name="business_address_street" placeholder="Enter street address"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                    data-field="business_address_street">
+                  <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Zip Code</label>
                   <input type="text" name="business_address_postal" placeholder="Enter zip code"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                    data-field="business_address_postal">
+                  <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
               </div>
             </div>
@@ -466,19 +480,25 @@
             <div class="md:col-span-2">
               <label class="block text-xs font-medium text-gray-700 mb-1">Services Offered</label>
               <input type="text" name="services_offered" placeholder="e.g. Plumbing, Electrical, Roofing"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                data-field="services_offered">
+              <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Company Website <span
                   class="text-gray-400">(optional)</span></label>
               <input type="url" name="company_website" placeholder="https://"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                data-field="company_website">
+              <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Social Media <span
                   class="text-gray-400">(optional)</span></label>
               <input type="url" name="company_social_media" placeholder="https://"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-contractor-field"
+                data-field="company_social_media">
+              <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
             </div>
           </div>
         </div>
@@ -770,7 +790,7 @@
                   </div>
                 </div>
                 <div id="editCurrentDtiFile" class="mt-1.5 text-[11px] text-gray-500 hidden">
-                  Current: <a href="#" target="_blank" class="text-orange-600 hover:underline font-medium">View File</a>
+                  Current: <a href="#" class="text-orange-600 hover:underline font-medium open-doc-btn" data-doc-src="">View File</a>
                 </div>
               </div>
             </div>
@@ -905,6 +925,32 @@
           class="w-full px-3 py-1.5 border-2 border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-all text-[11px] font-semibold hover:border-gray-400 hover:shadow-sm transform hover:scale-[1.01] active:scale-95">
           Cancel
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Universal File Viewer (UFV) -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
+          <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
+            <i class="fi fi-rr-download"></i>
+          </a>
+          <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
+            <i class="fi fi-rr-cross text-sm"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Viewport -->
+      <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
+        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
+        <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
       </div>
     </div>
   </div>

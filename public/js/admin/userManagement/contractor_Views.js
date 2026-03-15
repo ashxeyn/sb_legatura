@@ -458,11 +458,14 @@ function initTeamMemberTabs() {
 
         if (!modal) return;
 
-        function openDocumentViewer(src) {
+        function openDocumentViewer(src, title) {
             if (!modal) return;
             const isPdf = /\.pdf(\?|$)/i.test(src);
+            const titleEl = document.getElementById('documentViewerTitle');
+            const downloadLink = document.getElementById('documentViewerDownload');
 
-            // no download link; render document in modal
+            if (titleEl) titleEl.textContent = title || 'Document Viewer';
+            if (downloadLink) downloadLink.href = src;
 
             if (isPdf) {
                 if (iframe) {
@@ -482,21 +485,21 @@ function initTeamMemberTabs() {
             modal.classList.add('flex');
             document.body.style.overflow = 'hidden';
 
-            const modalContent = modal.querySelector('.modal-content');
-            if (modalContent) {
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
                 setTimeout(function() {
-                    modalContent.classList.remove('scale-95', 'opacity-0');
-                    modalContent.classList.add('scale-100', 'opacity-100');
+                    modalShell.classList.remove('scale-95', 'opacity-0');
+                    modalShell.classList.add('scale-100', 'opacity-100');
                 }, 10);
             }
         }
 
         function closeDocumentViewer() {
             if (!modal) return;
-            const modalContent = modal.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.classList.remove('scale-100', 'opacity-100');
-                modalContent.classList.add('scale-95', 'opacity-0');
+            const modalShell = modal.querySelector('.modal-shell');
+            if (modalShell) {
+                modalShell.classList.remove('scale-100', 'opacity-100');
+                modalShell.classList.add('scale-95', 'opacity-0');
             }
             setTimeout(function() {
                 modal.classList.add('hidden');
@@ -2363,3 +2366,149 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         }
     });
 });
+
+// ============================================
+// IMAGE UPLOADS (LOGO & BANNER)
+// ============================================
+
+(function() {
+    const contractorId = document.body.dataset.contractorId;
+    const coverPhotoUpload = document.getElementById('coverPhotoUpload');
+    const companyLogoUpload = document.getElementById('companyLogoUpload');
+    const companyCoverImg = document.getElementById('companyCoverImg');
+    const companyLogoImg = document.getElementById('companyLogoImg');
+    const coverPhotoPlaceholder = document.getElementById('coverPhotoPlaceholder');
+    const companyLogoIcon = document.getElementById('companyLogoIcon');
+
+    // Upload Confirmation Modal Elements
+    const uploadConfirmModal = document.getElementById('uploadConfirmModal');
+    const uploadConfirmModalContent = uploadConfirmModal ? uploadConfirmModal.querySelector('.modal-content') : null;
+    const uploadConfirmPreview = document.getElementById('uploadConfirmPreview');
+    const uploadConfirmMessage = document.getElementById('uploadConfirmMessage');
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+    const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+
+    let currentUploadFile = null;
+    let currentUploadType = null; // 'logo' or 'banner'
+
+    function openUploadConfirmModal(file, type) {
+        if (!uploadConfirmModal || !uploadConfirmModalContent) return;
+
+        currentUploadFile = file;
+        currentUploadType = type;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (uploadConfirmPreview) uploadConfirmPreview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        if (uploadConfirmMessage) {
+            uploadConfirmMessage.textContent = type === 'logo' ? 
+                'Are you sure you want to update the company logo?' : 
+                'Are you sure you want to update the company banner?';
+        }
+
+        uploadConfirmModal.classList.remove('hidden');
+        uploadConfirmModal.classList.add('flex');
+        setTimeout(() => {
+            uploadConfirmModalContent.classList.remove('scale-95', 'opacity-0');
+            uploadConfirmModalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeUploadConfirmModal() {
+        if (!uploadConfirmModalContent) return;
+
+        uploadConfirmModalContent.classList.remove('scale-100', 'opacity-100');
+        uploadConfirmModalContent.classList.add('scale-95', 'opacity-0');
+
+        setTimeout(() => {
+            uploadConfirmModal.classList.add('hidden');
+            uploadConfirmModal.classList.remove('flex');
+            currentUploadFile = null;
+            currentUploadType = null;
+            if (companyLogoUpload) companyLogoUpload.value = '';
+            if (coverPhotoUpload) coverPhotoUpload.value = '';
+        }, 300);
+    }
+
+    if (cancelUploadBtn) {
+        cancelUploadBtn.addEventListener('click', closeUploadConfirmModal);
+    }
+
+    if (companyLogoUpload) {
+        companyLogoUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) openUploadConfirmModal(file, 'logo');
+        });
+    }
+
+    if (coverPhotoUpload) {
+        coverPhotoUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) openUploadConfirmModal(file, 'banner');
+        });
+    }
+
+    if (confirmUploadBtn) {
+        confirmUploadBtn.addEventListener('click', function() {
+            if (!currentUploadFile || !currentUploadType || !contractorId) return;
+
+            const formData = new FormData();
+            let url = '';
+
+            if (currentUploadType === 'logo') {
+                formData.append('company_logo', currentUploadFile);
+                url = `/admin/user-management/contractors/${contractorId}/update-logo`;
+            } else {
+                formData.append('company_banner', currentUploadFile);
+                url = `/admin/user-management/contractors/${contractorId}/update-banner`;
+            }
+
+            confirmUploadBtn.disabled = true;
+            const originalBtnText = confirmUploadBtn.innerHTML;
+            confirmUploadBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin shadow-sm mt-1"></i> Uploading...';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    if (currentUploadType === 'logo') {
+                        if (companyLogoImg) {
+                            companyLogoImg.src = data.path;
+                            companyLogoImg.classList.remove('hidden');
+                        }
+                        if (companyLogoIcon) companyLogoIcon.classList.add('hidden');
+                    } else {
+                        if (companyCoverImg) {
+                            companyCoverImg.src = data.path;
+                            companyCoverImg.classList.remove('hidden');
+                        }
+                        if (coverPhotoPlaceholder) coverPhotoPlaceholder.classList.add('hidden');
+                    }
+                    closeUploadConfirmModal();
+                } else {
+                    showNotification(data.message || 'Upload failed', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('An error occurred during upload', 'error');
+            })
+            .finally(() => {
+                confirmUploadBtn.disabled = false;
+                confirmUploadBtn.innerHTML = originalBtnText;
+            });
+        });
+    }
+})();
+

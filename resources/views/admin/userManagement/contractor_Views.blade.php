@@ -109,13 +109,14 @@
             <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <!-- Cover Photo -->
               <div class="relative h-28 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 overflow-hidden">
-                @if(isset($contractor->cover_photo) && $contractor->cover_photo)
-                  <img id="companyCoverImg" src="{{ asset($contractor->cover_photo) }}" alt="Cover Photo" class="w-full h-full object-cover">
+                @if(isset($contractor->company_banner) && $contractor->company_banner)
+                  <img id="companyCoverImg" src="{{ asset('storage/' . $contractor->company_banner) }}" alt="Cover Photo" class="w-full h-full object-cover">
                 @else
                   <img id="companyCoverImg" src="" alt="Cover Photo" class="w-full h-full object-cover hidden">
                 @endif
                 <!-- Decorative circles (visible when no cover photo set) -->
-                <div id="coverPhotoPlaceholder" class="{{ isset($contractor->cover_photo) && $contractor->cover_photo ? 'hidden' : '' }} absolute inset-0 opacity-10 pointer-events-none">
+                <div id="coverPhotoPlaceholder" class="{{ isset($contractor->company_banner) && $contractor->company_banner ? 'hidden' : '' }} absolute inset-0 opacity-10 pointer-events-none">
+
                   <div class="absolute top-2 right-8 w-20 h-20 rounded-full border-4 border-white"></div>
                   <div class="absolute -top-4 right-16 w-32 h-32 rounded-full border-4 border-white"></div>
                   <div class="absolute bottom-2 left-1/3 w-16 h-16 rounded-full border-2 border-white"></div>
@@ -141,14 +142,15 @@
                 <div class="-mt-8 mb-3 relative z-10">
                   <div class="relative inline-block">
                     <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center overflow-hidden shadow-lg ring-[3px] ring-white">
-                      @if(isset($contractor->profile_pic) && $contractor->profile_pic)
-                        <img id="companyLogoImg" src="{{ asset($contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
+                      @if(isset($contractor->company_logo) && $contractor->company_logo)
+                        <img id="companyLogoImg" src="{{ asset('storage/' . $contractor->company_logo) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
                         <i id="companyLogoIcon" class="fi fi-sr-building text-white text-xl hidden"></i>
                       @else
                         <img id="companyLogoImg" src="" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover hidden">
                         <i id="companyLogoIcon" class="fi fi-sr-building text-white text-xl"></i>
                       @endif
                     </div>
+
                     <label for="companyLogoUpload" class="absolute bottom-0 right-0 bg-orange-500 hover:bg-orange-600 text-white p-1 rounded-full cursor-pointer shadow-md transition-all hover:-translate-y-0.5 active:scale-95">
                       <i class="fi fi-rr-camera text-xs"></i>
                       <input type="file" id="companyLogoUpload" class="hidden" accept="image/*">
@@ -169,12 +171,13 @@
                     <!-- Header row with larger avatar -->
                     <div class="flex gap-4 mb-4 pb-4 border-b border-blue-200">
                       <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-md ring-2 ring-blue-100 flex-shrink-0">
-                        @if(isset($contractor->profile_pic) && $contractor->profile_pic)
-                          <img src="{{ asset($contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
+                        @if(isset($contractor->company_logo) && $contractor->company_logo)
+                          <img src="{{ asset('storage/' . $contractor->company_logo) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
                         @else
-                          <i class="fi fi-rr-user text-white text-2xl"></i>
+                          <i class="fi fi-sr-building text-white text-2xl"></i>
                         @endif
                       </div>
+
                       <div class="flex-1 flex flex-col justify-center">
                         <h3 class="text-sm font-bold text-blue-700 flex items-center gap-1.5 mb-1">
                           <i class="fi fi-rr-user text-base text-blue-600"></i>
@@ -1329,28 +1332,64 @@
         </button>
       </div>
     </div>
-  </div>
-
-  <!-- Document Viewer Modal -->
-  <div id="documentViewerModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
-      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fi fi-rr-file-document text-orange-500"></i> Document Viewer</h3>
-        <div class="flex items-center gap-2">
-          <button id="closeDocumentViewerBtn" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg">
-            <i class="fi fi-rr-cross text-xl"></i>
+  </div>  <!-- Universal File Viewer (UFV) -->
+  <div id="documentViewerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-[#1e1e2e] rounded-[1.25rem] shadow-[0_30px_90px_rgba(0,0,0,0.75)] max-w-5xl w-full h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 flex flex-col modal-shell">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-3 bg-[#16162a] border-b border-white/5 gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="fi fi-rr-file-document text-orange-500 text-lg"></i>
+          <h3 id="documentViewerTitle" class="text-sm font-semibold text-gray-200 truncate">Document Viewer</h3>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="documentViewerDownload" href="#" download class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-orange-500/40 hover:text-white transition-all" title="Download">
+            <i class="fi fi-rr-download"></i>
+          </a>
+          <button id="closeDocumentViewerBtn" class="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/40 hover:text-white transition-all" title="Close">
+            <i class="fi fi-rr-cross text-sm"></i>
           </button>
         </div>
       </div>
+      <!-- Viewport -->
+      <div class="flex-1 bg-[#0d0d18] relative flex items-center justify-center overflow-hidden p-4">
+        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain hidden" />
+        <iframe id="documentViewerFrame" src="" class="w-full h-full hidden border-0 bg-white rounded-lg"></iframe>
+      </div>
+    </div>
+  </div>
 
-      <div class="p-4 max-h-[calc(90vh-120px)] overflow-auto flex items-center justify-center bg-gray-50">
-        <iframe id="documentViewerFrame" src="" class="w-full h-[70vh] border-0 hidden"></iframe>
-        <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-[70vh] object-contain hidden" />
+
+  <!-- Upload Confirmation Modal -->
+  <div id="uploadConfirmModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4 animate-fadeIn">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden border border-gray-200">
+      <div class="px-6 py-4 flex items-center gap-3 border-b border-gray-100 bg-gray-50">
+        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm border border-blue-200">
+          <i class="fi fi-rr-cloud-upload mt-1"></i>
+        </div>
+        <h2 class="text-lg font-bold text-gray-800">Confirm Upload</h2>
+      </div>
+      <div class="px-6 py-5 bg-white text-center">
+        <p id="uploadConfirmMessage" class="text-gray-600 text-sm mb-4">Are you sure you want to update this image?</p>
+        <div class="flex flex-col items-center">
+          <div class="w-32 h-32 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50 mb-2">
+            <img id="uploadConfirmPreview" src="" alt="Preview" class="max-w-full max-h-full object-contain">
+          </div>
+          <p class="text-[10px] text-gray-400">New Image Preview</p>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-6 py-4 flex items-center justify-center gap-3 border-t border-gray-200">
+        <button id="cancelUploadBtn" class="flex-1 px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-all font-semibold active:scale-95">
+          Cancel
+        </button>
+        <button id="confirmUploadBtn" class="flex-1 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-semibold shadow-md active:scale-95">
+          Upload
+        </button>
       </div>
     </div>
   </div>
 
   <script src="{{ asset('js/admin/userManagement/contractor.js') }}" defer></script>
+
   <script src="{{ asset('js/admin/userManagement/contractor_Views.js') }}" defer></script>
 
 </body>
