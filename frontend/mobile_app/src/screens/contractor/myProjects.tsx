@@ -472,21 +472,34 @@ export default function MyProjects({ userData, initialProjects = [], onClose, in
     const statusConfig = getStatusConfig(project.display_status || project.project_status);
     const isNotStarted = project.display_status === 'waiting_milestone_setup';
     const isHalted = (project.project_status || '').toLowerCase() === 'halt' || (project.project_status || '').toLowerCase() === 'on_hold' || (project.project_status || '').toLowerCase() === 'halted';
+    const isTerminated = (project.project_status || '').toLowerCase() === 'terminated';
     const primaryTitle = getCardPrimaryTitle(project);
     const showPostTitle = primaryTitle !== project.project_title;
 
     return (
       <TouchableOpacity
         key={project.project_id}
-        style={[styles.projectCard, isNotStarted && styles.projectCardNotStarted, isHalted && styles.projectCardHalted]}
+        style={[
+          styles.projectCard,
+          isNotStarted && styles.projectCardNotStarted,
+          isHalted && styles.projectCardHalted,
+          isTerminated && styles.projectCardTerminated
+        ]}
         activeOpacity={0.7}
         onPress={() => {
           setSelectedProject(project);
           setShowProjectDetails(true);
         }}
       >
+        {/* Terminated Banner */}
+        {isTerminated && (
+          <View style={styles.terminatedBanner}>
+            <Feather name="slash" size={16} color="#FFFFFF" />
+            <Text style={styles.terminatedBannerText}>Project Terminated</Text>
+          </View>
+        )}
         {/* Halted Banner */}
-        {isHalted && (
+        {isHalted && !isTerminated && (
           <View style={styles.haltedBanner}>
             <Feather name="alert-octagon" size={16} color="#FFFFFF" />
             <Text style={styles.haltedBannerText}>Project Halted</Text>
@@ -1171,6 +1184,12 @@ const styles = StyleSheet.create({
     borderColor: '#DC2626',
     backgroundColor: '#FEF2F2',
   },
+  projectCardTerminated: {
+    borderWidth: 1,
+    borderColor: '#991B1B',
+    backgroundColor: '#FEF2F2',
+    opacity: 0.8,
+  },
   haltedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1181,7 +1200,24 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     gap: 6,
   },
+  terminatedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#991B1B',
+    marginBottom: 10,
+    paddingVertical: 7,
+    borderRadius: 4,
+    gap: 6,
+  },
   haltedBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  terminatedBannerText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',

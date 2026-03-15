@@ -325,6 +325,7 @@ export default function ContractorDashboard({
     switch (status) {
       case 'completed': return '#22c55e';
       case 'in_progress': return '#3b82f6';
+      case 'terminated': return '#b91c1c';
       case 'halt': return '#ef4444';
       default: return '#94a3b8';
     }
@@ -355,6 +356,7 @@ export default function ContractorDashboard({
     const statusLabel = item.status === 'not_started' ? 'Not Started'
       : item.status === 'in_progress' ? 'In Progress'
       : item.status === 'completed' ? 'Completed'
+      : item.status === 'terminated' ? 'Terminated'
       : item.status === 'halt' ? 'Halted' : item.status;
 
     return (

@@ -7,6 +7,7 @@
 let currentConversationId = null;
 let currentConversationData = null; // Store conversation metadata
 let currentReceiverId = null;
+let currentContractorId = null; // Track contractor_id for contractor-scoped conversations
 let selectedRecipients = [];
 
 // Typing indicator state
@@ -428,7 +429,8 @@ function renderConversations(conversations) {
              data-receiver-id="${conv.other_user.id}"
              data-receiver-name="${conv.other_user.name}"
              data-receiver-avatar="${conv.other_user.avatar}"
-             data-receiver-type="${conv.other_user.type}">
+             data-receiver-type="${conv.other_user.type}"
+             data-contractor-id="${conv.contractor_id ?? ''}">
             <div class="flex items-center gap-2.5 cursor-pointer px-3 py-2.5 transition">
                 <div class="relative flex-shrink-0 avatar-container" data-initials="${initials}">
                     <img src="${conv.other_user.avatar}"
@@ -492,11 +494,15 @@ async function selectConversation(conversationId, receiverId) {
     currentConversationId = conversationId;
     currentReceiverId = receiverId;
 
+    // Read contractor_id from the conversation item data attribute
+    const selectedConversation = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+    const rawContractorId = selectedConversation?.dataset.contractorId;
+    currentContractorId = rawContractorId ? parseInt(rawContractorId) : null;
+
     // Update active state
     document.querySelectorAll('.conversation-item').forEach(item => {
         item.classList.remove('active');
     });
-    const selectedConversation = document.querySelector(`[data-conversation-id="${conversationId}"]`);
     selectedConversation?.classList.add('active');
 
     // Update conversation header with receiver info
@@ -1051,6 +1057,10 @@ async function sendMessage() {
 
     if (currentConversationId) {
         formData.append('conversation_id', currentConversationId);
+    }
+
+    if (currentContractorId) {
+        formData.append('contractor_id', currentContractorId);
     }
 
     // Append files
@@ -1663,6 +1673,10 @@ function setupEventListeners() {
                 formData.append('receiver_id', recipient.id);
                 formData.append('content', content || '');
 
+                if (recipient.contractor_id) {
+                    formData.append('contractor_id', recipient.contractor_id);
+                }
+
                 // Append files if any
                 if (fileInput && fileInput.files.length > 0) {
                     for (let i = 0; i < fileInput.files.length; i++) {
@@ -1997,7 +2011,7 @@ function showUserDropdown(users) {
     dropdown.innerHTML = users.map(user => {
         const initials = getInitials(user.name);
         return `
-        <div class="user-option p-3 hover:bg-indigo-50 cursor-pointer flex items-center gap-3 transition" data-user-id="${user.id}">
+        <div class="user-option p-3 hover:bg-indigo-50 cursor-pointer flex items-center gap-3 transition" data-user-id="${user.id}" data-contractor-id="${user.contractor_id ?? ''}">
             <div class="relative w-8 h-8">
                 <img src="${user.avatar}" class="w-8 h-8 rounded-full avatar-img" alt="${user.name}" onerror="this.style.display='none'; this.parentElement.querySelector('.avatar-fallback')?.style.display='flex';">
                 <div class="avatar-fallback w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs hidden">
@@ -2017,7 +2031,8 @@ function showUserDropdown(users) {
     dropdown.querySelectorAll('.user-option').forEach(option => {
         option.addEventListener('click', () => {
             const userId = parseInt(option.dataset.userId);
-            selectRecipient(userId);
+            const contractorId = option.dataset.contractorId ? parseInt(option.dataset.contractorId) : null;
+            selectRecipient(userId, contractorId);
         });
     });
 }
@@ -2025,12 +2040,15 @@ function showUserDropdown(users) {
 /**
  * Select a recipient from compose modal
  */
-function selectRecipient(userId) {
-    const user = availableUsers.find(u => u.id === userId);
+function selectRecipient(userId, contractorId = null) {
+    // Match by both id and contractor_id to distinguish company vs personal entries
+    const user = contractorId
+        ? availableUsers.find(u => u.id === userId && u.contractor_id == contractorId)
+        : availableUsers.find(u => u.id === userId && !u.contractor_id);
     if (!user) return;
 
-    // Check if already selected
-    if (selectedRecipients.find(r => r.id === userId)) {
+    // Check if already selected (match by id + contractor_id)
+    if (selectedRecipients.find(r => r.id === userId && r.contractor_id == contractorId)) {
         toast('Recipient already selected', 'warning');
         return;
     }
@@ -2073,7 +2091,7 @@ function renderRecipientChips() {
         chip.className = 'recipient-chip flex items-center gap-1.5 bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full text-sm font-medium';
         chip.innerHTML = `
             <span>${escapeHtml(user.name)}</span>
-            <button class="remove-recipient hover:bg-indigo-200 rounded-full w-4 h-4 flex items-center justify-center text-sm" data-user-id="${user.id}">
+            <button class="remove-recipient hover:bg-indigo-200 rounded-full w-4 h-4 flex items-center justify-center text-sm" data-user-id="${user.id}" data-contractor-id="${user.contractor_id ?? ''}">
                 ×
             </button>
         `;
@@ -2082,7 +2100,8 @@ function renderRecipientChips() {
         // Add remove listener
         chip.querySelector('.remove-recipient').addEventListener('click', (e) => {
             e.stopPropagation();
-            removeRecipient(user.id);
+            const cid = e.currentTarget.dataset.contractorId ? parseInt(e.currentTarget.dataset.contractorId) : null;
+            removeRecipient(user.id, cid);
         });
     });
 }
@@ -2090,8 +2109,8 @@ function renderRecipientChips() {
 /**
  * Remove a recipient chip
  */
-function removeRecipient(userId) {
-    selectedRecipients = selectedRecipients.filter(r => r.id !== userId);
+function removeRecipient(userId, contractorId = null) {
+    selectedRecipients = selectedRecipients.filter(r => !(r.id === userId && r.contractor_id == contractorId));
     renderRecipientChips();
 }
 

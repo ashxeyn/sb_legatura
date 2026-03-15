@@ -190,14 +190,8 @@
                     @foreach($projects as $project)
                         <option value="{{ $project->project_id }}"
                                 data-contractor-id="{{ $project->contractor_user_id ?? '' }}"
-                                data-owner-id="{{ $project->owner_id }}">
-                            {{ $project->project_title }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="form-group">
+                                  data-owner-id="{{ $project->owner_id }}"
+                                  data-project-status="{{ $project->project_status ?? '' }}">
                 <label for="milestone_id">Milestone *</label>
                 <select id="milestone_id" name="milestone_id" required>
                     <option value="">Select Milestone</option>

@@ -82,6 +82,7 @@ interface MessagesScreenProps {
     email?: string;
     profile_pic?: string;
     user_type?: string;
+    contractor_id?: number | null; // set when viewing as contractor role
   };
 }
 
@@ -143,7 +144,7 @@ const resolveFileUrl = (url: string): string => {
 };
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  contractor:     { label: 'Contractor',    color: '#1d4ed8', bg: '#dbeafe' },
+  contractor:     { label: 'Contractor',    color: '#6b7280', bg: '#f3f4f6' },
   property_owner: { label: 'Property Owner', color: '#b45309', bg: '#fef3c7' },
   admin:          { label: 'Admin',          color: '#7c3aed', bg: '#f3e8ff' },
   owner:          { label: 'Owner',          color: '#1d4ed8', bg: '#dbeafe' },
@@ -211,6 +212,7 @@ const Avatar = React.memo(({
 export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const insets = useSafeAreaInsets();
   const userId = userData?.user_id;
+  const contractorId = userData?.contractor_id ?? null;
 
   /* ─── View state ─────────────────────────────────────────────── */
   const [activeConversation, setActiveConversation] = useState<InboxItem | null>(null);
@@ -242,6 +244,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const [usersLoading, setUsersLoading] = useState(false);
   const [composeSearch, setComposeSearch] = useState('');
   const [selectedRecipient, setSelectedRecipient] = useState<UserInfo | null>(null);
+  const [selectedRecipients, setSelectedRecipients] = useState<UserInfo[]>([]);
   const [composeText, setComposeText] = useState('');
   const [composeSending, setComposeSending] = useState(false);
 
@@ -257,6 +260,11 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
   const [pusherConnected, setPusherConnected] = useState(false);
+
+  // Stable refs so Pusher channel always calls the latest handler without re-subscribing
+  const handlePusherMessageRef = useRef<(event: any) => void>(() => {});
+  const handlePusherReadReceiptRef = useRef<(event: any) => void>(() => {});
+  const handlePusherTypingRef = useRef<(event: any) => void>(() => {});
 
   /* ─── Polling ────────────────────────────────────────────────── */
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -322,6 +330,20 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     };
   }, []);
 
+  // Re-fetch inbox when contractorId changes (e.g. myContractorProfile loads after initial render)
+  const prevContractorIdRef = useRef<number | null | undefined>(undefined);
+  useEffect(() => {
+    // Skip the very first run — the mount effect already called loadInbox()
+    if (prevContractorIdRef.current === undefined) {
+      prevContractorIdRef.current = contractorId;
+      return;
+    }
+    if (prevContractorIdRef.current !== contractorId) {
+      prevContractorIdRef.current = contractorId;
+      loadInbox();
+    }
+  }, [contractorId]);
+
   useEffect(() => {
     clearPoll();
     if (activeConversation) {
@@ -351,12 +373,14 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
       pusher.connection.bind('disconnected', () => setPusherConnected(false));
       pusher.connection.bind('error', () => setPusherConnected(false));
 
+      // Use stable wrapper callbacks that delegate to the latest handler via refs.
+      // This avoids stale closures when handlePusherMessage is recreated.
       const channel = subscribeToChatChannel(
         pusher,
         userId,
-        handlePusherMessage,
-        handlePusherReadReceipt,
-        handlePusherTyping,
+        (event: any) => handlePusherMessageRef.current(event),
+        (event: any) => handlePusherReadReceiptRef.current(event),
+        (event: any) => handlePusherTypingRef.current(event),
       );
       channelRef.current = channel;
     } catch (err) {
@@ -370,68 +394,91 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
 
   const handlePusherMessage = useCallback(
     (event: any) => {
+      // Normalize conversation_id to number — Pusher may deliver it as string
+      const eventConvId = Number(event.conversation_id);
+      const eventContractorId = event.contractor_id ? Number(event.contractor_id) : null;
+
+      // Filter by role context: skip events that belong to a different inbox
+      // Only filter if BOTH sides have a contractor_id set (i.e. it's a contractor-scoped conv)
+      // Regular user-to-user messages (eventContractorId=null) should always pass through
+      if (eventContractorId !== null && eventContractorId !== contractorId) {
+        // This is a contractor-conv event for a different contractor — ignore
+        return;
+      }
+
       const incoming: ChatMessage = {
         message_id: event.message_id,
-        conversation_id: event.conversation_id,
+        conversation_id: eventConvId,
         content: event.content,
         sender: event.sender,
         is_read: event.is_read ?? false,
         is_flagged: event.is_flagged ?? false,
         flag_reason: event.flag_reason ?? null,
-        sent_at_human: 'Just now',
+        sent_at_human: event.sent_at_human ?? 'Just now',
         sent_at: event.sent_at,
         attachments: event.attachments || [],
       };
 
-      setActiveConversation((prev: InboxItem | null) => {
-        if (prev && prev.conversation_id === event.conversation_id) {
-          setMessages((msgs: ChatMessage[]) => {
-            if (msgs.some((m: ChatMessage) => m.message_id === incoming.message_id)) return msgs;
-            return [...msgs, incoming];
-          });
-          setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 200);
-          messages_service.get_conversation(event.conversation_id).catch(() => { });
-        }
-        return prev;
-      });
+      // Use ref to read current active conversation without stale closure
+      const currentConv = activeConvRef.current;
+      if (currentConv && Number(currentConv.conversation_id) === eventConvId) {
+        setMessages((msgs: ChatMessage[]) => {
+          if (msgs.some((m: ChatMessage) => m.message_id === incoming.message_id)) return msgs;
+          return [...msgs, incoming];
+        });
+        setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 200);
+        // User is actively viewing — mark as read immediately so sender sees double-check
+        messages_service.mark_as_read(eventConvId).catch(() => {});
+      }
 
       setInbox((prev: InboxItem[]) => {
-        const exists = prev.find((c: InboxItem) => c.conversation_id === event.conversation_id);
+        const exists = prev.find((c: InboxItem) => Number(c.conversation_id) === eventConvId);
         if (exists) {
           return prev.map((c: InboxItem) =>
-            c.conversation_id === event.conversation_id
+            Number(c.conversation_id) === eventConvId
               ? {
-                ...c,
-                last_message: {
-                  content: event.content || 'Attachment',
-                  sent_at: 'Just now',
-                  sent_at_timestamp: event.sent_at,
-                },
-                unread_count: c.unread_count + 1,
-              }
+                  ...c,
+                  last_message: {
+                    content: event.content || 'Attachment',
+                    sent_at: 'Just now',
+                    sent_at_timestamp: event.sent_at,
+                  },
+                  // Only increment unread if this message is NOT from the current user
+                  unread_count: event.sender?.id === c.other_user?.id
+                    ? c.unread_count + 1
+                    : c.unread_count,
+                }
               : c,
           );
         }
-        loadInbox();
+        // New conversation not in inbox yet — reload inbox
+        messages_service.get_inbox(contractorId).then((res) => {
+          if (res.success && res.data) setInbox(res.data);
+        }).catch(() => {});
         return prev;
       });
     },
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contractorId],
   );
 
   const handlePusherReadReceipt = useCallback(
     (event: any) => {
-      const { conversation_id } = event;
-      setActiveConversation((prev: InboxItem | null) => {
-        if (prev && prev.conversation_id === conversation_id) {
-          setMessages((msgs: ChatMessage[]) =>
-            msgs.map((m: ChatMessage) =>
-              m.sender.id === userId && !m.is_read ? { ...m, is_read: true } : m,
-            ),
-          );
-        }
-        return prev;
-      });
+      const eventConvId = Number(event.conversation_id);
+      const currentConv = activeConvRef.current;
+      if (currentConv && Number(currentConv.conversation_id) === eventConvId) {
+        setMessages((msgs: ChatMessage[]) =>
+          msgs.map((m: ChatMessage) =>
+            m.sender.id === userId && !m.is_read ? { ...m, is_read: true } : m,
+          ),
+        );
+      }
+      // Also clear unread badge in inbox
+      setInbox((prev: InboxItem[]) =>
+        prev.map((c: InboxItem) =>
+          Number(c.conversation_id) === eventConvId ? { ...c, unread_count: 0 } : c,
+        ),
+      );
     },
     [userId],
   );
@@ -448,6 +495,12 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     }
   }, []);
 
+  // Keep refs in sync with the latest handler versions so the Pusher channel
+  // (subscribed once on mount) always calls the current closure.
+  useEffect(() => { handlePusherMessageRef.current = handlePusherMessage; }, [handlePusherMessage]);
+  useEffect(() => { handlePusherReadReceiptRef.current = handlePusherReadReceipt; }, [handlePusherReadReceipt]);
+  useEffect(() => { handlePusherTypingRef.current = handlePusherTyping; }, [handlePusherTyping]);
+
   /* =================================================================
    * Data loading
    * ================================================================= */
@@ -455,7 +508,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const loadInbox = async () => {
     try {
       setInboxLoading(true);
-      const res = await messages_service.get_inbox();
+      const res = await messages_service.get_inbox(contractorId);
       const items = (res.success && res.data) ? res.data : [];
       setInbox(items);
 
@@ -475,6 +528,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             avatar: pending.avatar || null,
             online: false,
           };
+          setSelectedRecipients([userInfo]);
           setSelectedRecipient(userInfo);
           setComposeVisible(true);
         }
@@ -495,7 +549,6 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const openConversation = async (item: InboxItem) => {
     setActiveConversation(item);
     setChatLoading(true);
-    setMessages([]);
     try {
       const res = await messages_service.get_conversation(item.conversation_id);
       if (res.success && res.data) {
@@ -505,8 +558,13 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             c.conversation_id === item.conversation_id ? { ...c, unread_count: 0 } : c,
           ),
         );
+      } else {
+        // Clear messages only on confirmed failure so we don't flash empty state
+        setMessages([]);
+        console.error('openConversation failed:', res.message);
       }
     } catch (err) {
+      setMessages([]);
       console.error('openConversation error:', err);
     } finally {
       setChatLoading(false);
@@ -518,12 +576,17 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     try {
       const res = await messages_service.get_conversation(conversationId);
       if (res.success && res.data) {
+        const newMsgs = res.data.messages || [];
         setMessages((prev: ChatMessage[]) => {
-          const newMsgs = res.data!.messages || [];
+          // Always update if lengths differ
           if (newMsgs.length !== prev.length) return newMsgs;
+          // Update if the last message changed (new message or read status update)
           const lastNew = newMsgs[newMsgs.length - 1];
           const lastOld = prev[prev.length - 1];
+          if (!lastNew && !lastOld) return prev;
           if (lastNew?.message_id !== lastOld?.message_id) return newMsgs;
+          // Also update if read status of any message changed
+          if (lastNew?.is_read !== lastOld?.is_read) return newMsgs;
           return prev;
         });
       }
@@ -559,6 +622,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
         text,
         activeConversation.conversation_id,
         attachments.length > 0 ? attachments : undefined,
+        activeConversation.contractor_id ?? contractorId,
       );
 
       if (res.success && res.data) {
@@ -659,37 +723,39 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const closeCompose = () => {
     setComposeVisible(false);
     setSelectedRecipient(null);
+    setSelectedRecipients([]);
     setComposeText('');
     setComposeSearch('');
   };
 
   const handleComposeSend = async () => {
-    if (!selectedRecipient || !composeText.trim()) return;
+    if (selectedRecipients.length === 0 || !composeText.trim()) return;
     setComposeSending(true);
     try {
-      const res = await messages_service.send_message(selectedRecipient.id, composeText.trim());
-      if (res.success && res.data) {
-        closeCompose();
-        await loadInbox();
-        const convId = res.data.conversation_id;
-        const newItem: InboxItem = {
-          conversation_id: convId,
-          other_user: res.data.receiver,
-          last_message: {
-            content: res.data.content,
-            sent_at: 'Just now',
-            sent_at_timestamp: res.data.sent_at,
-          },
-          unread_count: 0,
-          is_flagged: false,
-          status: 'active',
-          is_suspended: false,
-          suspended_until: null,
-          reason: null,
-        };
-        openConversation(newItem);
-      } else {
-        Alert.alert('Error', res.message || 'Failed to send message');
+      // Send to each recipient sequentially
+      let lastConvId: number | null = null;
+      for (const recipient of selectedRecipients) {
+        const res = await messages_service.send_message(
+          recipient.id,
+          composeText.trim(),
+          undefined,
+          undefined,
+          recipient.contractor_id ?? contractorId,
+        );
+        if (res.success && res.data) {
+          lastConvId = res.data.conversation_id;
+        }
+      }
+      closeCompose();
+      // Reload inbox then open the last conversation
+      await loadInbox();
+      if (lastConvId !== null) {
+        const targetConvId = lastConvId;
+        setInbox((currentInbox) => {
+          const found = currentInbox.find((c: InboxItem) => c.conversation_id === targetConvId);
+          if (found) setTimeout(() => openConversation(found), 50);
+          return currentInbox;
+        });
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to send');
@@ -930,7 +996,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                     minute: '2-digit',
                   })}
               </Text>
-              {isOwn && (
+              {isOwn && activeConversation?.other_user?.type !== 'Admin' && (
                 <Ionicons
                   name={item.is_read ? 'checkmark-done' : 'checkmark'}
                   size={14}
@@ -943,7 +1009,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
         </View>
       );
     },
-    [userId],
+    [userId, activeConversation],
   );
 
   /* =================================================================
@@ -1350,12 +1416,12 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             <Text style={styles.composeTitle}>New Message</Text>
             <TouchableOpacity
               onPress={handleComposeSend}
-              disabled={!selectedRecipient || !composeText.trim() || composeSending}
+              disabled={selectedRecipients.length === 0 || !composeText.trim() || composeSending}
             >
               <Text
                 style={[
                   styles.composeSend,
-                  (!selectedRecipient || !composeText.trim()) && { opacity: 0.4 },
+                  (selectedRecipients.length === 0 || !composeText.trim()) && { opacity: 0.4 },
                 ]}
               >
                 {composeSending ? 'Sending...' : 'Send'}
@@ -1363,49 +1429,59 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             </TouchableOpacity>
           </View>
 
+          {/* Recipient chips + search input */}
           <View style={styles.recipientBar}>
             <Text style={styles.recipientLabel}>To:</Text>
-            {selectedRecipient ? (
-              <View style={styles.recipientChip}>
-                <Text style={styles.recipientChipText}>{selectedRecipient.name}</Text>
-                <TouchableOpacity onPress={() => setSelectedRecipient(null)}>
-                  <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              </View>
-            ) : (
+            <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+              {selectedRecipients.map((r: UserInfo) => (
+                <View key={`${r.id}-${r.contractor_id ?? 0}`} style={styles.recipientChip}>
+                  <Text style={styles.recipientChipText}>{r.name}</Text>
+                  <TouchableOpacity onPress={() =>
+                    setSelectedRecipients((prev: UserInfo[]) =>
+                      prev.filter((x: UserInfo) => !(x.id === r.id && x.contractor_id === r.contractor_id))
+                    )
+                  }>
+                    <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              ))}
               <TextInput
-                style={styles.recipientInput}
-                placeholder="Search users..."
+                style={[styles.recipientInput, { minWidth: 120, flex: 1 }]}
+                placeholder={selectedRecipients.length === 0 ? 'Search users...' : 'Add more...'}
                 placeholderTextColor={COLORS.textMuted}
                 value={composeSearch}
                 onChangeText={setComposeSearch}
-                autoFocus
+                autoFocus={selectedRecipients.length === 0}
               />
-            )}
+            </View>
           </View>
 
-          {!selectedRecipient && (
+          {/* User search list — shown while search is active or no recipients yet */}
+          {(composeSearch.trim().length > 0 || selectedRecipients.length === 0) && (
             <FlatList
-              data={availableUsers.filter((u: UserInfo) =>
-                composeSearch
-                  ? u.name.toLowerCase().includes(composeSearch.toLowerCase())
-                  : true,
-              )}
-              keyExtractor={(item: UserInfo) => String(item.id)}
-              style={{ flex: 1 }}
+              data={availableUsers.filter((u: UserInfo) => {
+                // Exclude already-selected recipients
+                const alreadySelected = selectedRecipients.some(
+                  (r: UserInfo) => r.id === u.id && r.contractor_id === u.contractor_id
+                );
+                if (alreadySelected) return false;
+                if (composeSearch.trim()) {
+                  return u.name.toLowerCase().includes(composeSearch.toLowerCase());
+                }
+                return true;
+              })}
+              keyExtractor={(item: UserInfo) => `${item.id}-${item.contractor_id ?? 0}`}
+              style={{ flex: selectedRecipients.length > 0 ? 0 : 1, maxHeight: 300 }}
               ListHeaderComponent={
                 usersLoading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={COLORS.primary}
-                    style={{ marginVertical: 20 }}
-                  />
+                  <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
                 ) : null
               }
               renderItem={({ item: usr }: { item: UserInfo }) => (
                 <TouchableOpacity
                   style={styles.userRow}
                   onPress={() => {
+                    setSelectedRecipients((prev: UserInfo[]) => [...prev, usr]);
                     setSelectedRecipient(usr);
                     setComposeSearch('');
                   }}
@@ -1427,7 +1503,8 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             />
           )}
 
-          {selectedRecipient && (
+          {/* Message text input — shown once at least one recipient is selected */}
+          {selectedRecipients.length > 0 && (
             <View style={styles.composeTextWrap}>
               <TextInput
                 style={styles.composeTextInput}
@@ -1437,7 +1514,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                 onChangeText={setComposeText}
                 multiline
                 maxLength={5000}
-                autoFocus
+                autoFocus={composeSearch.trim().length === 0}
               />
             </View>
           )}

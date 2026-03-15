@@ -145,10 +145,19 @@ class messageClass extends Model
         ];
     }
 
-    // Get inbox/conversation list for user with latest message preview
-    public static function getInbox(int $userId): array
+    // Resolve contractor_id for a user (null if user has no contractor profile)
+    public static function getContractorIdForUser(int $userId): ?int
     {
-        $conversations = DB::table('conversations as c')
+        $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        if (!$ownerId) return null;
+        return DB::table('contractors')->where('owner_id', $ownerId)->value('contractor_id');
+    }
+
+    // Get inbox/conversation list for user with latest message preview
+    // Pass $contractorId to get contractor-role inbox, null for personal/owner inbox
+    public static function getInbox(int $userId, ?int $contractorId = null): array
+    {
+        $query = DB::table('conversations as c')
             ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
             ->select(
                 'c.conversation_id',
@@ -159,43 +168,137 @@ class messageClass extends Model
                 'c.suspended_until',
                 'c.reason',
                 'c.is_admin_conversation',
+                'c.contractor_id',
                 'm.content as last_content',
+                'm.is_flagged as last_is_flagged',
                 'm.created_at as last_sent_at'
             )
-            ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
-            ->where(function ($query) use ($userId) {
-                $query->where('c.sender_id', $userId)
-                    ->orWhere('c.receiver_id', $userId);
-            })
-            ->orderBy('m.created_at', 'desc')
-            ->get();
+            ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)');
+
+        if ($contractorId !== null) {
+            // Contractor role: only conversations tagged with this contractor_id
+            $query->where('c.contractor_id', $contractorId);
+        } else {
+            // Personal/owner role: conversations where user is a participant
+            // Include contractor conversations where this user is a direct participant as the EXTERNAL user
+            // (they initiated the chat with a contractor company)
+            // Exclude contractor conversations where this user IS the contractor owner
+            // (those belong in the contractor inbox, not the personal inbox)
+
+            // First, find all contractor_ids owned by this user so we can exclude them
+            $ownedContractorIds = DB::table('contractors as c')
+                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                ->where('po.user_id', $userId)
+                ->pluck('c.contractor_id')
+                ->toArray();
+
+            $query->where(function ($q) use ($userId, $ownedContractorIds) {
+                $q->where(function ($inner) use ($userId) {
+                    // Regular conversations (no contractor_id) where user is a participant
+                    $inner->whereNull('c.contractor_id')
+                        ->where(function ($p) use ($userId) {
+                            $p->where('c.sender_id', $userId)
+                                ->orWhere('c.receiver_id', $userId);
+                        });
+                })->orWhere(function ($inner) use ($userId, $ownedContractorIds) {
+                    // Contractor conversations where this user is a participant
+                    // but NOT as the contractor owner (those go in contractor inbox)
+                    $inner->whereNotNull('c.contractor_id')
+                        ->where(function ($p) use ($userId) {
+                            $p->where('c.sender_id', $userId)
+                                ->orWhere('c.receiver_id', $userId);
+                        });
+                    // Exclude conversations belonging to contractor companies this user owns
+                    if (!empty($ownedContractorIds)) {
+                        $inner->whereNotIn('c.contractor_id', $ownedContractorIds);
+                    }
+                });
+            });
+        }
+
+        $conversations = $query->orderBy('m.created_at', 'desc')->get();
 
         $result = [];
         foreach ($conversations as $conv) {
-            $otherUserId = ($conv->sender_id == $userId) ? $conv->receiver_id : $conv->sender_id;
             $isAdminConv = (bool) ($conv->is_admin_conversation ?? false);
-            
-            // If is_admin_conversation is already set, use it directly
-            // Otherwise, check if the other user is an admin by looking in admin_users table
-            if (!$isAdminConv) {
+            $convContractorId = $conv->contractor_id ?? null;
+
+            if ($isAdminConv) {
+                $otherUser = self::getAdminDetails();
+            } elseif ($convContractorId !== null) {
+                // Contractor-role conversation: other user is whoever is NOT the contractor company
+                // sender_id/receiver_id hold the user_id of the external party
+                // We need to find which side is the contractor owner and which is the external user
+                $contractorOwnerId = DB::table('contractors')
+                    ->where('contractor_id', $convContractorId)
+                    ->value('owner_id');
+                $contractorUserId = $contractorOwnerId
+                    ? DB::table('property_owners')->where('owner_id', $contractorOwnerId)->value('user_id')
+                    : null;
+
+                // The external party is the one who is NOT the contractor's user_id
+                $otherUserId = ($conv->sender_id == $contractorUserId)
+                    ? $conv->receiver_id
+                    : $conv->sender_id;
+
+                // For contractor inbox: show the external user's personal profile
+                // For owner/sender inbox: show the contractor company details
+                if ($contractorId !== null) {
+                    // Viewing as contractor — show the external user who messaged the company
+                    $otherUser = self::getUserDetails($otherUserId, false);
+                } else {
+                    // Viewing as owner/sender — show the contractor company as the contact
+                    $contractor = DB::table('contractors')->where('contractor_id', $convContractorId)->first();
+                    if ($contractor) {
+                        $companyAvatar = $contractor->company_logo
+                            ? asset('storage/' . $contractor->company_logo)
+                            : 'https://ui-avatars.com/api/?name=' . urlencode($contractor->company_name) . '&background=EC7E00&color=fff&bold=true';
+                        $otherUser = [
+                            'id' => $otherUserId,
+                            'name' => $contractor->company_name,
+                            'type' => 'contractor',
+                            'avatar' => $companyAvatar,
+                            'online' => false,
+                            'contractor_id' => $convContractorId,
+                        ];
+                    } else {
+                        $otherUser = self::getUserDetails($otherUserId, false);
+                    }
+                }
+            } else {
+                $otherUserId = ($conv->sender_id == $userId) ? $conv->receiver_id : $conv->sender_id;
+
+                // Fallback: check if the other user is actually an admin (legacy rows without flag)
                 $adminUser = DB::table('admin_users')->where('admin_id', 'ADMIN-' . $otherUserId)->first();
                 if ($adminUser) {
                     $isAdminConv = true;
+                    $otherUser = self::getAdminDetails();
+                } else {
+                    $otherUser = self::getUserDetails($otherUserId, false);
                 }
             }
-            
-            $otherUser = self::getUserDetails($otherUserId, $isAdminConv);
 
             if (!$otherUser)
                 continue;
 
-            // Calculate unread count: only count messages sent TO this user
-            $isSender = ($userId == $conv->sender_id);
-            $unreadCount = DB::table('messages')
-                ->where('conversation_id', $conv->conversation_id)
-                ->where('from_sender', !$isSender) // Opposite of user's role
-                ->where('is_read', 0)
-                ->count();
+            // Calculate unread count
+            if ($convContractorId !== null) {
+                // Contractor inbox: unread = messages sent by the external user (from_sender=true)
+                // that the contractor hasn't read yet
+                $unreadCount = DB::table('messages')
+                    ->where('conversation_id', $conv->conversation_id)
+                    ->where('from_sender', true)
+                    ->where('is_read', 0)
+                    ->count();
+            } else {
+                // Personal inbox: only count messages sent TO this user
+                $isSender = ($userId == $conv->sender_id);
+                $unreadCount = DB::table('messages')
+                    ->where('conversation_id', $conv->conversation_id)
+                    ->where('from_sender', !$isSender)
+                    ->where('is_read', 0)
+                    ->count();
+            }
 
             // Check if conversation has any flagged messages
             $isFlagged = DB::table('messages')
@@ -203,11 +306,17 @@ class messageClass extends Model
                 ->where('is_flagged', 1)
                 ->exists();
 
+            // Censor last message preview for non-admin users if it was flagged
+            $lastContent = $conv->last_content;
+            if ($conv->last_is_flagged) {
+                $lastContent = self::censorBadWords($lastContent);
+            }
+
             $result[] = [
                 'conversation_id' => $conv->conversation_id,
                 'other_user' => $otherUser,
                 'last_message' => [
-                    'content' => $conv->last_content,
+                    'content' => $lastContent,
                     'sent_at' => Carbon::parse($conv->last_sent_at)->diffForHumans(),
                     'sent_at_timestamp' => Carbon::parse($conv->last_sent_at, 'UTC')->toIso8601String()
                 ],
@@ -216,7 +325,8 @@ class messageClass extends Model
                 'status' => $conv->status,
                 'is_suspended' => (bool) $conv->is_suspended,
                 'suspended_until' => $conv->suspended_until,
-                'reason' => $conv->reason
+                'reason' => $conv->reason,
+                'contractor_id' => $convContractorId,
             ];
         }
 
@@ -237,6 +347,7 @@ class messageClass extends Model
                 'c.suspended_until',
                 'c.reason',
                 'c.is_admin_conversation',
+                'c.contractor_id',
                 'm.content as last_content',
                 'm.created_at as last_sent_at',
                 'm.from_sender'
@@ -250,7 +361,29 @@ class messageClass extends Model
         foreach ($conversations as $conv) {
             // For admin conversations, sender_id and receiver_id are both the user's ID
             $userId = $conv->sender_id;
-            $otherUser = self::getUserDetails($userId, false); // Get user details (not admin)
+            $convContractorId = $conv->contractor_id ?? null;
+
+            // If this admin conversation is with a contractor company, show company details
+            if ($convContractorId !== null) {
+                $contractor = DB::table('contractors')->where('contractor_id', $convContractorId)->first();
+                if ($contractor) {
+                    $companyAvatar = $contractor->company_logo
+                        ? asset('storage/' . $contractor->company_logo)
+                        : 'https://ui-avatars.com/api/?name=' . urlencode($contractor->company_name) . '&background=EC7E00&color=fff&bold=true';
+                    $otherUser = [
+                        'id' => $userId,
+                        'name' => $contractor->company_name,
+                        'type' => 'contractor',
+                        'avatar' => $companyAvatar,
+                        'online' => false,
+                        'contractor_id' => $convContractorId,
+                    ];
+                } else {
+                    $otherUser = self::getUserDetails($userId, false);
+                }
+            } else {
+                $otherUser = self::getUserDetails($userId, false); // Get user details (not admin)
+            }
 
             if (!$otherUser)
                 continue;
@@ -281,7 +414,8 @@ class messageClass extends Model
                 'status' => $conv->status,
                 'is_suspended' => (bool) $conv->is_suspended,
                 'suspended_until' => $conv->suspended_until,
-                'reason' => $conv->reason
+                'reason' => $conv->reason,
+                'contractor_id' => $convContractorId,
             ];
         }
 
@@ -323,18 +457,39 @@ class messageClass extends Model
             $conversationReceiverId = $data['receiver_id'];
             $messageFromSender = true; // Will be recalculated after conversation creation
 
+            // Also detect when a regular user is sending TO an admin
+            // (receiver_id is an admin's numeric ID)
+            $receiverIsAdmin = false;
+            if (!$isAdminSending) {
+                $receiverAdminRecord = DB::table('admin_users')
+                    ->where('admin_id', 'ADMIN-' . $data['receiver_id'])
+                    ->first();
+                if ($receiverAdminRecord) {
+                    $receiverIsAdmin = true;
+                }
+            }
+
             \Log::info('Before swap', [
                 'isAdminSending' => $isAdminSending,
+                'receiverIsAdmin' => $receiverIsAdmin,
                 'conversationSenderId' => $conversationSenderId,
                 'conversationReceiverId' => $conversationReceiverId
             ]);
 
             if ($isAdminSending) {
-                // For admin conversations: use receiver's ID for BOTH sender and receiver in conversations table
-                // The from_sender boolean will indicate who actually sent the message
+                // Admin sending: use receiver's (user's) ID for both sides
                 $conversationSenderId = $data['receiver_id'];
                 $conversationReceiverId = $data['receiver_id'];
-                \Log::info('After swap (admin)', [
+                \Log::info('After swap (admin sending)', [
+                    'conversationSenderId' => $conversationSenderId,
+                    'conversationReceiverId' => $conversationReceiverId
+                ]);
+            } elseif ($receiverIsAdmin) {
+                // User sending to admin: use sender's (user's) ID for both sides
+                // so the FK constraint is satisfied (admin IDs don't exist in users table)
+                $conversationSenderId = $data['sender_id'];
+                $conversationReceiverId = $data['sender_id'];
+                \Log::info('After swap (user sending to admin)', [
                     'conversationSenderId' => $conversationSenderId,
                     'conversationReceiverId' => $conversationReceiverId
                 ]);
@@ -342,23 +497,58 @@ class messageClass extends Model
 
             // Generate conversation ID if not provided (combine user IDs as integer)
             if (!isset($data['conversation_id'])) {
-                $minId = min($conversationSenderId, $conversationReceiverId);
-                $maxId = max($conversationSenderId, $conversationReceiverId);
-                // Formula: smaller_id * 1000000 + larger_id (ensures uniqueness)
-                $data['conversation_id'] = ($minId * 1000000) + $maxId;
+                $contractorId = $data['contractor_id'] ?? null;
+                if ($contractorId) {
+                    // Contractor conversation: unique per contractor + external user pair.
+                    $cOwnerId = DB::table('contractors')->where('contractor_id', $contractorId)->value('owner_id');
+                    $cOwnerUserId = $cOwnerId
+                        ? DB::table('property_owners')->where('owner_id', $cOwnerId)->value('user_id')
+                        : null;
+                    $externalUserId = ($data['sender_id'] == $cOwnerUserId)
+                        ? $data['receiver_id']
+                        : $data['sender_id'];
+                    $data['conversation_id'] = ($contractorId * 1000000) + $externalUserId;
+                } elseif ($isAdminSending || $receiverIsAdmin) {
+                    // Admin conversation: use the user's ID (not admin's numeric ID) for both sides
+                    $userSideId = $isAdminSending ? $data['receiver_id'] : $data['sender_id'];
+                    $data['conversation_id'] = ($userSideId * 1000000) + $userSideId;
+                } else {
+                    $minId = min($conversationSenderId, $conversationReceiverId);
+                    $maxId = max($conversationSenderId, $conversationReceiverId);
+                    $data['conversation_id'] = ($minId * 1000000) + $maxId;
+                }
             }
 
             // Get or create conversation
             $conversation = self::getOrCreateConversation(
                 $data['conversation_id'],
                 $conversationSenderId,
-                $conversationReceiverId
+                $conversationReceiverId,
+                $data['contractor_id'] ?? null
             );
 
+            // If contractor_id is provided and the existing conversation doesn't have it set yet, update it
+            if (!empty($data['contractor_id']) && empty($conversation->contractor_id)) {
+                DB::table('conversations')
+                    ->where('conversation_id', $data['conversation_id'])
+                    ->update(['contractor_id' => $data['contractor_id']]);
+                // Refresh
+                $conversation = DB::table('conversations')->where('conversation_id', $data['conversation_id'])->first();
+            }
+
             // Determine if message is from sender or receiver
-            // For admin conversations: if admin is sending, message is NOT from sender (it's from receiver)
             if ($isAdminSending) {
-                $messageFromSender = false;
+                $messageFromSender = false; // admin sent → from_sender=false
+            } elseif ($receiverIsAdmin) {
+                $messageFromSender = true;  // user sent to admin → from_sender=true
+            } elseif (!empty($data['contractor_id'])) {
+                // from_sender=true  → external user sent it (incoming to contractor)
+                // from_sender=false → contractor owner replied
+                $cOwnerId2 = DB::table('contractors')->where('contractor_id', $data['contractor_id'])->value('owner_id');
+                $cOwnerUserId2 = $cOwnerId2
+                    ? DB::table('property_owners')->where('owner_id', $cOwnerId2)->value('user_id')
+                    : null;
+                $messageFromSender = ($data['sender_id'] != $cOwnerUserId2);
             } else {
                 $messageFromSender = ($data['sender_id'] == $conversation->sender_id);
             }
@@ -380,8 +570,8 @@ class messageClass extends Model
             // Create message
             $message = self::create($messageData);
 
-            // Mark conversation as admin conversation if admin is sending
-            if ($isAdminSending) {
+            // Mark conversation as admin conversation if admin is involved
+            if ($isAdminSending || $receiverIsAdmin) {
                 DB::table('conversations')
                     ->where('conversation_id', $data['conversation_id'])
                     ->update(['is_admin_conversation' => 1]);
@@ -484,9 +674,43 @@ class messageClass extends Model
                     $sender = self::getAdminDetails();
                 }
             } else {
-                // Regular conversation: use normal logic
+                // Regular or contractor conversation: use normal logic
                 $senderId = $msg->from_sender ? $conversation->sender_id : $conversation->receiver_id;
-                $sender = self::getUserDetails($senderId, false);
+
+                // For contractor conversations, the contractor owner's messages should show
+                // the company name/logo, not their personal profile
+                $convContractorId = $conversation->contractor_id ?? null;
+                if ($convContractorId !== null) {
+                    // Determine which side is the contractor owner
+                    $cOwnerId = DB::table('contractors')->where('contractor_id', $convContractorId)->value('owner_id');
+                    $cOwnerUserId = $cOwnerId
+                        ? DB::table('property_owners')->where('owner_id', $cOwnerId)->value('user_id')
+                        : null;
+
+                    if ($senderId == $cOwnerUserId) {
+                        // This message is from the contractor owner — show company details
+                        $contractor = DB::table('contractors')->where('contractor_id', $convContractorId)->first();
+                        if ($contractor) {
+                            $companyAvatar = $contractor->company_logo
+                                ? asset('storage/' . $contractor->company_logo)
+                                : 'https://ui-avatars.com/api/?name=' . urlencode($contractor->company_name) . '&background=EC7E00&color=fff&bold=true';
+                            $sender = [
+                                'id' => $senderId,
+                                'name' => $contractor->company_name,
+                                'type' => 'contractor',
+                                'avatar' => $companyAvatar,
+                                'online' => false,
+                                'contractor_id' => $convContractorId,
+                            ];
+                        } else {
+                            $sender = self::getUserDetails($senderId, false);
+                        }
+                    } else {
+                        $sender = self::getUserDetails($senderId, false);
+                    }
+                } else {
+                    $sender = self::getUserDetails($senderId, false);
+                }
             }
 
             // Determine if viewer is admin
@@ -665,7 +889,6 @@ class messageClass extends Model
     // Mark messages as read for user in conversation
     public static function markAsRead(int|string $conversationId, int $userId): void
     {
-        // Get conversation to determine user's role
         $conversation = DB::table('conversations')
             ->where('conversation_id', $conversationId)
             ->first();
@@ -674,19 +897,39 @@ class messageClass extends Model
             return;
         }
 
-        // Determine if current user is sender or receiver
-        $isSender = ($userId == $conversation->sender_id);
+        // For contractor conversations, the contractor owner reads messages sent by the external user
+        // (from_sender = true means the external user sent it)
+        if (!empty($conversation->contractor_id)) {
+            $contractorOwnerId = DB::table('contractors')
+                ->where('contractor_id', $conversation->contractor_id)
+                ->value('owner_id');
+            $contractorUserId = $contractorOwnerId
+                ? DB::table('property_owners')->where('owner_id', $contractorOwnerId)->value('user_id')
+                : null;
 
-        // Only mark messages as read that were sent TO this user
-        // If user is sender: mark messages where from_sender = false (sent by receiver)
-        // If user is receiver: mark messages where from_sender = true (sent by sender)
-        $affectedRows = self::where('conversation_id', $conversationId)
-            ->where('from_sender', !$isSender) // Opposite of user's role
-            ->where('is_read', 0)
-            ->update(['is_read' => 1]);
+            if ($contractorUserId == $userId) {
+                // Contractor owner is reading — mark external user's messages (from_sender=true) as read
+                $affectedRows = self::where('conversation_id', $conversationId)
+                    ->where('from_sender', true)
+                    ->where('is_read', 0)
+                    ->update(['is_read' => 1]);
+            } else {
+                // External user is reading — mark contractor's replies (from_sender=false) as read
+                $affectedRows = self::where('conversation_id', $conversationId)
+                    ->where('from_sender', false)
+                    ->where('is_read', 0)
+                    ->update(['is_read' => 1]);
+            }
+        } else {
+            // Regular conversation: determine role by sender_id
+            $isSender = ($userId == $conversation->sender_id);
+            $affectedRows = self::where('conversation_id', $conversationId)
+                ->where('from_sender', !$isSender)
+                ->where('is_read', 0)
+                ->update(['is_read' => 1]);
+        }
 
-        // Broadcast read event if any messages were marked as read
-        if ($affectedRows > 0) {
+        if (!empty($affectedRows) && $affectedRows > 0) {
             broadcast(new \App\Events\messagesReadEvent($conversationId, $userId));
         }
     }
@@ -791,21 +1034,25 @@ class messageClass extends Model
     }
 
     // Get or create conversation record in database
-    public static function getOrCreateConversation(int|string $conversationId, int $senderId, int $receiverId): object
+    public static function getOrCreateConversation(int|string $conversationId, int $senderId, int $receiverId, ?int $contractorId = null): object
     {
         $conversation = DB::table('conversations')
             ->where('conversation_id', $conversationId)
             ->first();
 
         if (!$conversation) {
-            DB::table('conversations')->insert([
+            $insert = [
                 'conversation_id' => $conversationId,
                 'sender_id' => $senderId,
                 'receiver_id' => $receiverId,
                 'status' => 'active',
                 'created_at' => now(),
                 'updated_at' => now()
-            ]);
+            ];
+            if ($contractorId !== null) {
+                $insert['contractor_id'] = $contractorId;
+            }
+            DB::table('conversations')->insert($insert);
 
             $conversation = DB::table('conversations')
                 ->where('conversation_id', $conversationId)
@@ -954,31 +1201,35 @@ class messageClass extends Model
             if ($keyword === '' || strlen($keyword) < 3)
                 continue;
 
+            // Sanitize keyword to valid UTF-8 before building regex patterns
+            $keyword = mb_convert_encoding($keyword, 'UTF-8', 'UTF-8');
+            if ($keyword === '') continue;
+
             // 1. First check: whole word match with word boundaries
             // This prevents matching 'ass' in 'class' or 'pass'
             $pattern = '/\b' . preg_quote($keyword, '/') . '\b/i';
             
-            if (preg_match($pattern, $content)) {
+            if (@preg_match($pattern, '') !== false && @preg_match($pattern, $content)) {
                 return true;
             }
 
             // 2. For longer keywords (4+ chars), check for spaced-out versions
             // e.g., 'fuck' matches 'f u c k' or 'f.u.c.k'
-            // This catches evasion attempts while reducing false positives
             if (strlen($keyword) >= 4) {
-                // Build a regex that allows spaces/dashes/dots between letters
-                // e.g., 'fuck' -> /f[\s\-\.]*u[\s\-\.]*c[\s\-\.]*k/i
-                $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
+                // Use mb_str_split so multi-byte chars split correctly
+                $letters = array_map(
+                    fn($c) => preg_quote($c, '/'),
+                    mb_str_split(preg_quote($keyword, '/'), 1, 'UTF-8')
+                );
                 if (!empty($letters)) {
                     $pattern = '/\b' . implode('[\s\-\.]*', $letters) . '\b/i';
-                    if (preg_match($pattern, $content)) {
+                    if (@preg_match($pattern, '') !== false && @preg_match($pattern, $content)) {
                         return true;
                     }
                 }
             }
 
             // 3. For platform keywords, also check with spaces/dashes removed
-            // e.g., 'facebook' matches 'face book' or 'face-book'
             if (in_array($keyword, $platformKeywords)) {
                 $normalized = preg_replace('/[\s\-_.]+/', '', $contentLower);
                 if (stripos($normalized, $keyword) !== false) {
@@ -1027,15 +1278,28 @@ class messageClass extends Model
 
         // Replace each bad word with ### (case-insensitive)
         foreach ($keywords as $keyword) {
+            // Sanitize keyword to valid UTF-8 — CSV may contain malformed bytes
+            $keyword = mb_convert_encoding($keyword, 'UTF-8', 'UTF-8');
+            if ($keyword === '' || strlen($keyword) < 3) continue;
+
             // Pattern 1: Normal word boundaries (e.g., "ass" but not "class")
             $pattern = '/\b' . preg_quote($keyword, '/') . '\b/iu';
-            $censoredContent = preg_replace($pattern, '###', $censoredContent);
-            
+            if (@preg_match($pattern, '') !== false) {
+                $result = @preg_replace($pattern, '###', $censoredContent);
+                if ($result !== null) $censoredContent = $result;
+            }
+
             // Pattern 2: Words with any characters between letters (spaces, numbers, special chars)
-            // Convert keyword to pattern: "ass" -> "a[^a-z]*s[^a-z]*s"
-            $obfuscatedPattern = implode('[^a-z]*', str_split($keyword));
-            $obfuscatedRegex = '/\b' . $obfuscatedPattern . '\b/iu';
-            $censoredContent = preg_replace($obfuscatedRegex, '###', $censoredContent);
+            // Use mb_str_split so multi-byte chars are split correctly, not by raw bytes
+            $chars = mb_str_split($keyword, 1, 'UTF-8');
+            if (!empty($chars)) {
+                $obfuscatedPattern = implode('[^a-z]*', array_map(fn($c) => preg_quote($c, '/'), $chars));
+                $obfuscatedRegex = '/\b' . $obfuscatedPattern . '\b/iu';
+                if (@preg_match($obfuscatedRegex, '') !== false) {
+                    $result = @preg_replace($obfuscatedRegex, '###', $censoredContent);
+                    if ($result !== null) $censoredContent = $result;
+                }
+            }
         }
 
         return $censoredContent;

@@ -36,7 +36,23 @@ class messageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'receiver_id' => 'required|integer|exists:users,user_id',
+            'receiver_id' => [
+                'required',
+                'integer',
+                function ($attribute, $value, $fail) {
+                    // Accept if receiver exists in users table (regular user)
+                    $inUsers = DB::table('users')->where('user_id', $value)->exists();
+                    if ($inUsers) return;
+
+                    // Accept if receiver is an admin (admin_users stores IDs as 'ADMIN-{n}')
+                    $inAdmins = DB::table('admin_users')
+                        ->where('admin_id', 'ADMIN-' . $value)
+                        ->exists();
+                    if ($inAdmins) return;
+
+                    $fail('The selected recipient does not exist.');
+                }
+            ],
             'content' => [
                 'nullable',
                 'string',
@@ -49,6 +65,7 @@ class messageRequest extends FormRequest
                 }
             ],
             'conversation_id' => 'nullable|integer',
+            'contractor_id' => 'nullable|integer|exists:contractors,contractor_id',
             'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx,txt|max:10240' // 10MB max per file
         ];

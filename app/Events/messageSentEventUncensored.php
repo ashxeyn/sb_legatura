@@ -35,21 +35,20 @@ class messageSentEventUncensored implements ShouldBroadcastNow
 
     /**
      * Get the channels the event should broadcast on.
-     * Only broadcast to admin channel if this is an admin conversation
+     * Only broadcast to admin channel — admin needs to see the uncensored version.
      */
     public function broadcastOn(): array
     {
         $isAdminConv = (bool) ($this->conversation->is_admin_conversation ?? false);
-        
+
         if ($isAdminConv) {
-            // For admin conversations, also broadcast uncensored to admin
-            // Admin ID is stored in sender_id for admin conversations
-            return [
-                new PrivateChannel('chat.' . $this->conversation->sender_id),
-            ];
+            $admin = DB::table('admin_users')->where('is_active', 1)->first();
+            if ($admin) {
+                $adminNumericId = (int) preg_replace('/[^0-9]/', '', $admin->admin_id);
+                return [new PrivateChannel('chat.' . $adminNumericId)];
+            }
         }
 
-        // Don't broadcast for user-to-user conversations
         return [];
     }
 

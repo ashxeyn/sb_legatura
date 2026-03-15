@@ -93,6 +93,48 @@ class messageController extends Controller
         return $sessionUser && isset($sessionUser->admin_id);
     }
 
+    // Mark all messages in a conversation as read for the current user
+    public function markRead(int $conversationId): JsonResponse
+    {
+        try {
+            $userId = $this->getAuthUserId();
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+            }
+
+            $conversation = DB::table('conversations')
+                ->where('conversation_id', $conversationId)
+                ->first();
+
+            if (!$conversation) {
+                return response()->json(['success' => false, 'message' => 'Conversation not found'], 404);
+            }
+
+            $isParticipant = $conversation->sender_id == $userId || $conversation->receiver_id == $userId;
+
+            // Also allow contractor owner to mark messages as read
+            if (!$isParticipant && !empty($conversation->contractor_id)) {
+                $contractorOwnerId = DB::table('contractors')
+                    ->where('contractor_id', $conversation->contractor_id)
+                    ->value('owner_id');
+                $contractorUserId = $contractorOwnerId
+                    ? DB::table('property_owners')->where('owner_id', $contractorOwnerId)->value('user_id')
+                    : null;
+                $isParticipant = ($contractorUserId == $userId);
+            }
+
+            if (!$isParticipant) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
+            messageClass::markAsRead($conversationId, $userId);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     // Get inbox for authenticated user with latest message previews
     public function index(): JsonResponse
     {
@@ -114,8 +156,13 @@ class messageController extends Controller
                 // Admin: use special admin inbox that shows all admin conversations
                 $inbox = messageClass::getAdminInbox();
             } else {
-                // Regular users: use normal inbox
-                $inbox = messageClass::getInbox($userId);
+                // Resolve contractor context from header
+                $contractorId = request()->header('X-Contractor-Id')
+                    ? (int) request()->header('X-Contractor-Id')
+                    : null;
+
+                // Regular users: use normal inbox filtered by role context
+                $inbox = messageClass::getInbox($userId, $contractorId);
 
                 // Exclude admin conversations if there's an ID collision
                 $adminNumericIds = DB::table('admin_users')
@@ -124,7 +171,6 @@ class messageController extends Controller
                     ->toArray();
 
                 if (in_array($userId, $adminNumericIds)) {
-                    // This user's ID collides with an admin - exclude admin conversations
                     $adminConvIds = DB::table('conversations')
                         ->where('is_admin_conversation', 1)
                         ->pluck('conversation_id')
@@ -181,13 +227,23 @@ class messageController extends Controller
             // Check if user is a participant in this conversation
             $isParticipantInConv = $conversation->sender_id == $userId || $conversation->receiver_id == $userId;
 
+            // Also check if user owns the contractor company for this conversation
+            $isContractorOwner = false;
+            if (!empty($conversation->contractor_id)) {
+                $contractorOwnerId = DB::table('contractors')
+                    ->where('contractor_id', $conversation->contractor_id)
+                    ->value('owner_id');
+                $contractorUserId = $contractorOwnerId
+                    ? DB::table('property_owners')->where('owner_id', $contractorOwnerId)->value('user_id')
+                    : null;
+                $isContractorOwner = ($contractorUserId == $userId);
+            }
+
             if ($isAdminUser) {
                 // Admin can view ANY conversation for moderation purposes
-                // This includes their own admin conversations AND flagged/suspended user conversations
-                // No restriction needed - admin is the moderator
             } else {
-                // Regular user - must be a participant
-                if (!$isParticipantInConv) {
+                // Regular user - must be a direct participant OR the contractor company owner
+                if (!$isParticipantInConv && !$isContractorOwner) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Unauthorized access to this conversation'
@@ -195,7 +251,6 @@ class messageController extends Controller
                 }
 
                 // If this is an admin conversation, only block if user's ID collides with an admin ID
-                // (user_id=5 can view their chat with admin, but user_id=1 cannot view admin's chats)
                 if ($conversation->is_admin_conversation) {
                     $adminNumericIds = DB::table('admin_users')
                         ->pluck('admin_id')
@@ -213,10 +268,8 @@ class messageController extends Controller
 
             $messages = messageClass::getConversationHistory($conversationId, null, $userId);
 
-            // Mark messages as read if user is a participant (sender or receiver)
-            $isParticipant = $conversation->sender_id == $userId || $conversation->receiver_id == $userId;
-
-            if ($isParticipant) {
+            // Mark as read: direct participant OR contractor owner
+            if ($isParticipantInConv || $isContractorOwner) {
                 messageClass::markAsRead($conversationId, $userId);
             }
 
@@ -349,9 +402,34 @@ class messageController extends Controller
                 'receiver_id' => $validated['receiver_id'],
                 'content' => $validated['content'] ?? '',
                 'conversation_id' => $validated['conversation_id'] ?? null,
+                'contractor_id' => $validated['contractor_id'] ?? null,
                 'attachments' => $request->file('attachments') ?? [],
                 'is_admin_sending' => $isAdminSession
             ];
+
+            // For contractor conversations: ensure receiver_id is the contractor owner's user_id
+            // so the FK constraint on conversations.receiver_id is satisfied.
+            // The sender stays as the external user (the one initiating the chat).
+            if (!empty($data['contractor_id'])) {
+                $contractorOwnerId = DB::table('contractors')
+                    ->where('contractor_id', $data['contractor_id'])
+                    ->value('owner_id');
+                $contractorOwnerUserId = $contractorOwnerId
+                    ? DB::table('property_owners')->where('owner_id', $contractorOwnerId)->value('user_id')
+                    : null;
+
+                if ($contractorOwnerUserId) {
+                    // If the current user IS the contractor owner (they're replying), swap roles:
+                    // sender = owner, receiver = the external user they're replying to
+                    if ($userId == $contractorOwnerUserId) {
+                        // receiver_id stays as provided (the external user)
+                        // sender_id stays as the owner — no change needed
+                    } else {
+                        // External user messaging the contractor: receiver = owner's user_id
+                        $data['receiver_id'] = $contractorOwnerUserId;
+                    }
+                }
+            }
 
             $message = messageClass::storeMessage($data);
 
@@ -362,23 +440,34 @@ class messageController extends Controller
                 ], 500);
             }
 
-            // Broadcast the message via Pusher
-            broadcast(new messageSentEvent($message));
-            
-            // For admin conversations with flagged content, also broadcast uncensored version to admin
-            if ($message->is_flagged) {
-                $conversation = DB::table('conversations')
-                    ->where('conversation_id', $message->conversation_id)
-                    ->first();
-                if ($conversation && $conversation->is_admin_conversation) {
-                    broadcast(new \App\Events\messageSentEventUncensored($message));
-                }
-            }
-
             // Get conversation to retrieve sender/receiver info
             $conversation = DB::table('conversations')
                 ->where('conversation_id', $message->conversation_id)
                 ->first();
+
+            // Broadcast the message via Pusher — wrapped in its own try/catch so a
+            // Pusher failure does NOT cause the whole request to return success:false.
+            // The message is already saved; broadcasting is best-effort.
+            try {
+                broadcast(new messageSentEvent($message));
+
+                // For admin conversations with flagged content, also broadcast uncensored version to admin
+                if ($message->is_flagged && $conversation && $conversation->is_admin_conversation) {
+                    broadcast(new \App\Events\messageSentEventUncensored($message));
+                }
+            } catch (\Exception $broadcastEx) {
+                Log::warning('Broadcast failed (message still saved)', [
+                    'message_id' => $message->message_id,
+                    'error' => $broadcastEx->getMessage()
+                ]);
+            }
+
+            // Censor content in the response for non-admin users so the sender
+            // immediately sees ### instead of the raw bad word
+            $responseContent = $message->content;
+            if (!$isAdminSession && $message->is_flagged) {
+                $responseContent = messageClass::censorBadWords($message->content);
+            }
 
             return response()->json([
                 'success' => true,
@@ -386,7 +475,7 @@ class messageController extends Controller
                 'data' => [
                     'message_id' => $message->message_id,
                     'conversation_id' => $message->conversation_id,
-                    'content' => $message->content,
+                    'content' => $responseContent,
                     'sender' => messageClass::getUserDetails($userId, $isAdminSession),
                     'receiver' => messageClass::getUserDetails($validated['receiver_id'], $isAdminSession),
                     'attachments' => $message->attachments->map(function ($att) {
@@ -685,19 +774,44 @@ class messageController extends Controller
                 ], 401);
             }
 
+            // Regular users
             $users = DB::table('users')
                 ->where('user_id', '!=', $currentUserId)
                 ->select('user_id', 'email', 'user_type')
                 ->get()
                 ->map(function ($user) {
-                    // These are regular users from users table, not admins
                     return messageClass::getUserDetails($user->user_id, false);
                 })
-                ->filter(); // Remove nulls
+                ->filter();
+
+            // Contractor companies — each appears as a separate messageable entity
+            // identified by contractor_id so messages are scoped to the company inbox
+            $contractors = DB::table('contractors as c')
+                ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+                ->join('users as u', 'po.user_id', '=', 'u.user_id')
+                ->where('c.verification_status', 'approved')
+                ->where('u.user_id', '!=', $currentUserId)
+                ->select('c.contractor_id', 'c.company_name', 'c.company_logo', 'u.user_id')
+                ->get()
+                ->map(function ($c) {
+                    $avatar = $c->company_logo
+                        ? asset('storage/' . $c->company_logo)
+                        : 'https://ui-avatars.com/api/?name=' . urlencode($c->company_name) . '&background=EC7E00&color=fff&bold=true';
+                    return [
+                        'id' => $c->user_id,          // user_id of the owner (for conversations table FK)
+                        'contractor_id' => $c->contractor_id,
+                        'name' => $c->company_name,
+                        'type' => 'contractor',
+                        'avatar' => $avatar,
+                        'online' => false,
+                    ];
+                });
+
+            $all = array_values(array_merge($users->toArray(), $contractors->toArray()));
 
             return response()->json([
                 'success' => true,
-                'data' => array_values($users->toArray())
+                'data' => $all
             ], 200);
 
         } catch (\Exception $e) {

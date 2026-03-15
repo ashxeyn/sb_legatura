@@ -36,15 +36,37 @@ class messageSentEvent implements ShouldBroadcastNow
 
     /**
      * Get the channels the event should broadcast on.
-     * Using a private channel for security - only the receiver can listen
      */
     public function broadcastOn(): array
     {
-        // Broadcast to both participants
-        return [
-            new PrivateChannel('chat.' . $this->conversation->sender_id),
-            new PrivateChannel('chat.' . $this->conversation->receiver_id),
-        ];
+        $isAdminConv = (bool) ($this->conversation->is_admin_conversation ?? false);
+
+        if ($isAdminConv) {
+            // For admin conversations sender_id = receiver_id = user's ID (ID swap design).
+            // Only broadcast censored version to the user's channel.
+            // Admin gets the uncensored version exclusively via messageSentEventUncensored.
+            // Exception: if message is NOT flagged, admin needs to receive it here too.
+            $userChannel = new PrivateChannel('chat.' . $this->conversation->sender_id);
+
+            if (!$this->message->is_flagged) {
+                // Clean message — safe to send to both user and admin on this event
+                $admin = DB::table('admin_users')->where('is_active', 1)->first();
+                if ($admin) {
+                    $adminNumericId = (int) preg_replace('/[^0-9]/', '', $admin->admin_id);
+                    return [$userChannel, new PrivateChannel('chat.' . $adminNumericId)];
+                }
+            }
+
+            // Flagged message — user gets censored via this event, admin gets uncensored via messageSentEventUncensored
+            return [$userChannel];
+        }
+
+        // Regular user-to-user: broadcast to both participants
+        $channels = [new PrivateChannel('chat.' . $this->conversation->sender_id)];
+        if ($this->conversation->receiver_id !== $this->conversation->sender_id) {
+            $channels[] = new PrivateChannel('chat.' . $this->conversation->receiver_id);
+        }
+        return $channels;
     }
 
     /**
@@ -81,7 +103,7 @@ class messageSentEvent implements ShouldBroadcastNow
                 $receiver = messageClass::getUserDetails($receiverId, false);
             }
         } else {
-            // Regular conversation: use normal logic
+            // Regular or contractor conversation
             $senderId = $this->message->from_sender
                 ? $this->conversation->sender_id
                 : $this->conversation->receiver_id;
@@ -90,15 +112,53 @@ class messageSentEvent implements ShouldBroadcastNow
                 ? $this->conversation->receiver_id
                 : $this->conversation->sender_id;
 
-            $sender = messageClass::getUserDetails($senderId, false);
-            $receiver = messageClass::getUserDetails($receiverId, false);
+            $convContractorId = $this->conversation->contractor_id ?? null;
+            if ($convContractorId !== null) {
+                // For contractor conversations, resolve contractor owner's user_id
+                $cOwnerId = \Illuminate\Support\Facades\DB::table('contractors')
+                    ->where('contractor_id', $convContractorId)->value('owner_id');
+                $cOwnerUserId = $cOwnerId
+                    ? \Illuminate\Support\Facades\DB::table('property_owners')
+                        ->where('owner_id', $cOwnerId)->value('user_id')
+                    : null;
+
+                // If the sender is the contractor owner, show company details instead of personal profile
+                if ($senderId == $cOwnerUserId) {
+                    $contractor = \Illuminate\Support\Facades\DB::table('contractors')
+                        ->where('contractor_id', $convContractorId)->first();
+                    if ($contractor) {
+                        $companyAvatar = $contractor->company_logo
+                            ? asset('storage/' . $contractor->company_logo)
+                            : 'https://ui-avatars.com/api/?name=' . urlencode($contractor->company_name) . '&background=EC7E00&color=fff&bold=true';
+                        $sender = [
+                            'id' => $senderId,
+                            'name' => $contractor->company_name,
+                            'type' => 'contractor',
+                            'avatar' => $companyAvatar,
+                            'online' => false,
+                            'contractor_id' => $convContractorId,
+                        ];
+                    } else {
+                        $sender = messageClass::getUserDetails($senderId, false);
+                    }
+                } else {
+                    $sender = messageClass::getUserDetails($senderId, false);
+                }
+                $receiver = messageClass::getUserDetails($receiverId, false);
+            } else {
+                $sender = messageClass::getUserDetails($senderId, false);
+                $receiver = messageClass::getUserDetails($receiverId, false);
+            }
         }
 
-        // Prepare content - censor for non-admin users if message is flagged
+        // Prepare content:
+        // - For admin conversations: censor for the user (admin gets uncensored via messageSentEventUncensored)
+        // - For user-to-user conversations: censor for non-admin viewers if flagged
         $messageContent = $this->message->content;
-        if ($this->censorForNonAdmin && $this->message->is_flagged && !$isAdminConv) {
-            // For user-to-user conversations, censor bad words
-            $messageContent = messageClass::censorBadWords($this->message->content);
+        if ($this->message->is_flagged) {
+            if ($isAdminConv || $this->censorForNonAdmin) {
+                $messageContent = messageClass::censorBadWords($this->message->content);
+            }
         }
 
         return [
@@ -122,7 +182,8 @@ class messageSentEvent implements ShouldBroadcastNow
             'status' => $this->conversation->status,
             'sent_at' => $this->message->created_at->toIso8601String(),
             'sent_at_human' => $this->message->created_at->diffForHumans(),
-            'timestamp' => $this->message->created_at->timestamp
+            'timestamp' => $this->message->created_at->timestamp,
+            'contractor_id' => $this->conversation->contractor_id ?? null,
         ];
     }
 }

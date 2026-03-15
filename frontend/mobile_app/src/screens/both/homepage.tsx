@@ -2073,6 +2073,10 @@ const renderProfileContent = () => {
           ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
           : undefined,
         user_type: userData?.user_type,
+        // Pass contractor_id when user is in contractor role so inbox is role-scoped
+        contractor_id: effectiveUserType === 'contractor'
+          ? (myContractorProfile?.contractor_id ?? null)
+          : null,
       }}
     />
   );
@@ -2356,9 +2360,11 @@ const renderProfileContent = () => {
         <View style={styles.header}>
           <Text style={styles.logoText}>LEGATURA</Text>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => setShowSearchScreen(true)}>
-              <MaterialIcons name="search" size={24} color="#333333" />
-            </TouchableOpacity>
+            {activeTab !== 'dashboard' && activeTab !== 'messages' && (
+              <TouchableOpacity style={styles.iconButton} onPress={() => setShowSearchScreen(true)}>
+                <MaterialIcons name="search" size={24} color="#333333" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.iconButton} onPress={() => setShowNotifications(true)}>
               <MaterialIcons name="notifications" size={24} color="#333333" />
               {unreadCount > 0 && (

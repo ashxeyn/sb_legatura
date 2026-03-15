@@ -16,7 +16,7 @@ export class dispute_service {
     projectId: number,
     milestoneId: number,
     milestoneItemId: number,
-    disputeType: 'Payment' | 'Delay' | 'Quality' | 'Others',
+    disputeType: 'Payment' | 'Delay' | 'Quality' | 'Others' | 'Halt' | 'Terminate',
     disputeDesc: string,
     ifOthersDistype?: string,
     evidenceFiles?: { uri: string; name: string; type: string }[]
@@ -38,7 +38,7 @@ export class dispute_service {
       formData.append('milestone_item_id', String(milestoneItemId));
       formData.append('dispute_type', disputeType);
       formData.append('dispute_desc', disputeDesc);
-      
+
       if (ifOthersDistype) {
         formData.append('if_others_distype', ifOthersDistype);
       }
@@ -130,7 +130,7 @@ export class dispute_service {
   ): Promise<ApiResponse> {
     try {
       const formData = new FormData();
-      
+
       if (disputeType) {
         formData.append('dispute_type', disputeType);
       }

@@ -246,6 +246,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedOption = this.options[this.selectedIndex];
             const contractorId = selectedOption.getAttribute('data-contractor-id');
             const ownerId = selectedOption.getAttribute('data-owner-id');
+            const projectStatus = selectedOption.getAttribute('data-project-status');
+
+            // Handle terminate option visibility
+            const disputeTypeSelect = document.getElementById('dispute_type');
+            if (disputeTypeSelect) {
+                // First remove any existing Terminate option
+                const existingTerminate = Array.from(disputeTypeSelect.options).find(opt => opt.value === 'Terminate');
+                if (existingTerminate) existingTerminate.remove();
+
+                // Add it back only if project is halted
+                if (projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted') {
+                    const terminateOption = new Option('Terminate Project', 'Terminate');
+                    disputeTypeSelect.add(terminateOption);
+                }
+            }
 
             // Determine against_user_id based on current user
             // This will be set by checking session on server side

@@ -91,7 +91,7 @@ export default function progressReportDetail({
   projectStatus,
 }: ProgressReportDetailProps) {
   const insets = useSafeAreaInsets();
-  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
+  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted' || projectStatus === 'terminated';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
@@ -229,7 +229,7 @@ export default function progressReportDetail({
       console.log('getFileUrl: empty filePath');
       return '';
     }
-    
+
     // If it's already a full URL, return as-is
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       console.log('getFileUrl: already full URL ->', filePath);
@@ -238,18 +238,18 @@ export default function progressReportDetail({
 
     // Remove any leading slashes
     let path = filePath.replace(/^\/+/, '');
-    
+
     // Handle various path formats from Laravel storage:
     // - "progress_uploads/filename.jpg" (most common from storeAs)
     // - "storage/progress_uploads/filename.jpg"
     // - "/storage/progress_uploads/filename.jpg"
     // - "public/progress_uploads/filename.jpg"
-    
+
     // Remove 'storage/' prefix if present
     if (path.startsWith('storage/')) {
       path = path.replace(/^storage\//, '');
     }
-    
+
     // Remove 'public/' prefix if present (Laravel internal path)
     if (path.startsWith('public/')) {
       path = path.replace(/^public\//, '');
@@ -264,7 +264,7 @@ export default function progressReportDetail({
   const handleFilePress = (file: ProgressFile) => {
     const fileUrl = getFileUrl(file.file_path);
     console.log('handleFilePress url:', fileUrl, 'file:', JSON.stringify(file));
-    
+
     if (!fileUrl) {
       Alert.alert('Error', 'File URL is invalid');
       return;

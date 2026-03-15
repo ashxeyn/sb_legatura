@@ -10,6 +10,7 @@ export interface UserInfo {
   type: string;
   avatar: string | null;
   online: boolean;
+  contractor_id?: number | null;
 }
 
 export interface Attachment {
@@ -36,6 +37,7 @@ export interface InboxItem {
   is_suspended: boolean;
   suspended_until: string | null;
   reason: string | null;
+  contractor_id?: number | null; // set for contractor-role conversations
 }
 
 export interface ChatMessage {
@@ -103,10 +105,14 @@ export const messages_service = {
   /**
    * Fetch the inbox (conversation list with latest message preview).
    * GET /api/messages
+   * Pass contractorId to get the contractor-role inbox, null for personal/owner inbox.
    */
-  get_inbox: async (): Promise<ApiResponse<InboxItem[]>> => {
+  get_inbox: async (contractorId?: number | null): Promise<ApiResponse<InboxItem[]>> => {
     try {
-      const response = await api_request('/api/messages', { method: 'GET' });
+      const headers: Record<string, string> = {};
+      if (contractorId) headers['X-Contractor-Id'] = String(contractorId);
+
+      const response = await api_request('/api/messages', { method: 'GET', headers });
       const payload = response.data;
 
       if (response.success && payload?.success) {
@@ -157,12 +163,14 @@ export const messages_service = {
   /**
    * Send a new message (text and/or attachments).
    * POST /api/messages
+   * Pass contractorId when sending as a contractor company.
    */
   send_message: async (
     receiverId: number,
     content: string,
     conversationId?: number,
     attachments?: any[],
+    contractorId?: number | null,
   ): Promise<ApiResponse<StoredMessage>> => {
     try {
       let body: any;
@@ -174,6 +182,7 @@ export const messages_service = {
         formData.append('receiver_id', String(receiverId));
         if (content) formData.append('content', content);
         if (conversationId) formData.append('conversation_id', String(conversationId));
+        if (contractorId) formData.append('contractor_id', String(contractorId));
 
         attachments.forEach((file, index) => {
           formData.append(`attachments[${index}]`, {
@@ -184,12 +193,12 @@ export const messages_service = {
         });
 
         body = formData;
-        // Don't set Content-Type — fetch will set multipart/form-data with boundary
       } else {
         body = JSON.stringify({
           receiver_id: receiverId,
           content,
           ...(conversationId ? { conversation_id: conversationId } : {}),
+          ...(contractorId ? { contractor_id: contractorId } : {}),
         });
       }
 
@@ -273,6 +282,18 @@ export const messages_service = {
     } catch (error: any) {
       console.error('Error fetching available users:', error);
       return { success: false, message: error.message || 'Failed to load users' };
+    }
+  },
+
+  /**
+   * Mark all messages in a conversation as read.
+   * POST /api/messages/{conversationId}/read
+   */
+  mark_as_read: async (conversationId: number): Promise<void> => {
+    try {
+      await api_request(`/api/messages/${conversationId}/read`, { method: 'POST' });
+    } catch {
+      // fire-and-forget — don't block UI on failure
     }
   },
 

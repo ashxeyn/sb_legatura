@@ -436,6 +436,7 @@ Route::prefix('messages')->group(function () {
     Route::get('/search', [\App\Http\Controllers\message\messageController::class, 'search']); // Search messages
     Route::get('/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show']); // Conversation history
     Route::post('/', [\App\Http\Controllers\message\messageController::class, 'store']); // Send message
+    Route::post('/{conversationId}/read', [\App\Http\Controllers\message\messageController::class, 'markRead']); // Mark as read
     Route::post('/report', [\App\Http\Controllers\message\messageController::class, 'report']); // Report message
     Route::post('/{messageId}/flag', [\App\Http\Controllers\message\messageController::class, 'flag']); // Flag message
     Route::post('/{messageId}/unflag', [\App\Http\Controllers\message\messageController::class, 'unflag']); // Unflag message

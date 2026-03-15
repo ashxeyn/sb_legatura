@@ -272,7 +272,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
       .catch(() => {});
   }, [projectId]);
 
-  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
+  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted' || projectStatus === 'terminated';
 
   // Flatten all milestone items from all milestones into one array for the timeline
   const allMilestoneItems: (MilestoneItem & { parentMilestoneId: number; parentSetupStatus: string; parentMilestoneStatus: string })[] = [];
@@ -484,24 +484,24 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    const dateStr = date.toLocaleDateString('en-US', { 
-      month: '2-digit', 
-      day: '2-digit', 
-      year: 'numeric' 
+    const dateStr = date.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
     });
-    const timeStr = date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
     return { date: dateStr, time: timeStr };
   };
@@ -575,8 +575,8 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
       'Would you like to file a dispute or report an issue with this project?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'File Dispute', 
+        {
+          text: 'File Dispute',
           onPress: () => {
             // Navigate to dispute form - would need project/milestone context
             Alert.alert('Info', 'Please select a specific milestone item to file a dispute');
@@ -603,7 +603,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           onPress: async () => {
             try {
               const response = await payment_service.approve_payment(paymentId);
-              
+
               if (response.success) {
                 Alert.alert('Success', 'Payment approved successfully');
                 setSelectedPayment(null);
@@ -642,7 +642,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
     try {
       const response = await payment_service.reject_payment(selectedPayment.payment_id, rejectReason);
-      
+
       if (response.success) {
         Alert.alert('Declined', 'Payment has been declined');
         setSelectedPayment(null);
@@ -1007,6 +1007,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         )}
 
         {/* Project Halted Banner */}
+        {(projectStatus === 'terminated') && (
+          <View style={[styles.haltedBanner, { backgroundColor: '#FFE4E6', borderColor: '#E11D48' }]}>
+            <View style={styles.haltedBannerInner}>
+              <View style={[styles.haltedIconContainer, { backgroundColor: '#E11D48' }]}>
+                <Feather name="slash" size={20} color="#FFFFFF" />
+              </View>
+              <View style={styles.haltedTextContainer}>
+                <Text style={[styles.haltedBannerTitle, { color: '#E11D48' }]}>Project Terminated</Text>
+                <Text style={styles.haltedBannerDesc}>This project has been permanently terminated and all operations are disabled.</Text>
+              </View>
+            </View>
+          </View>
+        )}
         {(projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted') && (
           <View style={styles.haltedBanner}>
             <View style={styles.haltedBannerInner}>
@@ -1408,7 +1421,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                       </Text>
                     </View>
                   </View>
-                  
+
                   <View style={styles.contractorRejectionReasonBox}>
                     <View style={styles.contractorReasonHeader}>
                       <Feather name="message-square" size={16} color={COLORS.textSecondary} />
@@ -1546,14 +1559,14 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
               {/* Payment Items */}
               {paymentHistory.map((payment, index) => {
                 const dateTime = formatDateTime(payment.transaction_date);
-                const statusIcon = payment.payment_status === 'approved' ? 'check' : 
+                const statusIcon = payment.payment_status === 'approved' ? 'check' :
                                   payment.payment_status === 'rejected' ? 'x' : 'minus';
-                const statusColor = payment.payment_status === 'approved' ? '#10B981' : 
+                const statusColor = payment.payment_status === 'approved' ? '#10B981' :
                                    payment.payment_status === 'rejected' ? '#EF4444' : '#EC7E00';
-                
+
                 return (
-                  <TouchableOpacity 
-                    key={payment.payment_id} 
+                  <TouchableOpacity
+                    key={payment.payment_id}
                     style={styles.modernPaymentItem}
                     onPress={() => handlePaymentClick(payment)}
                     activeOpacity={0.7}
@@ -1733,7 +1746,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                     <Text style={styles.detailCardTitle}>Payment Receipt</Text>
                   </View>
                   <View style={styles.detailCardContent}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.receiptImageContainer}
                       onPress={() => setShowFullScreenImage(true)}
                       activeOpacity={0.8}
@@ -1985,7 +1998,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             </View>
 
             <Text style={styles.completeModalTitle}>Complete This Project?</Text>
-            
+
             <Text style={styles.completeModalDescription}>
               All milestones are finished. You're about to mark this project as completed.
             </Text>
@@ -2117,9 +2130,9 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         >
           <View style={styles.fullScreenImageContainer}>
             <StatusBar barStyle="light-content" backgroundColor="#000" />
-            
+
             {/* Close Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.closeImageButton}
               onPress={() => setShowFullScreenImage(false)}
             >
@@ -3628,7 +3641,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  // ── Project Halted Banner ──
+  // ── Project Halted / Terminated Banner ──
   haltedBanner: {
     marginHorizontal: 0,
     marginBottom: 16,
@@ -3637,6 +3650,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
     overflow: 'hidden',
+  },
+  terminatedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginHorizontal: 0,
+    marginBottom: 16,
+    borderRadius: 3,
+    backgroundColor: '#FFE4E6',
+    borderWidth: 1,
+    borderColor: '#E11D48',
+    gap: 12,
   },
   haltedBannerInner: {
     flexDirection: 'row',

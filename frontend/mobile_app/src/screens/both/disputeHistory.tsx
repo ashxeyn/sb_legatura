@@ -77,7 +77,10 @@ const TYPE_CONFIG = {
   Payment: { icon: 'dollar-sign', color: COLORS.success },
   Delay: { icon: 'clock', color: COLORS.warning },
   Quality: { icon: 'alert-triangle', color: COLORS.error },
+  Halt: { icon: 'pause-circle', color: COLORS.error },
   'Request to Halt': { icon: 'pause-circle', color: COLORS.error },
+  Terminate: { icon: 'slash', color: COLORS.error },
+  'Request to Terminate': { icon: 'slash', color: COLORS.error },
   Others: { icon: 'more-horizontal', color: COLORS.info },
 };
 
@@ -106,11 +109,11 @@ export default function DisputeHistory({ onClose }: DisputeHistoryProps) {
 
     try {
       const response = await dispute_service.get_disputes();
-      
+
       if (response.success && response.data) {
         // The api_request wraps the backend response, so the actual data is nested
         let disputesArray = [];
-        
+
         // Check if response.data.data exists (wrapped response)
         if (response.data.data && Array.isArray(response.data.data.disputes)) {
           disputesArray = response.data.data.disputes;
@@ -123,7 +126,7 @@ export default function DisputeHistory({ onClose }: DisputeHistoryProps) {
         else if (Array.isArray(response.data)) {
           disputesArray = response.data;
         }
-        
+
         setDisputes(disputesArray);
       } else {
         console.error('Failed to fetch disputes:', response.message);
@@ -172,7 +175,7 @@ export default function DisputeHistory({ onClose }: DisputeHistoryProps) {
   const handleDisputePress = async (dispute: any) => {
     try {
       const response = await dispute_service.get_dispute_details(dispute.dispute_id);
-      
+
       if (response.success && response.data) {
         // Handle nested response structure
         const disputeData = response.data.data || response.data;
@@ -441,7 +444,7 @@ export default function DisputeHistory({ onClose }: DisputeHistoryProps) {
                       const filePath = file.storage_path || file.file_path;
                       const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.original_name || filePath);
                       const fileUrl = getFileUrl(filePath);
-                      
+
                       return (
                         <TouchableOpacity
                           key={index}

@@ -307,6 +307,11 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
   const getStatusConfig = (project: Project) => {
     const { project_status, project_post_status, display_status, selected_contractor_id } = project;
 
+    // Check if project is terminated
+    if (project_status === 'terminated') {
+      return { color: COLORS.error, bg: '#FEE2E2', label: 'Project Terminated', icon: 'slash' };
+    }
+
     // Check if project is halted (highest priority)
     if (project_status === 'halt' || project_status === 'on_hold' || project_status === 'halted') {
       return { color: COLORS.error, bg: '#FEE2E2', label: 'Project Halted', icon: 'alert-octagon' };
@@ -374,6 +379,7 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
     const statusConfig = getStatusConfig(project);
     const isCompleted = project.project_status === 'completed' || project.display_status === 'completed';
     const isHalted = project.project_status === 'halt' || project.project_status === 'on_hold' || project.project_status === 'halted';
+    const isTerminated = project.project_status === 'terminated';
     const primaryTitle = getCardPrimaryTitle(project);
     const showPostTitle = primaryTitle !== project.project_title;
 
@@ -384,10 +390,17 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
           styles.projectCard,
           isCompleted && styles.projectCardCompleted,
           isHalted && styles.projectCardHalted,
+          isTerminated && styles.projectCardTerminated,
         ]}
         activeOpacity={0.7}
         onPress={() => setSelectedProject(project)}
       >
+        {isTerminated && (
+          <View style={styles.terminatedBanner}>
+            <Feather name="slash" size={14} color="#FFF" style={styles.bannerIcon} />
+            <Text style={styles.terminatedBannerText}>Project Terminated</Text>
+          </View>
+        )}
         {isHalted && (
           <View style={styles.haltedBanner}>
             <Feather name="alert-octagon" size={16} color="#FFFFFF" />
@@ -928,6 +941,12 @@ const styles = StyleSheet.create({
     borderColor: '#DC2626',
     backgroundColor: '#FEF2F2',
   },
+  projectCardTerminated: {
+    borderWidth: 1,
+    borderColor: '#991B1B',
+    backgroundColor: '#FEF2F2',
+    opacity: 0.8,
+  },
   haltedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -938,7 +957,24 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     gap: 6,
   },
+  terminatedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#991B1B',
+    marginBottom: 10,
+    paddingVertical: 7,
+    borderRadius: 4,
+    gap: 6,
+  },
   haltedBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  terminatedBannerText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',

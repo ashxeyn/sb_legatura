@@ -93,7 +93,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     initialTab,
   } = route.params;
 
-  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
+  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted' || projectStatus === 'terminated';
   // Combined gate: previous item must be completed AND downpayment must be cleared
   const canProceed = isPreviousItemComplete && isDownpaymentCleared;
 
@@ -560,10 +560,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   const handleSendReport = () => {
     setShowMenu(false);
     setShowFullDetailMenu(false);
-    
+
     // Get milestone_id from either milestone_id or parentMilestoneId
     const milestoneId = (milestoneItem as any).milestone_id || (milestoneItem as any).parentMilestoneId;
-    
+
     // Validate required data before opening form
     if (!projectId || !milestoneId || !milestoneItem?.item_id) {
       console.error('Missing required data for dispute:', {
@@ -578,7 +578,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
       );
       return;
     }
-    
+
     setShowDisputeForm(true);
   };
 
@@ -590,10 +590,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
   // Show milestone complete action when at least one progress report has been approved
   const hasAnyApproved = progressReports.some((p) => p.progress_status === 'approved');
-  
+
   // Check if there's at least one approved payment receipt by contractor
   const hasApprovedPayment = payments.some((p) => p.payment_status === 'approved');
-  
+
   // Allow partial payments: show button if owner, approved, has approved progress, and not completed.
   // Over-balance payments are allowed (frontend shows a warning modal).
   const shouldShowPaymentButton = isOwner && isApproved && progressReports.some(p => p.progress_status === 'approved') && itemStatus !== 'completed';
@@ -661,7 +661,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
               activeOpacity={0.7}
             >
               <Feather name="calendar" size={16} color={dueDateInput ? COLORS.text : COLORS.textMuted} />
-              <Text style={[styles.ddmDateFieldText, !dueDateInput && { color: COLORS.textMuted }]}>  
+              <Text style={[styles.ddmDateFieldText, !dueDateInput && { color: COLORS.textMuted }]}>
                 {dueDateInput
                   ? new Date(dueDateInput + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })
                   : 'Tap to select a date'}
@@ -772,7 +772,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           <TouchableOpacity style={styles.menuButton} onPress={() => setShowFullDetailMenu(!showFullDetailMenu)}>
             <Feather name="more-vertical" size={24} color={COLORS.text} />
           </TouchableOpacity>
-          
+
           {/* Menu Dropdown for Full Detail */}
           {showFullDetailMenu && (
             <View style={styles.menuDropdown}>
@@ -785,10 +785,12 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                 <Feather name="bar-chart-2" size={18} color={COLORS.info} />
                 <Text style={[styles.menuItemText, { color: COLORS.info }]}>View Summary</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
-                <Feather name="file-text" size={18} color={COLORS.text} />
-                <Text style={styles.menuItemText}>Send Report</Text>
-              </TouchableOpacity>
+              {projectStatus !== 'terminated' && (
+                <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
+                  <Feather name="file-text" size={18} color={COLORS.text} />
+                  <Text style={styles.menuItemText}>Send Report</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
                 <Feather name="clock" size={18} color={COLORS.text} />
                 <Text style={styles.menuItemText}>Report History</Text>
@@ -1160,7 +1162,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                                        payment.payment_status === 'rejected' ? COLORS.error :
                                        payment.payment_status === 'submitted' ? COLORS.warning :
                                        COLORS.textMuted;
-                    
+
                     const statusBg = payment.payment_status === 'approved' ? COLORS.successLight :
                                     payment.payment_status === 'rejected' ? COLORS.errorLight :
                                     payment.payment_status === 'submitted' ? COLORS.warningLight :
@@ -1248,7 +1250,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
                 {/* Owner: Send payment button */}
                 {!isProjectHalted && shouldShowPaymentButton && canProceed && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.fdSendPaymentBtn}
                     onPress={() => setShowPaymentForm(true)}
                   >
@@ -1309,14 +1311,16 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         <TouchableOpacity style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
           <Feather name="more-vertical" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        
+
         {/* Menu Dropdown */}
         {showMenu && (
           <View style={styles.menuDropdown}>
-            <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
-              <Feather name="file-text" size={18} color={COLORS.text} />
-              <Text style={styles.menuItemText}>Send Report</Text>
-            </TouchableOpacity>
+            {projectStatus !== 'terminated' && (
+              <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
+                <Feather name="file-text" size={18} color={COLORS.text} />
+                <Text style={styles.menuItemText}>Send Report</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
               <Feather name="clock" size={18} color={COLORS.text} />
               <Text style={styles.menuItemText}>Report History</Text>
@@ -1446,7 +1450,13 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         </View>
 
         {/* Status Alert Banners */}
-        {milestoneItem.item_status === 'halt' && (
+        {projectStatus === 'terminated' && (
+          <View style={[styles.alertBanner, { backgroundColor: '#FFE4E6', borderColor: '#E11D48' }]}>
+            <Feather name="slash" size={18} color="#E11D48" />
+            <Text style={[styles.alertBannerText, { color: '#E11D48' }]}>Project has been permanently terminated</Text>
+          </View>
+        )}
+        {milestoneItem.item_status === 'halt' && projectStatus !== 'terminated' && (
           <View style={styles.alertBanner}>
             <Feather name="pause-circle" size={18} color={COLORS.error} />
             <Text style={styles.alertBannerText}>This milestone item is currently halted</Text>
@@ -1581,10 +1591,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       {!isLast && (() => {
                         const next = progressReports[index + 1];
                         const nextStatus = next?.progress_status;
-                        const lineStyle = nextStatus === 'approved' 
-                          ? styles.reportLineApproved 
-                          : nextStatus === 'rejected' 
-                          ? styles.reportLineRejected 
+                        const lineStyle = nextStatus === 'approved'
+                          ? styles.reportLineApproved
+                          : nextStatus === 'rejected'
+                          ? styles.reportLineRejected
                           : styles.reportLinePending;
                         return <View style={[styles.reportLine, lineStyle]} />;
                       })()}
@@ -1634,7 +1644,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         {/* Owner: Send payment (show if any approved) */}
         {!isProjectHalted && shouldShowPaymentButton && canProceed && (
           <View style={styles.bottomRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.sendPaymentButton}
               onPress={() => setShowPaymentForm(true)}
             >

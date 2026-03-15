@@ -47,6 +47,7 @@ const DISPUTE_TYPES = [
   { value: 'Delay', label: 'Project Delay', icon: 'clock', description: 'Work not completed on time' },
   { value: 'Quality', label: 'Quality Issue', icon: 'alert-circle', description: 'Work quality below expectations' },
   { value: 'Halt', label: 'Request to Halt', icon: 'pause-circle', description: 'Request to halt or pause the project' },
+  { value: 'Terminate', label: 'Request to Terminate', icon: 'slash', description: 'Permanently terminate this halted project' },
   { value: 'Others', label: 'Other Issue', icon: 'more-horizontal', description: 'Specify other concerns' },
 ];
 
@@ -60,6 +61,7 @@ interface EvidenceFile {
 interface DisputeFormProps {
   projectId: number;
   projectTitle: string;
+  projectStatus?: string;
   milestoneId: number;
   milestoneTitle: string;
   milestoneItemId: number;
@@ -71,6 +73,7 @@ interface DisputeFormProps {
 export default function DisputeForm({
   projectId,
   projectTitle,
+  projectStatus,
   milestoneId,
   milestoneTitle,
   milestoneItemId,
@@ -228,6 +231,21 @@ export default function DisputeForm({
   };
 
   const selectedType = DISPUTE_TYPES.find(t => t.value === disputeType);
+  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
+  const isTerminated = projectStatus === 'terminated';
+
+  const availableDisputeTypes = DISPUTE_TYPES.filter(type => {
+    if (isTerminated) return false; // Hide ALL dispute types if project is terminated
+    // Only show 'Terminate' if the project is already halted
+    if (type.value === 'Terminate') {
+      return isProjectHalted;
+    }
+    // Only show 'Halt' if the project is NOT halted
+    if (type.value === 'Halt') {
+      return !isProjectHalted;
+    }
+    return true;
+  });
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -436,7 +454,7 @@ export default function DisputeForm({
             </View>
 
             <ScrollView style={styles.modalScroll}>
-              {DISPUTE_TYPES.map((type) => (
+              {availableDisputeTypes.map((type) => (
                 <TouchableOpacity
                   key={type.value}
                   style={[
