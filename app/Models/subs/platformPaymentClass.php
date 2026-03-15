@@ -28,11 +28,12 @@ class platformPaymentClass
                     ->where('platform_payments.contractor_id', $contractor->contractor_id)
                     ->where('subscription_plans.plan_key', '!=', 'boost')
                     ->where('platform_payments.is_approved', 1)
+                    ->where('platform_payments.is_cancelled', 0)
                     ->where(function ($query) {
                         $query->whereNull('platform_payments.expiration_date')
                             ->orWhere('platform_payments.expiration_date', '>', now());
                     })
-                    // Ensure start date is valid
+                    // Ensure start date is valid (allow null or past/present dates)
                     ->where(function ($query) {
                         $query->whereNull('platform_payments.transaction_date')
                             ->orWhere('platform_payments.transaction_date', '<=', now());

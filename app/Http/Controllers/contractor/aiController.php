@@ -213,7 +213,9 @@ class aiController extends Controller
         }
 
         $userType = $user->user_type ?? null;
-        if (!in_array($userType, ['contractor', 'both', 'staff'])) {
+        // Allow property_owner users who also own a contractor company (dual-role)
+        $hasContractorProfile = $this->aiService->getContractorByUserId($user->user_id) !== null;
+        if (!in_array($userType, ['contractor', 'both', 'staff']) && !$hasContractorProfile) {
             return response()->json(['success' => false, 'message' => 'Contractor access required'], 403);
         }
 
