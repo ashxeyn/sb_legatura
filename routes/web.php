@@ -23,6 +23,35 @@ use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;
 use App\Http\Controllers\AdminController;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Response;
+
+// Secure file serving route for storage files (fixes 403 errors on Hostinger)
+Route::get('/storage/{path}', function ($path) {
+    // Decode the path to handle special characters
+    $path = urldecode($path);
+    
+    // Security: Prevent directory traversal attacks
+    if (str_contains($path, '..') || str_contains($path, './') || str_contains($path, '\\')) {
+        abort(403, 'Invalid file path');
+    }
+    
+    // Check if file exists in public storage
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404, 'File not found');
+    }
+    
+    // Get the file
+    $file = Storage::disk('public')->get($path);
+    $mimeType = Storage::disk('public')->mimeType($path);
+    
+    // Return file with appropriate headers
+    return Response::make($file, 200, [
+        'Content-Type' => $mimeType,
+        'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('path', '.*')->name('storage.file');
 
 Route::prefix('admin/notifications')
     ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])

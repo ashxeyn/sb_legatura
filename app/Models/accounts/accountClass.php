@@ -12,16 +12,22 @@ class accountClass
     {
         try {
             return DB::table('contractor_types')
+                ->select('type_id', 'type_name')
                 ->orderByRaw("CASE WHEN LOWER(type_name) = 'others' THEN 1 ELSE 0 END, type_name ASC")
                 ->get();
         } catch (\Exception $e) {
             Log::warning('getContractorTypes failed: ' . $e->getMessage());
-            // Provide a small fallback list so UI can still render meaningful options
+            // Provide complete fallback list matching database
             $defaults = [
-                (object)['id' => 1, 'type_name' => 'General Contractor'],
-                (object)['id' => 2, 'type_name' => 'Electrical'],
-                (object)['id' => 3, 'type_name' => 'Plumbing'],
-                (object)['id' => 4, 'type_name' => 'Others']
+                (object)['type_id' => 1, 'type_name' => 'General Contractor'],
+                (object)['type_id' => 2, 'type_name' => 'Electrical Contractor'],
+                (object)['type_id' => 3, 'type_name' => 'Pool Contractor'],
+                (object)['type_id' => 4, 'type_name' => 'Mechanical Contractor'],
+                (object)['type_id' => 5, 'type_name' => 'Civil Works Contractor'],
+                (object)['type_id' => 6, 'type_name' => 'Architectural Contractor'],
+                (object)['type_id' => 7, 'type_name' => 'Interior Fit-out Contractor'],
+                (object)['type_id' => 8, 'type_name' => 'Landscaping Contractor'],
+                (object)['type_id' => 9, 'type_name' => 'Others']
             ];
             return collect($defaults);
         }

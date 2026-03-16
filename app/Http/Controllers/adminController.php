@@ -77,7 +77,7 @@ class adminController extends Controller
         $message        = $request->input('message');
         $deliveryMethod = $request->input('delivery_method');
 
-        $users    = DB::table('users')->select('user_id', 'email')->get();
+        $users    = DB::table('users')->select('user_id', 'email', 'first_name', 'last_name', 'username')->get();
         $userIds  = $users->pluck('user_id')->toArray();
         $count    = count($userIds);
 
@@ -101,7 +101,9 @@ class adminController extends Controller
             foreach ($users as $user) {
                 if (!empty($user->email)) {
                     try {
-                        Mail::raw($message, function ($mail) use ($user, $title) {
+                        $userName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: ($user->username ?? 'User');
+                        $emailBody = "Dear {$userName},\n\n{$message}\n\nBest regards,\nLegatura";
+                        Mail::raw($emailBody, function ($mail) use ($user, $title) {
                             $mail->to($user->email)->subject($title);
                         });
                     } catch (\Throwable $e) {
@@ -145,7 +147,7 @@ class adminController extends Controller
 
         $users = DB::table('users')
             ->whereIn('user_id', $userIds)
-            ->select('user_id', 'email')
+            ->select('user_id', 'email', 'first_name', 'last_name', 'username')
             ->get();
 
         $foundIds = $users->pluck('user_id')->toArray();
@@ -171,7 +173,9 @@ class adminController extends Controller
             foreach ($users as $user) {
                 if (!empty($user->email)) {
                     try {
-                        Mail::raw($message, function ($mail) use ($user, $title) {
+                        $userName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: ($user->username ?? 'User');
+                        $emailBody = "Dear {$userName},\n\n{$message}\n\nBest regards,\nLegatura";
+                        Mail::raw($emailBody, function ($mail) use ($user, $title) {
                             $mail->to($user->email)->subject($title);
                         });
                     } catch (\Throwable $e) {

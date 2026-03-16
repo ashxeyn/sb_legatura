@@ -18,6 +18,8 @@
     </div>
 
     <div class="card">
+      <p>Dear {{ $data['reporter_name'] ?? 'User' }},</p>
+      
       <h2>Your dispute submission has been verified</h2>
       <p>Check out for updates in your project now.</p>
 

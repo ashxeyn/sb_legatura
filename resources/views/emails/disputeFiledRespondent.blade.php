@@ -18,6 +18,8 @@
     </div>
 
     <div class="card">
+      <p>Dear {{ $data['accused_name'] ?? 'User' }},</p>
+      
       <h2>A dispute has been filed against you</h2>
       <p>A dispute has been filed against you regarding Project: <strong>{{ $data['project_title'] ?? '-' }}</strong>.</p>
 

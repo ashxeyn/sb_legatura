@@ -198,8 +198,10 @@ class userManagementController extends authController
             try {
                 $toEmail = $result['email'] ?? ($data['company_email'] ?? null);
                 $username = $result['username'] ?? null;
+                $companyName = $data['company_name'] ?? 'User';
                 if ($toEmail) {
                     \Illuminate\Support\Facades\Mail::raw(
+                        "Dear {$companyName},\n\n" .
                         "Your contractor account has been successfully created by the admin.\n\n" .
                         "Login with:\n" .
                         "Username: " . ($username ?? 'N/A') . "\n" .
@@ -1052,10 +1054,13 @@ class userManagementController extends authController
                     ->first();
 
                 try {
+                    $repName = trim(($newRep->first_name ?? '') . ' ' . ($newRep->last_name ?? '')) ?: ($newRep->username ?? 'User');
                     Mail::raw(
+                        "Dear {$repName},\n\n" .
                         "You have been assigned as the Company Representative.\n\n" .
                         "This role gives you authorization to represent the company in all official matters.\n\n" .
-                        "If you have any questions, please contact the administrator.",
+                        "If you have any questions, please contact the administrator.\n\n" .
+                        "Best regards,\nLegatura",
                         function ($message) use ($newRep) {
                             $message->to($newRep->email)->subject('Company Representative Assignment - Legatura');
                         }

@@ -1,4 +1,30 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    
+    # Allow access to storage files
+    RewriteCond %{REQUEST_URI} ^/storage/
     RewriteRule ^(.*)$ public/$1 [L]
+    
+    # Redirect all other requests to public folder
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Set proper MIME types for common file types
+<IfModule mod_mime.c>
+    AddType image/jpeg .jpg .jpeg
+    AddType image/png .png
+    AddType image/gif .gif
+    AddType image/webp .webp
+    AddType application/pdf .pdf
+    AddType application/vnd.openxmlformats-officedocument.wordprocessingml.document .docx
+    AddType application/msword .doc
+</IfModule>
+
+# Enable CORS for storage files (if needed for mobile app)
+<IfModule mod_headers.c>
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|pdf|doc|docx)$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, OPTIONS"
+        Header set Access-Control-Allow-Headers "Content-Type"
+    </FilesMatch>
 </IfModule>

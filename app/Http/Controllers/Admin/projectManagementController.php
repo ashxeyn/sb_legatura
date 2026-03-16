@@ -77,19 +77,28 @@ class projectManagementController extends Controller
                     ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
                     ->select(
                         'reporter.email as reporter_email',
+                        'reporter.first_name as reporter_first_name',
+                        'reporter.last_name as reporter_last_name',
+                        'reporter.username as reporter_username',
                         'accused.email as accused_email',
+                        'accused.first_name as accused_first_name',
+                        'accused.last_name as accused_last_name',
+                        'accused.username as accused_username',
                         'disputes.title'
                     )
                     ->where('disputes.dispute_id', $id)
                     ->first();
 
-                $body = "The dispute \"{$row->title}\" has been marked as resolved by the admin." .
-                        ($notes ? "\n\nNotes: {$notes}" : '');
-
                 if ($row && !empty($row->reporter_email)) {
+                    $reporterName = trim(($row->reporter_first_name ?? '') . ' ' . ($row->reporter_last_name ?? '')) ?: ($row->reporter_username ?? 'User');
+                    $body = "Dear {$reporterName},\n\nThe dispute \"{$row->title}\" has been marked as resolved by the admin." .
+                            ($notes ? "\n\nNotes: {$notes}" : '') . "\n\nBest regards,\nLegatura";
                     Mail::raw($body, fn($m) => $m->to($row->reporter_email)->subject('Dispute Resolved - Legatura'));
                 }
                 if ($row && !empty($row->accused_email)) {
+                    $accusedName = trim(($row->accused_first_name ?? '') . ' ' . ($row->accused_last_name ?? '')) ?: ($row->accused_username ?? 'User');
+                    $body = "Dear {$accusedName},\n\nThe dispute \"{$row->title}\" has been marked as resolved by the admin." .
+                            ($notes ? "\n\nNotes: {$notes}" : '') . "\n\nBest regards,\nLegatura";
                     Mail::raw($body, fn($m) => $m->to($row->accused_email)->subject('Dispute Resolved - Legatura'));
                 }
             } catch (\Exception $e) {
@@ -234,6 +243,8 @@ class projectManagementController extends Controller
             try {
                 $details  = disputeClass::getDisputeDetails($id);
                 $mailData = [
+                    'reporter_name'    => $row->reporter_name ?? 'User',
+                    'accused_name'     => $row->accused_name ?? 'User',
                     'title'            => $details['content']['subject']          ?? ($details['dispute']->title         ?? $row->title ?? null),
                     'subject'          => $details['content']['subject']          ?? ($details['dispute']->title         ?? $row->title ?? null),
                     'description'      => $details['content']['dispute_desc']     ?? ($details['dispute']->dispute_desc  ?? null),
@@ -274,14 +285,21 @@ class projectManagementController extends Controller
 
             $row = DB::table('disputes')
                 ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
-                ->select('reporter.email as reporter_email', 'reporter.username as reporter_name', 'disputes.title')
+                ->select(
+                    'reporter.email as reporter_email',
+                    'reporter.first_name as reporter_first_name',
+                    'reporter.last_name as reporter_last_name',
+                    'reporter.username as reporter_username',
+                    'disputes.title'
+                )
                 ->where('disputes.dispute_id', $id)
                 ->first();
 
             try {
                 if ($row && $row->reporter_email) {
+                    $reporterName = trim(($row->reporter_first_name ?? '') . ' ' . ($row->reporter_last_name ?? '')) ?: ($row->reporter_username ?? 'User');
                     $subject = "Dispute Rejected";
-                    $body    = "Your dispute has been rejected by the admin." . ($reason ? "\n\nReason: {$reason}" : "");
+                    $body    = "Dear {$reporterName},\n\nYour dispute has been rejected by the admin." . ($reason ? "\n\nReason: {$reason}" : "") . "\n\nBest regards,\nLegatura";
                     Mail::raw($body, function ($m) use ($row, $subject) {
                         $m->to($row->reporter_email)->subject($subject);
                     });
@@ -382,10 +400,11 @@ class projectManagementController extends Controller
                 ->first();
 
             $subject = "Project Halted - " . $project->project_title;
-            $body = "The project '{$project->project_title}' has been halted by the admin due to a dispute resolution.\n\nReason: {$reason}\n\nPlease contact support for further assistance.";
-
+            
             // Send to property owner
             if ($projectRelation && $projectRelation->owner_email) {
+                $ownerName = trim($projectRelation->owner_first_name ?? '') ?: 'User';
+                $body = "Dear {$ownerName},\n\nThe project '{$project->project_title}' has been halted by the admin due to a dispute resolution.\n\nReason: {$reason}\n\nPlease contact support for further assistance.\n\nBest regards,\nLegatura";
                 Mail::raw($body, function ($m) use ($projectRelation, $subject) {
                     $m->to($projectRelation->owner_email)->subject($subject);
                 });
@@ -393,6 +412,8 @@ class projectManagementController extends Controller
 
             // Send to contractor
             if ($projectRelation && $projectRelation->contractor_email) {
+                $contractorName = trim($projectRelation->contractor_first_name ?? '') ?: 'User';
+                $body = "Dear {$contractorName},\n\nThe project '{$project->project_title}' has been halted by the admin due to a dispute resolution.\n\nReason: {$reason}\n\nPlease contact support for further assistance.\n\nBest regards,\nLegatura";
                 Mail::raw($body, function ($m) use ($projectRelation, $subject) {
                     $m->to($projectRelation->contractor_email)->subject($subject);
                 });
@@ -608,10 +629,11 @@ class projectManagementController extends Controller
 
             $actionText = $action === 'resumed' ? 'resumed' : 'terminated';
             $subject = "Project " . ucfirst($actionText) . " - " . $project->project_title;
-            $body = "The project '{$project->project_title}' has been {$actionText} by the admin.\n\nReason: {$reason}\n\nPlease contact support if you have any questions.";
 
             // Send to property owner
             if ($projectRelation && $projectRelation->owner_email) {
+                $ownerName = trim($projectRelation->owner_first_name ?? '') ?: 'User';
+                $body = "Dear {$ownerName},\n\nThe project '{$project->project_title}' has been {$actionText} by the admin.\n\nReason: {$reason}\n\nPlease contact support if you have any questions.\n\nBest regards,\nLegatura";
                 Mail::raw($body, function ($m) use ($projectRelation, $subject) {
                     $m->to($projectRelation->owner_email)->subject($subject);
                 });
@@ -619,6 +641,8 @@ class projectManagementController extends Controller
 
             // Send to contractor
             if ($projectRelation && $projectRelation->contractor_email) {
+                $contractorName = trim($projectRelation->contractor_first_name ?? '') ?: 'User';
+                $body = "Dear {$contractorName},\n\nThe project '{$project->project_title}' has been {$actionText} by the admin.\n\nReason: {$reason}\n\nPlease contact support if you have any questions.\n\nBest regards,\nLegatura";
                 Mail::raw($body, function ($m) use ($projectRelation, $subject) {
                     $m->to($projectRelation->contractor_email)->subject($subject);
                 });
@@ -710,8 +734,11 @@ class projectManagementController extends Controller
                         'created_at' => now(),
                     ]);
 
-                    // Email warning
-                    Mail::raw($warningMessage, function ($m) use ($accused) {
+                    // Email warning - fetch name for personalization
+                    $accusedUser = DB::table('users')->where('user_id', $accused->against_user_id)->first();
+                    $accusedName = $accusedUser ? (trim(($accusedUser->first_name ?? '') . ' ' . ($accusedUser->last_name ?? '')) ?: ($accusedUser->username ?? 'User')) : 'User';
+                    $warningBody = "Dear {$accusedName},\n\n{$warningMessage}\n\nBest regards,\nLegatura";
+                    Mail::raw($warningBody, function ($m) use ($accused) {
                         $m->to($accused->accused_email)->subject('Official Warning from Admin');
                     });
 
@@ -725,13 +752,16 @@ class projectManagementController extends Controller
                     disputeClass::updateStatus($id, 'resolved', $notes);
 
                     $subject = "Dispute Resolved";
-                    $body = "The dispute has been resolved by admin.\n\nResolution notes:\n" . ($notes ?: "(no notes provided)");
                     if ($row && $row->reporter_email) {
+                        $reporterName = trim(($row->reporter_name ?? '')) ?: 'User';
+                        $body = "Dear {$reporterName},\n\nThe dispute has been resolved by admin.\n\nResolution notes:\n" . ($notes ?: "(no notes provided)") . "\n\nBest regards,\nLegatura";
                         Mail::raw($body, function ($m) use ($row, $subject) {
                             $m->to($row->reporter_email)->subject($subject);
                         });
                     }
                     if ($row && $row->accused_email) {
+                        $accusedName = trim(($row->accused_name ?? '')) ?: 'User';
+                        $body = "Dear {$accusedName},\n\nThe dispute has been resolved by admin.\n\nResolution notes:\n" . ($notes ?: "(no notes provided)") . "\n\nBest regards,\nLegatura";
                         Mail::raw($body, function ($m) use ($row, $subject) {
                             $m->to($row->accused_email)->subject($subject);
                         });

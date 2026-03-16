@@ -327,6 +327,12 @@ class authController extends Controller
         $provinces = $this->psgcService->getProvinces();
         $picabCategories = $this->accountClass->getPicabCategories();
 
+        // Add logging for debugging
+        \Log::info('showSignupForm - contractor types count: ' . $contractorTypes->count());
+        if ($contractorTypes->count() > 0) {
+            \Log::info('showSignupForm - first contractor type: ' . json_encode($contractorTypes->first()));
+        }
+
         if (request()->expectsJson()) {
             // Ensure valid_ids is properly formatted as an array
             $validIdsArray = $validIds->map(function ($item) {
@@ -352,6 +358,8 @@ class authController extends Controller
                     'provinces' => $provinces,
                     'valid_ids' => $validIdsArray
                 ];
+                \Log::info('showSignupForm - contractor response data keys: ' . json_encode(array_keys($responseData)));
+                \Log::info('showSignupForm - contractor_types in response: ' . json_encode($responseData['contractor_types']));
             } else {
                 // Backwards-compatible default: return all fields
                 $responseData = [
@@ -1233,6 +1241,9 @@ class authController extends Controller
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
                 'user_type' => 'contractor',
+                'first_name' => $step2['first_name'] ?? '',
+                'middle_name' => $step2['middle_name'] ?? null,
+                'last_name' => $step2['last_name'] ?? '',
             ]);
 
             // Log creation result for debugging (temporary)
