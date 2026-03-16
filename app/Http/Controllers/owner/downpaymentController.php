@@ -5,6 +5,7 @@ namespace App\Http\Controllers\owner;
 use App\Http\Controllers\Controller;
 use App\Services\ContractorAuthorizationService;
 use App\Services\NotificationService;
+use App\Services\UserActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -228,6 +229,8 @@ class downpaymentController extends Controller
                     ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $validated['project_id'], 'tab' => 'payments']]
                 );
             }
+
+            UserActivityLogger::downpaymentUploaded((int) $user->user_id, (int) $dpPaymentId, (int) $validated['project_id']);
 
             return response()->json([
                 'success' => true,

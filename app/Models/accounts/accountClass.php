@@ -5,6 +5,7 @@ namespace App\Models\accounts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use App\Services\NotificationService;
 
 class accountClass
 {
@@ -412,5 +413,345 @@ class accountClass
         ]);
 
         return $adminId;
+    }
+
+    // ── Account Management (Soft Delete) ───────────────────────────────
+
+    public const DELETION_REASONS = [
+        'taking_a_break' => 'Taking a break',
+        'too_many_notifications' => 'Too many notifications',
+        'privacy_concerns' => 'Privacy concerns',
+        'created_second_account' => 'Created a second account',
+        'not_useful' => "Don't find it useful",
+        'safety_concern' => 'Safety concern',
+        'other' => 'Something else',
+    ];
+
+    /**
+     * Soft-delete owner account with cascading to contractors and staff.
+     */
+    public function softDeleteOwner(int $userId, string $reason): array
+    {
+        $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+        if (!$owner) {
+            return ['success' => false, 'message' => 'Owner profile not found', 'code' => 404];
+        }
+
+        DB::table('property_owners')->where('owner_id', $owner->owner_id)->update([
+            'is_active' => 0,
+            'deletion_reason' => $reason,
+        ]);
+
+        // Cascade: soft-delete any contractor_staff memberships this owner has in other companies
+        DB::table('contractor_staff')
+            ->where('owner_id', $owner->owner_id)
+            ->where('is_active', 1)
+            ->whereNull('deletion_reason')
+            ->update([
+                'is_active' => 0,
+                'deletion_reason' => "Owner account deleted: {$reason}",
+            ]);
+
+        // Cascade: soft-delete contractor companies owned by this owner
+        // Use the full cascade logic (notify staff, withdraw bids, notify project owners)
+        $contractors = DB::table('contractors')
+            ->where('owner_id', $owner->owner_id)
+            ->where('verification_status', '!=', 'deleted')
+            ->where('is_active', 1)
+            ->get();
+
+        foreach ($contractors as $contractor) {
+            $contractorId = $contractor->contractor_id;
+            $companyName = $contractor->company_name ?? 'the company';
+
+            // Notify and soft-delete staff of this company (excluding the owner who is already handled)
+            $staffMembers = DB::table('contractor_staff')
+                ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+                ->where('contractor_staff.contractor_id', $contractorId)
+                ->where('contractor_staff.is_active', 1)
+                ->whereNull('contractor_staff.deletion_reason')
+                ->where('contractor_staff.owner_id', '!=', $owner->owner_id)
+                ->select('property_owners.user_id', 'contractor_staff.staff_id')
+                ->get();
+
+            foreach ($staffMembers as $staff) {
+                NotificationService::create(
+                    $staff->user_id,
+                    'company_deleted_staff',
+                    'Company Deleted',
+                    "The company \"{$companyName}\" has been deleted because the owner deleted their account. Your staff membership has been removed.",
+                    'high',
+                    'contractor_staff',
+                    $staff->staff_id,
+                    ['screen' => 'Profile'],
+                    "company_deleted_staff_{$contractorId}_{$staff->user_id}"
+                );
+
+                DB::table('personal_access_tokens')->where('tokenable_id', $staff->user_id)->delete();
+            }
+
+            DB::table('contractor_staff')
+                ->where('contractor_id', $contractorId)
+                ->where('is_active', 1)
+                ->whereNull('deletion_reason')
+                ->update([
+                    'is_active' => 0,
+                    'deletion_reason' => "Company owner deleted: {$reason}",
+                ]);
+
+            // Withdraw active bids and notify project owners
+            $activeBids = DB::table('bids')
+                ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->where('bids.contractor_id', $contractorId)
+                ->whereIn('bids.bid_status', ['submitted', 'under_review'])
+                ->select('bids.bid_id', 'projects.project_id', 'projects.project_title', 'property_owners.user_id as owner_user_id')
+                ->get();
+
+            foreach ($activeBids as $bid) {
+                DB::table('bids')->where('bid_id', $bid->bid_id)->update([
+                    'bid_status' => 'cancelled',
+                    'reason' => "Company \"{$companyName}\" has been deleted",
+                    'decision_date' => now(),
+                ]);
+
+                NotificationService::create(
+                    $bid->owner_user_id,
+                    'company_deleted_bid_withdrawn',
+                    'Bid Withdrawn',
+                    "A bid from \"{$companyName}\" on your project \"{$bid->project_title}\" has been withdrawn because the company was deleted.",
+                    'high',
+                    'bid',
+                    $bid->bid_id,
+                    ['screen' => 'ProjectDetails', 'projectId' => $bid->project_id],
+                    "company_deleted_bid_{$bid->bid_id}_{$bid->owner_user_id}"
+                );
+            }
+
+            // Notify owners of ongoing projects
+            $ongoingProjects = DB::table('projects')
+                ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->where('projects.selected_contractor_id', $contractorId)
+                ->whereIn('projects.project_status', ['bidding_closed', 'in_progress'])
+                ->select('projects.project_id', 'projects.project_title', 'property_owners.user_id as owner_user_id')
+                ->get();
+
+            foreach ($ongoingProjects as $project) {
+                NotificationService::create(
+                    $project->owner_user_id,
+                    'company_deleted_project',
+                    'Contractor Company Deleted',
+                    "The contractor \"{$companyName}\" assigned to your project \"{$project->project_title}\" has been deleted. Please contact support for assistance.",
+                    'critical',
+                    'project',
+                    $project->project_id,
+                    ['screen' => 'ProjectDetails', 'projectId' => $project->project_id],
+                    "company_deleted_project_{$project->project_id}_{$project->owner_user_id}"
+                );
+            }
+
+            // Mark company inactive
+            DB::table('contractors')->where('contractor_id', $contractorId)->update([
+                'is_active' => 0,
+                'deletion_reason' => "Owner account deleted: {$reason}",
+            ]);
+        }
+
+        // Revoke tokens to force logout
+        DB::table('personal_access_tokens')->where('tokenable_id', $userId)->delete();
+
+        Log::info('Owner soft-deleted with full cascade', ['user_id' => $userId, 'reason' => $reason]);
+
+        return [
+            'success' => true,
+            'message' => 'Your account has been deleted.',
+        ];
+    }
+
+    /**
+     * Soft-delete contractor company with cascading to staff.
+     */
+    public function softDeleteContractor(int $userId, string $reason): array
+    {
+        $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        if (!$ownerId) {
+            return ['success' => false, 'message' => 'Contractor profile not found', 'code' => 404];
+        }
+
+        $contractor = DB::table('contractors')->where('owner_id', $ownerId)->first();
+        if (!$contractor) {
+            return ['success' => false, 'message' => 'Contractor company not found', 'code' => 404];
+        }
+
+        $contractorId = $contractor->contractor_id;
+        $companyName = $contractor->company_name ?? 'the company';
+
+        // ── 1. Notify and soft-delete all active staff members ─────────────
+        $staffMembers = DB::table('contractor_staff')
+            ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+            ->where('contractor_staff.contractor_id', $contractorId)
+            ->where('contractor_staff.is_active', 1)
+            ->whereNull('contractor_staff.deletion_reason')
+            ->where('contractor_staff.owner_id', '!=', $ownerId)
+            ->select('property_owners.user_id', 'contractor_staff.staff_id')
+            ->get();
+
+        foreach ($staffMembers as $staff) {
+            NotificationService::create(
+                $staff->user_id,
+                'company_deleted_staff',
+                'Company Deleted',
+                "The company \"{$companyName}\" has been deleted by the owner. Your staff membership has been removed.",
+                'high',
+                'contractor_staff',
+                $staff->staff_id,
+                ['screen' => 'Profile'],
+                "company_deleted_staff_{$contractorId}_{$staff->user_id}"
+            );
+
+            // Revoke their tokens so they can't act on behalf of the company
+            DB::table('personal_access_tokens')->where('tokenable_id', $staff->user_id)->delete();
+        }
+
+        DB::table('contractor_staff')
+            ->where('contractor_id', $contractorId)
+            ->where('is_active', 1)
+            ->whereNull('deletion_reason')
+            ->update([
+                'is_active' => 0,
+                'deletion_reason' => "Company deleted: {$reason}",
+            ]);
+
+        // ── 2. Withdraw active bids and notify project owners ──────────────
+        $activeBids = DB::table('bids')
+            ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+            ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->where('bids.contractor_id', $contractorId)
+            ->whereIn('bids.bid_status', ['submitted', 'under_review'])
+            ->select(
+                'bids.bid_id',
+                'projects.project_id',
+                'projects.project_title',
+                'property_owners.user_id as owner_user_id'
+            )
+            ->get();
+
+        foreach ($activeBids as $bid) {
+            DB::table('bids')->where('bid_id', $bid->bid_id)->update([
+                'bid_status' => 'cancelled',
+                'reason' => "Company \"{$companyName}\" has been deleted",
+                'decision_date' => now(),
+            ]);
+
+            NotificationService::create(
+                $bid->owner_user_id,
+                'company_deleted_bid_withdrawn',
+                'Bid Withdrawn',
+                "A bid from \"{$companyName}\" on your project \"{$bid->project_title}\" has been withdrawn because the company was deleted.",
+                'high',
+                'bid',
+                $bid->bid_id,
+                ['screen' => 'ProjectDetails', 'projectId' => $bid->project_id],
+                "company_deleted_bid_{$bid->bid_id}_{$bid->owner_user_id}"
+            );
+        }
+
+        // ── 3. Notify owners of ongoing/in-progress projects ───────────────
+        $ongoingProjects = DB::table('projects')
+            ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->where('projects.selected_contractor_id', $contractorId)
+            ->whereIn('projects.project_status', ['bidding_closed', 'in_progress'])
+            ->select(
+                'projects.project_id',
+                'projects.project_title',
+                'projects.project_status',
+                'property_owners.user_id as owner_user_id'
+            )
+            ->get();
+
+        foreach ($ongoingProjects as $project) {
+            NotificationService::create(
+                $project->owner_user_id,
+                'company_deleted_project',
+                'Contractor Company Deleted',
+                "The contractor \"{$companyName}\" assigned to your project \"{$project->project_title}\" has deleted their company. Please contact support for assistance.",
+                'critical',
+                'project',
+                $project->project_id,
+                ['screen' => 'ProjectDetails', 'projectId' => $project->project_id],
+                "company_deleted_project_{$project->project_id}_{$project->owner_user_id}"
+            );
+        }
+
+        // ── 4. Mark contractor company as inactive ─────────────────────────
+        DB::table('contractors')->where('contractor_id', $contractorId)->update([
+            'is_active' => 0,
+            'deletion_reason' => $reason,
+        ]);
+
+        Log::info('Contractor soft-deleted with full cascade', [
+            'user_id' => $userId,
+            'contractor_id' => $contractorId,
+            'reason' => $reason,
+            'staff_notified' => $staffMembers->count(),
+            'bids_withdrawn' => $activeBids->count(),
+            'projects_affected' => $ongoingProjects->count(),
+        ]);
+
+        // Default to property owner on next login
+        DB::table('users')->where('user_id', $userId)->update(['preferred_role' => 'owner']);
+
+        // Revoke tokens to force logout
+        DB::table('personal_access_tokens')->where('tokenable_id', $userId)->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Your company has been deleted.',
+        ];
+    }
+
+    /**
+     * Soft-delete a staff member's own contractor_staff profile.
+     */
+    public function softDeleteStaff(int $userId, string $reason): array
+    {
+        $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        if (!$ownerId) {
+            return ['success' => false, 'message' => 'Staff profile not found', 'code' => 404];
+        }
+
+        $staffRecord = DB::table('contractor_staff')
+            ->where('owner_id', $ownerId)
+            ->where('is_active', 1)
+            ->whereNull('deletion_reason')
+            ->first();
+
+        if (!$staffRecord) {
+            return ['success' => false, 'message' => 'No active contractor staff profile found', 'code' => 404];
+        }
+
+        DB::table('contractor_staff')
+            ->where('staff_id', $staffRecord->staff_id)
+            ->update([
+                'is_active' => 0,
+                'deletion_reason' => $reason,
+            ]);
+
+        Log::info('Staff member soft-deleted', ['user_id' => $userId, 'staff_id' => $staffRecord->staff_id, 'reason' => $reason]);
+
+        // Default to property owner on next login
+        DB::table('users')->where('user_id', $userId)->update(['preferred_role' => 'owner']);
+
+        // Revoke tokens to force logout
+        DB::table('personal_access_tokens')->where('tokenable_id', $userId)->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Your staff profile has been deleted.',
+        ];
     }
 }

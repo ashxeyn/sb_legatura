@@ -216,6 +216,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Notifications screen state
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [accessRevokedVisible, setAccessRevokedVisible] = useState(false);
+  const [accessRevokedMessage, setAccessRevokedMessage] = useState('Your contractor member access is no longer active.');
 
   // Unread message count for tab bar badge (updated in real-time by MessagesScreen)
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
@@ -364,6 +366,57 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     return rawType === 'property_owner' || rawType === 'both' ? 'property_owner' : userType;
   }, [isStaffContext, currentRole, userData?.preferred_role, userData?.user_type, userType]);
 
+  const isContractorMemberSession = useMemo(() => {
+    const member = userData?.contractor_member;
+    if (!member) return false;
+    return effectiveUserType === 'contractor' && member.is_contractor_owner === false;
+  }, [effectiveUserType, userData?.contractor_member]);
+
+  // If a contractor member is kicked/removed while logged in, block access
+  // and allow only explicit logout.
+  useEffect(() => {
+    if (!isContractorMemberSession) return;
+
+    let mounted = true;
+
+    const checkMemberAccess = async () => {
+      try {
+        const uid = userData?.user_id;
+        const token = await storage_service.get_auth_token();
+        if (!uid || !token) return;
+
+        const endpoint = `${api_config.base_url}${api_config.endpoints.contractor_members.list}?user_id=${uid}&_cb=${Date.now()}`;
+        const res = await fetch(endpoint, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-User-Id': String(uid),
+          },
+        });
+
+        if (res.status !== 403) return;
+
+        const body = await res.json().catch(() => ({} as any));
+        const code = String(body?.error_code || body?.data?.error_code || '').toUpperCase();
+        if (mounted && ['MEMBER_NOT_FOUND', 'MEMBER_INACTIVE', 'MEMBER_SUSPENDED'].includes(code)) {
+          setAccessRevokedMessage(body?.message || 'Your contractor member access is no longer active.');
+          setAccessRevokedVisible(true);
+        }
+      } catch (e) {
+        // Do not interrupt UI on transient errors.
+      }
+    };
+
+    checkMemberAccess();
+    const timer = setInterval(checkMemberAccess, 15000);
+
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isContractorMemberSession, userData?.user_id]);
+
   // Refresh current role from API on mount and when app comes to foreground
   useEffect(() => {
     let isMounted = true;
@@ -442,6 +495,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                 if (ctx) {
                   stored.contractor_member = ctx;
                   stored.determinedRole = 'contractor';
+                  await storage_service.save_user_data(stored);
+                }
+              }
+
+              // Always sync is_contractor_owner from fresh API data even when
+              // contractor_member was already cached (e.g. set during login).
+              if (stored?.contractor_member) {
+                const isStaff = !!staffPayload &&
+                  Number(staffPayload.is_active ?? 0) === 1 &&
+                  Number(staffPayload.is_suspended ?? 0) !== 1;
+                if (stored.contractor_member.is_contractor_owner !== !isStaff) {
+                  stored.contractor_member.is_contractor_owner = !isStaff;
                   await storage_service.save_user_data(stored);
                 }
               }
@@ -1425,7 +1490,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               <MaterialIcons name="edit" size={18} color="#FFFFFF" />
               <Text style={styles.placeBidButtonText}>Manage Project</Text>
             </TouchableOpacity>
-          ) : (effectiveUserType === 'contractor' || canBid) ? (
+          ) : canBid ? (
             <TouchableOpacity
               style={styles.placeBidButton}
               activeOpacity={0.8}
@@ -2371,7 +2436,7 @@ const renderProfileContent = () => {
         userRole={isOwn ? 'owner' : (effectiveUserType === 'contractor' ? 'contractor' : 'owner')}
         canBid={canBid}
         onClose={() => setSelectedProject(null)}
-        onPlaceBid={(effectiveUserType === 'contractor' || canBid) ? () => {
+        onPlaceBid={canBid ? () => {
           setBidProject(selectedProject);
           setSelectedProject(null);
           setShowPlaceBid(true);
@@ -2709,6 +2774,28 @@ const renderProfileContent = () => {
         onClose={() => setShowCreateShowcase(false)}
         onCreated={() => fetchUnifiedFeed(1)}
       />
+
+      <Modal
+        visible={accessRevokedVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.accessRevokedOverlay}>
+          <View style={styles.accessRevokedCard}>
+            <Ionicons name="lock-closed-outline" size={42} color="#E74C3C" />
+            <Text style={styles.accessRevokedTitle}>Access Revoked</Text>
+            <Text style={styles.accessRevokedText}>{accessRevokedMessage}</Text>
+            <TouchableOpacity
+              style={styles.accessRevokedLogoutButton}
+              onPress={handleLogout}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.accessRevokedLogoutText}>Log Out</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -3217,6 +3304,48 @@ const styles = StyleSheet.create({
   navTextActive: {
     color: '#EC7E00',
     fontWeight: '600',
+  },
+  accessRevokedOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  accessRevokedCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  accessRevokedTitle: {
+    marginTop: 10,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  accessRevokedText: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4B5563',
+    textAlign: 'center',
+  },
+  accessRevokedLogoutButton: {
+    marginTop: 18,
+    width: '100%',
+    backgroundColor: '#E74C3C',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  accessRevokedLogoutText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   loadingContainer: {
     paddingVertical: 40,

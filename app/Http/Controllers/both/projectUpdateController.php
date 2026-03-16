@@ -4,6 +4,7 @@ namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Services\ProjectUpdateService;
+use App\Services\UserActivityLogger;
 use Illuminate\Http\Request;
 
 /**
@@ -120,6 +121,10 @@ class projectUpdateController extends Controller
             $validated
         );
 
+        if (!empty($result['success'])) {
+            UserActivityLogger::projectUpdateSubmitted((int) $validated['user_id'], (int) ($result['extension_id'] ?? 0), $projectId);
+        }
+
         return response()->json($result, $result['success'] ? 201 : 422);
     }
 
@@ -137,6 +142,10 @@ class projectUpdateController extends Controller
             $validated['note'] ?? null
         );
 
+        if (!empty($result['success'])) {
+            UserActivityLogger::projectUpdateApproved((int) $validated['user_id'], $extensionId, $projectId);
+        }
+
         return response()->json($result, $result['success'] ? 200 : 422);
     }
 
@@ -153,6 +162,10 @@ class projectUpdateController extends Controller
             (int) $validated['user_id'],
             $validated['reason']
         );
+
+        if (!empty($result['success'])) {
+            UserActivityLogger::projectUpdateRejected((int) $validated['user_id'], $extensionId, $projectId);
+        }
 
         return response()->json($result, $result['success'] ? 200 : 422);
     }
@@ -182,6 +195,11 @@ class projectUpdateController extends Controller
         ]);
 
         $result = $this->service->withdraw($extensionId, (int) $validated['user_id']);
+
+        if (!empty($result['success'])) {
+            UserActivityLogger::projectUpdateWithdrawn((int) $validated['user_id'], $extensionId, $projectId);
+        }
+
         return response()->json($result, $result['success'] ? 200 : 422);
     }
 

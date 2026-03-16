@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Exception;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Services\NotificationService;
+use App\Services\UserActivityLogger;
 
 class disputeController extends Controller
 {
@@ -408,6 +409,8 @@ class disputeController extends Controller
                     $projTitle = DB::table('projects')->where('project_id', $validated['project_id'])->value('project_title');
                     NotificationService::create((int) $againstUserId, 'dispute_opened', 'Dispute Filed', "A {$validated['dispute_type']} dispute has been filed against you on \"{$projTitle}\".", 'critical', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
                 }
+
+                UserActivityLogger::disputeFiled((int) $userId, (int) $disputeId, (int) $validated['project_id'], $validated['dispute_type'] ?? '');
 
                 if ($request->expectsJson()) {
                     return response()->json([

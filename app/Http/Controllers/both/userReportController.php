@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Services\UserActivityLogger;
 
 class userReportController extends Controller
 {
@@ -61,6 +62,8 @@ class userReportController extends Controller
 
         // Save any attachments under unified report_attachments
         $this->saveAttachments($request, 'user_report', $reportId);
+
+        UserActivityLogger::userReported((int) $userId, (int) $reportId, (int) $validated['reported_user_id']);
 
         return response()->json([
             'success' => true,

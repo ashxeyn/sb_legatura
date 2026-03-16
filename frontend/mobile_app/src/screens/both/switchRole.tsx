@@ -63,10 +63,18 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvedRole, setApprovedRole] = useState<null | 'contractor' | 'owner'>(null);
   const [dismissedApprovedRoles, setDismissedApprovedRoles] = useState<Array<'contractor' | 'owner'>>([]);
+  // Whether the user has permanently dismissed the rejection banner via "Cancel"
+  const [dismissedRejection, setDismissedRejection] = useState(false);
   // Track last switched role to force UI update after switch
   const [lastSwitchedRole, setLastSwitchedRole] = useState<null | 'contractor' | 'owner'>(null);
   // Staff/member context — set when user is an active member of a contractor company via invitation
   const [staffMembership, setStaffMembership] = useState<{ contractor_id?: number; company_name?: string; company_role?: string } | null>(null);
+  // Whether the user has a recoverable (deactivated/deletion-pending) contractor profile
+  const [hasRecoverableProfile, setHasRecoverableProfile] = useState(false);
+  // Store the contractor record for checking deactivation/deletion state
+  const [contractorRecord, setContractorRecord] = useState<any>(null);
+  // Store the staff record for staff-level recovery context
+  const [staffRecordData, setStaffRecordData] = useState<any>(null);
 
   const normalizeRole = (val: any): 'contractor' | 'owner' | null => {
     if (val === null || val === undefined) return null;
@@ -81,6 +89,7 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
   useEffect(() => {
     loadCurrentRole();
     loadDismissedApprovedRoles();
+    loadDismissedRejection();
     let unsub: any = null;
     if (navigation && typeof navigation.addListener === 'function') {
       unsub = navigation.addListener('focus', () => {
@@ -89,6 +98,29 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
     }
     return () => { if (unsub) unsub(); };
   }, [navigation]);
+
+  const loadDismissedRejection = async () => {
+    try {
+      const stored = await storage_service.get_user_data();
+      if (stored?.dismissed_rejection) setDismissedRejection(true);
+    } catch (e) {
+      console.warn('Failed to load dismissed rejection', e);
+    }
+  };
+
+  const persistDismissRejection = async () => {
+    try {
+      setDismissedRejection(true);
+      setRejectedRoleRequest(false);
+      const stored = await storage_service.get_user_data();
+      if (stored) {
+        stored.dismissed_rejection = true;
+        await storage_service.save_user_data(stored);
+      }
+    } catch (e) {
+      console.warn('Failed to persist dismissed rejection', e);
+    }
+  };
 
   const loadDismissedApprovedRoles = async () => {
     try {
@@ -169,16 +201,25 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
         // If the application was rejected, do not treat it as a pending request for the header/title.
         const showPending = !!pending && !rejected;
 
-        setCurrentRole(currentNormalized);
-        setCanSwitchRoles(!!canSwitch);
-        setPendingRoleRequest(showPending);
-        setRejectedRoleRequest(rejected);
-        setRejectionReason(rejectionMsg);
-        setApprovedRole(approved);
-
         // Capture staff membership so the UI can show "Switch to [Company]" for invited members
         const staffRecord = data.staff_record || null;
         const isActiveMember = !!(data.has_active_staff_membership);
+        const recoverableProfile = !!(data.has_recoverable_contractor_profile);
+
+        // Suppress the rejected view if:
+        // - the user previously dismissed it via "Cancel" (persisted), OR
+        // - the user has an active staff membership (they're already part of a company)
+        const suppressRejection = dismissedRejection || isActiveMember;
+
+        setCurrentRole(currentNormalized);
+        setCanSwitchRoles(!!canSwitch);
+        setPendingRoleRequest(showPending);
+        setRejectedRoleRequest(rejected && !suppressRejection);
+        setRejectionReason(rejectionMsg);
+        setApprovedRole(approved);
+        setHasRecoverableProfile(recoverableProfile);
+        setContractorRecord(data.contractor || null);
+        setStaffRecordData(staffRecord);
         if (isActiveMember && staffRecord) {
           setStaffMembership({
             contractor_id: staffRecord.contractor_id,
@@ -381,7 +422,7 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                     {rejectionReason || 'Your application was rejected.'}
                   </Text>
                 </View>
-                <View style={{ padding: 16 }}>
+                <View style={{ padding: 16, gap: 10 }}>
                   <TouchableOpacity
                     style={styles.reapplyButton}
                     onPress={async () => {
@@ -416,6 +457,12 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                     }}
                   >
                     <Text style={styles.reapplyButtonText}>Re-apply</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.reapplyCancelButton}
+                    onPress={persistDismissRejection}
+                  >
+                    <Text style={styles.reapplyCancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -535,6 +582,63 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                   <MaterialIcons name="chevron-right" size={22} color={COLORS.textMuted} />
                 )}
               </TouchableOpacity>
+            ) : hasRecoverableProfile ? (
+              /* --- RECOVERABLE PROFILE VIEW: Deactivated or deletion-pending contractor profile --- */
+              <TouchableOpacity
+                style={styles.switchRoleCard}
+                onPress={() => {
+                  // Determine if this is company-level or staff-level recovery
+                  const isCompanyLevel = !!(contractorRecord && (!contractorRecord.is_active || contractorRecord.deletion_scheduled_at));
+                  const isDeletion = isCompanyLevel
+                    ? !!(contractorRecord?.deletion_scheduled_at)
+                    : !!(staffRecordData?.deletion_scheduled_at);
+                  const profileLabel = isCompanyLevel ? 'company' : 'staff membership';
+                  const title = isDeletion ? 'Cancel Deletion & Reactivate' : 'Reactivate Profile';
+                  const message = isDeletion
+                    ? `Your ${profileLabel} is scheduled for deletion. Switching back will cancel the deletion and reactivate your profile.`
+                    : `Your ${profileLabel} is currently deactivated. Switching back will reactivate it.`;
+                  Alert.alert(title, message, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Reactivate', onPress: () => handleSwitchRole('contractor') },
+                  ]);
+                }}
+                disabled={switching}
+              >
+                <View style={[styles.roleIconContainer, { backgroundColor: COLORS.warningLight }]}>
+                  <MaterialIcons name="business" size={24} color={COLORS.warning} />
+                </View>
+                <View style={styles.roleInfo}>
+                  <Text style={styles.roleName}>
+                    {staffRecordData?.contractor_name || 'Contractor'}
+                  </Text>
+                  {(() => {
+                    const isCompanyLevel = !!(contractorRecord && (!contractorRecord.is_active || contractorRecord.deletion_scheduled_at));
+                    const isDeletion = isCompanyLevel
+                      ? !!(contractorRecord?.deletion_scheduled_at)
+                      : !!(staffRecordData?.deletion_scheduled_at);
+                    return (
+                      <View style={[styles.statusBadgePending, {
+                        backgroundColor: isDeletion ? COLORS.errorLight : COLORS.warningLight,
+                        borderColor: isDeletion ? COLORS.error : COLORS.warning,
+                      }]}>
+                        <Text style={[styles.statusBadgeText, {
+                          color: isDeletion ? COLORS.error : COLORS.warning,
+                        }]}>
+                          {isDeletion ? 'DELETION PENDING' : 'DEACTIVATED'}
+                        </Text>
+                      </View>
+                    );
+                  })()}
+                  <Text style={styles.roleDescription}>
+                    Tap to reactivate your contractor profile
+                  </Text>
+                </View>
+                {switching ? (
+                  <ActivityIndicator color={COLORS.accent} />
+                ) : (
+                  <MaterialIcons name="chevron-right" size={22} color={COLORS.textMuted} />
+                )}
+              </TouchableOpacity>
             ) : (
               /* --- ADD COMPANY VIEW: User is an owner and can add a contractor company --- */
               <TouchableOpacity style={styles.switchRoleCard} onPress={handleAddRole}>
@@ -625,6 +729,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reapplyButtonText: { color: COLORS.surface, fontWeight: '700', fontSize: 14 },
+  reapplyCancelButton: {
+    backgroundColor: COLORS.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  reapplyCancelButtonText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 },
   roleInfo: { flex: 1 },
   roleName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   roleDescription: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },

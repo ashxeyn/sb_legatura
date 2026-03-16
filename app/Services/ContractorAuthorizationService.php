@@ -117,25 +117,13 @@ class ContractorAuthorizationService
             ->where('owner_id', $ownerId)
             ->first();
 
-        if ($contractor) {
-            return (object) [
-                'staff_id'            => null,
-                'contractor_id'       => $contractor->contractor_id,
-                'owner_id'            => $ownerId,
-                'user_id'             => $userId,
-                'company_role'        => 'owner',
-                'role'                => 'owner', // backward-compat alias
-                'role_if_others'      => null,
-                'is_active'           => 1,
-                'is_suspended'        => 0,
-                'suspension_reason'   => null,
-                'deletion_reason'     => null,
-                'contractor_name'     => $contractor->company_name ?? null,
-                'is_contractor_owner' => true,
-            ];
-        }
+        // Only treat as company owner if the contractor company is approved.
+        // If rejected/pending but the user has a staff membership elsewhere,
+        // prefer the staff path so role reflects their actual access.
+        $contractorIsApproved = $contractor
+            && strtolower($contractor->verification_status ?? '') === 'approved';
 
-        // Is this owner a listed staff member?
+        // Check staff membership first so we can decide which path to take
         $staffRecord = DB::table('contractor_staff')
             ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
             ->where('contractor_staff.owner_id', $ownerId)
@@ -147,6 +135,27 @@ class ContractorAuthorizationService
             )
             ->first();
 
+        if ($contractor && ($contractorIsApproved || !$staffRecord)) {
+            return (object) [
+                'staff_id'            => null,
+                'contractor_id'       => $contractor->contractor_id,
+                'owner_id'            => $ownerId,
+                'user_id'             => $userId,
+                'company_role'        => 'owner',
+                'role'                => 'owner', // backward-compat alias
+                'role_if_others'      => null,
+                'is_active'           => (int) ($contractor->is_active ?? 1),
+                'is_suspended'        => (int) ($contractor->is_suspended ?? 0),
+                'suspension_reason'   => $contractor->suspension_reason ?? null,
+                'deletion_reason'     => $contractor->deletion_reason ?? null,
+                'deletion_scheduled_at' => $contractor->deletion_scheduled_at ?? null,
+                'deactivation_reason' => $contractor->deactivation_reason ?? null,
+                'contractor_name'     => $contractor->company_name ?? null,
+                'is_contractor_owner' => true,
+            ];
+        }
+
+        // Use the staff record already fetched above
         if ($staffRecord) {
             $staffRecord->role               = $staffRecord->company_role; // backward-compat alias
             $staffRecord->is_contractor_owner = false;
@@ -391,6 +400,8 @@ class ContractorAuthorizationService
             ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->where('contractor_staff.contractor_id', $contractorId)
             ->whereNull('contractor_staff.deletion_reason')
+            ->where('contractor_staff.is_active', 1)
+            ->where('property_owners.is_active', 1)
             ->select(
                 'contractor_staff.staff_id as id',
                 'contractor_staff.owner_id',

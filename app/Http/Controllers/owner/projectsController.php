@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Services\NotificationService;
 use App\Services\MilestoneService;
+use App\Services\UserActivityLogger;
 
 class projectsController extends Controller
 {
@@ -472,6 +473,8 @@ class projectsController extends Controller
                     );
                 }
             }
+
+            UserActivityLogger::bidRejected((int) $user->user_id, (int) $bidId, (int) $projectId);
 
             return response()->json(['success' => true, 'message' => 'Bid rejected successfully']);
 
@@ -1326,12 +1329,16 @@ class projectsController extends Controller
             }
 
             if ($request->expectsJson()) {
+                UserActivityLogger::projectCreated((int) $user->user_id, (int) $projectId, $validated['project_title'] ?? '');
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Project posted successfully. It is now under review.',
                     'project_id' => $projectId
                 ], 201);
             } else {
+                UserActivityLogger::projectCreated((int) $user->user_id, (int) $projectId, $validated['project_title'] ?? '');
+
                 return redirect('/dashboard')->with('success', 'Project posted successfully. It is now under review.');
             }
         } catch (\Exception $e) {
@@ -1636,6 +1643,8 @@ class projectsController extends Controller
                 }
             }
 
+            UserActivityLogger::bidAccepted((int) $user->user_id, (int) $bidId, (int) $projectId);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid accepted successfully! Bidding is now closed.'
@@ -1714,6 +1723,8 @@ class projectsController extends Controller
                     }
                 }
             }
+
+            UserActivityLogger::bidAccepted((int) $userId, (int) $bidId, (int) $projectId);
 
             return response()->json([
                 'success' => true,
@@ -2362,6 +2373,8 @@ class projectsController extends Controller
                 }
             }
 
+            UserActivityLogger::bidRejected((int) $userId, (int) $bidId, (int) $projectId);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid rejected successfully'
@@ -2540,6 +2553,8 @@ class projectsController extends Controller
                     ['screen' => 'review', 'params' => ['projectId' => (int) $projectId, 'revieweeUserId' => (int) $user->user_id]]
                 );
             }
+
+            UserActivityLogger::projectCompleted((int) $user->user_id, (int) $projectId, $project->project_title ?? '');
 
             return response()->json([
                 'success' => true,

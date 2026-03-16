@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Dimensions,
   RefreshControl,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,9 +20,19 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import ImageFallback from '../../components/imageFallback';
 import { contractors_service } from '../../services/contractors_service';
-import { api_config } from '../../config/api';
+import { api_config, api_request } from '../../config/api';
 import { role_service } from '../../services/role_service';
 import { useContractorAuth } from '../../hooks/useContractorAuth';
+
+const DELETION_REASONS = [
+  { key: 'taking_a_break', label: 'Taking a break' },
+  { key: 'too_many_notifications', label: 'Too many notifications' },
+  { key: 'privacy_concerns', label: 'Privacy concerns' },
+  { key: 'created_second_account', label: 'Created a second account' },
+  { key: 'not_useful', label: "Don't find it useful" },
+  { key: 'safety_concern', label: 'Safety concern' },
+  { key: 'other', label: 'Something else' },
+];
 
 // Default images
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
@@ -70,12 +82,21 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
   const [contractorVerified, setContractorVerified] = useState(contractorVerifiedProp ?? false);
   const [canSwitchRoles, setCanSwitchRoles] = useState(userData?.user_type === 'both');
   const [refreshing, setRefreshing] = useState(false);
+  // Account management
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<string>('');
+  const [otherReasonText, setOtherReasonText] = useState('');
+  const [confirmationText, setConfirmationText] = useState('');
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
   const getInitials = (name: string) => (name ? name.substring(0, 2).toUpperCase() : 'CO');
 
-  const { isOwner, hasFullAccess } = useContractorAuth();
+  const { isOwner, hasFullAccess, memberContext } = useContractorAuth();
+  // Whether the logged-in user actually owns the contractor company.
+  // Default to true; fetchRole will set false for staff members.
+  const [isCompanyOwner, setIsCompanyOwner] = useState(true);
 
   let navigation: any = null;
   try {
@@ -105,6 +126,42 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
     );
   };
 
+  const handleDeleteAccount = async () => {
+    if (!selectedReason) {
+      Alert.alert('Required', 'Please select a reason.');
+      return;
+    }
+    if (confirmationText !== 'ACCOUNT DELETE') {
+      Alert.alert('Confirmation Required', 'Please type "ACCOUNT DELETE" to confirm.');
+      return;
+    }
+    setIsSubmittingAction(true);
+    try {
+      const res = await api_request('/api/account/delete', {
+        method: 'POST',
+        body: JSON.stringify({
+          role: isCompanyOwner ? 'contractor' : 'contractor_staff',
+          reason_key: selectedReason,
+          reason_text: selectedReason === 'other' ? otherReasonText : '',
+          confirmation_text: confirmationText,
+        }),
+      });
+      if (res?.success) {
+        setShowDeleteModal(false);
+        setSelectedReason('');
+        setOtherReasonText('');
+        setConfirmationText('');
+        onLogout();
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to delete account.');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to connect to server.');
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     const fetchRole = async () => {
@@ -124,6 +181,15 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           if (isMounted) {
             setRoleLabel(label);
             setCanSwitchRoles(roleSwitchCapable);
+
+            // Determine company owner vs staff from the API's staff_record.
+            // If the user has an active record in contractor_staff, they are
+            // a staff member — not the company owner.
+            const sr = data.staff_record;
+            const isStaffMember = !!sr &&
+              Number(sr.is_active ?? 0) === 1 &&
+              Number(sr.is_suspended ?? 0) !== 1;
+            setIsCompanyOwner(!isStaffMember);
           }
         }
       } catch (e) {
@@ -147,9 +213,10 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
         const logo = contractorPayload.company_logo ?? contractorPayload.profile_pic ?? contractorPayload.logo ?? null;
         const banner = contractorPayload.company_banner ?? contractorPayload.cover_photo ?? contractorPayload.banner ?? null;
         setCompanyName(name || userData?.company_name);
-        // Always set logo and banner from contractor profile, regardless of isOwner
-        if (logo) setCompanyLogo(logo);
-        if (banner) setCompanyBanner(banner);
+        if (isCompanyOwner) {
+          if (logo) setCompanyLogo(logo);
+          if (banner) setCompanyBanner(banner);
+        }
         const status = contractorPayload?.verification_status ?? null;
         if (status === 'approved') setContractorVerified(true);
         else if (contractorVerifiedProp) setContractorVerified(true);
@@ -272,7 +339,26 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
         { id: 'help', icon: 'help-circle-outline', label: 'Help Center', subtitle: 'Get help and support', showArrow: true, onPress: () => { if (typeof onOpenHelp === 'function') { onOpenHelp(); } else { Alert.alert('Coming Soon', 'This feature is under development.'); } } },
         { id: 'about', icon: 'information-circle-outline', label: 'About Legatura', subtitle: 'Version 1.0.0', showArrow: true, onPress: () => Alert.alert('About', 'Legatura v1.0.0\n\nConnecting Property Owners with Contractors') },
       ]
-    }
+    },
+    {
+      title: 'Account & Data',
+      items: [
+        {
+          id: 'delete_account',
+          icon: 'trash-outline',
+          label: isCompanyOwner ? 'Delete Company' : 'Delete Staff Profile',
+          subtitle: isCompanyOwner ? 'Permanently delete your company profile' : 'Permanently delete your staff profile',
+          showArrow: true,
+          danger: true,
+          onPress: () => {
+            setSelectedReason('');
+            setOtherReasonText('');
+            setConfirmationText('');
+            setShowDeleteModal(true);
+          },
+        },
+      ],
+    },
   ];
 
   const renderMenuItem = (item: MenuItem) => {
@@ -327,15 +413,11 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
             </View>
 
             <Text style={styles.companyName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {!isOwner
-                ? `${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Member'
-                : companyName || userData?.company_name || 'Company Name'}
+              {companyName || userData?.company_name || 'Company Name'}
             </Text>
-            {isOwner && companyName && (
-              <Text style={styles.ownerNameSubtitle}>
-                Account owner: {`${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Member'}
-              </Text>
-            )}
+            <Text style={styles.ownerNameSubtitle}>
+              {isCompanyOwner ? 'Company Account owner' : 'Staff Account owner'}: {`${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Unknown'}
+            </Text>
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>
             <Text style={styles.userEmail}>{userData?.email || 'contractor@example.com'}</Text>
 
@@ -372,8 +454,83 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footer}><Text style={styles.footerText}>Legatura � 2025</Text><Text style={styles.footerSubtext}>All rights reserved</Text></View>
+        <View style={styles.footer}><Text style={styles.footerText}>Legatura &#169; 2025</Text><Text style={styles.footerSubtext}>All rights reserved</Text></View>
       </ScrollView>
+
+      {/* Delete Account Modal */}
+      <Modal visible={showDeleteModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.accountModalContainer}>
+            <View style={styles.accountModalHeader}>
+              <Text style={[styles.accountModalTitle, { color: '#E74C3C' }]}>{isCompanyOwner ? 'Delete Company' : 'Delete Staff Profile'}</Text>
+              <TouchableOpacity onPress={() => setShowDeleteModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.warningBox}>
+              <Ionicons name="warning-outline" size={20} color="#E74C3C" />
+              <Text style={styles.warningText}>
+                {isCompanyOwner
+                  ? 'This action will permanently delete your company, remove all team members, and delete all company data including projects, bids, and reviews. This cannot be undone.'
+                  : 'You will permanently lose access to this company and all associated permissions. This cannot be undone.'}
+              </Text>
+            </View>
+
+            <Text style={styles.reasonSectionTitle}>Why are you deleting?</Text>
+
+            <ScrollView style={styles.reasonList} showsVerticalScrollIndicator={false}>
+              {DELETION_REASONS.map((reason) => (
+                <TouchableOpacity
+                  key={reason.key}
+                  style={[styles.reasonItem, selectedReason === reason.key && styles.reasonItemSelected]}
+                  onPress={() => setSelectedReason(reason.key)}
+                >
+                  <Ionicons
+                    name={selectedReason === reason.key ? 'radio-button-on' : 'radio-button-off'}
+                    size={22}
+                    color={selectedReason === reason.key ? '#E74C3C' : '#999'}
+                  />
+                  <Text style={[styles.reasonLabel, selectedReason === reason.key && styles.reasonLabelSelected]}>{reason.label}</Text>
+                </TouchableOpacity>
+              ))}
+              {selectedReason === 'other' && (
+                <TextInput
+                  style={styles.otherReasonInput}
+                  placeholder="Tell us more..."
+                  placeholderTextColor="#999"
+                  value={otherReasonText}
+                  onChangeText={setOtherReasonText}
+                  multiline
+                  maxLength={500}
+                />
+              )}
+            </ScrollView>
+
+            <Text style={styles.reasonSectionTitle}>Type "ACCOUNT DELETE" to confirm</Text>
+            <TextInput
+              style={[styles.otherReasonInput, { minHeight: 44, marginTop: 0, marginBottom: 16 }]}
+              placeholder="ACCOUNT DELETE"
+              placeholderTextColor="#CCC"
+              value={confirmationText}
+              onChangeText={setConfirmationText}
+              autoCapitalize="characters"
+            />
+
+            <TouchableOpacity
+              style={[styles.accountActionButton, styles.deleteButton, (!selectedReason || confirmationText !== 'ACCOUNT DELETE') && styles.accountActionButtonDisabled]}
+              onPress={handleDeleteAccount}
+              disabled={!selectedReason || confirmationText !== 'ACCOUNT DELETE' || isSubmittingAction}
+            >
+              {isSubmittingAction ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <Text style={styles.accountActionButtonText}>{isCompanyOwner ? 'Delete My Company' : 'Delete Staff Profile'}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -418,4 +575,24 @@ const styles = StyleSheet.create({
   footer: { alignItems: 'center', marginTop: 32, paddingBottom: 20 },
   footerText: { fontSize: 14, color: '#999999' },
   footerSubtext: { fontSize: 12, color: '#CCCCCC', marginTop: 4 },
+  // Account Management Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  accountModalContainer: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: '85%' },
+  accountModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  accountModalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333333' },
+  accountModalDescription: { fontSize: 14, color: '#666666', lineHeight: 20, marginBottom: 16 },
+  warningBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFF5F5', borderRadius: 8, padding: 12, marginBottom: 16, gap: 10 },
+  warningText: { flex: 1, fontSize: 13, color: '#E74C3C', lineHeight: 18 },
+  reasonSectionTitle: { fontSize: 15, fontWeight: '600', color: '#333333', marginBottom: 12 },
+  reasonList: { maxHeight: 280, marginBottom: 16 },
+  reasonItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 8, marginBottom: 4, gap: 12 },
+  reasonItemSelected: { backgroundColor: '#EBF5FF' },
+  reasonLabel: { fontSize: 15, color: '#333333' },
+  reasonLabelSelected: { fontWeight: '600', color: '#1877F2' },
+  otherReasonInput: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 8, padding: 12, fontSize: 14, color: '#333333', minHeight: 80, textAlignVertical: 'top', marginTop: 8, marginBottom: 8 },
+  accountActionButton: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  accountActionButtonDisabled: { opacity: 0.5 },
+  deactivateButton: { backgroundColor: '#1877F2' },
+  deleteButton: { backgroundColor: '#E74C3C' },
+  accountActionButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 });

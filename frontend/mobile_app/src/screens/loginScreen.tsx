@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { auth_service, login_data } from '../services/auth_service';
 import { storage_service } from '../utils/storage';
+import { api_request } from '../config/api';
 import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 
 interface LoginScreenProps {

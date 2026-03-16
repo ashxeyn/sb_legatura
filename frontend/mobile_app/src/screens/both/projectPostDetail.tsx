@@ -704,7 +704,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
       </ScrollView>
 
       {/* Bottom Action Button - Only show Place Bid if user has permission */}
-      {userRole === 'contractor' && (
+      {userRole === 'contractor' && canBid && (
         <View style={styles.bottomBar}>
           {onPlaceBid ? (
             <TouchableOpacity
@@ -713,12 +713,12 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
               activeOpacity={0.8}
             >
               <MaterialIcons name="gavel" size={20} color="#FFFFFF" />
-              <Text style={styles.bidButtonText}>{canBid ? 'Place Bid' : 'Apply Bid'}</Text>
+              <Text style={styles.bidButtonText}>Place Bid</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.bidButton}>
               <MaterialIcons name="gavel" size={20} color="#FFFFFF" />
-              <Text style={styles.bidButtonText}>Apply Bid</Text>
+              <Text style={styles.bidButtonText}>Place Bid</Text>
             </View>
           )}
         </View>

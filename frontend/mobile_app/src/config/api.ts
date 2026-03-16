@@ -1,21 +1,29 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.254.136:8086'; // 'http://192.168.254.136:8086'
+const API_BASE_URL = 'https://legaturaph.com'; // 'http://192.168.254.136:8086'
 
 import { storage_service } from '../utils/storage';
 
 
 let _unauthorizedHandler: (() => void) | null = null;
 let _handlingUnauthorized = false; // prevents repeated logout calls when multiple requests are in-flight
+let _memberRevokedHandler: ((details?: { message?: string; code?: string }) => void | Promise<void>) | null = null;
+let _handlingMemberRevoked = false;
 
 export const set_unauthorized_handler = (handler: () => void) => {
     _unauthorizedHandler = handler;
     _handlingUnauthorized = false; // reset guard whenever a new handler is registered (e.g. after re-login)
 };
 
+export const set_member_revoked_handler = (handler: (details?: { message?: string; code?: string }) => void | Promise<void>) => {
+    _memberRevokedHandler = handler;
+    _handlingMemberRevoked = false;
+};
+
 /** Call this after a successful login to reset the 401 guard so the next
  *  token-invalidation event will trigger logout correctly. */
 export const reset_unauthorized_guard = () => {
     _handlingUnauthorized = false;
+    _handlingMemberRevoked = false;
 };
 
 export const api_config = {
@@ -64,7 +72,9 @@ export const api_config = {
         contractor_members: {
             list: '/api/contractor/members',
             search_owners: '/api/contractor/members/search-owners',
+            show: (id: string) => `/api/contractor/members/${id}`,
             create: '/api/contractor/members',
+            create_batch: '/api/contractor/members/batch',
             update: (id: string) => `/api/contractor/members/${id}`,
             delete: (id: string) => `/api/contractor/members/${id}`,
             suspend: (id: string) => `/api/contractor/members/${id}/suspend`,
@@ -236,6 +246,20 @@ export const api_request = async (endpoint: string, options: RequestInit = {}) =
             console.warn('api_request: 401 with stored token — clearing session and logging out');
             await storage_service.clear_user_data();
             _unauthorizedHandler();
+        }
+
+        // Member access revocation is separate from token invalidation. Keep the
+        // user authenticated, strip member context in app state, and show the
+        // dedicated lockdown screen instead of logging out immediately.
+        const errorCode = (data?.error_code || data?.data?.error_code || '').toString();
+        const memberInvalid = response.status === 403 && ['MEMBER_NOT_FOUND', 'MEMBER_INACTIVE', 'MEMBER_SUSPENDED'].includes(errorCode);
+        if (memberInvalid && hasAuthToken && _memberRevokedHandler && !_handlingMemberRevoked) {
+            _handlingMemberRevoked = true;
+            console.warn(`api_request: ${errorCode} — contractor member access revoked`);
+            await _memberRevokedHandler({
+                message: data?.message || 'Your contractor member access is no longer active.',
+                code: errorCode,
+            });
         }
 
         return { success: response.ok, data, status: response.status, message: data?.message };

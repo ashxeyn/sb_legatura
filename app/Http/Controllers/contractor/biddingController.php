@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\NotificationService;
 use App\Services\BidRankingService;
+use App\Services\UserActivityLogger;
 use App\Services\ProfileService;
 use Illuminate\Support\Facades\Schema;
 
@@ -213,6 +214,8 @@ class biddingController extends Controller
             // Commit Transaction
             DB::commit();
 
+            UserActivityLogger::bidSubmitted((int) ($user->user_id ?? $user->id), (int) $bidId, (int) $request->project_id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid submitted successfully!',
@@ -326,6 +329,8 @@ class biddingController extends Controller
                 }
             }
 
+            UserActivityLogger::bidUpdated((int) ($user->user_id ?? $user->id), (int) $bidId);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid updated successfully!'
@@ -376,6 +381,8 @@ class biddingController extends Controller
 
             // Cancel bid (delete it)
             $this->biddingClass->cancelBid($bidId);
+
+            UserActivityLogger::bidCancelled((int) ($user->user_id ?? $user->id), (int) $bidId);
 
             return response()->json([
                 'success' => true,
@@ -464,6 +471,8 @@ class biddingController extends Controller
             DB::table('bids')
                 ->where('bid_id', $bidId)
                 ->update(['bid_status' => 'cancelled']);
+
+            UserActivityLogger::bidCancelled((int) $userId, (int) $bidId);
 
             return response()->json([
                 'success' => true,
@@ -830,6 +839,8 @@ class biddingController extends Controller
                     ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId, 'tab' => 'bids']]
                 );
             }
+
+            UserActivityLogger::bidSubmitted((int) $userId, (int) $bidId, (int) $projectId);
 
             return response()->json([
                 'success' => true,

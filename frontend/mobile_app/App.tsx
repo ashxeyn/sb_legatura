@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StatusBar, View, Text, Alert } from 'react-native';
+import { StatusBar, View, Text, Alert, TouchableOpacity } from 'react-native';
 import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoadingScreen from './src/screens/loadingScreen';
@@ -26,7 +26,7 @@ import ContractorProfileScreen from './src/screens/contractor/profile';
 import HelpCenterScreen from './src/screens/both/helpCenter';
 import SwitchRoleScreen from './src/screens/both/switchRole';
 import RoleAddScreen from './src/screens/both/addRoleRegistration';
-import { api_config, api_request, set_unauthorized_handler, reset_unauthorized_guard } from './src/config/api';
+import { api_config, api_request, set_unauthorized_handler, set_member_revoked_handler, reset_unauthorized_guard } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import RegistrationSuccessModal from './src/components/registrationSuccessModal';
@@ -39,6 +39,7 @@ import ResetOtpScreen from './src/screens/auth/resetOtpScreen';
 import ResetPasswordScreen from './src/screens/auth/resetPasswordScreen';
 import DocumentResubmitScreen from './src/screens/both/documentResubmitScreen';
 import { auth_service } from './src/services/auth_service';
+import { role_service } from './src/services/role_service';
 import { storage_service } from './src/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -49,13 +50,15 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
     'force_change_password' | 'change_otp' | 'change_otp_verify' | 'subscription' |
     'forgot_password' | 'reset_otp' | 'reset_password' | 'document_resubmit' |
-    'main' | 'edit_profile' | 'owner_profile' | 'contractor_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
+    'main' | 'edit_profile' | 'owner_profile' | 'contractor_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration' |
+    'access_revoked';
 
 
 
 export default function App() {
     const [app_state, set_app_state] = useState<AppState>('loading');
     const [checking_auth, set_checking_auth] = useState(true);
+    const [access_revoked_message, set_access_revoked_message] = useState('Your contractor member access is no longer active.');
 
     // Check for stored authentication on app startup
     useEffect(() => {
@@ -91,6 +94,73 @@ export default function App() {
         }
         // RULE 4: Property owners and 'both' users default to property_owner
         return 'property_owner';
+    };
+
+    const canFallbackToOwnerDashboard = (userData: any): boolean => {
+        const normalizedUserType = String(userData?.user_type || '').trim().toLowerCase();
+        return ['property_owner', 'both', 'owner', 'owner_staff'].includes(normalizedUserType);
+    };
+
+    const normalizeUserAfterMemberRevocation = (currentUser: any) => {
+        if (!currentUser) {
+            return null;
+        }
+
+        const nextUser = { ...currentUser };
+        delete nextUser.contractor_member;
+
+        if (canFallbackToOwnerDashboard(nextUser)) {
+            nextUser.preferred_role = 'owner';
+            nextUser.determinedRole = 'owner';
+            nextUser.current_role = 'owner';
+        }
+
+        return nextUser;
+    };
+
+    const isUsingContractorContext = (currentUser: any): boolean => {
+        const normalizedUserType = String(currentUser?.user_type || '').trim().toLowerCase();
+        const preferredRole = String(currentUser?.preferred_role || '').trim().toLowerCase();
+        const determinedRole = String(currentUser?.determinedRole || currentUser?.current_role || '').trim().toLowerCase();
+
+        return selected_user_type === 'contractor'
+            || normalizedUserType === 'contractor'
+            || normalizedUserType === 'staff'
+            || normalizedUserType === 'owner_staff'
+            || preferredRole === 'contractor'
+            || determinedRole === 'contractor';
+    };
+
+    const resolveRevokedAccessMessage = (roleData: any): string => {
+        const staffRecord = roleData?.staff_record || null;
+        const isSuspended = Number(staffRecord?.is_suspended ?? 0) === 1;
+        if (isSuspended) {
+            return 'Your contractor member account has been suspended by the company owner.';
+        }
+        return 'Your contractor member access is no longer active.';
+    };
+
+    const handle_member_access_revoked = async (details?: { message?: string; code?: string }) => {
+        const revokedMessage = details?.message || 'Your contractor member access is no longer active.';
+        set_access_revoked_message(revokedMessage);
+
+        try {
+            const storedUser = await storage_service.get_user_data();
+            const normalizedUser = normalizeUserAfterMemberRevocation(storedUser || user_data);
+
+            if (normalizedUser) {
+                await storage_service.save_user_data(normalizedUser);
+                set_user_data(normalizedUser);
+
+                if (canFallbackToOwnerDashboard(normalizedUser)) {
+                    set_selected_user_type('property_owner');
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to normalize user after contractor member revocation:', error);
+        }
+
+        set_app_state('access_revoked');
     };
 
     const check_stored_auth = async () => {
@@ -346,9 +416,30 @@ export default function App() {
     };
 
     const handle_logout = async () => {
+        // Attempt server-side logout first so backend can record user_logout
+        // activity while the bearer token is still available.
+        try {
+            const token = await storage_service.get_auth_token();
+            if (token) {
+                await api_request('/api/logout', { method: 'POST' });
+            }
+        } catch (e) {
+            console.warn('Logout API call failed, continuing local logout:', e);
+        }
+
         // Clear persistent storage
         await storage_service.clear_user_data();
         console.log('User logged out, storage cleared');
+
+        // Clear any legacy non-user-scoped role-add caches to prevent data leakage
+        try {
+            await AsyncStorage.multiRemove([
+                'roleAddCache_contractor',
+                'roleAddCache_owner',
+            ]);
+        } catch (e) {
+            console.warn('Failed to clear legacy role cache:', e);
+        }
 
         // Clear all user data and state
         set_user_data(null);
@@ -406,8 +497,75 @@ export default function App() {
     // instead of retrying or silently failing.
     useEffect(() => {
         set_unauthorized_handler(handle_logout);
+        set_member_revoked_handler(handle_member_access_revoked);
         // No cleanup needed — the handler remains registered for app lifetime
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Global watcher: if the user is currently operating in contractor context
+    // and that access is revoked, block the app immediately without waiting for
+    // them to open a contractor-specific screen.
+    useEffect(() => {
+        if (!user_data) return;
+        if (app_state === 'access_revoked') return;
+        if (!isUsingContractorContext(user_data)) return;
+
+        let mounted = true;
+
+        const checkRevokedAccess = async () => {
+            try {
+                const uid = user_data?.user_id;
+                const token = await storage_service.get_auth_token();
+                if (!uid || !token) return;
+
+                const roleResponse = await role_service.get_current_role();
+                if (roleResponse?.success) {
+                    const roleData = roleResponse.data || roleResponse;
+                    const contractorApproved = Boolean(roleData?.contractor_role_approved);
+                    const hasActiveStaffMembership = Boolean(roleData?.has_active_staff_membership);
+                    const stillHasContractorAccess = contractorApproved || hasActiveStaffMembership;
+
+                    if (mounted && isUsingContractorContext(user_data) && !stillHasContractorAccess) {
+                        await handle_member_access_revoked({
+                            message: resolveRevokedAccessMessage(roleData),
+                            code: Number(roleData?.staff_record?.is_suspended ?? 0) === 1 ? 'MEMBER_SUSPENDED' : 'MEMBER_NOT_FOUND',
+                        });
+                        return;
+                    }
+                }
+
+                const endpoint = `${api_config.base_url}/api/contractor/members?user_id=${uid}&_cb=${Date.now()}`;
+                const res = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-User-Id': String(uid),
+                    },
+                });
+
+                if (res.status !== 403) return;
+
+                const payload = await res.json().catch(() => ({} as any));
+                const code = String(payload?.error_code || payload?.data?.error_code || '').toUpperCase();
+                if (mounted && ['MEMBER_NOT_FOUND', 'MEMBER_INACTIVE', 'MEMBER_SUSPENDED'].includes(code)) {
+                    await handle_member_access_revoked({
+                        message: payload?.message || 'Your contractor member access is no longer active.',
+                        code,
+                    });
+                }
+            } catch (e) {
+                // Silent on transient network errors.
+            }
+        };
+
+        checkRevokedAccess();
+        const interval = setInterval(checkRevokedAccess, 3000);
+
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+        };
+    }, [user_data, app_state, selected_user_type]);
 
     // Expose app state setter globally so deeply-nested screens/components
     // that are not inside the Homepage render tree can still switch to
@@ -599,6 +757,59 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <LoadingScreen onLoadingComplete={handle_loading_complete} />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'access_revoked') {
+        return (
+            <SafeAreaProvider>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: '#111827',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: 24,
+                }}>
+                    <View style={{
+                        width: '100%',
+                        maxWidth: 420,
+                        borderRadius: 16,
+                        backgroundColor: '#FFFFFF',
+                        paddingVertical: 24,
+                        paddingHorizontal: 20,
+                    }}>
+                        <Text style={{
+                            fontSize: 22,
+                            fontWeight: '800',
+                            color: '#1F2937',
+                            textAlign: 'center',
+                        }}>Access Revoked</Text>
+                        <Text style={{
+                            marginTop: 12,
+                            fontSize: 14,
+                            lineHeight: 20,
+                            color: '#4B5563',
+                            textAlign: 'center',
+                        }}>{access_revoked_message}</Text>
+                        <TouchableOpacity
+                            style={{
+                                marginTop: 20,
+                                backgroundColor: '#E74C3C',
+                                borderRadius: 10,
+                                paddingVertical: 12,
+                                alignItems: 'center',
+                            }}
+                            onPress={handle_logout}
+                        >
+                            <Text style={{
+                                color: '#FFFFFF',
+                                fontSize: 15,
+                                fontWeight: '700',
+                            }}>Log Out</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </SafeAreaProvider>
         );
     }

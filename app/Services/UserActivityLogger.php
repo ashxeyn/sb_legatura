@@ -25,6 +25,56 @@ class UserActivityLogger
     const EMAIL_VERIFIED         = 'email_verified';
     const ACCOUNT_STATUS_CHANGED = 'account_status_changed';
 
+    // ── Auth activity types ───────────────────────────────────────────────
+    const USER_LOGIN             = 'user_login';
+    const USER_LOGOUT            = 'user_logout';
+
+    // ── Project activity types ────────────────────────────────────────────
+    const PROJECT_CREATED        = 'project_created';
+    const PROJECT_UPDATED        = 'project_updated';
+
+    // ── Bid activity types ────────────────────────────────────────────────
+    const BID_SUBMITTED          = 'bid_submitted';
+    const BID_UPDATED            = 'bid_updated';
+    const BID_CANCELLED          = 'bid_cancelled';
+    const BID_ACCEPTED           = 'bid_accepted';
+    const BID_REJECTED           = 'bid_rejected';
+
+    // ── Project completion ─────────────────────────────────────────────────
+    const PROJECT_COMPLETED      = 'project_completed';
+
+    // ── Milestone activity types ──────────────────────────────────────────
+    const MILESTONE_SUBMITTED    = 'milestone_submitted';
+    const MILESTONE_UPDATED      = 'milestone_updated';
+    const MILESTONE_DELETED      = 'milestone_deleted';
+    const MILESTONE_APPROVED     = 'milestone_approved';
+    const MILESTONE_REJECTED     = 'milestone_rejected';
+    const MILESTONE_COMPLETED    = 'milestone_completed';
+
+    // ── Progress & Payment activity types ─────────────────────────────────
+    const PROGRESS_UPLOADED      = 'progress_uploaded';
+    const PAYMENT_UPLOADED       = 'payment_uploaded';
+    const DOWNPAYMENT_UPLOADED   = 'downpayment_uploaded';
+
+    // ── Dispute activity types ────────────────────────────────────────────
+    const DISPUTE_FILED          = 'dispute_filed';
+
+    // ── Project update (extension) activity types ─────────────────────────
+    const PROJECT_UPDATE_SUBMITTED = 'project_update_submitted';
+    const PROJECT_UPDATE_APPROVED  = 'project_update_approved';
+    const PROJECT_UPDATE_REJECTED  = 'project_update_rejected';
+    const PROJECT_UPDATE_WITHDRAWN = 'project_update_withdrawn';
+
+    // ── Showcase / Post activity types ────────────────────────────────────
+    const POST_CREATED           = 'post_created';
+
+    // ── Report activity types ────────────────────────────────────────────
+    const USER_REPORTED          = 'user_reported';
+    const MESSAGE_REPORTED       = 'message_reported';
+
+    // ── Role resubmission ─────────────────────────────────────────────────
+    const ROLE_RESUBMITTED       = 'role_resubmitted';
+
     /**
      * Write a user activity log entry.
      *
@@ -160,6 +210,150 @@ class UserActivityLogger
         $meta = ['new_status' => $newStatus];
         if ($reason) $meta['reason'] = $reason;
         self::log(self::ACCOUNT_STATUS_CHANGED, $userId, null, null, $meta);
+    }
+
+    // ── New convenience wrappers ──────────────────────────────────────────
+
+    public static function userLogin(int $userId): void
+    {
+        self::log(self::USER_LOGIN, $userId);
+    }
+
+    public static function userLogout(int $userId): void
+    {
+        self::log(self::USER_LOGOUT, $userId);
+    }
+
+    public static function projectCreated(int $userId, int $projectId, string $title = ''): void
+    {
+        self::log(self::PROJECT_CREATED, $userId, $projectId, 'project', $title ? ['title' => $title] : []);
+    }
+
+    public static function projectUpdated(int $userId, int $projectId, string $title = ''): void
+    {
+        self::log(self::PROJECT_UPDATED, $userId, $projectId, 'project', $title ? ['title' => $title] : []);
+    }
+
+    public static function bidSubmitted(int $userId, int $bidId, int $projectId): void
+    {
+        self::log(self::BID_SUBMITTED, $userId, $bidId, 'bid', ['project_id' => $projectId]);
+    }
+
+    public static function bidUpdated(int $userId, int $bidId): void
+    {
+        self::log(self::BID_UPDATED, $userId, $bidId, 'bid');
+    }
+
+    public static function bidCancelled(int $userId, int $bidId): void
+    {
+        self::log(self::BID_CANCELLED, $userId, $bidId, 'bid');
+    }
+
+    public static function bidAccepted(int $userId, int $bidId, int $projectId): void
+    {
+        self::log(self::BID_ACCEPTED, $userId, $bidId, 'bid', ['project_id' => $projectId]);
+    }
+
+    public static function bidRejected(int $userId, int $bidId, int $projectId): void
+    {
+        self::log(self::BID_REJECTED, $userId, $bidId, 'bid', ['project_id' => $projectId]);
+    }
+
+    public static function projectCompleted(int $userId, int $projectId, string $title = ''): void
+    {
+        self::log(self::PROJECT_COMPLETED, $userId, $projectId, 'project', $title ? ['title' => $title] : []);
+    }
+
+    public static function milestoneSubmitted(int $userId, int $milestoneId, int $projectId): void
+    {
+        self::log(self::MILESTONE_SUBMITTED, $userId, $milestoneId, 'milestone', ['project_id' => $projectId]);
+    }
+
+    public static function milestoneUpdated(int $userId, int $milestoneId, int $projectId): void
+    {
+        self::log(self::MILESTONE_UPDATED, $userId, $milestoneId, 'milestone', ['project_id' => $projectId]);
+    }
+
+    public static function milestoneDeleted(int $userId, int $milestoneId): void
+    {
+        self::log(self::MILESTONE_DELETED, $userId, $milestoneId, 'milestone');
+    }
+
+    public static function milestoneApproved(int $userId, int $milestoneId): void
+    {
+        self::log(self::MILESTONE_APPROVED, $userId, $milestoneId, 'milestone');
+    }
+
+    public static function milestoneRejected(int $userId, int $milestoneId): void
+    {
+        self::log(self::MILESTONE_REJECTED, $userId, $milestoneId, 'milestone');
+    }
+
+    public static function milestoneCompleted(int $userId, int $milestoneId): void
+    {
+        self::log(self::MILESTONE_COMPLETED, $userId, $milestoneId, 'milestone');
+    }
+
+    public static function progressUploaded(int $userId, int $progressId, int $projectId): void
+    {
+        self::log(self::PROGRESS_UPLOADED, $userId, $progressId, 'progress', ['project_id' => $projectId]);
+    }
+
+    public static function paymentUploaded(int $userId, int $paymentId, int $projectId): void
+    {
+        self::log(self::PAYMENT_UPLOADED, $userId, $paymentId, 'payment', ['project_id' => $projectId]);
+    }
+
+    public static function downpaymentUploaded(int $userId, int $dpPaymentId, int $projectId): void
+    {
+        self::log(self::DOWNPAYMENT_UPLOADED, $userId, $dpPaymentId, 'payment', ['project_id' => $projectId]);
+    }
+
+    public static function disputeFiled(int $userId, int $disputeId, int $projectId, string $disputeType = ''): void
+    {
+        $meta = ['project_id' => $projectId];
+        if ($disputeType) $meta['dispute_type'] = $disputeType;
+        self::log(self::DISPUTE_FILED, $userId, $disputeId, 'dispute', $meta);
+    }
+
+    public static function projectUpdateSubmitted(int $userId, int $extensionId, int $projectId): void
+    {
+        self::log(self::PROJECT_UPDATE_SUBMITTED, $userId, $extensionId, 'project_update', ['project_id' => $projectId]);
+    }
+
+    public static function projectUpdateApproved(int $userId, int $extensionId, int $projectId): void
+    {
+        self::log(self::PROJECT_UPDATE_APPROVED, $userId, $extensionId, 'project_update', ['project_id' => $projectId]);
+    }
+
+    public static function projectUpdateRejected(int $userId, int $extensionId, int $projectId): void
+    {
+        self::log(self::PROJECT_UPDATE_REJECTED, $userId, $extensionId, 'project_update', ['project_id' => $projectId]);
+    }
+
+    public static function projectUpdateWithdrawn(int $userId, int $extensionId, int $projectId): void
+    {
+        self::log(self::PROJECT_UPDATE_WITHDRAWN, $userId, $extensionId, 'project_update', ['project_id' => $projectId]);
+    }
+
+    public static function postCreated(int $userId, int $postId): void
+    {
+        self::log(self::POST_CREATED, $userId, $postId, 'post');
+    }
+
+    public static function userReported(int $reporterId, int $reportId, int $reportedUserId): void
+    {
+        self::log(self::USER_REPORTED, $reporterId, $reportId, 'user_report', ['reported_user_id' => $reportedUserId]);
+    }
+
+    public static function messageReported(int $userId, int $messageId): void
+    {
+        self::log(self::MESSAGE_REPORTED, $userId, $messageId, 'message');
+    }
+
+    public static function roleResubmitted(int $userId, string $role): void
+    {
+        self::log(self::ROLE_RESUBMITTED, $userId, null, null, ['role' => $role]);
     }
 
     private static function detectSource(): string

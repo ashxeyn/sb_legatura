@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Services\NotificationService;
+use App\Services\UserActivityLogger;
 
 class paymentUploadController extends Controller
 {
@@ -268,6 +269,8 @@ class paymentUploadController extends Controller
 				$projTitle = $project->project_title ?? '';
 				NotificationService::create((int)$contractorUserId, 'payment_submitted', 'Payment Uploaded', "Owner uploaded a payment for \"{$projTitle}\". Please review.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$validated['project_id'], 'tab' => 'payments', 'initial_item_id' => (int)$validated['item_id'], 'initial_item_tab' => 'payments']]);
 			}
+
+			UserActivityLogger::paymentUploaded((int) $user->user_id, (int) $paymentId, (int) $validated['project_id']);
 
 			return response()->json(['success' => true, 'message' => 'Payment validation uploaded', 'payment_id' => $paymentId], 201);
 		} catch (\Exception $e) {

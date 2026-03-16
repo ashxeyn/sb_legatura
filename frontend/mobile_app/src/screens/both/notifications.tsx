@@ -97,6 +97,7 @@ type NotificationType =
   | 'general';
 
 type NotificationCategory = 'all' | 'projects' | 'bids' | 'payments' | 'messages' | 'announcements';
+type StaffActionKind = 'invite' | 'role_change';
 
 interface Notification {
   id: number;
@@ -457,6 +458,30 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   const [rejectReason, setRejectReason] = useState('');
   const [processingInvitationAction, setProcessingInvitationAction] = useState(false);
 
+  const getStaffActionKind = (notification: Notification): StaffActionKind | null => {
+    if (notification.reference_type !== 'contractor_staff' || !notification.reference_id) {
+      return null;
+    }
+
+    const type = (notification.type || '').toLowerCase();
+    const title = (notification.title || '').toLowerCase();
+    const message = (notification.message || '').toLowerCase();
+    const needsDecision = message.includes('please accept or decline');
+
+    // Pending invite action only.
+    if (type === 'team_invite' && needsDecision) {
+      return 'invite';
+    }
+
+    // Pending role-change action only.
+    if (type === 'team_role_changed' && (title.includes('role change request') || needsDecision)) {
+      return 'role_change';
+    }
+
+    // All other contractor_staff notifications are informational.
+    return null;
+  };
+
   const categories: { id: NotificationCategory; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'projects', label: 'Projects' },
@@ -591,6 +616,7 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
     action: 'accept' | 'decline',
     reason?: string
   ) => {
+    const actionKind = getStaffActionKind(notification);
     if (!notification.reference_id) {
       Alert.alert('Error', 'Invitation reference is missing.');
       return;
@@ -618,12 +644,28 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
         setSelectedInvitation(null);
         setRejectReason('');
         Alert.alert(
-          action === 'accept' ? 'Invitation Accepted' : 'Invitation Declined',
-          response.message || (action === 'accept' ? 'You are now part of the team.' : 'You declined the invitation.')
+          actionKind === 'role_change'
+            ? (action === 'accept' ? 'Role Change Accepted' : 'Role Change Declined')
+            : (action === 'accept' ? 'Invitation Accepted' : 'Invitation Declined'),
+          response.message ||
+            (actionKind === 'role_change'
+              ? (action === 'accept' ? 'Your role change was accepted.' : 'You declined the role change.')
+              : (action === 'accept' ? 'You are now part of the team.' : 'You declined the invitation.'))
         );
         await loadNotifications();
       } else {
-        Alert.alert('Error', response.message || 'Failed to process invitation.');
+        const backendMsg = (response.message || '').toLowerCase();
+        if (backendMsg.includes('not found') || backendMsg.includes('already processed')) {
+          await markAsRead(notification.id);
+          setInvitationModalVisible(false);
+          setRejectModalVisible(false);
+          setSelectedInvitation(null);
+          setRejectReason('');
+          await loadNotifications();
+          Alert.alert('Invitation Cancelled', 'This invitation was cancelled or already processed.');
+        } else {
+          Alert.alert('Error', response.message || 'Failed to process invitation.');
+        }
       }
     } catch (error) {
       console.error('Error processing staff invitation action:', error);
@@ -634,61 +676,105 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   };
 
   const isContractorStaffInvitation = (notification: Notification): boolean => {
-    if (notification.reference_type !== 'contractor_staff' || !notification.reference_id) {
+    return getStaffActionKind(notification) !== null;
+  };
+  const showInvitationCancelledNotice = (message?: string) => {
+    Alert.alert(
+      'Invitation was Cancelled',
+      message || 'This invitation was cancelled by the owner.'
+    );
+  };
+
+  const isCancelledStaffInvitationNotice = (notification: Notification): boolean => {
+    if (notification.reference_type !== 'contractor_staff') {
       return false;
     }
 
-    const haystack = `${notification.type} ${notification.title || ''} ${notification.message || ''}`.toLowerCase();
+    const type = (notification.type || '').toLowerCase();
+    if (type === 'staff_invitation_cancelled') {
+      return true;
+    }
+
+    const text = `${notification.title || ''} ${notification.message || ''}`.toLowerCase();
     return (
-      notification.type === 'team_invite' ||
-      notification.type === 'team_role_changed' ||
-      haystack.includes('invitation') ||
-      haystack.includes('invited to join')
+      text.includes('invitation was cancelled') ||
+      text.includes('invitation has been cancelled') ||
+      text.includes('invitation cancelled') ||
+      text.includes('already processed') ||
+      text.includes('no longer available')
     );
   };
 
   const handleNotificationPress = async (notification: Notification) => {
-    const isStaffInvitation = isContractorStaffInvitation(notification);
+    // 1. Dedicated cancellation notice — always show alert, never open modal or redirect.
+    //    The backend always routes staff_invitation_cancelled → members, so we must
+    //    intercept it here before any API call.
+    if ((notification.type as string) === 'staff_invitation_cancelled') {
+      if (!notification.is_read) {
+        await markAsRead(notification.id);
+      }
+      showInvitationCancelledNotice(notification.message || 'This invitation was cancelled by the owner.');
+      return;
+    }
 
-    if (isStaffInvitation) {
+    // 2. Pending invite / role-change action — check status first, then open modal.
+    const staffActionKind = getStaffActionKind(notification);
+    if (staffActionKind) {
+      // Pre-check: if the staff record is already cancelled, skip the modal entirely.
+      if (notification.reference_id) {
+        try {
+          const statusRes = await api_request(
+            `${api_config.endpoints.contractor_members.show(String(notification.reference_id))}?user_id=${userId}`,
+            { method: 'GET' }
+          );
+          const statusData = statusRes?.data?.data ?? statusRes?.data;
+          if (!statusRes.success || statusData?.is_cancelled) {
+            if (!notification.is_read) await markAsRead(notification.id);
+            showInvitationCancelledNotice(
+              statusData?.deletion_reason
+                ? `This invitation was cancelled. Reason: ${statusData.deletion_reason}`
+                : 'This invitation was cancelled by the owner.'
+            );
+            return;
+          }
+        } catch {
+          // If status check fails, fall through and let the modal handle it
+        }
+      }
       setSelectedInvitation(notification);
       setInvitationModalVisible(true);
       return;
     }
 
-    // Types with no navigation target — mark as read and exit silently
+    // 3. Types with no navigation target — mark as read and exit silently
     if (notification.type === 'admin_announcement' || notification.type === 'general') {
       if (!notification.is_read) void markAsRead(notification.id);
       return;
     }
 
-    // Optimistic UI update: mark as read immediately
+    // 4. All other notifications — optimistic read + backend redirect
     setNotifications((prev) =>
       prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
     );
 
     try {
-      // Call backend redirect endpoint — marks as read + resolves navigation target
       const response = await notifications_service.resolve_redirect(notification.id);
 
       if (response.success && response.data) {
-        // Show flash message if the referenced item was deleted/archived
         if (response.data.flash_message) {
           Alert.alert('Notice', response.data.flash_message);
           return;
         }
 
-        // Use the mobile-specific screen/params if provided
         const mobile = response.data.mobile;
         if (mobile && onNavigate) {
-          onClose(); // dismiss notifications screen first
+          onClose();
           onNavigate(mobile.screen, mobile.params || {});
           return;
         }
       }
     } catch (error) {
       console.error('Error resolving notification redirect:', error);
-      // Fallback: just mark as read via the original endpoint
       try {
         await notifications_service.mark_as_read(notification.id);
       } catch (e) {
@@ -733,9 +819,10 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   const renderNotificationItem = (notification: Notification) => {
     const defaultStyle = getNotificationStyle(notification.type);
     const isWelcome = notification.type === 'general' && notification.title.toLowerCase().includes('welcome');
+    const staffActionKind = getStaffActionKind(notification);
     const style = isWelcome
       ? { icon: 'gift-outline' as const, iconComponent: 'ionicons', bgColor: '#FEF9C3', iconColor: '#B45309' }
-      : isContractorStaffInvitation(notification)
+      : !!staffActionKind
       ? {
           icon: 'person-add-outline' as const,
           iconComponent: 'ionicons',
@@ -875,6 +962,7 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
 
   const groupedNotifications = groupNotificationsByDate(filteredNotifications);
   const dateOrder = ['TODAY', 'YESTERDAY', 'THIS WEEK', 'EARLIER'];
+  const selectedInvitationActionKind = selectedInvitation ? getStaffActionKind(selectedInvitation) : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -937,7 +1025,6 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
           <Ionicons
-            name="filter-outline"
             size={20}
             color={activeFilters.length > 0 ? COLORS.surface : COLORS.textSecondary}
           />
@@ -1029,9 +1116,14 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
       >
         <View style={styles.inviteModalOverlay}>
           <View style={styles.inviteModalCard}>
-            <Text style={styles.inviteModalTitle}>Contractor Team Invitation</Text>
+            <Text style={styles.inviteModalTitle}>
+              {selectedInvitationActionKind === 'role_change' ? 'Role Change Request' : 'Contractor Team Invitation'}
+            </Text>
             <Text style={styles.inviteModalMessage}>
-              {selectedInvitation?.message || 'You have been invited to join a contractor team.'}
+              {selectedInvitation?.message ||
+                (selectedInvitationActionKind === 'role_change'
+                  ? 'A role change request is waiting for your response.'
+                  : 'You have been invited to join a contractor team.')}
             </Text>
 
             <View style={styles.inviteModalActions}>
@@ -1051,7 +1143,9 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
                 }}
                 disabled={processingInvitationAction}
               >
-                <Text style={styles.inviteDeclineText}>Reject</Text>
+                <Text style={styles.inviteDeclineText}>
+                  {selectedInvitationActionKind === 'role_change' ? 'Decline' : 'Reject'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1066,7 +1160,9 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
                 {processingInvitationAction ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.inviteAcceptText}>Accept</Text>
+                  <Text style={styles.inviteAcceptText}>
+                    {selectedInvitationActionKind === 'role_change' ? 'Accept Change' : 'Accept'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1082,8 +1178,14 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
       >
         <View style={styles.inviteModalOverlay}>
           <View style={styles.inviteModalCard}>
-            <Text style={styles.inviteModalTitle}>Reject Invitation</Text>
-            <Text style={styles.inviteModalMessage}>Please provide a reason for rejecting this invitation.</Text>
+            <Text style={styles.inviteModalTitle}>
+              {selectedInvitationActionKind === 'role_change' ? 'Decline Role Change' : 'Reject Invitation'}
+            </Text>
+            <Text style={styles.inviteModalMessage}>
+              {selectedInvitationActionKind === 'role_change'
+                ? 'Please provide a reason for declining this role change.'
+                : 'Please provide a reason for rejecting this invitation.'}
+            </Text>
 
             <TextInput
               style={styles.rejectReasonInput}
@@ -1113,7 +1215,12 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
                 style={[styles.inviteModalBtn, styles.inviteDeclineBtn]}
                 onPress={() => {
                   if (!rejectReason.trim()) {
-                    Alert.alert('Reason Required', 'Please enter a reason before rejecting.');
+                    Alert.alert(
+                      'Reason Required',
+                      selectedInvitationActionKind === 'role_change'
+                        ? 'Please enter a reason before declining this role change.'
+                        : 'Please enter a reason before rejecting.'
+                    );
                     return;
                   }
                   if (selectedInvitation) {
@@ -1125,7 +1232,9 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
                 {processingInvitationAction ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.inviteDeclineText}>Submit Rejection</Text>
+                  <Text style={styles.inviteDeclineText}>
+                    {selectedInvitationActionKind === 'role_change' ? 'Submit Decline' : 'Submit Rejection'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>

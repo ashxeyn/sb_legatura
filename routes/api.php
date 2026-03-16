@@ -18,6 +18,7 @@ use App\Http\Controllers\both\projectUpdateController;
 use App\Http\Controllers\subs\payMongoController;
 use App\Http\Controllers\owner\downpaymentController;
 use App\Http\Controllers\verificationResubmitController;
+use App\Http\Controllers\accounts\accountController;
 
 
 //role switch test endpoint moved outside middleware group
@@ -319,7 +320,9 @@ Route::get('/debug/contractor-status', function (Request $request) {
 // Contractor members (staff) management — uses user_id from query param or X-User-Id header
 Route::get('/contractor/members/search-owners', [\App\Http\Controllers\contractor\membersController::class, 'searchVerifiedOwners']);
 Route::get('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'index']);
+Route::get('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class, 'show']);
 Route::post('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'store']);
+Route::post('/contractor/members/batch', [\App\Http\Controllers\contractor\membersController::class, 'storeBatch']);
 Route::put('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class, 'update']);
 Route::delete('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class, 'delete']);
 Route::patch('/contractor/members/{id}/suspend', [\App\Http\Controllers\contractor\membersController::class, 'suspend']);
@@ -471,6 +474,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post(
         '/logout',
         function (Request $request) {
+            if ($request->user() && !empty($request->user()->user_id)) {
+                \App\Services\UserActivityLogger::userLogout((int) $request->user()->user_id);
+            }
             $request->user()->currentAccessToken()->delete();
             return response()->json([
                 'success' => true,
@@ -481,6 +487,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Verification resubmission (rejected users re-uploading documents)
     Route::post('/verification/resubmit', [verificationResubmitController::class, 'resubmit']);
+
+    // Account Settings (soft delete)
+    Route::prefix('account')->group(function () {
+        Route::get('/reasons', [accountController::class, 'getReasons']);
+        Route::post('/delete', [accountController::class, 'deleteAccount']);
+    });
 
     // Dashboard
     Route::get('/dashboard', [\App\Http\Controllers\both\dashboardController::class, 'apiDashboard']);
