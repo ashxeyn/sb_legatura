@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 
-API_KEY = "2a5164eb9d184652817162655261202"
+API_KEY = "60d8801e5d53438faa5213919261403"
 
 def get_weather(location: str):
     # Use Forecast API for "Yesterday/Today/Tomorrow" simulation

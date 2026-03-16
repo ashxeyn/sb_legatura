@@ -2,7 +2,7 @@
 import requests
 from datetime import datetime, timedelta
 
-HOLIDAY_API_KEY = "6be9709b-a505-4dd9-8771-1918240451c8"
+HOLIDAY_API_KEY = "318133ac-d655-484d-a758-e4a94ab43461"
 
 def fetch_ph_holidays(year: int):
     url = url = f"https://holidayapi.com/v1/holidays?key={HOLIDAY_API_KEY}&country=PH&year={year}"
