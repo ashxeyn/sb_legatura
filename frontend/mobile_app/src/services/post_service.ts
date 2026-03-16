@@ -263,10 +263,58 @@ export const post_service = {
   get_unified_feed: async (
     page: number = 1,
     perPage: number = 20,
+    filters?: any,
   ): Promise<ApiResponse<UnifiedFeedResponse>> => {
     try {
+      let url = `/api/unified-feed?page=${page}&per_page=${perPage}`;
+      
+      // Only add type_id if filters exist and have a type_id
+      if (filters && filters.type_id) {
+        url += `&type_id=${filters.type_id}`;
+      }
+      
+      // Add property_type filter for contractors
+      if (filters && filters.property_type) {
+        url += `&property_type=${encodeURIComponent(filters.property_type)}`;
+      }
+      
+      // Add location filters
+      if (filters && filters.province) {
+        url += `&province=${encodeURIComponent(filters.province)}`;
+      }
+      
+      if (filters && filters.city) {
+        url += `&city=${encodeURIComponent(filters.city)}`;
+      }
+      
+      // Add contractor-specific filters (for property owners viewing contractors)
+      if (filters && filters.min_experience) {
+        url += `&min_experience=${filters.min_experience}`;
+      }
+      
+      if (filters && filters.max_experience) {
+        url += `&max_experience=${filters.max_experience}`;
+      }
+      
+      if (filters && filters.picab_category) {
+        url += `&picab_category=${encodeURIComponent(filters.picab_category)}`;
+      }
+      
+      if (filters && filters.min_completed) {
+        url += `&min_completed=${filters.min_completed}`;
+      }
+      
+      // Add budget range filters (for contractors viewing projects)
+      if (filters && filters.budget_min) {
+        url += `&budget_min=${filters.budget_min}`;
+      }
+      
+      if (filters && filters.budget_max) {
+        url += `&budget_max=${filters.budget_max}`;
+      }
+
       const response = await api_request(
-        `/api/unified-feed?page=${page}&per_page=${perPage}`,
+        url,
         {
           method: 'GET',
           headers: { Accept: 'application/json' },

@@ -138,7 +138,7 @@ class feedClass
     public function getContractorTypes()
     {
         return DB::table('contractor_types')
-            ->orderBy('type_name')
+            ->orderByRaw("CASE WHEN type_name = 'Others' THEN 1 ELSE 0 END, type_name")
             ->get();
     }
 

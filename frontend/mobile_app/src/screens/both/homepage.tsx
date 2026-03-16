@@ -71,6 +71,9 @@ import CreateProjectScreen from '../owner/createProject';
 // Import search screen
 import SearchScreen from './searchScreen';
 
+// Import feed filter modal
+import FeedFilterModal from '../../components/feedFilterModal';
+
 // Import place bid screen
 import PlaceBid from '../contractor/placeBid';
 
@@ -187,6 +190,10 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Search screen state
   const [showSearchScreen, setShowSearchScreen] = useState(false);
 
+  // Feed filter modal state
+  const [showFeedFilter, setShowFeedFilter] = useState(false);
+  const [feedFilters, setFeedFilters] = useState<any>({});
+
   // View contractor profile state
   const [selectedContractor, setSelectedContractor] = useState<ContractorType | null>(null);
   // View owner profile state
@@ -269,6 +276,9 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [activeCardMenu, setActiveCardMenu] = useState<{ type: 'project' | 'showcase'; id: number } | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ postType: 'project' | 'showcase'; postId: number } | null>(null);
+
+  // ScrollView ref for scrolling to top on refresh
+  const homeScrollViewRef = React.useRef<ScrollView>(null);
 
   // Local image state — seeded from prop, then refreshed from API
   const [ownerProfilePicPath, setOwnerProfilePicPath] = useState<string | null>(userData?.profile_pic || null);
@@ -679,7 +689,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         setLoadingMore(true);
       }
 
-      const response = await post_service.get_unified_feed(page, PER_PAGE);
+      const response = await post_service.get_unified_feed(page, PER_PAGE, feedFilters);
 
       if (response.success && response.data) {
         const items = response.data.items || [];
@@ -703,7 +713,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       setLoadingFeed(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [feedFilters]);
+
+  // Refresh feed function - resets to page 1 and scrolls to top
+  const refreshFeed = useCallback(() => {
+    setFeedPage(1);
+    setHasMoreFeed(true);
+    fetchUnifiedFeed(1, false);
+    // Scroll to top
+    if (homeScrollViewRef.current) {
+      homeScrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+  }, [fetchUnifiedFeed]);
 
   useEffect(() => {
     fetchUnifiedFeed(1);
@@ -1490,6 +1511,68 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     });
   }, []);
 
+  // Handle feed filter apply
+  const handleFeedFilterApply = useCallback(async (filters: any) => {
+    setFeedFilters(filters);
+    setFeedPage(1);
+    setHasMoreFeed(true);
+    
+    // Fetch with new filters
+    try {
+      setLoadingFeed(true);
+      setError(null);
+      
+      const response = await post_service.get_unified_feed(1, PER_PAGE, filters);
+      
+      if (response.success && response.data) {
+        const items = response.data.items || [];
+        setFeedItems(items);
+        setHasMoreFeed(response.data.pagination?.has_more ?? false);
+        setFeedPage(1);
+      } else {
+        setError(response.message || 'Failed to load feed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(msg);
+      console.error('Error applying filters:', err);
+    } finally {
+      setLoadingFeed(false);
+    }
+  }, []);
+
+  // Handle feed filter reset
+  const handleFeedFilterReset = useCallback(async () => {
+    // Clear filters first
+    setFeedFilters({});
+    setFeedPage(1);
+    setHasMoreFeed(true);
+    
+    // Force a fresh fetch without any filters
+    try {
+      setLoadingFeed(true);
+      setError(null);
+      
+      // Pass undefined to ensure no filters are sent
+      const response = await post_service.get_unified_feed(1, PER_PAGE, undefined);
+      
+      if (response.success && response.data) {
+        const items = response.data.items || [];
+        setFeedItems(items);
+        setHasMoreFeed(response.data.pagination?.has_more ?? false);
+        setFeedPage(1);
+      } else {
+        setError(response.message || 'Failed to load feed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(msg);
+      console.error('Error resetting feed:', err);
+    } finally {
+      setLoadingFeed(false);
+    }
+  }, []);
+
   const renderSearchFeedItem = useCallback((feedItem: any, index: number) => {
     if (!feedItem) return null;
 
@@ -1840,6 +1923,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     return (
       <>
       <ScrollView
+        ref={homeScrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -1878,7 +1962,28 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
         {/* ── Feed Section ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Feed</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Feed</Text>
+            <View style={styles.filterContainer}>
+              <TouchableOpacity
+                style={styles.filterButton}
+                onPress={() => setShowFeedFilter(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="filter" size={20} color="#EC7E00" />
+              </TouchableOpacity>
+              {Object.keys(feedFilters).length > 0 && (
+                <TouchableOpacity
+                  style={styles.resetButton}
+                  onPress={handleFeedFilterReset}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <MaterialIcons name="close" size={18} color="#666" />
+                  <Text style={styles.resetButtonText}>Reset</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
 
           {/* Loading */}
           {loadingFeed && (
@@ -1957,6 +2062,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           setReportTarget(null);
         }}
         onSubmit={submitPostReport}
+      />
+
+      <FeedFilterModal
+        visible={showFeedFilter}
+        onClose={() => setShowFeedFilter(false)}
+        onApply={handleFeedFilterApply}
+        userType={effectiveUserType}
       />
       </>
     );
@@ -2439,7 +2551,15 @@ const renderProfileContent = () => {
         <View style={styles.bottomNav}>
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setActiveTab('home')}
+            onPress={() => {
+              if (activeTab === 'home') {
+                // If already on home tab, refresh feed and scroll to top
+                refreshFeed();
+              } else {
+                // Switch to home tab
+                setActiveTab('home');
+              }
+            }}
           >
             <Ionicons
               name={activeTab === 'home' ? 'home' : 'home-outline'}
@@ -2766,6 +2886,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filterButton: {
+    padding: 8,
+    borderRadius: 6,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 6,
+    gap: 4,
+  },
+  resetButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
   },
   // Contractor Card styles
   contractorCard: {

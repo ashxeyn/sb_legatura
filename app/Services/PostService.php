@@ -234,7 +234,21 @@ class PostService
      *
      * Each item: { feed_type: 'project'|'showcase', item_id, created_at, data: {...} }
      */
-    public function getUnifiedFeed(int $userId, int $page = 1, int $perPage = 20): array
+    public function getUnifiedFeed(
+        int $userId, 
+        int $page = 1, 
+        int $perPage = 20, 
+        $typeId = null, 
+        $propertyType = null, 
+        $province = null, 
+        $city = null,
+        $minExperience = null,
+        $maxExperience = null,
+        $picabCategory = null,
+        $minCompleted = null,
+        $budgetMin = null,
+        $budgetMax = null
+    ): array
     {
         $offset = ($page - 1) * $perPage;
 
@@ -270,7 +284,7 @@ class PostService
         // ── Count totals ──
         $projectCount = 0;
         if ($isContractor) {
-            $projectCount = DB::table('projects as p')
+            $qb = DB::table('projects as p')
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->where('p.project_status', 'open')
                 ->where('pr.project_post_status', 'approved')
@@ -286,19 +300,73 @@ class PostService
                             ->where('b.contractor_id', $contractorId)
                             ->whereNotIn('b.bid_status', ['cancelled']);
                     });
-                })
-                ->count();
+                });
+            
+            if ($typeId) {
+                $qb->where('p.type_id', $typeId);
+            }
+            
+            if ($propertyType) {
+                $qb->where('p.property_type', $propertyType);
+            }
+            
+            if ($province) {
+                $qb->where('p.project_location', 'LIKE', '%' . $province . '%');
+            }
+            
+            if ($city) {
+                $qb->where('p.project_location', 'LIKE', '%' . $city . '%');
+            }
+            
+            if ($budgetMin !== null) {
+                $qb->where('p.budget_range_max', '>=', (float) $budgetMin);
+            }
+            
+            if ($budgetMax !== null) {
+                $qb->where('p.budget_range_min', '<=', (float) $budgetMax);
+            }
+            
+            $projectCount = $qb->count();
         }
 
         $contractorCount = 0;
         if ($isOwner) {
             try {
-                $contractorCount = DB::table('contractors as c')
+                $qb = DB::table('contractors as c')
                     ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
                     ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->where('c.verification_status', 'approved')
-                    ->where('po.user_id', '!=', $userId)
-                    ->count();
+                    ->where('po.user_id', '!=', $userId);
+                
+                if ($typeId) {
+                    $qb->where('c.type_id', $typeId);
+                }
+                
+                if ($province) {
+                    $qb->where('c.business_address', 'LIKE', '%' . $province . '%');
+                }
+                
+                if ($city) {
+                    $qb->where('c.business_address', 'LIKE', '%' . $city . '%');
+                }
+                
+                if ($minExperience !== null) {
+                    $qb->where('c.years_of_experience', '>=', (int) $minExperience);
+                }
+                
+                if ($maxExperience !== null) {
+                    $qb->where('c.years_of_experience', '<=', (int) $maxExperience);
+                }
+                
+                if ($picabCategory) {
+                    $qb->where('c.picab_category', $picabCategory);
+                }
+                
+                if ($minCompleted !== null) {
+                    $qb->where('c.completed_projects', '>=', (int) $minCompleted);
+                }
+                
+                $contractorCount = $qb->count();
             } catch (\Exception $e) {
                 Log::warning('Contractor count lookup failed: ' . $e->getMessage());
                 $contractorCount = 0;
@@ -312,9 +380,10 @@ class PostService
         $total     = $projectCount + $contractorCount + $postCount;
         $totalPages = max(1, (int) ceil($total / $perPage));
 
-        // Fetch enough rows from each table to assemble the page.
-        // Worst case: all page items come from one table → need page*perPage from each.
-        $fetchLimit = $page * $perPage;
+        // Fetch enough rows from each table to assemble all pages properly
+        // Since we merge different feed types and apply randomization on page 1,
+        // we need to fetch all items to ensure consistent pagination
+        $fetchLimit = $total;
 
         // ── 1. Open bidding projects (contractors only) ──
         $projects = collect();
@@ -339,6 +408,30 @@ class PostService
                             ->whereNotIn('b.bid_status', ['cancelled']);
                     });
                 });
+            
+            if ($typeId) {
+                $qb->where('p.type_id', $typeId);
+            }
+            
+            if ($propertyType) {
+                $qb->where('p.property_type', $propertyType);
+            }
+            
+            if ($province) {
+                $qb->where('p.project_location', 'LIKE', '%' . $province . '%');
+            }
+            
+            if ($city) {
+                $qb->where('p.project_location', 'LIKE', '%' . $city . '%');
+            }
+            
+            if ($budgetMin !== null) {
+                $qb->where('p.budget_range_max', '>=', (float) $budgetMin);
+            }
+            
+            if ($budgetMax !== null) {
+                $qb->where('p.budget_range_min', '<=', (float) $budgetMax);
+            }
 
             // Build owner select expressions defensively to avoid referencing missing columns
             $ownerProfilePicSelect = Schema::hasColumn('property_owners', 'profile_pic')
@@ -379,13 +472,42 @@ class PostService
         $contractors = collect();
         if ($isOwner) {
             try {
-                $contractors = DB::table('contractors as c')
+                $qb = DB::table('contractors as c')
                     ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
                     ->join('users as u', 'po.user_id', '=', 'u.user_id')
                     ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
                     ->where('c.verification_status', 'approved')
-                    ->where('po.user_id', '!=', $userId)
-                    ->select(
+                    ->where('po.user_id', '!=', $userId);
+                
+                if ($typeId) {
+                    $qb->where('c.type_id', $typeId);
+                }
+                
+                if ($province) {
+                    $qb->where('c.business_address', 'LIKE', '%' . $province . '%');
+                }
+                
+                if ($city) {
+                    $qb->where('c.business_address', 'LIKE', '%' . $city . '%');
+                }
+                
+                if ($minExperience !== null) {
+                    $qb->where('c.years_of_experience', '>=', (int) $minExperience);
+                }
+                
+                if ($maxExperience !== null) {
+                    $qb->where('c.years_of_experience', '<=', (int) $maxExperience);
+                }
+                
+                if ($picabCategory) {
+                    $qb->where('c.picab_category', $picabCategory);
+                }
+                
+                if ($minCompleted !== null) {
+                    $qb->where('c.completed_projects', '>=', (int) $minCompleted);
+                }
+                
+                $contractors = $qb->select(
                         'c.contractor_id',
                         'c.company_name',
                         'c.years_of_experience',
@@ -466,8 +588,90 @@ class PostService
                 ];
             });
 
-        // ── 3. Merge, sort by created_at DESC, paginate ──
-        $merged   = $projects->merge($contractors)->merge($posts)->sortByDesc('created_at')->values();
+        // ── 3. Merge and intersperse items like ads, sort boosted to top, paginate ──
+        
+        // Separate boosted and non-boosted items
+        $boostedProjects = collect();
+        $nonBoostedProjects = collect();
+        $boostedShowcases = collect();
+        $nonBoostedShowcases = collect();
+        
+        // Check project boosts
+        foreach ($projects as $project) {
+            // Check if project has an active boost payment
+            $hasActiveBoost = DB::table('platform_payments')
+                ->where('project_id', $project->data->project_id)
+                ->where('is_approved', 1)
+                ->where('is_cancelled', 0)
+                ->where('payment_type', '!=', 'cancelled')
+                ->where(function ($q) {
+                    $q->whereNull('expiration_date')
+                      ->orWhere('expiration_date', '>=', now());
+                })
+                ->exists();
+            
+            if ($hasActiveBoost) {
+                $project->is_boosted = true;
+                $boostedProjects->push($project);
+            } else {
+                $project->is_boosted = false;
+                $nonBoostedProjects->push($project);
+            }
+        }
+        
+        // Check showcase boosts (boost_tier and boost_expiration fields)
+        foreach ($posts as $post) {
+            $hasActiveBoost = !empty($post->data->boost_tier) && 
+                             ($post->data->boost_expiration === null || 
+                              strtotime($post->data->boost_expiration) >= time());
+            
+            if ($hasActiveBoost) {
+                $post->is_boosted = true;
+                $boostedShowcases->push($post);
+            } else {
+                $post->is_boosted = false;
+                $nonBoostedShowcases->push($post);
+            }
+        }
+        
+        // Merge primary content (projects + contractors) - these are the main feed items
+        $primaryContent = $nonBoostedProjects->merge($contractors);
+        
+        // Sort primary content chronologically first
+        $primaryContent = $primaryContent->sortByDesc('created_at')->values();
+        
+        // Apply hourly seeded randomization to primary content
+        $hourlySeed = (int)(time() / 3600);
+        $primaryContent = $primaryContent->shuffle($hourlySeed);
+        
+        // Intersperse showcases (non-boosted) like ads throughout the primary content
+        // Place 1 showcase every 15-17 items randomly
+        $interspersedContent = collect();
+        $showcaseIndex = 0;
+        $showcaseArray = $nonBoostedShowcases->shuffle($hourlySeed)->values()->all();
+        $showcaseCount = count($showcaseArray);
+        
+        foreach ($primaryContent as $index => $item) {
+            $interspersedContent->push($item);
+            
+            // Insert a showcase every 15-17 items (randomized position)
+            $nextShowcasePosition = 15 + ($index % 3); // Varies between 15, 16, 17
+            if (($index + 1) % $nextShowcasePosition === 0 && $showcaseIndex < $showcaseCount) {
+                $interspersedContent->push($showcaseArray[$showcaseIndex]);
+                $showcaseIndex++;
+            }
+        }
+        
+        // Add any remaining showcases at the end
+        while ($showcaseIndex < $showcaseCount) {
+            $interspersedContent->push($showcaseArray[$showcaseIndex]);
+            $showcaseIndex++;
+        }
+        
+        // Merge: boosted items first (sorted by created_at DESC), then interspersed content
+        $allBoosted = $boostedProjects->merge($boostedShowcases)->sortByDesc('created_at')->values();
+        $merged = $allBoosted->merge($interspersedContent)->values();
+        
         $pageItems = $merged->slice($offset, $perPage)->values();
 
         // ── 4. Hydrate projects with bids_count + files ──

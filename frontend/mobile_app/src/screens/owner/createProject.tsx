@@ -41,6 +41,8 @@ interface ContractorType {
 interface ProjectFormData {
   project_title: string;
   project_description: string;
+  province: string;
+  city: string;
   barangay: string;
   street_address: string;
   project_location: string;
@@ -79,6 +81,8 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   // Form state
   const [projectTitle, setProjectTitle] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
+  const [province, setProvince] = useState('');
+  const [city, setCity] = useState('');
   const [barangay, setBarangay] = useState('');
   const [streetAddress, setStreetAddress] = useState('');
   const [budgetMin, setBudgetMin] = useState('');
@@ -101,10 +105,16 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   const [isLoading, setIsLoading] = useState(false);
   const [showPropertyTypeModal, setShowPropertyTypeModal] = useState(false);
   const [showContractorTypeModal, setShowContractorTypeModal] = useState(false);
+  const [showProvinceModal, setShowProvinceModal] = useState(false);
+  const [showCityModal, setShowCityModal] = useState(false);
   const [showBarangayModal, setShowBarangayModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
   const [barangays, setBarangays] = useState<any[]>([]);
-  const [loadingBarangays, setLoadingBarangays] = useState(true);
+  const [loadingProvinces, setLoadingProvinces] = useState(true);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
   const [localContractorTypes, setLocalContractorTypes] = useState<ContractorType[]>([]);
   const [loadingContractorTypes, setLoadingContractorTypes] = useState(false);
 
@@ -137,10 +147,36 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
     return selectedType?.type_name?.toLowerCase().trim() === 'others';
   };
 
-  // Load barangays for Zamboanga City
+  // Load provinces on mount
   useEffect(() => {
-    loadBarangays();
+    loadProvinces();
   }, []);
+
+  // Load cities when province changes
+  useEffect(() => {
+    if (province) {
+      loadCities(province);
+      // Reset city and barangay when province changes
+      setCity('');
+      setBarangay('');
+      setCities([]);
+      setBarangays([]);
+    } else {
+      setCities([]);
+      setBarangays([]);
+    }
+  }, [province]);
+
+  // Load barangays when city changes
+  useEffect(() => {
+    if (city) {
+      loadBarangays(city);
+      // Reset barangay when city changes
+      setBarangay('');
+    } else {
+      setBarangays([]);
+    }
+  }, [city]);
 
   // Load contractor types locally if not provided via props
   useEffect(() => {
@@ -168,11 +204,38 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
     fetchTypes();
   }, [contractorTypes]);
 
-  const loadBarangays = async () => {
+  const loadProvinces = async () => {
+    try {
+      setLoadingProvinces(true);
+      const response = await auth_service.get_provinces();
+      if (response.success && response.data) {
+        setProvinces(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load provinces:', error);
+    } finally {
+      setLoadingProvinces(false);
+    }
+  };
+
+  const loadCities = async (provinceCode: string) => {
+    try {
+      setLoadingCities(true);
+      const response = await auth_service.get_cities_by_province(provinceCode);
+      if (response.success && response.data) {
+        setCities(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load cities:', error);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  const loadBarangays = async (cityCode: string) => {
     try {
       setLoadingBarangays(true);
-      // Zamboanga City code: 097332000
-      const response = await auth_service.get_barangays_by_city('097332000');
+      const response = await auth_service.get_barangays_by_city(cityCode);
       if (response.success && response.data) {
         setBarangays(response.data);
       }
@@ -464,6 +527,14 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
       Alert.alert('Required', 'Please enter a project description.');
       return false;
     }
+    if (!province) {
+      Alert.alert('Required', 'Please select a province.');
+      return false;
+    }
+    if (!city) {
+      Alert.alert('Required', 'Please select a city/municipality.');
+      return false;
+    }
     if (!barangay) {
       Alert.alert('Required', 'Please select a barangay.');
       return false;
@@ -525,12 +596,16 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   const handleSubmit = () => {
     if (!validateForm()) return;
 
+    const provinceName = provinces.find(p => p.code === province)?.name || '';
+    const cityName = cities.find(c => c.code === city)?.name || '';
     const barangayName = barangays.find(b => b.code === barangay)?.name || '';
-    const projectLocation = `${streetAddress}, ${barangayName}, Zamboanga City, Zamboanga del Sur`;
+    const projectLocation = `${streetAddress}, ${barangayName}, ${cityName}, ${provinceName}`;
 
     const projectData: ProjectFormData = {
       project_title: projectTitle.trim(),
       project_description: projectDescription.trim(),
+      province,
+      city,
       barangay,
       street_address: streetAddress.trim(),
       project_location: projectLocation,
@@ -558,6 +633,8 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   // Get selected names for display
   const getPropertyTypeName = () => PROPERTY_TYPES.find(p => p.id === propertyType)?.name || '';
   const getContractorTypeName = () => safeContractorTypes.find(t => t.type_id?.toString() === contractorTypeId)?.type_name || '';
+  const getProvinceName = () => provinces.find(p => p.code === province)?.name || '';
+  const getCityName = () => cities.find(c => c.code === city)?.name || '';
   const getBarangayName = () => barangays.find(b => b.code === barangay)?.name || '';
 
   return (
@@ -607,16 +684,46 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
             <Text style={styles.sectionTitle}>Project Location</Text>
           </View>
 
+          {/* Province */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Province <Text style={styles.required}>*</Text></Text>
+            <TouchableOpacity
+              style={styles.dropdown}
+              onPress={() => setShowProvinceModal(true)}
+              disabled={loadingProvinces}
+            >
+              <Text style={[styles.dropdownText, !province && styles.placeholder]}>
+                {loadingProvinces ? 'Loading...' : (getProvinceName() || 'Select Province')}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {/* City/Municipality */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>City / Municipality <Text style={styles.required}>*</Text></Text>
+            <TouchableOpacity
+              style={styles.dropdown}
+              onPress={() => setShowCityModal(true)}
+              disabled={!province || loadingCities}
+            >
+              <Text style={[styles.dropdownText, !city && styles.placeholder]}>
+                {loadingCities ? 'Loading...' : (getCityName() || (province ? 'Select City/Municipality' : 'Select Province First'))}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+
           {/* Barangay */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Barangay <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
               style={styles.dropdown}
               onPress={() => setShowBarangayModal(true)}
-              disabled={loadingBarangays}
+              disabled={!city || loadingBarangays}
             >
               <Text style={[styles.dropdownText, !barangay && styles.placeholder]}>
-                {loadingBarangays ? 'Loading...' : (getBarangayName() || 'Select Barangay')}
+                {loadingBarangays ? 'Loading...' : (getBarangayName() || (city ? 'Select Barangay' : 'Select City First'))}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#666" />
             </TouchableOpacity>
@@ -633,9 +740,6 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               placeholderTextColor="#999"
               maxLength={255}
             />
-            <Text style={styles.helperText}>
-              City and Province are fixed to Zamboanga City, Zamboanga del Sur.
-            </Text>
           </View>
 
           {/* Budget Section */}
@@ -918,6 +1022,92 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
           </TouchableOpacity>
         </View>
       </KeyboardAwareScrollView>
+
+      {/* Province Modal */}
+      <Modal visible={showProvinceModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Province</Text>
+              <TouchableOpacity onPress={() => setShowProvinceModal(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            {loadingProvinces ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#EC7E00" />
+                <Text style={styles.loadingText}>Loading provinces...</Text>
+              </View>
+            ) : provinces.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No provinces available</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={provinces}
+                keyExtractor={(item, index) => `${item.code}-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setProvince(item.code);
+                      setShowProvinceModal(false);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>{item.name}</Text>
+                    {province === item.code && (
+                      <Ionicons name="checkmark" size={20} color="#EC7E00" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* City Modal */}
+      <Modal visible={showCityModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select City/Municipality</Text>
+              <TouchableOpacity onPress={() => setShowCityModal(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            {loadingCities ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#EC7E00" />
+                <Text style={styles.loadingText}>Loading cities...</Text>
+              </View>
+            ) : cities.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No cities available</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={cities}
+                keyExtractor={(item, index) => `${item.code}-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setCity(item.code);
+                      setShowCityModal(false);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>{item.name}</Text>
+                    {city === item.code && (
+                      <Ionicons name="checkmark" size={20} color="#EC7E00" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Barangay Modal */}
       <Modal visible={showBarangayModal} animationType="slide" transparent>

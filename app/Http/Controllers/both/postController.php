@@ -146,10 +146,34 @@ class postController extends Controller
         $userId = $this->resolveUserId($request);
         if (!$userId) return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
 
-        $page    = max(1, (int) $request->query('page', 1));
-        $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
+        $page          = max(1, (int) $request->query('page', 1));
+        $perPage       = min(50, max(1, (int) $request->query('per_page', 20)));
+        $typeId        = $request->query('type_id');
+        $propertyType  = $request->query('property_type');
+        $province      = $request->query('province');
+        $city          = $request->query('city');
+        $minExperience = $request->query('min_experience');
+        $maxExperience = $request->query('max_experience');
+        $picabCategory = $request->query('picab_category');
+        $minCompleted  = $request->query('min_completed');
+        $budgetMin     = $request->query('budget_min');
+        $budgetMax     = $request->query('budget_max');
 
-        $data = $this->postService->getUnifiedFeed($userId, $page, $perPage);
+        $data = $this->postService->getUnifiedFeed(
+            $userId, 
+            $page, 
+            $perPage, 
+            $typeId, 
+            $propertyType, 
+            $province, 
+            $city,
+            $minExperience,
+            $maxExperience,
+            $picabCategory,
+            $minCompleted,
+            $budgetMin,
+            $budgetMax
+        );
         return response()->json(['success' => true, 'data' => $data]);
     }
 
