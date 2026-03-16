@@ -60,7 +60,10 @@
               </div>
               <input type="date" id="globalDateTo" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <button id="applyGlobalDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-xs font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+            <button id="resetGlobalDateFilter" type="button" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+              <i class="fi fi-rr-rotate-left"></i>
+              <span>Reset Filter</span>
+            </button>
           </div>
           <div id="filterLoading" class="hidden flex items-center gap-1 ml-1">
             <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0s"></span>
@@ -496,5 +499,202 @@
 </div>
 
 <script src="{{ asset('js/admin/home/bidCompletion_Analytics.js') }}" defer></script>
+
+<script>
+  // ── AUTO-FILTER ON DATE CHANGE ─────────────────────────────────────
+  function validateAndApplyDateFilter() {
+    const fromInput = document.getElementById('globalDateFrom');
+    const toInput = document.getElementById('globalDateTo');
+    const fromVal = fromInput?.value || '';
+    const toVal = toInput?.value || '';
+
+    // Validate: to date should not be earlier than from date
+    if (fromVal && toVal && toVal < fromVal) {
+      toInput.value = fromVal;
+      return;
+    }
+
+    // Clear preset button active state when custom dates are used
+    document.querySelectorAll('.date-preset-btn').forEach(b => {
+      b.classList.remove('active', 'border-indigo-400', 'text-white', 'bg-indigo-500', 'font-semibold');
+      b.classList.add('border-gray-200', 'text-gray-500', 'font-medium');
+    });
+
+    // Trigger filter
+    refreshBidData(fromVal, toVal);
+  }
+
+  // Validate on both change and input events for real-time validation
+  document.getElementById('globalDateFrom')?.addEventListener('change', validateAndApplyDateFilter);
+  document.getElementById('globalDateFrom')?.addEventListener('input', function() {
+    const fromVal = this.value || '';
+    const toInput = document.getElementById('globalDateTo');
+    const toVal = toInput?.value || '';
+    
+    // Prevent to date from being earlier than from date
+    if (fromVal && toVal && toVal < fromVal) {
+      toInput.value = fromVal;
+    }
+  });
+
+  document.getElementById('globalDateTo')?.addEventListener('change', validateAndApplyDateFilter);
+  document.getElementById('globalDateTo')?.addEventListener('input', function() {
+    const toVal = this.value || '';
+    const fromInput = document.getElementById('globalDateFrom');
+    const fromVal = fromInput?.value || '';
+    
+    // Prevent to date from being earlier than from date
+    if (fromVal && toVal && toVal < fromVal) {
+      this.value = fromVal;
+    }
+  });
+
+  // ── PRESET BUTTONS ─────────────────────────────────────────────────
+  function getDateRange(preset) {
+    const now = new Date();
+    let from = '', to = now.toISOString().split('T')[0];
+    switch (preset) {
+      case 'last3months': { const d = new Date(now); d.setMonth(d.getMonth() - 3); from = d.toISOString().split('T')[0]; break; }
+      case 'last6months': { const d = new Date(now); d.setMonth(d.getMonth() - 6); from = d.toISOString().split('T')[0]; break; }
+      case 'thisyear':    from = now.getFullYear() + '-01-01'; break;
+      case 'lastyear':    from = (now.getFullYear() - 1) + '-01-01'; to = (now.getFullYear() - 1) + '-12-31'; break;
+      case 'all':         from = ''; to = ''; break;
+    }
+    return { from, to };
+  }
+
+  document.querySelectorAll('.date-preset-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.date-preset-btn').forEach(b => {
+        b.classList.remove('active', 'border-indigo-400', 'text-white', 'bg-indigo-500', 'font-semibold');
+        b.classList.add('border-gray-200', 'text-gray-500', 'font-medium');
+      });
+      this.classList.add('active', 'border-indigo-400', 'text-white', 'bg-indigo-500', 'font-semibold');
+      this.classList.remove('border-gray-200', 'text-gray-500', 'font-medium');
+      const range = getDateRange(this.dataset.range);
+      document.getElementById('globalDateFrom').value = range.from;
+      document.getElementById('globalDateTo').value = range.to;
+      refreshBidData(range.from, range.to);
+    });
+  });
+
+  // ── RESET BUTTON ───────────────────────────────────────────────────
+  document.getElementById('resetGlobalDateFilter')?.addEventListener('click', function () {
+    document.getElementById('globalDateFrom').value = '';
+    document.getElementById('globalDateTo').value = '';
+    
+    // Set "All Time" as active
+    document.querySelectorAll('.date-preset-btn').forEach(b => {
+      b.classList.remove('active', 'border-indigo-400', 'text-white', 'bg-indigo-500', 'font-semibold');
+      b.classList.add('border-gray-200', 'text-gray-500', 'font-medium');
+    });
+    document.querySelector('[data-range="all"]').classList.add('active', 'border-indigo-400', 'text-white', 'bg-indigo-500', 'font-semibold');
+    document.querySelector('[data-range="all"]').classList.remove('border-gray-200', 'text-gray-500', 'font-medium');
+    
+    refreshBidData('', '');
+  });
+
+  // ── REFRESH BID DATA ────────────────────────────────────────────────
+  function initCharts(data) {
+    // Charts are already managed by bidCompletion_Analytics.js
+    // Just call the existing build functions
+    buildTimelineChart(data.timelineMonths, data.timelineSubmitted, data.timelineAccepted);
+    buildStatusChart(Object.keys(data.bidStatusCounts), Object.values(data.bidStatusCounts));
+    buildGeoChart(data.geoLabels, data.geoCounts);
+  }
+
+  function refreshBidData(dateFrom, dateTo) {
+    const loading = document.getElementById('filterLoading');
+    if (loading) loading.classList.remove('hidden');
+
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo)   params.set('date_to', dateTo);
+
+    fetch('/admin/analytics/bid-data?' + params.toString())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        // ── UPDATE KPI CARDS ──────────────────────────────────────────
+        const updateStat = (selector, value) => {
+          const el = document.querySelector(selector);
+          if (el) {
+            el.setAttribute('data-target', value);
+            animateNumber(el);
+          }
+        };
+
+        // Hero cards
+        updateStat('.bc-kpi:nth-child(1) .stat-number', data.totalProjects);
+        updateStat('.bc-kpi:nth-child(2) .stat-number', data.activeContractors);
+        updateStat('.bc-kpi:nth-child(3) .stat-number', data.totalValueM);
+        updateStat('.bc-kpi:nth-child(4) .stat-number', data.completionRate);
+
+        // ── UPDATE CHARTS ─────────────────────────────────────────────
+        initCharts(data);
+
+        // ── UPDATE BID METRIC CARDS ───────────────────────────────────
+        const metricCards = document.querySelectorAll('.border-l-4.border-l-emerald-400, .border-l-4.border-l-blue-400, .border-l-4.border-l-indigo-400');
+        if (metricCards[0]) {
+          const avgVal = data.avgBidValueK >= 1000 ? (data.avgBidValueK / 1000).toFixed(1) : data.avgBidValueK;
+          updateStat('.border-l-emerald-400 .stat-number', avgVal);
+        }
+        if (metricCards[1]) {
+          updateStat('.border-l-blue-400 .stat-number', data.avgResponseHours);
+        }
+        if (metricCards[2]) {
+          updateStat('.border-l-indigo-400 .stat-number', data.bidWinRate);
+        }
+
+        // ── UPDATE PROGRESS BARS ──────────────────────────────────────
+        const progressBars = document.querySelectorAll('.progress-bar');
+        if (progressBars[0]) progressBars[0].style.width = data.avgBidBarWidth + '%';
+        if (progressBars[1]) progressBars[1].style.width = data.responseBarWidth + '%';
+        if (progressBars[2]) progressBars[2].style.width = data.winRateBarWidth + '%';
+
+        // ── UPDATE RECENT BIDS TABLE ──────────────────────────────────
+        updateRecentBidsTable(data.recentBids, data.avgBidValueK);
+
+        // ── UPDATE OWNER ACTIVITY TABLE ───────────────────────────────
+        updateOwnerActivityTable(data.ownerActivity);
+
+        // ── UPDATE PAYMENT ANALYTICS CARDS ────────────────────────────
+        const paymentCards = document.querySelectorAll('#paymentAnalyticsCards .stat-number');
+        if (paymentCards[0]) updateStat('#paymentAnalyticsCards .stat-number:nth-of-type(1)', data.paymentsReleasedM);
+        if (paymentCards[1]) updateStat('#paymentAnalyticsCards .stat-number:nth-of-type(2)', data.pendingPaymentsM);
+        if (paymentCards[2]) updateStat('#paymentAnalyticsCards .stat-number:nth-of-type(3)', data.avgPaymentDays);
+        if (paymentCards[3]) updateStat('#paymentAnalyticsCards .stat-number:nth-of-type(4)', data.paymentSuccessRate);
+
+        // ── UPDATE DISTRICT CARDS ─────────────────────────────────────
+        const districtCards = document.querySelectorAll('#districtCardsGrid > div');
+        const districtNames = ['Tetuan', 'Tumaga', 'Malagutay', 'Others'];
+        districtCards.forEach((card, i) => {
+          const districtName = districtNames[i];
+          const idx = data.geoLabels ? data.geoLabels.indexOf(districtName) : -1;
+          if (idx !== -1 && data.geoCounts) {
+            const statNum = card.querySelector('.stat-number');
+            if (statNum) {
+              statNum.setAttribute('data-target', data.geoCounts[idx]);
+              animateNumber(statNum);
+            }
+            // Update the value text if it exists
+            const valueText = card.querySelector('.text-[11px].text-gray-500');
+            if (valueText && data.fourDistricts && data.fourDistricts[districtName]) {
+              const value = data.fourDistricts[districtName].value;
+              valueText.textContent = value > 0 ? '₱' + value + 'M contracted' : 'No accepted bids yet';
+            }
+          }
+        });
+
+        if (loading) loading.classList.add('hidden');
+      })
+      .catch(err => { 
+        console.error('Bid data filter error:', err); 
+        if (loading) loading.classList.add('hidden'); 
+      });
+  }
+</script>
 </body>
 </html>

@@ -30,7 +30,7 @@ Route::prefix('admin/notifications')
 
         // Page (already exists — keep your existing view route)
         // Route::get('/', [AdminController::class, 'notificationSettings']);
-    
+
         // Dropdown API
         Route::get('/', [\App\Http\Controllers\Admin\adminNotificationController::class, 'index'])
             ->name('admin.notifications.index');
@@ -69,6 +69,7 @@ Route::prefix('admin/notifications')
 Route::get('/admin/analytics/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('admin.analytics.subscription');
 Route::get('/admin/analytics/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('admin.analytics.subscription.revenue');
 Route::get('/admin/analytics/subscription/subscribers', [analyticsController::class, 'getSubscribersJson'])->name('admin.analytics.subscription.subscribers');
+Route::get('/admin/analytics/subscription-data', [analyticsController::class, 'subscriptionData'])->name('admin.analytics.subscription.data');
 Route::prefix('admin/settings/security')
     ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
     ->group(function () {
@@ -612,12 +613,19 @@ Route::get('/admin/dashboard/data', [dashboardController::class, 'getDashboardDa
 
 // Analytics Routes
 Route::get('/admin/analytics', [analyticsController::class, 'analytics'])->name('admin.analytics');
+Route::get('/admin/analytics/project-data', [analyticsController::class, 'getProjectAnalyticsData'])->name('admin.analytics.project-data');
+Route::get('/admin/analytics/top-contractors-data', [analyticsController::class, 'getTopContractorsData'])->name('admin.analytics.top-contractors-data');
 Route::get('/admin/analytics/timeline', [analyticsController::class, 'getProjectsTimelineData'])->name('admin.analytics.timeline');
 Route::get('/admin/analytics/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('admin.analytics.subscription');
 Route::get('/admin/analytics/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('admin.analytics.subscription.revenue');
 Route::get('/admin/analytics/user-activity', [analyticsController::class, 'userActivityAnalytics'])->name('admin.analytics.userActivity');
+Route::get('/admin/analytics/user-data', [analyticsController::class, 'userData'])->name('admin.analytics.user.data')->middleware([\App\Http\Middleware\AdminAuthMiddleware::class]);
+Route::get('/admin/analytics/user-activity-feed', [analyticsController::class, 'getUserActivityFeed'])->name('admin.analytics.userActivity.feed');
+// Paginated/filterable activity feed (AJAX)
+Route::get('/admin/analytics/user-activity-feed-data', [analyticsController::class, 'getUserActivityFeedData'])->name('admin.analytics.userActivity.feed.data');
 Route::get('/admin/analytics/project-performance', [analyticsController::class, 'projectPerformanceAnalytics'])->name('admin.analytics.projectPerformance');
 Route::get('/admin/analytics/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('admin.analytics.bidCompletion');
+Route::get('/admin/analytics/bid-data', [analyticsController::class, 'getBidAnalyticsData'])->name('admin.analytics.bid.data')->middleware([\App\Http\Middleware\AdminAuthMiddleware::class]);
 Route::get('/admin/analytics/reports', [analyticsController::class, 'reportsAnalytics'])->name('admin.analytics.reports');
 
 // User Management Routes

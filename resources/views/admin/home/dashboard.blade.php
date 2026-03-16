@@ -63,9 +63,6 @@
                 </div>
                 <input type="date" id="customRangeEnd" class="dashboard-date-input bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
               </div>
-              <button type="button" id="customPickerApply" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-semibold bg-gradient-to-br from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 shadow-sm transition">
-                <i class="fi fi-rr-check text-white text-xs"></i> Apply
-              </button>
             </div>
           </div>
 
@@ -163,24 +160,24 @@
             <div class="flex flex-col gap-4">
               <div class="rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 p-4">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-700/80 mb-1">Total active</p>
-                <div class="text-3xl font-bold leading-none text-orange-500 tabular-nums">{{ $activeUsersData['total'] }}</div>
+                <div class="text-3xl font-bold leading-none text-orange-500 tabular-nums total-number">{{ $activeUsersData['total'] }}</div>
               </div>
-              <div class="space-y-2">
-                <div class="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2.5">
+              <div class="space-y-2 stats-list">
+                <div class="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2.5 stat-item">
                   <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                     <i class="fi fi-ss-users-alt text-sm"></i>
                   </div>
                   <div class="min-w-0">
-                    <span class="block text-sm font-bold text-gray-800 tabular-nums">{{ $activeUsersData['contractors'] }}</span>
+                    <span class="block text-sm font-bold text-gray-800 tabular-nums stat-value">{{ $activeUsersData['contractors'] }}</span>
                     <span class="text-[11px] text-gray-500">Contractors</span>
                   </div>
                 </div>
-                <div class="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2.5">
+                <div class="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2.5 stat-item">
                   <div class="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 shrink-0">
                     <i class="fi fi-ss-user text-sm"></i>
                   </div>
                   <div class="min-w-0">
-                    <span class="block text-sm font-bold text-gray-800 tabular-nums">{{ $activeUsersData['property_owners'] }}</span>
+                    <span class="block text-sm font-bold text-gray-800 tabular-nums stat-value">{{ $activeUsersData['property_owners'] }}</span>
                     <span class="text-[11px] text-gray-500">Property Owners</span>
                   </div>
                 </div>

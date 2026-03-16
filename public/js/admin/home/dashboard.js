@@ -163,12 +163,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ── Global Date Filter (inline design; presets + From/To pills + Apply + Reset) ──
+  // ── Global Date Filter (inline design; presets + From/To pills + Auto Apply + Reset) ──
   const globalFilterBtns = document.querySelectorAll('#globalFilterOptions .global-filter-btn');
   const globalFilterLoading = document.getElementById('globalFilterLoading');
   const customRangeStart   = document.getElementById('customRangeStart');
   const customRangeEnd     = document.getElementById('customRangeEnd');
-  const customApplyBtn     = document.getElementById('customPickerApply');
   const resetFilterBtn     = document.getElementById('dashboardResetFilterBtn');
   let currentRange = 'thisyear';
 
@@ -204,15 +203,64 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Seed default values (current year) and From/To constraints
   setDateInputsForRange('thisyear');
+  
+  // Auto-apply custom date filter when dates change
   if (customRangeStart && customRangeEnd) {
+    // Set initial max constraint on end date
+    customRangeEnd.max = getTodayStr();
+    
     customRangeStart.addEventListener('change', function () {
-      if (this.value) customRangeEnd.min = this.value;
-      if (customRangeEnd.value && customRangeEnd.value < this.value) customRangeEnd.value = '';
+      // Set minimum for end date to match start date
+      if (this.value) {
+        customRangeEnd.min = this.value;
+        
+        // If end date is earlier than start date, clear it
+        if (customRangeEnd.value && customRangeEnd.value < this.value) {
+          customRangeEnd.value = '';
+        }
+      }
+      
+      // Auto-apply filter if both dates are selected
+      if (this.value && customRangeEnd.value) {
+        applyCustomDateFilter();
+      }
     });
+    
     customRangeEnd.addEventListener('change', function () {
-      if (this.value) customRangeStart.max = this.value;
-      if (customRangeStart.value && customRangeStart.value > this.value) customRangeStart.value = '';
+      // Set maximum for start date to match end date
+      if (this.value) {
+        customRangeStart.max = this.value;
+        
+        // If start date is later than end date, clear it
+        if (customRangeStart.value && customRangeStart.value > this.value) {
+          customRangeStart.value = '';
+        }
+      }
+      
+      // Auto-apply filter if both dates are selected
+      if (this.value && customRangeStart.value) {
+        applyCustomDateFilter();
+      }
     });
+  }
+
+  // Function to apply custom date filter
+  function applyCustomDateFilter() {
+    const start = customRangeStart.value;
+    const end = customRangeEnd.value;
+
+    if (!start || !end) {
+      return;
+    }
+    
+    if (start > end) {
+      return;
+    }
+
+    globalFilterBtns.forEach(b => b.classList.remove('active'));
+    currentRange = 'custom';
+    if (globalFilterLoading) globalFilterLoading.classList.add('visible');
+    fetchDashboardData('custom', start, end);
   }
 
   // Preset pill buttons
@@ -231,36 +279,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Apply custom range (From/To pills)
-  if (customApplyBtn && customRangeStart && customRangeEnd) {
-    customApplyBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var start = customRangeStart.value;
-      var end   = customRangeEnd.value;
-
-      if (!start || !end) {
-        alert('Please select both a start and an end date.');
-        return;
-      }
-      if (start > end) {
-        alert('"From" date must be before or equal to "To" date.');
-        return;
-      }
-
-      globalFilterBtns.forEach(b => b.classList.remove('active'));
-      currentRange = 'custom';
-      if (globalFilterLoading) globalFilterLoading.classList.add('visible');
-      fetchDashboardData('custom', start, end);
-    });
-  }
-
-  // Reset filter: This Year and refetch
+  // Reset filter: Clear custom dates and reset to This Year
   if (resetFilterBtn) {
     resetFilterBtn.addEventListener('click', function () {
+      // Clear custom dates and keep them empty
+      if (customRangeStart && customRangeEnd) {
+        customRangeStart.value = '';
+        customRangeEnd.value = '';
+        customRangeStart.max = '';
+        customRangeEnd.min = '';
+        customRangeEnd.max = getTodayStr();
+      }
+      
+      // Reset to This Year preset but don't populate the date inputs
       currentRange = 'thisyear';
-      setDateInputsForRange('thisyear');
       globalFilterBtns.forEach(b => b.classList.remove('active'));
-      var firstPreset = document.querySelector('#globalFilterOptions .global-filter-btn[data-range="thisyear"]');
+      const firstPreset = document.querySelector('#globalFilterOptions .global-filter-btn[data-range="thisyear"]');
       if (firstPreset) firstPreset.classList.add('active');
       if (globalFilterLoading) globalFilterLoading.classList.add('visible');
       fetchDashboardData('thisyear');

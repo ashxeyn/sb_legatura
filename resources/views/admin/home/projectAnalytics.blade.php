@@ -58,7 +58,10 @@
               </div>
               <input type="date" id="dateTo" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <button id="applyDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-xs font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+            <button id="resetDateFilter" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5">
+              <i class="fi fi-rr-rotate-left text-[10px]"></i>
+              Reset
+            </button>
           </div>
           <div id="filterLoading" class="hidden flex items-center gap-1 ml-1">
             <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0s"></span>
@@ -396,7 +399,10 @@
                 </div>
                 <input type="date" id="contractorDateTo" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-1.5 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
               </div>
-              <button id="contractorFilterBtn" class="bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-600 transition-colors">Filter</button>
+              <button id="contractorFilterBtn" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors flex items-center gap-1.5">
+                <i class="fi fi-rr-rotate-left text-[10px]"></i>
+                Reset
+              </button>
             </div>
           </div>
         </div>

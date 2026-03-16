@@ -44,7 +44,7 @@
             <button class="date-preset-btn px-2.5 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" data-range="lastyear">Last Year</button>
             <button class="date-preset-btn active px-2.5 py-1 rounded-full border border-indigo-400 text-xs font-semibold text-white bg-indigo-500 transition-all" data-range="all">All Time</button>
           </div>
-          <div class="flex items-center gap-2 ml-auto flex-wrap">
+            <div class="flex items-center gap-2 ml-auto flex-wrap">
             <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
               <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2 self-stretch">
                 <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
@@ -60,7 +60,10 @@
               </div>
               <input type="date" id="globalDateTo" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <button id="applyGlobalDateFilter" class="px-3 py-1.5 bg-indigo-500 text-white text-xs font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Apply</button>
+            <button id="resetGlobalDateFilter" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5">
+              <i class="fi fi-rr-rotate-left text-[10px]"></i>
+              Reset
+            </button>
           </div>
           <div id="filterLoading" class="hidden flex items-center gap-1 ml-1">
             <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0s"></span>
@@ -295,8 +298,11 @@
                 </div>
                 <input type="date" id="activityDateTo" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-1.5 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
               </div>
-              <button id="activityFilterBtn"
-                class="px-3 py-1.5 bg-indigo-500 text-white text-xs font-semibold rounded-lg hover:bg-indigo-600 transition-colors">Filter</button>
+              <button id="activityResetBtn"
+                class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5">
+                <i class="fi fi-rr-rotate-left text-[10px]"></i>
+                Reset
+              </button>
             </div>
           </div>
         </div>
@@ -474,8 +480,19 @@
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo)   params.set('date_to', dateTo);
 
-    fetch('/admin/analytics/user-data?' + params.toString())
-      .then(r => r.json())
+    fetch('/admin/analytics/user-data?' + params.toString(), {
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => {
+        const ct = r.headers.get('content-type') || '';
+        if (!r.ok) return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t); });
+        if (!ct.includes('application/json')) return r.text().then(t => { console.error('Non-JSON response:', t); throw new Error('Non-JSON response'); });
+        return r.json();
+      })
       .then(data => {
         const um = data.userMetrics;
         const el = id => document.getElementById(id);
@@ -518,14 +535,6 @@
     });
   });
 
-  document.getElementById('applyGlobalDateFilter')?.addEventListener('click', function () {
-    document.querySelectorAll('.date-preset-btn').forEach(b => {
-      b.classList.remove('active', 'border-indigo-400', 'text-white', 'bg-indigo-500', 'font-semibold');
-      b.classList.add('border-gray-200', 'text-gray-500', 'font-medium');
-    });
-    refreshUserData(document.getElementById('globalDateFrom').value, document.getElementById('globalDateTo').value);
-  });
-
 
   // ── RECENT ACTIVITY FEED ────────────────────────────────────────────
   let activityPage = 1;
@@ -545,8 +554,19 @@
     const panel = document.getElementById('activityPanel');
     if (panel) panel.style.opacity = '0.5';
 
-    fetch('/admin/analytics/user-activity-feed?' + params.toString())
-      .then(r => r.json())
+    fetch('/admin/analytics/user-activity-feed-data?' + params.toString(), {
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => {
+        const ct = r.headers.get('content-type') || '';
+        if (!r.ok) return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t); });
+        if (!ct.includes('application/json')) return r.text().then(t => { console.error('Non-JSON response:', t); throw new Error('Non-JSON response'); });
+        return r.json();
+      })
       .then(data => {
         renderActivityTable(data);
         renderActivityPagination(data);
@@ -620,13 +640,97 @@
     wrap.innerHTML = html;
   }
 
-  document.getElementById('activityFilterBtn')?.addEventListener('click', () => fetchActivity(1));
+  // Auto-apply global date inputs with debounce and enforce to >= from
+  let globalDateTimer;
+  const scheduleGlobalRefresh = () => {
+    clearTimeout(globalDateTimer);
+    globalDateTimer = setTimeout(() => {
+      const from = document.getElementById('globalDateFrom')?.value || '';
+      const to   = document.getElementById('globalDateTo')?.value || '';
+      refreshUserData(from, to);
+    }, 450);
+  };
+
+  const gFromEl = document.getElementById('globalDateFrom');
+  const gToEl   = document.getElementById('globalDateTo');
+  if (gFromEl && gToEl) {
+    gFromEl.addEventListener('input', () => {
+      if (gToEl.value && gFromEl.value && gToEl.value < gFromEl.value) {
+        gToEl.value = gFromEl.value;
+      }
+      gToEl.min = gFromEl.value || '';
+      // clear preset active state when custom dates selected
+      document.querySelectorAll('.date-preset-btn').forEach(b => {
+        b.classList.remove('active','border-indigo-400','text-white','bg-indigo-500','font-semibold');
+        b.classList.add('border-gray-200','text-gray-500','font-medium');
+      });
+      scheduleGlobalRefresh();
+    });
+    gToEl.addEventListener('input', () => {
+      if (gFromEl.value && gToEl.value && gToEl.value < gFromEl.value) {
+        gFromEl.value = gToEl.value;
+      }
+      scheduleGlobalRefresh();
+    });
+  }
+
+  // Reset global filter (replaces Apply)
+  document.getElementById('resetGlobalDateFilter')?.addEventListener('click', function () {
+    if (gFromEl) gFromEl.value = '';
+    if (gToEl) { gToEl.value = ''; gToEl.min = ''; }
+    document.querySelectorAll('.date-preset-btn').forEach(b => {
+      b.classList.remove('active','border-indigo-400','text-white','bg-indigo-500','font-semibold');
+      b.classList.add('border-gray-200','text-gray-500','font-medium');
+    });
+    const allBtn = document.querySelector('.date-preset-btn[data-range="all"]');
+    if (allBtn) {
+      allBtn.classList.remove('border-gray-200','text-gray-500','font-medium');
+      allBtn.classList.add('active','border-indigo-400','text-white','bg-indigo-500','font-semibold');
+    }
+    refreshUserData('', '');
+  });
+
+  // ── RECENT ACTIVITY FEED: auto-apply date filters and Reset button
+  let activityDateTimer;
+  const scheduleActivityFetch = () => {
+    clearTimeout(activityDateTimer);
+    activityDateTimer = setTimeout(() => fetchActivity(1), 450);
+  };
+
+  const aFromEl = document.getElementById('activityDateFrom');
+  const aToEl   = document.getElementById('activityDateTo');
+  if (aFromEl && aToEl) {
+    aFromEl.addEventListener('input', () => {
+      if (aToEl.value && aFromEl.value && aToEl.value < aFromEl.value) {
+        aToEl.value = aFromEl.value;
+      }
+      aToEl.min = aFromEl.value || '';
+      scheduleActivityFetch();
+    });
+    aToEl.addEventListener('input', () => {
+      if (aFromEl.value && aToEl.value && aToEl.value < aFromEl.value) {
+        aFromEl.value = aToEl.value;
+      }
+      scheduleActivityFetch();
+    });
+  }
+
+  // Reset activity filters (replaces Filter button)
+  document.getElementById('activityResetBtn')?.addEventListener('click', () => {
+    const s = document.getElementById('activitySearch'); if (s) s.value = '';
+    if (aFromEl) { aFromEl.value = ''; aFromEl.min = ''; }
+    if (aToEl)   { aToEl.value = ''; aToEl.min = ''; }
+    fetchActivity(1);
+  });
 
   let activitySearchTimer;
   document.getElementById('activitySearch')?.addEventListener('input', function () {
     clearTimeout(activitySearchTimer);
     activitySearchTimer = setTimeout(() => fetchActivity(1), 450);
   });
+
+  // mark that inline filter handlers are bound so bundled JS can skip rebinding
+  try { document.body.dataset.uaFiltersBound = '1'; } catch (e) { /* ignore */ }
 </script>
 
 <script src="{{ asset('js/admin/home/userActivity_Analytics.js') }}" defer></script>

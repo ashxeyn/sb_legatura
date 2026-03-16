@@ -602,7 +602,82 @@ document.addEventListener('DOMContentLoaded', () => {
   initFilterControls();
   initExport();
 
-  // ── Global Date Filter ─────────────────────────────────────────────────
+  // ── Global Date Filter — AUTOMATIC FILTERING + VALIDATION ─────────────────────────────────────────────────
+  const globalDateFrom = document.getElementById('globalDateFrom');
+  const globalDateTo = document.getElementById('globalDateTo');
+  
+  // Helper to get today's date string
+  function getTodayStr() {
+    const now = new Date();
+    return now.toISOString().split('T')[0];
+  }
+  
+  // Set initial max constraint on "To" date
+  if (globalDateTo) {
+    globalDateTo.max = getTodayStr();
+  }
+  
+  // Auto-apply filter when dates change
+  if (globalDateFrom) {
+    globalDateFrom.addEventListener('change', function () {
+      // Set minimum for "To" date to match "From" date
+      if (this.value && globalDateTo) {
+        globalDateTo.min = this.value;
+        
+        // If "To" date is earlier than "From" date, clear it
+        if (globalDateTo.value && globalDateTo.value < this.value) {
+          globalDateTo.value = '';
+        }
+      }
+      
+      // Auto-apply filter if both dates are selected
+      if (this.value && globalDateTo && globalDateTo.value) {
+        applyCustomDateFilter();
+      }
+    });
+  }
+  
+  if (globalDateTo) {
+    globalDateTo.addEventListener('change', function () {
+      // Set maximum for "From" date to match "To" date
+      if (this.value && globalDateFrom) {
+        globalDateFrom.max = this.value;
+        
+        // If "From" date is later than "To" date, clear it
+        if (globalDateFrom.value && globalDateFrom.value > this.value) {
+          globalDateFrom.value = '';
+        }
+      }
+      
+      // Auto-apply filter if both dates are selected
+      if (this.value && globalDateFrom && globalDateFrom.value) {
+        applyCustomDateFilter();
+      }
+    });
+  }
+  
+  // Function to apply custom date filter
+  function applyCustomDateFilter() {
+    const from = globalDateFrom.value;
+    const to = globalDateTo.value;
+    
+    if (!from || !to) {
+      return;
+    }
+    
+    if (from > to) {
+      return;
+    }
+    
+    // Deactivate all preset buttons
+    document.querySelectorAll('.date-preset-btn').forEach(b => {
+      b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+      b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+    });
+    
+    refreshSubscriptionData(from, to);
+  }
+
   function getDateRange(preset) {
     const now = new Date();
     let from = '', to = now.toISOString().split('T')[0];
@@ -696,21 +771,51 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       this.classList.add('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
       this.classList.remove('border-gray-200', 'text-gray-600', 'font-medium');
+      
+      // Clear custom date inputs when preset is selected
+      if (globalDateFrom) {
+        globalDateFrom.value = '';
+        globalDateFrom.max = '';
+      }
+      if (globalDateTo) {
+        globalDateTo.value = '';
+        globalDateTo.min = '';
+        globalDateTo.max = getTodayStr();
+      }
+      
       const range = getDateRange(this.dataset.range);
-      document.getElementById('globalDateFrom').value = range.from;
-      document.getElementById('globalDateTo').value   = range.to;
       refreshSubscriptionData(range.from, range.to);
     });
   });
 
-  document.getElementById('applyGlobalDateFilter')?.addEventListener('click', function () {
-    document.querySelectorAll('.date-preset-btn').forEach(b => {
-      b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
-      b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+  // Reset button
+  const resetBtn = document.getElementById('resetGlobalDateFilter');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function () {
+      // Clear custom dates
+      if (globalDateFrom) {
+        globalDateFrom.value = '';
+        globalDateFrom.max = '';
+      }
+      if (globalDateTo) {
+        globalDateTo.value = '';
+        globalDateTo.min = '';
+        globalDateTo.max = getTodayStr();
+      }
+      
+      // Reset to "All Time" preset
+      document.querySelectorAll('.date-preset-btn').forEach(b => {
+        b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+        b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+      });
+      
+      const allTimeBtn = document.querySelector('.date-preset-btn[data-range="all"]');
+      if (allTimeBtn) {
+        allTimeBtn.classList.add('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+        allTimeBtn.classList.remove('border-gray-200', 'text-gray-600', 'font-medium');
+      }
+      
+      refreshSubscriptionData('', '');
     });
-    refreshSubscriptionData(
-      document.getElementById('globalDateFrom').value,
-      document.getElementById('globalDateTo').value
-    );
-  });
+  }
 });

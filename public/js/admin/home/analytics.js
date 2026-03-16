@@ -19,6 +19,15 @@ document.addEventListener('DOMContentLoaded', function () {
     borderColor: '#e5e7eb', borderWidth: 1, padding: 12, displayColors: true
   };
 
+  // Default fetch options for AJAX calls so middleware recognizes them as AJAX
+  const defaultFetchOptions = {
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json'
+    },
+    credentials: 'same-origin'
+  };
+
   function pctLabel(ctx) {
     const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
     const pct   = ((ctx.parsed / total) * 100).toFixed(1);
@@ -201,8 +210,21 @@ document.addEventListener('DOMContentLoaded', function () {
   function fetchTimelineData(range) {
     const container = document.querySelector('.timeline-chart-container');
     if (container) container.style.opacity = '0.5';
-    fetch('/admin/analytics/timeline?range=' + encodeURIComponent(range))
-      .then(r => r.json())
+    fetch('/admin/analytics/timeline?range=' + encodeURIComponent(range), defaultFetchOptions)
+      .then(async r => {
+        const ct = (r.headers.get('content-type') || '');
+        if (!r.ok) {
+          const txt = await r.text();
+          console.error('Timeline HTTP error', r.status, txt);
+          throw new Error('Timeline HTTP error ' + r.status);
+        }
+        if (!ct.includes('application/json')) {
+          const txt = await r.text();
+          console.error('Timeline returned non-JSON response:', txt);
+          throw new Error('Non-JSON response');
+        }
+        return r.json();
+      })
       .then(data => {
         if (projectsTimelineChart) { projectsTimelineChart.data.labels = data.months; projectsTimelineChart.data.datasets[0].data = data.newProjects; projectsTimelineChart.data.datasets[1].data = data.completedProjects; projectsTimelineChart.update(); }
         const rangeEl = document.querySelector('.timeline-date-range');
@@ -237,12 +259,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  const firstPerfCard = document.querySelector('.perf-card');
+  const firstPerfCard = document.querySelector('.an-kpi');
   if (firstPerfCard) {
     const obs = new IntersectionObserver(entries => {
       entries.forEach(entry => { if (entry.isIntersecting) { animateCounters(); animateProgressBars(); obs.disconnect(); } });
     }, { threshold: 0.1 });
     obs.observe(firstPerfCard);
+  } else {
+    // Fallback: animate immediately when KPI section isn't available for visibility detection
+    animateCounters();
+    animateProgressBars();
   }
 
 
@@ -268,13 +294,30 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function refreshAllData(dateFrom, dateTo) {
+    console.log('refreshAllData called with:', { dateFrom, dateTo });
     showFilterLoading(true);
     const params = new URLSearchParams();
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo)   params.set('date_to', dateTo);
 
-    fetch('/admin/analytics/project-data?' + params.toString())
-      .then(r => r.json())
+    const url = '/admin/analytics/project-data?' + params.toString();
+    console.log('Fetching from URL:', url);
+
+    fetch(url, defaultFetchOptions)
+      .then(async r => {
+        const ct = (r.headers.get('content-type') || '');
+        if (!r.ok) {
+          const txt = await r.text();
+          console.error('Project-data HTTP error', r.status, txt);
+          throw new Error('Project-data HTTP error ' + r.status);
+        }
+        if (!ct.includes('application/json')) {
+          const txt = await r.text();
+          console.error('Project-data returned non-JSON response:', txt);
+          throw new Error('Non-JSON response');
+        }
+        return r.json();
+      })
       .then(data => {
         // -- Overview charts
         const pa = data.projectsAnalytics;
@@ -310,8 +353,8 @@ document.addEventListener('DOMContentLoaded', function () {
         updateContractorsTable(data.topContractors);
 
         showFilterLoading(false);
-      })
-      .catch(err => { console.error('Filter fetch error:', err); showFilterLoading(false); });
+        })
+        .catch(err => { console.error('Filter fetch error:', err); showFilterLoading(false); });
   }
 
   // DOM updaters for non-chart elements
@@ -348,23 +391,17 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateKpiCards(pp, bm) {
     const counters = document.querySelectorAll('.perf-counter');
     const targets  = [pp.total_projects, pp.completed_projects, pp.total_bids, pp.avg_duration, pp.completion_rate, pp.on_time_rate];
+    // Set dataset targets and reset visible text for animation
     counters.forEach((el, i) => {
-      if (targets[i] !== undefined) { el.dataset.target = targets[i]; el.textContent = targets[i]; }
+      if (targets[i] !== undefined) { el.dataset.target = targets[i]; el.textContent = '0'; }
     });
 
-    // Update contracted value text
-    const valueEl = document.querySelector('.perf-card:nth-child(4) .text-3xl');
-    if (valueEl && pp.total_value !== undefined) {
-      valueEl.textContent = '₱' + (pp.total_value / 1000000).toFixed(1) + 'M';
-    }
-
-    // Update hero card progress bars
-    const heroFills = document.querySelectorAll('.perf-card .progress-bar-fill');
+    // Update top KPI progress bars (analytics uses .an-kpi for hero cards)
+    const heroFills = document.querySelectorAll('.an-kpi .progress-bar-fill');
     const heroWidths = [
-      Math.min(100, pp.total_projects),
-      pp.completion_rate,
-      bm ? bm.acceptance_rate : null,
-      Math.min(100, Math.round(pp.total_value / 10000000 * 100))
+      Math.min(100, pp.total_projects || 0),
+      pp.completion_rate !== undefined ? pp.completion_rate : 0,
+      bm && bm.acceptance_rate !== undefined ? bm.acceptance_rate : 0
     ];
     heroFills.forEach((bar, i) => {
       if (heroWidths[i] !== null && heroWidths[i] !== undefined) {
@@ -373,12 +410,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    // Update metric-sub progress bars
-    const metricFills = document.querySelectorAll('.metric-sub .progress-bar-fill');
+    // Update metric detail progress bars (.an-metric)
+    const metricFills = document.querySelectorAll('.an-metric .progress-bar-fill');
     const metricWidths = [
-      Math.min(100, Math.round(pp.avg_duration)),
-      pp.completion_rate,
-      pp.on_time_rate
+      Math.min(100, Math.round(pp.avg_duration || 0)),
+      pp.completion_rate !== undefined ? pp.completion_rate : 0,
+      pp.on_time_rate !== undefined ? pp.on_time_rate : 0
     ];
     metricFills.forEach((bar, i) => {
       if (metricWidths[i] !== undefined) {
@@ -386,6 +423,10 @@ document.addEventListener('DOMContentLoaded', function () {
         bar.style.width = metricWidths[i] + '%';
       }
     });
+
+    // Trigger animations after dataset values updated
+    animateCounters();
+    animateProgressBars();
   }
 
   function updateBidPills(bm) {
@@ -439,8 +480,89 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
   // ═══════════════════════════════════════════════════════════════════
-  // DATE FILTER EVENT LISTENERS
+  // DATE FILTER EVENT LISTENERS — AUTOMATIC FILTERING + VALIDATION
   // ═══════════════════════════════════════════════════════════════════
+  const dateFromInput = document.getElementById('dateFrom');
+  const dateToInput = document.getElementById('dateTo');
+
+  // Helper to get today's date string
+  function getTodayStr() {
+    const now = new Date();
+    return now.toISOString().split('T')[0];
+  }
+
+  // Set initial max constraint on "To" date
+  if (dateToInput) {
+    dateToInput.max = getTodayStr();
+  }
+
+  // Auto-apply filter when dates change
+  if (dateFromInput) {
+    dateFromInput.addEventListener('change', function () {
+      // Set minimum for "To" date to match "From" date
+      if (this.value && dateToInput) {
+        dateToInput.min = this.value;
+
+        // If "To" date is earlier than "From" date, clear it
+        if (dateToInput.value && dateToInput.value < this.value) {
+          dateToInput.value = '';
+        }
+      }
+
+      // Auto-apply filter if both dates are selected
+      if (this.value && dateToInput && dateToInput.value) {
+        applyCustomDateFilter();
+      }
+    });
+  }
+
+  if (dateToInput) {
+    dateToInput.addEventListener('change', function () {
+      // Set maximum for "From" date to match "To" date
+      if (this.value && dateFromInput) {
+        dateFromInput.max = this.value;
+
+        // If "From" date is later than "To" date, clear it
+        if (dateFromInput.value && dateFromInput.value > this.value) {
+          dateFromInput.value = '';
+        }
+      }
+
+      // Auto-apply filter if both dates are selected
+      if (this.value && dateFromInput && dateFromInput.value) {
+        applyCustomDateFilter();
+      }
+    });
+  }
+
+  // Function to apply custom date filter
+  function applyCustomDateFilter() {
+    const from = dateFromInput.value;
+    const to = dateToInput.value;
+
+    console.log('Applying custom date filter:', { from, to });
+
+    if (!from || !to) {
+      console.log('Missing dates, not applying filter');
+      return;
+    }
+
+    if (from > to) {
+      console.log('Invalid date range, not applying filter');
+      return;
+    }
+
+    // Deactivate all preset buttons
+    document.querySelectorAll('.date-preset-btn').forEach(b => {
+      b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+      b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
+    });
+
+    console.log('Calling refreshAllData with:', { from, to });
+    refreshAllData(from, to);
+  }
+
+  // Preset buttons
   document.querySelectorAll('.date-preset-btn').forEach(btn => {
     btn.addEventListener('click', function () {
       document.querySelectorAll('.date-preset-btn').forEach(b => {
@@ -451,43 +573,148 @@ document.addEventListener('DOMContentLoaded', function () {
       this.classList.remove('border-gray-200', 'text-gray-600', 'font-medium');
 
       const range = getDateRange(this.dataset.range);
-      document.getElementById('dateFrom').value = range.from;
-      document.getElementById('dateTo').value   = range.to;
+      if (dateFromInput) dateFromInput.value = range.from;
+      if (dateToInput) dateToInput.value = range.to;
       refreshAllData(range.from, range.to);
     });
   });
 
-  const applyBtn = document.getElementById('applyDateFilter');
-  if (applyBtn) {
-    applyBtn.addEventListener('click', function () {
+  // Reset button
+  const resetBtn = document.getElementById('resetDateFilter');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function () {
+      // Clear custom dates
+      if (dateFromInput) {
+        dateFromInput.value = '';
+        dateFromInput.max = '';
+      }
+      if (dateToInput) {
+        dateToInput.value = '';
+        dateToInput.min = '';
+        dateToInput.max = getTodayStr();
+      }
+
+      // Reset to "All Time" preset
       document.querySelectorAll('.date-preset-btn').forEach(b => {
         b.classList.remove('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
         b.classList.add('border-gray-200', 'text-gray-600', 'font-medium');
       });
-      refreshAllData(document.getElementById('dateFrom').value, document.getElementById('dateTo').value);
+
+      const allTimeBtn = document.querySelector('.date-preset-btn[data-range="all"]');
+      if (allTimeBtn) {
+        allTimeBtn.classList.add('active', 'border-indigo-500', 'text-white', 'bg-indigo-500', 'font-semibold');
+        allTimeBtn.classList.remove('border-gray-200', 'text-gray-600', 'font-medium');
+      }
+
+      refreshAllData('', '');
     });
   }
 
 
   // ═══════════════════════════════════════════════════════════════════
-  // TOP CONTRACTORS — OWN SEARCH + DATE FILTER
+  // TOP CONTRACTORS — AUTOMATIC SEARCH + DATE FILTER
   // ═══════════════════════════════════════════════════════════════════
+  const contractorSearch = document.getElementById('contractorSearch');
+  const contractorDateFrom = document.getElementById('contractorDateFrom');
+  const contractorDateTo = document.getElementById('contractorDateTo');
   const contractorFilterBtn = document.getElementById('contractorFilterBtn');
+
+  // Set initial max constraint on contractor "To" date
+  if (contractorDateTo) {
+    contractorDateTo.max = getTodayStr();
+  }
+
+  // Auto-apply contractor filter
+  function applyContractorFilter() {
+    const search = contractorSearch ? contractorSearch.value : '';
+    const dateFrom = contractorDateFrom ? contractorDateFrom.value : '';
+    const dateTo = contractorDateTo ? contractorDateTo.value : '';
+
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo) params.set('date_to', dateTo);
+
+    fetch('/admin/analytics/top-contractors-data?' + params.toString(), defaultFetchOptions)
+      .then(async r => {
+        const ct = (r.headers.get('content-type') || '');
+        if (!r.ok) {
+          const txt = await r.text();
+          console.error('Contractors HTTP error', r.status, txt);
+          throw new Error('Contractors HTTP error ' + r.status);
+        }
+        if (!ct.includes('application/json')) {
+          const txt = await r.text();
+          console.error('Contractor filter returned non-JSON response:', txt);
+          throw new Error('Non-JSON response');
+        }
+        return r.json();
+      })
+      .then(data => { if (data) updateContractorsTable(data.topContractors); })
+      .catch(err => console.error('Contractor filter error:', err));
+  }
+
+  // Search input - auto filter on typing
+  if (contractorSearch) {
+    let searchTimeout;
+    contractorSearch.addEventListener('input', function () {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        applyContractorFilter();
+      }, 500); // Debounce 500ms
+    });
+  }
+
+  // Date validation and auto-filtering
+  if (contractorDateFrom) {
+    contractorDateFrom.addEventListener('change', function () {
+      if (this.value && contractorDateTo) {
+        contractorDateTo.min = this.value;
+
+        if (contractorDateTo.value && contractorDateTo.value < this.value) {
+          contractorDateTo.value = '';
+        }
+      }
+
+      if (this.value && contractorDateTo && contractorDateTo.value) {
+        applyContractorFilter();
+      }
+    });
+  }
+
+  if (contractorDateTo) {
+    contractorDateTo.addEventListener('change', function () {
+      if (this.value && contractorDateFrom) {
+        contractorDateFrom.max = this.value;
+
+        if (contractorDateFrom.value && contractorDateFrom.value > this.value) {
+          contractorDateFrom.value = '';
+        }
+      }
+
+      if (this.value && contractorDateFrom && contractorDateFrom.value) {
+        applyContractorFilter();
+      }
+    });
+  }
+
+  // Reset button for contractor filter
   if (contractorFilterBtn) {
     contractorFilterBtn.addEventListener('click', function () {
-      const search   = document.getElementById('contractorSearch').value;
-      const dateFrom = document.getElementById('contractorDateFrom').value;
-      const dateTo   = document.getElementById('contractorDateTo').value;
+      // Clear all filters
+      if (contractorSearch) contractorSearch.value = '';
+      if (contractorDateFrom) {
+        contractorDateFrom.value = '';
+        contractorDateFrom.max = '';
+      }
+      if (contractorDateTo) {
+        contractorDateTo.value = '';
+        contractorDateTo.min = '';
+        contractorDateTo.max = getTodayStr();
+      }
 
-      const params = new URLSearchParams();
-      if (search)   params.set('search', search);
-      if (dateFrom) params.set('date_from', dateFrom);
-      if (dateTo)   params.set('date_to', dateTo);
-
-      fetch('/admin/analytics/top-contractors-data?' + params.toString())
-        .then(r => r.json())
-        .then(data => { updateContractorsTable(data.topContractors); })
-        .catch(err => console.error('Contractor filter error:', err));
+      // Reload with no filters
+      applyContractorFilter();
     });
   }
 
