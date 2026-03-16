@@ -108,9 +108,14 @@ class profileController extends Controller
                 $file = $request->file('profile_pic');
                 $filename = time() . '_profile_' . $file->getClientOriginalName();
                 $path = $file->storeAs('profiles', $filename, 'public');
-                DB::table('users')->where('user_id', $userId)->update(['profile_pic' => $path]);
-                // Keep property_owners in sync
-                DB::table('property_owners')->where('user_id', $userId)->update(['profile_pic' => $path]);
+                // Only update users table if the column exists in this schema
+                if (Schema::hasColumn('users', 'profile_pic')) {
+                    DB::table('users')->where('user_id', $userId)->update(['profile_pic' => $path]);
+                }
+                // Always keep property_owners in sync (property_owners stores owner-specific images)
+                if (Schema::hasTable('property_owners') && Schema::hasColumn('property_owners', 'profile_pic')) {
+                    DB::table('property_owners')->where('user_id', $userId)->update(['profile_pic' => $path]);
+                }
                 \Log::info('profileController.update stored profile_pic', ['user_id' => $userId, 'path' => $path]);
             }
             // Handle cover photo upload if present
@@ -118,9 +123,14 @@ class profileController extends Controller
                 $file = $request->file('cover_photo');
                 $filename = time() . '_cover_' . $file->getClientOriginalName();
                 $path = $file->storeAs('cover_photos', $filename, 'public');
-                DB::table('users')->where('user_id', $userId)->update(['cover_photo' => $path]);
-                // Keep property_owners in sync
-                DB::table('property_owners')->where('user_id', $userId)->update(['cover_photo' => $path]);
+                // Only update users table if the column exists in this schema
+                if (Schema::hasColumn('users', 'cover_photo')) {
+                    DB::table('users')->where('user_id', $userId)->update(['cover_photo' => $path]);
+                }
+                // Always keep property_owners in sync (property_owners stores owner-specific images)
+                if (Schema::hasTable('property_owners') && Schema::hasColumn('property_owners', 'cover_photo')) {
+                    DB::table('property_owners')->where('user_id', $userId)->update(['cover_photo' => $path]);
+                }
                 \Log::info('profileController.update stored cover_photo', ['user_id' => $userId, 'path' => $path]);
             }
 
@@ -666,7 +676,7 @@ class profileController extends Controller
                 $contractorUserId = DB::table('property_owners')
                     ->where('owner_id', $contractor->owner_id)
                     ->value('user_id');
-                
+
                 $statsQuery->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                            ->where('pr.selected_contractor_id', $contractor->contractor_id)
                            ->where('r.reviewee_user_id', $contractorUserId);

@@ -505,22 +505,22 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   // Derive the initial role from the prop, or fall back to userData fields
   const deriveInitialRole = (): string | null => {
     if (activeRole) return String(activeRole).toLowerCase();
-    
+
     const ut = String(userData?.user_type || '').toLowerCase();
     const pr = String(userData?.preferred_role || '').toLowerCase();
-    
+
     // Priority: preferred_role > user_type
     if (pr) {
       if (pr.includes('contractor')) return 'contractor';
       if (pr.includes('owner') || pr.includes('property')) return 'owner';
     }
-    
+
     // Fallback to user_type
     if (ut === 'contractor') return 'contractor';
     if (ut === 'both') return 'contractor'; // default for 'both' accounts to show contractor tabs
     if (ut === 'staff' || ut === 'owner_staff') return 'contractor';
     if (ut === 'property_owner' || ut === 'owner') return 'owner';
-    
+
     return ut || null;
   };
 
@@ -928,7 +928,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         }
         if (typeof data.projects_done !== 'undefined') setProjectsDone(Number(data.projects_done));
         if (typeof data.ongoing_projects !== 'undefined') setOngoingProjects(Number(data.ongoing_projects));
-        
+
         // Update activeRoleState based on API response
         // Priority: current_role > data.role > user.preferred_role > resolved role
         let finalRole = activeRoleState;
@@ -941,7 +941,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           if (pr.includes('contractor')) finalRole = 'contractor';
           else if (pr.includes('owner') || pr.includes('property')) finalRole = 'owner';
         }
-        
+
         if (finalRole && finalRole !== activeRoleState) {
           setActiveRoleState(finalRole);
         }

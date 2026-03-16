@@ -36,6 +36,8 @@ export class storage_service {
         console.log('User data retrieved from storage:', user_data.username);
         return user_data;
       }
+      // ensure in-memory cache is cleared when nothing is stored
+      storage_service._cachedUser = null;
       return null;
     } catch (error) {
       console.error('Error retrieving user data:', error);
@@ -67,7 +69,9 @@ export class storage_service {
         STORAGE_KEYS.AUTH_TOKEN,
         STORAGE_KEYS.IS_AUTHENTICATED,
       ]);
-      console.log('User data cleared from storage');
+      // Clear in-memory cache as well so subsequent sync reads don't return stale data
+      storage_service._cachedUser = null;
+      console.log('User data cleared from storage and in-memory cache');
       return true;
     } catch (error) {
       console.error('Error clearing user data:', error);
