@@ -75,12 +75,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   const insets = useSafeAreaInsets();
   const targetRole = (targetRoleProp ?? route?.params?.targetRole ?? 'contractor') as 'contractor' | 'owner';
   const handleBack = () => {
-    console.log('[addRoleRegistration] Back pressed, formStep:', formStep);
     if (formStep > 1) {
-      console.log('[addRoleRegistration] Decrementing formStep:', formStep - 1);
       setFormStep(formStep - 1);
     } else {
-      console.log('[addRoleRegistration] Calling onBack or navigation.goBack');
       if (onBack) {
         onBack();
       } else if (navigation?.goBack) {
@@ -192,9 +189,11 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
       
       try {
         const res = await role_service.get_switch_form_data();
+        
         if (res?.success) {
           const root = res?.data || {};
           const d = root?.form_data || root || {};
+          
           setDropdowns({
             contractor_types: d.contractor_types || [],
             occupations: d.occupations || [],
@@ -205,18 +204,41 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
           // Prefill fields from existing_data similar to authController
           const existing = root?.existing_data || {};
-          setExistingData(existing);
+          
+          // If existing_data is empty, try to fetch user data as fallback
+          let finalExisting = existing;
+          if (!existing || !existing.user || Object.keys(existing).length === 0) {
+            try {
+              const userRes = await api_request('/api/user', { method: 'GET' });
+              if (userRes?.success && userRes.data) {
+                // The /api/user response structure might be nested
+                const userData = userRes.data.user || userRes.data.data?.user || userRes.data;
+                const propertyOwnerData = userRes.data.property_owner || userRes.data.data?.property_owner || null;
+                
+                finalExisting = {
+                  user: userData,
+                  property_owner: propertyOwnerData,
+                };
+              }
+            } catch (fallbackError) {
+              console.error('[addRoleRegistration] Fallback to /api/user failed:', fallbackError);
+            }
+          }
+          
+          setExistingData(finalExisting);
           if (targetRole === 'contractor') {
             // no longer prefilling company_phone (DB no longer stores this column)
             // Authorized representative fields removed — owner info from users table is used automatically
             // Populate owner name for display (read-only)
-            const u = existing?.user || {};
-            const po = existing?.property_owner || {};
-            setOwnerName({
+            const u = finalExisting?.user || {};
+            const po = finalExisting?.property_owner || {};
+            
+            const ownerNameData = {
               first_name: u.first_name || po.first_name || '',
               middle_name: u.middle_name || po.middle_name || '',
               last_name: u.last_name || po.last_name || '',
-            });
+            };
+            setOwnerName(ownerNameData);
           } else if (targetRole === 'owner') {
             const user = existing?.user || {};
             const cu = existing?.contractor_user || {};

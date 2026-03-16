@@ -101,9 +101,29 @@
         let existing: any = {};
         try {
           const switchRes = await api_request('/api/role/switch-form', { method: 'GET' });
+          
           if (switchRes?.success && switchRes.data) {
-            raw = switchRes.data.form_data ?? switchRes.data;
-            existing = switchRes.data.existing_data ?? {};
+            // The backend returns: { success: true, form_data: {...}, existing_data: {...} }
+            // But api_request wraps it as: { success: true, data: { success: true, form_data: {...}, existing_data: {...} } }
+            
+            // Try multiple possible structures
+            if (switchRes.data.form_data) {
+              // Structure: { success: true, data: { form_data: {...}, existing_data: {...} } }
+              raw = switchRes.data.form_data;
+              existing = switchRes.data.existing_data ?? {};
+            } else if (switchRes.data.data && switchRes.data.data.form_data) {
+              // Structure: { success: true, data: { data: { form_data: {...} } } }
+              raw = switchRes.data.data.form_data;
+              existing = switchRes.data.data.existing_data ?? {};
+            } else if (switchRes.data.contractor_types) {
+              // Structure: { success: true, data: { contractor_types: [...] } }
+              raw = switchRes.data;
+              existing = {};
+            } else {
+              // Last resort: use data as-is
+              raw = switchRes.data;
+              existing = {};
+            }
           } else {
             // Fallback to public signup-form for dropdowns
             const formRes = await api_request('/api/signup-form', { method: 'GET' });
@@ -115,6 +135,7 @@
             if (userRes?.success && userRes.data) existing = { user: userRes.data.user };
           }
         } catch (e) {
+          console.error('[role_service] Error fetching switch-form data:', e);
           // Silent fallback chain
           try {
             const formRes = await api_request('/api/signup-form', { method: 'GET' });
@@ -127,9 +148,34 @@
         }
 
         if (raw && typeof raw === 'object') {
+          // If contractor_types is empty, try to fetch from public signup-form as fallback
+          if (!raw.contractor_types || !Array.isArray(raw.contractor_types) || raw.contractor_types.length === 0) {
+            try {
+              const fallbackRes = await api_request('/api/signup-form', { method: 'GET' });
+              if (fallbackRes?.success && fallbackRes.data) {
+                // The signup-form response structure is: { success: true, data: { contractor_types: [...] } }
+                // So we need to access fallbackRes.data.data or fallbackRes.data
+                const fallbackData = fallbackRes.data.data || fallbackRes.data;
+                
+                // Merge the fallback data with existing raw data
+                raw = {
+                  ...raw,
+                  contractor_types: fallbackData.contractor_types || raw.contractor_types,
+                  occupations: fallbackData.occupations || raw.occupations,
+                  valid_ids: fallbackData.valid_ids || raw.valid_ids,
+                  picab_categories: fallbackData.picab_categories || raw.picab_categories,
+                };
+              }
+            } catch (fallbackError) {
+              console.error('[role_service] Fallback to signup-form failed:', fallbackError);
+            }
+          }
+          
           // Normalize lists to a consistent shape { id, name }
           const normList = (list: any[], idKey: string, nameKeys: string[]): any[] => {
-            if (!Array.isArray(list)) return [];
+            if (!Array.isArray(list)) {
+              return [];
+            }
             return list.map((item: any) => {
               const id = item?.[idKey] ?? item?.id;
               let name = '';

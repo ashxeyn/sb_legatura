@@ -37,13 +37,15 @@ Route::get('/contractor/me', [cprocessController::class, 'apiGetMyContractorProf
 
 Route::get('/role/switch-form', [authController::class, 'showSwitchForm']); // Get form data for adding role
 
-// Add role endpoints (for users with single role to add another role)
-Route::post('/role/add/contractor/step1', [authController::class, 'switchContractorStep1']);
-Route::post('/role/add/contractor/step2', [authController::class, 'switchContractorStep2']);
-Route::post('/role/add/contractor/final', [authController::class, 'switchContractorFinal']);
-Route::post('/role/add/owner/step1', [authController::class, 'switchOwnerStep1']);
-Route::post('/role/add/owner/step2', [authController::class, 'switchOwnerStep2']);
-Route::post('/role/add/owner/final', [authController::class, 'switchOwnerFinal']);
+// Add role endpoints (for users with single role to add another role) - require authentication
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/role/add/contractor/step1', [authController::class, 'switchContractorStep1']);
+    Route::post('/role/add/contractor/step2', [authController::class, 'switchContractorStep2']);
+    Route::post('/role/add/contractor/final', [authController::class, 'switchContractorFinal']);
+    Route::post('/role/add/owner/step1', [authController::class, 'switchOwnerStep1']);
+    Route::post('/role/add/owner/step2', [authController::class, 'switchOwnerStep2']);
+    Route::post('/role/add/owner/final', [authController::class, 'switchOwnerFinal']);
+});
 
 
 // Update profile (profile picture / cover photo and general profile FormData)

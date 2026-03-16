@@ -327,12 +327,6 @@ class authController extends Controller
         $provinces = $this->psgcService->getProvinces();
         $picabCategories = $this->accountClass->getPicabCategories();
 
-        // Add logging for debugging
-        \Log::info('showSignupForm - contractor types count: ' . $contractorTypes->count());
-        if ($contractorTypes->count() > 0) {
-            \Log::info('showSignupForm - first contractor type: ' . json_encode($contractorTypes->first()));
-        }
-
         if (request()->expectsJson()) {
             // Ensure valid_ids is properly formatted as an array
             $validIdsArray = $validIds->map(function ($item) {
@@ -358,8 +352,6 @@ class authController extends Controller
                     'provinces' => $provinces,
                     'valid_ids' => $validIdsArray
                 ];
-                \Log::info('showSignupForm - contractor response data keys: ' . json_encode(array_keys($responseData)));
-                \Log::info('showSignupForm - contractor_types in response: ' . json_encode($responseData['contractor_types']));
             } else {
                 // Backwards-compatible default: return all fields
                 $responseData = [
@@ -2455,7 +2447,10 @@ class authController extends Controller
                 Log::info('showSwitchForm debug', [
                     'user_id' => $userId,
                     'current_role' => $currentRole,
+                    'contractor_types_count' => $contractorTypes ? $contractorTypes->count() : 0,
+                    'occupations_count' => $occupations ? $occupations->count() : 0,
                     'existing_data_keys' => is_array($existingData) ? array_keys($existingData) : null,
+                    'existing_data_user' => isset($existingData['user']) ? 'present' : 'missing',
                     'session_owner_step1' => Session::get('owner_step1'),
                     'session_switch_owner_step1' => Session::get('switch_owner_step1')
                 ]);
@@ -2465,17 +2460,18 @@ class authController extends Controller
 
             if (request()->expectsJson()) {
                 // Return JSON - Laravel will automatically convert collections to arrays (same as showSignupForm)
+                // Explicitly convert collections to arrays to ensure proper JSON serialization
                 return response()->json([
                     'success' => true,
                     'message' => 'Role switch form data',
                     'current_role' => $currentRole,
                     'existing_data' => $existingData,
                     'form_data' => [
-                        'contractor_types' => $contractorTypes,
-                        'occupations' => $occupations,
-                        'valid_ids' => $validIds,
-                        'picab_categories' => $picabCategories,
-                        'provinces' => $provinces
+                        'contractor_types' => $contractorTypes->toArray(),
+                        'occupations' => $occupations->toArray(),
+                        'valid_ids' => $validIds->toArray(),
+                        'picab_categories' => $picabCategories->toArray(),
+                        'provinces' => is_array($provinces) ? $provinces : $provinces->toArray()
                     ],
                     'is_switch_mode' => true,
                     'is_approved_owner' => $isApprovedOwner,
