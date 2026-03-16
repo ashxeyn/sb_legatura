@@ -16,10 +16,10 @@ class reviewsClass
             ->join('projects as p', 'r.project_id', '=', 'p.project_id')
             ->join('users as u_rev', 'r.reviewer_user_id', '=', 'u_rev.user_id')
             ->join('users as u_ree', 'r.reviewee_user_id', '=', 'u_ree.user_id')
-            // Join for reviewer names
+            // Join for reviewer contractor info
             ->leftJoin('property_owners as po_rev', 'u_rev.user_id', '=', 'po_rev.user_id')
             ->leftJoin('contractors as c_rev', 'po_rev.owner_id', '=', 'c_rev.owner_id')
-            // Join for reviewee names
+            // Join for reviewee contractor info
             ->leftJoin('property_owners as po_ree', 'u_ree.user_id', '=', 'po_ree.user_id')
             ->leftJoin('contractors as c_ree', 'po_ree.owner_id', '=', 'c_ree.owner_id')
             ->select(
@@ -28,26 +28,20 @@ class reviewsClass
                 'r.comment as review_text',
                 'r.created_at',
                 'p.project_title',
-                DB::raw("CASE 
-                    WHEN u_rev.user_type = 'contractor' OR u_rev.user_type = 'both' THEN c_rev.company_logo
-                    ELSE po_rev.profile_pic 
-                END as reviewer_pic"),
                 'u_rev.user_type as reviewer_type',
-                DB::raw("CASE 
-                    WHEN u_rev.user_type = 'contractor' OR u_rev.user_type = 'both' THEN c_rev.company_name 
-                    WHEN u_rev.user_type = 'property_owner' THEN CONCAT(u_rev.first_name, ' ', u_rev.last_name)
-                    ELSE u_rev.username 
-                END as reviewer_name"),
-                DB::raw("CASE 
-                    WHEN u_ree.user_type = 'contractor' OR u_ree.user_type = 'both' THEN c_ree.company_logo
-                    ELSE po_ree.profile_pic 
-                END as reviewed_pic"),
+                'u_rev.first_name as reviewer_first_name',
+                'u_rev.last_name as reviewer_last_name',
+                'u_rev.username as reviewer_username',
+                'c_rev.company_name as reviewer_company_name',
+                'c_rev.company_logo as reviewer_pic',
+                'po_rev.profile_pic as reviewer_profile_pic',
                 'u_ree.user_type as reviewed_type',
-                DB::raw("CASE 
-                    WHEN u_ree.user_type = 'contractor' OR u_ree.user_type = 'both' THEN c_ree.company_name 
-                    WHEN u_ree.user_type = 'property_owner' THEN CONCAT(u_ree.first_name, ' ', u_ree.last_name)
-                    ELSE u_ree.username 
-                END as reviewed_name")
+                'u_ree.first_name as reviewed_first_name',
+                'u_ree.last_name as reviewed_last_name',
+                'u_ree.username as reviewed_username',
+                'c_ree.company_name as reviewed_company_name',
+                'c_ree.company_logo as reviewed_pic_logo',
+                'po_ree.profile_pic as reviewed_profile_pic'
             );
 
         // Filter: is_deleted = 0

@@ -113,13 +113,13 @@
             <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <!-- Cover Photo -->
               <div class="relative h-28 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 overflow-hidden">
-                @if(isset($contractor->cover_photo) && $contractor->cover_photo)
-                  <img id="companyCoverImg" src="{{ asset($contractor->cover_photo) }}" alt="Cover Photo" class="w-full h-full object-cover">
+                @if(isset($contractor->company_banner) && $contractor->company_banner)
+                  <img id="companyCoverImg" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($contractor->company_banner) }}" alt="Cover Photo" class="w-full h-full object-cover">
                 @else
                   <img id="companyCoverImg" src="" alt="Cover Photo" class="w-full h-full object-cover hidden">
                 @endif
                 <!-- Decorative circles (visible when no cover photo set) -->
-                <div id="coverPhotoPlaceholder" class="{{ isset($contractor->cover_photo) && $contractor->cover_photo ? 'hidden' : '' }} absolute inset-0 opacity-10 pointer-events-none">
+                <div id="coverPhotoPlaceholder" class="{{ isset($contractor->company_banner) && $contractor->company_banner ? 'hidden' : '' }} absolute inset-0 opacity-10 pointer-events-none">
                   <div class="absolute top-2 right-8 w-20 h-20 rounded-full border-4 border-white"></div>
                   <div class="absolute -top-4 right-16 w-32 h-32 rounded-full border-4 border-white"></div>
                   <div class="absolute bottom-2 left-1/3 w-16 h-16 rounded-full border-2 border-white"></div>
@@ -145,8 +145,8 @@
                 <div class="-mt-8 mb-3 relative z-10">
                   <div class="relative inline-block">
                     <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center overflow-hidden shadow-lg ring-[3px] ring-white">
-                      @if(isset($contractor->profile_pic) && $contractor->profile_pic)
-                        <img id="companyLogoImg" src="{{ asset($contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
+                      @if(isset($contractor->company_logo) && $contractor->company_logo)
+                        <img id="companyLogoImg" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($contractor->company_logo) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
                         <i id="companyLogoIcon" class="fi fi-sr-building text-white text-xl hidden"></i>
                       @else
                         <img id="companyLogoImg" src="" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover hidden">
@@ -303,7 +303,7 @@
                     <div class="md:col-span-2 flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow ring-2 ring-blue-100">
                         @if($contractor->representative->rep_profile_pic)
-                          <img id="repPhotoImg" src="{{ asset('storage/' . $contractor->representative->rep_profile_pic) }}" alt="Representative Photo" class="w-full h-full object-cover">
+                          <img id="repPhotoImg" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($contractor->representative->rep_profile_pic) }}" alt="Representative Photo" class="w-full h-full object-cover">
                         @else
                           <i id="repPhotoIcon" class="fi fi-rr-user text-white text-xl"></i>
                         @endif
@@ -439,7 +439,7 @@
                           <div class="flex items-center gap-1.5 {{ $member->is_suspended ? 'opacity-60' : '' }}">
                             <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center overflow-hidden shadow flex-shrink-0">
                               @if($member->profile_pic)
-                                <img src="{{ asset('storage/' . $member->profile_pic) }}" alt="{{ $fname . ' ' . $lname }}" class="w-full h-full object-cover">
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($member->profile_pic) }}" alt="{{ $fname . ' ' . $lname }}" class="w-full h-full object-cover">
                               @else
                                 <span class="text-white font-bold text-[10px]">{{ $initials }}</span>
                               @endif
@@ -604,7 +604,7 @@
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">DTI / SEC
                       Registration</label>
                     @if($contractor->dti_sec_registration_photo)
-                      <button type="button" data-doc-src="{{ asset('storage/' . $contractor->dti_sec_registration_photo) }}"
+                      <button type="button" data-doc-src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($contractor->dti_sec_registration_photo) }}"
                         class="open-doc-btn inline-flex items-center gap-2 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-medium transition-all hover:shadow-sm border border-blue-200 group">
                         <i class="fi fi-rr-file-pdf text-red-500"></i>
                         <span>View Document</span>
@@ -1349,19 +1349,64 @@
 
   <!-- Document Viewer Modal -->
   <div id="documentViewerModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
-      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fi fi-rr-file-document text-orange-500"></i> Document Viewer</h3>
+    <div class="bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+      <div class="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fi fi-rr-file-document text-orange-500"></i> <span id="documentViewerTitle">Document Viewer</span></h3>
         <div class="flex items-center gap-2">
-          <button id="closeDocumentViewerBtn" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg">
+          <a id="documentViewerDownload" href="#" download class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-700 transition" title="Download">
+            <i class="fi fi-rr-download text-lg"></i>
+          </a>
+          <button id="closeDocumentViewerBtn" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-700 transition">
             <i class="fi fi-rr-cross text-xl"></i>
           </button>
         </div>
       </div>
 
-      <div class="p-4 max-h-[calc(90vh-120px)] overflow-auto flex items-center justify-center bg-gray-50">
+      <div class="p-4 max-h-[calc(90vh-120px)] overflow-auto flex items-center justify-center bg-gray-950">
         <iframe id="documentViewerFrame" src="" class="w-full h-[70vh] border-0 hidden"></iframe>
         <img id="documentViewerImg" src="" alt="Document" class="max-w-full max-h-[70vh] object-contain hidden" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Confirmation Modal -->
+  <div id="uploadConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[84vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-gradient-to-r from-blue-500 to-blue-600 px-4 sm:px-5 py-3 flex items-center justify-between rounded-t-2xl shadow-lg z-10">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+            <i class="fi fi-rr-image text-white text-sm"></i>
+          </div>
+          <h2 class="text-base sm:text-lg font-bold text-white">Confirm Upload</h2>
+        </div>
+        <button id="closeUploadConfirmBtn" class="text-white hover:text-blue-100 transition-all p-1.5 rounded-lg hover:bg-white hover:bg-opacity-20 active:scale-95">
+          <i class="fi fi-rr-cross text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="overflow-y-auto max-h-[calc(84vh-118px)] p-4 sm:p-5 space-y-4">
+        <!-- Preview -->
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-3 flex items-center justify-center min-h-[200px]">
+          <img id="uploadConfirmPreview" src="" alt="Preview" class="max-w-full max-h-[200px] object-contain rounded">
+        </div>
+
+        <!-- Message -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p id="uploadConfirmMessage" class="text-sm text-blue-800">Are you sure you want to update this image?</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="bg-white border-t border-gray-200 px-4 sm:px-5 py-3 rounded-b-2xl flex items-center justify-end gap-2">
+        <button id="cancelUploadBtn" class="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 hover:shadow-sm hover:-translate-y-0.5 transition-all font-semibold active:scale-95 text-xs">
+          Cancel
+        </button>
+        <button id="confirmUploadBtn" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 flex items-center gap-1.5 text-xs">
+          <i class="fi fi-rr-check"></i>
+          Upload
+        </button>
       </div>
     </div>
   </div>

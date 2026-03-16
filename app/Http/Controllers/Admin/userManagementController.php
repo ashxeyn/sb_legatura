@@ -10,6 +10,7 @@ use App\Models\accounts\accountClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
 use App\Http\Requests\admin\contractorRequest;
@@ -2217,7 +2218,7 @@ class userManagementController extends authController
             return response()->json([
                 'success' => true, 
                 'message' => 'Company logo updated successfully',
-                'path' => asset('storage/' . $path)
+                'path' => Storage::disk('public')->url($path)
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
@@ -2246,7 +2247,7 @@ class userManagementController extends authController
             return response()->json([
                 'success' => true, 
                 'message' => 'Company banner updated successfully',
-                'path' => asset('storage/' . $path)
+                'path' => Storage::disk('public')->url($path)
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);

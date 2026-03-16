@@ -471,7 +471,8 @@ class contractorClass extends Model
                 'users.last_name',
                 'users.user_type',
                 'property_owners.profile_pic',
-                'property_owners.cover_photo',
+                'contractors.company_logo',
+                'contractors.company_banner',
                 'contractors.created_at as member_since',
                 DB::raw("CASE WHEN contractor_types.type_name = 'Others' OR contractor_types.type_name IS NULL THEN contractors.contractor_type_other ELSE contractor_types.type_name END as contractor_type_name")
             )

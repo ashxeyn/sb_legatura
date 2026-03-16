@@ -1,26 +1,55 @@
 @forelse($reviews as $review)
+    @php
+        // Determine reviewer name
+        if ($review->reviewer_type === 'contractor' || $review->reviewer_type === 'both') {
+            $reviewerName = $review->reviewer_company_name ?: $review->reviewer_username;
+            $reviewerPic = $review->reviewer_pic;
+        } else {
+            $reviewerName = trim($review->reviewer_first_name . ' ' . $review->reviewer_last_name) ?: $review->reviewer_username;
+            $reviewerPic = $review->reviewer_profile_pic;
+        }
+        
+        // Determine reviewed name
+        if ($review->reviewed_type === 'contractor' || $review->reviewed_type === 'both') {
+            $reviewedName = $review->reviewed_company_name ?: $review->reviewed_username;
+            $reviewedPic = $review->reviewed_pic_logo;
+        } else {
+            $reviewedName = trim($review->reviewed_first_name . ' ' . $review->reviewed_last_name) ?: $review->reviewed_username;
+            $reviewedPic = $review->reviewed_profile_pic;
+        }
+        
+        // Get initials for reviewer
+        $revInitials = '';
+        if ($reviewerName) {
+            $parts = explode(' ', trim($reviewerName));
+            $revInitials = substr($parts[0], 0, 1);
+            if (count($parts) > 1) {
+                $revInitials .= substr(end($parts), 0, 1);
+            }
+        }
+        
+        // Get initials for reviewed
+        $reeInitials = '';
+        if ($reviewedName) {
+            $parts = explode(' ', trim($reviewedName));
+            $reeInitials = substr($parts[0], 0, 1);
+            if (count($parts) > 1) {
+                $reeInitials .= substr(end($parts), 0, 1);
+            }
+        }
+    @endphp
     <tr class="hover:bg-indigo-50/60 transition-colors duration-200 ease-in-out">
         <td class="px-2.5 py-2.5 w-[25%]">
             <div class="flex items-center gap-1.5">
                 <div class="w-7 h-7 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0 overflow-hidden">
-                    @if($review->reviewer_pic)
-                        <img src="{{ asset('storage/' . $review->reviewer_pic) }}" alt="Profile" class="w-full h-full object-cover">
+                    @if($reviewerPic)
+                        <img src="{{ asset('storage/' . $reviewerPic) }}" alt="Profile" class="w-full h-full object-cover">
                     @else
-                        @php
-                            $revInitials = '';
-                            if ($review->reviewer_name) {
-                                $parts = explode(' ', trim($review->reviewer_name));
-                                $revInitials = substr($parts[0], 0, 1);
-                                if (count($parts) > 1) {
-                                    $revInitials .= substr(end($parts), 0, 1);
-                                }
-                            }
-                        @endphp
                         {{ strtoupper($revInitials ?: '??') }}
                     @endif
                 </div>
                 <div class="min-w-0">
-                    <div class="font-medium text-gray-800 text-xs truncate max-w-[120px]" title="{{ $review->reviewer_name }}">{{ $review->reviewer_name }}</div>
+                    <div class="font-medium text-gray-800 text-xs truncate max-w-[120px]" title="{{ $reviewerName }}">{{ $reviewerName }}</div>
                     <div class="text-[11px] text-gray-500 truncate max-w-[120px]">{{ ucfirst(str_replace('_', ' ', $review->reviewer_type)) }}</div>
                 </div>
             </div>
@@ -28,24 +57,14 @@
         <td class="px-2.5 py-2.5 w-[25%]">
             <div class="flex items-center gap-1.5">
                 <div class="w-7 h-7 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow flex-shrink-0 overflow-hidden">
-                    @if($review->reviewed_pic)
-                        <img src="{{ asset('storage/' . $review->reviewed_pic) }}" alt="Profile" class="w-full h-full object-cover">
+                    @if($reviewedPic)
+                        <img src="{{ asset('storage/' . $reviewedPic) }}" alt="Profile" class="w-full h-full object-cover">
                     @else
-                        @php
-                            $reeInitials = '';
-                            if ($review->reviewed_name) {
-                                $parts = explode(' ', trim($review->reviewed_name));
-                                $reeInitials = substr($parts[0], 0, 1);
-                                if (count($parts) > 1) {
-                                    $reeInitials .= substr(end($parts), 0, 1);
-                                }
-                            }
-                        @endphp
                         {{ strtoupper($reeInitials ?: '??') }}
                     @endif
                 </div>
                 <div class="min-w-0">
-                    <div class="font-medium text-gray-800 text-xs truncate max-w-[120px]" title="{{ $review->reviewed_name }}">{{ $review->reviewed_name }}</div>
+                    <div class="font-medium text-gray-800 text-xs truncate max-w-[120px]" title="{{ $reviewedName }}">{{ $reviewedName }}</div>
                     <div class="text-[11px] text-gray-500 truncate max-w-[120px]">{{ ucfirst(str_replace('_', ' ', $review->reviewed_type)) }}</div>
                 </div>
             </div>
@@ -76,11 +95,11 @@
                 <button
                     class="action-btn view-review-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all active:scale-95"
                     title="View"
-                    data-id="{{ $review->review_id }}" data-reviewer-name="{{ $review->reviewer_name }}"
-                    data-reviewer-pic="{{ $review->reviewer_pic ? asset('storage/' . $review->reviewer_pic) : '' }}"
+                    data-id="{{ $review->review_id }}" data-reviewer-name="{{ $reviewerName }}"
+                    data-reviewer-pic="{{ $reviewerPic ? asset('storage/' . $reviewerPic) : '' }}"
                     data-reviewer-type="{{ ucfirst(str_replace('_', ' ', $review->reviewer_type)) }}"
-                    data-reviewed-name="{{ $review->reviewed_name }}"
-                    data-reviewed-pic="{{ $review->reviewed_pic ? asset('storage/' . $review->reviewed_pic) : '' }}"
+                    data-reviewed-name="{{ $reviewedName }}"
+                    data-reviewed-pic="{{ $reviewedPic ? asset('storage/' . $reviewedPic) : '' }}"
                     data-reviewed-type="{{ ucfirst(str_replace('_', ' ', $review->reviewed_type)) }}"
                     data-rating="{{ $review->rating }}" data-review-text="{{ e($review->review_text) }}"
                     data-project-title="{{ $review->project_title }}"
@@ -90,7 +109,7 @@
                 <button
                     class="action-btn delete-review-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95"
                     title="Delete"
-                    data-id="{{ $review->review_id }}" data-reviewer-name="{{ $review->reviewer_name }}">
+                    data-id="{{ $review->review_id }}" data-reviewer-name="{{ $reviewerName }}">
                     <i class="fi fi-rr-trash text-[13px] leading-none"></i>
                 </button>
             </div>

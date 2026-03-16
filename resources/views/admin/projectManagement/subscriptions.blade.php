@@ -487,8 +487,11 @@
               <label for="subscriptionName" class="block text-xs font-semibold text-gray-800 mb-1.5">Subscription Name <span class="text-red-500">*</span></label>
               <input type="text" id="subscriptionName" name="subscription_name"
                 class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
-                placeholder="Enter subscription name" required>
-              <p id="subscriptionNameError" class="mt-1 text-xs text-red-600 hidden">Subscription name is required.</p>
+                placeholder="Enter subscription name">
+              <p id="subscriptionNameError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                <i class="fi fi-rr-exclamation text-xs"></i>
+                <span>Subscription name is required.</span>
+              </p>
             </div>
 
             <!-- Benefits -->
@@ -506,7 +509,10 @@
               <button type="button" id="addBenefitBtn" class="mt-2 text-orange-600 hover:text-orange-700 text-xs font-semibold flex items-center gap-1 transition">
                 <span>+</span> Add another
               </button>
-              <p id="benefitsError" class="mt-1 text-xs text-red-600 hidden">At least one benefit is required.</p>
+              <p id="benefitsError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                <i class="fi fi-rr-exclamation text-xs"></i>
+                <span>At least one benefit is required.</span>
+              </p>
             </div>
 
             <!-- Price -->
@@ -516,9 +522,12 @@
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-xs">₱</span>
                 <input type="number" id="subscriptionPrice" name="subscription_price"
                   class="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
-                  placeholder="0.00" min="0" step="0.01" required>
+                  placeholder="0.00" min="0" step="0.01">
               </div>
-              <p id="subscriptionPriceError" class="mt-1 text-xs text-red-600 hidden">Price is required.</p>
+              <p id="subscriptionPriceError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                <i class="fi fi-rr-exclamation text-xs"></i>
+                <span>Price is required.</span>
+              </p>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -527,8 +536,11 @@
                 <label for="planKey" class="block text-xs font-semibold text-gray-800 mb-1.5">Plan Key <span class="text-red-500">*</span></label>
                 <input type="text" id="planKey" name="plan_key"
                   class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
-                  placeholder="e.g. basic, premium" required>
-                <p id="planKeyError" class="mt-1 text-xs text-red-600 hidden">Plan key is required.</p>
+                  placeholder="e.g. basic, premium">
+                <p id="planKeyError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                  <i class="fi fi-rr-exclamation text-xs"></i>
+                  <span>Plan key is required.</span>
+                </p>
               </div>
 
               <!-- Target Audience -->
@@ -544,14 +556,17 @@
                     <span class="ml-1.5 text-xs text-gray-700">Owners</span>
                   </label>
                 </div>
-                <p id="forContractorError" class="mt-1 text-xs text-red-600 hidden">Please select a target audience.</p>
+                <p id="forContractorError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                  <i class="fi fi-rr-exclamation text-xs"></i>
+                  <span>Please select a target audience.</span>
+                </p>
               </div>
 
               <!-- Billing Cycle -->
               <div class="col-span-2 sm:col-span-1">
                 <label for="billingCycle" class="block text-xs font-semibold text-gray-800 mb-1.5">Billing Cycle <span class="text-red-500">*</span></label>
                 <select id="billingCycle" name="billing_cycle"
-                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition bg-white text-xs" required>
+                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition bg-white text-xs">
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                   <option value="quarterly">Quarterly</option>
@@ -565,7 +580,10 @@
                 <input type="number" id="durationDays" name="duration_days"
                   class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition text-xs"
                   placeholder="e.g. 30" min="1">
-                <p id="durationDaysError" class="mt-1 text-xs text-red-600 hidden">Duration is required.</p>
+                <p id="durationDaysError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                  <i class="fi fi-rr-exclamation text-xs"></i>
+                  <span>Duration is required.</span>
+                </p>
               </div>
             </div>
           </div>
@@ -609,8 +627,11 @@
                 <span class="text-red-500">*</span></label>
               <input type="text" id="editSubscriptionName" name="edit_subscription_name"
                 class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-xs"
-                placeholder="Enter subscription name" required>
-              <p id="editSubscriptionNameError" class="mt-1 text-xs text-red-600 hidden">Subscription name is required.</p>
+                placeholder="Enter subscription name">
+              <p id="editSubscriptionNameError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                <i class="fi fi-rr-exclamation text-xs"></i>
+                <span>Subscription name is required.</span>
+              </p>
             </div>
 
             <!-- Benefits -->
@@ -623,7 +644,10 @@
                 class="mt-2 text-indigo-600 hover:text-indigo-700 text-xs font-semibold flex items-center gap-1 transition">
                 <span>+</span> Add another
               </button>
-              <p id="editBenefitsError" class="mt-1 text-xs text-red-600 hidden">At least one benefit is required.</p>
+              <p id="editBenefitsError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                <i class="fi fi-rr-exclamation text-xs"></i>
+                <span>At least one benefit is required.</span>
+              </p>
             </div>
 
             <!-- Price -->
@@ -634,9 +658,12 @@
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-xs">₱</span>
                 <input type="number" id="editSubscriptionPrice" name="edit_subscription_price"
                   class="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-xs"
-                  placeholder="0.00" min="0" step="0.01" required>
+                  placeholder="0.00" min="0" step="0.01">
               </div>
-              <p id="editSubscriptionPriceError" class="mt-1 text-xs text-red-600 hidden">Price is required.</p>
+              <p id="editSubscriptionPriceError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                <i class="fi fi-rr-exclamation text-xs"></i>
+                <span>Price is required.</span>
+              </p>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -645,15 +672,17 @@
                 <label for="editBillingCycle" class="block text-xs font-semibold text-gray-800 mb-1.5">Billing Cycle <span
                     class="text-red-500">*</span></label>
                 <select id="editBillingCycle" name="edit_billing_cycle"
-                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition bg-white text-xs"
-                  required>
+                  class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition bg-white text-xs">
                   <option value="" disabled selected>Select cycle</option>
                   <option value="monthly">Monthly</option>
                   <option value="quarterly">Quarterly</option>
                   <option value="yearly">Yearly</option>
                   <option value="one-time">One-time</option>
                 </select>
-                <p id="editBillingCycleError" class="mt-1 text-xs text-red-600 hidden">Billing cycle is required.</p>
+                <p id="editBillingCycleError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                  <i class="fi fi-rr-exclamation text-xs"></i>
+                  <span>Billing cycle is required.</span>
+                </p>
               </div>
 
               <!-- Edit Duration Days (hidden by default) -->
@@ -663,7 +692,10 @@
                 <input type="number" id="editDurationDays" name="edit_duration_days"
                   class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-xs"
                   placeholder="e.g. 30" min="1">
-                <p id="editDurationDaysError" class="mt-1 text-xs text-red-600 hidden">Duration is required.</p>
+                <p id="editDurationDaysError" class="mt-1 text-xs text-red-600 hidden flex items-center gap-1">
+                  <i class="fi fi-rr-exclamation text-xs"></i>
+                  <span>Duration is required.</span>
+                </p>
               </div>
             </div>
           </div>
@@ -719,7 +751,10 @@
             <textarea id="deleteSubscriptionReason" rows="3"
               class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-300 focus:border-red-300 transition text-xs resize-none"
               placeholder="Provide a reason"></textarea>
-            <p id="deleteSubscriptionReasonError" class="text-xs text-red-600 hidden">A reason is required.</p>
+            <p id="deleteSubscriptionReasonError" class="text-xs text-red-600 hidden flex items-center gap-1">
+              <i class="fi fi-rr-exclamation text-xs"></i>
+              <span>A reason is required.</span>
+            </p>
           </div>
         </div>
         <!-- Footer -->
@@ -801,7 +836,10 @@
                   class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition bg-white text-xs">
               </div>
             </div>
-            <p id="rowEditDatesError" class="text-xs text-red-600 hidden">Start and expiry dates are required.</p>
+            <p id="rowEditDatesError" class="text-xs text-red-600 hidden flex items-center gap-1">
+              <i class="fi fi-rr-exclamation text-xs"></i>
+              <span>Start and expiry dates are required.</span>
+            </p>
           </div>
 
           <!-- Footer -->
@@ -864,7 +902,10 @@
               <textarea id="deactivateReason" rows="3"
                 class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-300 focus:border-red-300 transition text-xs resize-none"
                 placeholder="Provide a clear reason (e.g. policy violation, duplicate account)..."></textarea>
-              <p id="deactivateReasonError" class="text-xs text-red-600 hidden mt-1">A reason is required.</p>
+              <p id="deactivateReasonError" class="text-xs text-red-600 hidden flex items-center gap-1 mt-1">
+                <i class="fi fi-rr-exclamation text-xs"></i>
+                <span>A reason is required.</span>
+              </p>
             </div>
           </div>
           <!-- Footer -->

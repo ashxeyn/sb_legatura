@@ -11,6 +11,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class messageSentEventUncensored implements ShouldBroadcastNow
 {
@@ -107,7 +108,7 @@ class messageSentEventUncensored implements ShouldBroadcastNow
                     'attachment_id' => $attachment->attachment_id,
                     'file_name' => $attachment->file_name,
                     'file_type' => $attachment->file_type,
-                    'file_url' => url('storage/' . $attachment->file_path),
+                    'file_url' => Storage::disk('public')->url($attachment->file_path),
                     'is_image' => in_array(strtolower(pathinfo($attachment->file_name, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])
                 ];
             })->toArray(),

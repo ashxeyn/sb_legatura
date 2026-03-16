@@ -621,21 +621,21 @@ function applyCurrentTeamTabFilter() {
             modal.classList.add('flex');
             document.body.style.overflow = 'hidden';
 
-            const modalShell = modal.querySelector('.modal-shell');
-            if (modalShell) {
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
                 setTimeout(function() {
-                    modalShell.classList.remove('scale-95', 'opacity-0');
-                    modalShell.classList.add('scale-100', 'opacity-100');
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
                 }, 10);
             }
         }
 
         function closeDocumentViewer() {
             if (!modal) return;
-            const modalShell = modal.querySelector('.modal-shell');
-            if (modalShell) {
-                modalShell.classList.remove('scale-100', 'opacity-100');
-                modalShell.classList.add('scale-95', 'opacity-0');
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.classList.remove('scale-100', 'opacity-100');
+                modalContent.classList.add('scale-95', 'opacity-0');
             }
             setTimeout(function() {
                 modal.classList.add('hidden');
@@ -2570,6 +2570,17 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
     if (cancelUploadBtn) {
         cancelUploadBtn.addEventListener('click', closeUploadConfirmModal);
+    }
+
+    const closeUploadConfirmBtn = document.getElementById('closeUploadConfirmBtn');
+    if (closeUploadConfirmBtn) {
+        closeUploadConfirmBtn.addEventListener('click', closeUploadConfirmModal);
+    }
+
+    if (uploadConfirmModal) {
+        uploadConfirmModal.addEventListener('click', function(e) {
+            if (e.target === uploadConfirmModal) closeUploadConfirmModal();
+        });
     }
 
     if (companyLogoUpload) {

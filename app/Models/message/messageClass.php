@@ -50,7 +50,7 @@ class messageClass extends Model
                     'file_path' => $att->file_path,
                     'file_name' => $att->file_name,
                     'file_type' => $att->file_type,
-                    'url' => url('storage/' . $att->file_path)
+                    'url' => Storage::disk('public')->url($att->file_path)
                 ];
             });
     }
@@ -74,7 +74,7 @@ class messageClass extends Model
                 'file_path' => $path,
                 'file_name' => $file->getClientOriginalName(),
                 'file_type' => $file->getMimeType(),
-                'url' => url('storage/' . $path)
+                'url' => Storage::disk('public')->url($path)
             ];
         } catch (\Exception $e) {
             \Log::error('Failed to add attachment', ['error' => $e->getMessage()]);

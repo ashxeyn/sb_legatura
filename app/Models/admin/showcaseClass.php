@@ -28,7 +28,11 @@ class showcaseClass
                 'pp.linked_project_id',
                 'pp.created_at',
                 'c.company_logo as contractor_pic',
-                DB::raw("COALESCE(c.company_name, u.username) as contractor_name")
+                'u.user_type',
+                DB::raw("CASE 
+                    WHEN u.user_type = 'contractor' THEN c.company_name
+                    ELSE CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))
+                END as contractor_name")
             );
 
         // Filter: Search (Contractor Name or Showcase Title)
@@ -78,9 +82,16 @@ class showcaseClass
             ->where('pp.post_id', $postId)
             ->select(
                 'pp.*',
+                'u.user_type',
+                'u.first_name',
+                'u.last_name',
                 'c.company_logo as contractor_pic',
+                'c.company_name',
                 'u.email as contractor_email',
-                DB::raw("COALESCE(c.company_name, u.username) as contractor_name")
+                DB::raw("CASE 
+                    WHEN u.user_type = 'contractor' THEN c.company_name
+                    ELSE CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))
+                END as contractor_name")
             )
             ->first();
 

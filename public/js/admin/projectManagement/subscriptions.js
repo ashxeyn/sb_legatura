@@ -340,6 +340,81 @@ document.addEventListener('DOMContentLoaded', function () {
   const durationDaysContainer = document.getElementById('durationDaysContainer');
   const durationDays = document.getElementById('durationDays');
 
+  // ===== Add Subscription Inline Validation =====
+  const subscriptionName = document.getElementById('subscriptionName');
+  const subscriptionPrice = document.getElementById('subscriptionPrice');
+  const planKey = document.getElementById('planKey');
+  const subscriptionNameError = document.getElementById('subscriptionNameError');
+  const subscriptionPriceError = document.getElementById('subscriptionPriceError');
+  const planKeyError = document.getElementById('planKeyError');
+  const forContractorError = document.getElementById('forContractorError');
+  const benefitsError = document.getElementById('benefitsError');
+
+  // Real-time validation for subscription name
+  if (subscriptionName) {
+    subscriptionName.addEventListener('blur', () => {
+      if (!subscriptionName.value.trim()) {
+        subscriptionNameError.classList.remove('hidden');
+        subscriptionName.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+      } else {
+        subscriptionNameError.classList.add('hidden');
+        subscriptionName.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+    subscriptionName.addEventListener('input', () => {
+      if (subscriptionName.value.trim()) {
+        subscriptionNameError.classList.add('hidden');
+        subscriptionName.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+  }
+
+  // Real-time validation for price
+  if (subscriptionPrice) {
+    subscriptionPrice.addEventListener('blur', () => {
+      if (!subscriptionPrice.value || subscriptionPrice.value <= 0) {
+        subscriptionPriceError.classList.remove('hidden');
+        subscriptionPrice.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+      } else {
+        subscriptionPriceError.classList.add('hidden');
+        subscriptionPrice.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+    subscriptionPrice.addEventListener('input', () => {
+      if (subscriptionPrice.value && subscriptionPrice.value > 0) {
+        subscriptionPriceError.classList.add('hidden');
+        subscriptionPrice.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+  }
+
+  // Real-time validation for plan key
+  if (planKey) {
+    planKey.addEventListener('blur', () => {
+      if (!planKey.value.trim()) {
+        planKeyError.classList.remove('hidden');
+        planKey.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+      } else {
+        planKeyError.classList.add('hidden');
+        planKey.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+    planKey.addEventListener('input', () => {
+      if (planKey.value.trim()) {
+        planKeyError.classList.add('hidden');
+        planKey.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+  }
+
+  // Real-time validation for target audience
+  const forContractorRadios = document.querySelectorAll('input[name="for_contractor"]');
+  forContractorRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      forContractorError.classList.add('hidden');
+    });
+  });
+
   if (billingCycle && durationDaysContainer) {
     billingCycle.addEventListener('change', () => {
       if (billingCycle.value === 'one-time') {
@@ -603,6 +678,60 @@ document.addEventListener('DOMContentLoaded', function () {
   const cancelEditSubscriptionBtn = document.getElementById('cancelEditSubscriptionBtn');
   const editDurationDaysContainer = document.getElementById('editDurationDaysContainer');
   const editDurationDays = document.getElementById('editDurationDays');
+
+  // ===== Edit Subscription Inline Validation =====
+  const editSubscriptionNameError = document.getElementById('editSubscriptionNameError');
+  const editSubscriptionPriceError = document.getElementById('editSubscriptionPriceError');
+  const editBillingCycleError = document.getElementById('editBillingCycleError');
+  const editBenefitsError = document.getElementById('editBenefitsError');
+
+  // Real-time validation for edit subscription name
+  if (editNameInput) {
+    editNameInput.addEventListener('blur', () => {
+      if (!editNameInput.value.trim()) {
+        editSubscriptionNameError.classList.remove('hidden');
+        editNameInput.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+      } else {
+        editSubscriptionNameError.classList.add('hidden');
+        editNameInput.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+    editNameInput.addEventListener('input', () => {
+      if (editNameInput.value.trim()) {
+        editSubscriptionNameError.classList.add('hidden');
+        editNameInput.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+  }
+
+  // Real-time validation for edit price
+  if (editPriceInput) {
+    editPriceInput.addEventListener('blur', () => {
+      if (!editPriceInput.value || editPriceInput.value <= 0) {
+        editSubscriptionPriceError.classList.remove('hidden');
+        editPriceInput.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+      } else {
+        editSubscriptionPriceError.classList.add('hidden');
+        editPriceInput.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+    editPriceInput.addEventListener('input', () => {
+      if (editPriceInput.value && editPriceInput.value > 0) {
+        editSubscriptionPriceError.classList.add('hidden');
+        editPriceInput.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+  }
+
+  // Real-time validation for edit billing cycle
+  if (editBillingCycleSelect) {
+    editBillingCycleSelect.addEventListener('change', () => {
+      if (editBillingCycleSelect.value) {
+        editBillingCycleError.classList.add('hidden');
+        editBillingCycleSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+      }
+    });
+  }
 
   if (editBillingCycleSelect && editDurationDaysContainer) {
     editBillingCycleSelect.addEventListener('change', () => {

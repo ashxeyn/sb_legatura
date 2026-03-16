@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class messageController extends Controller
 {
@@ -499,7 +500,7 @@ class messageController extends Controller
                             'attachment_id' => $att->attachment_id,
                             'file_name' => $att->file_name,
                             'file_type' => $att->file_type,
-                            'file_url' => url('storage/' . $att->file_path),
+                            'file_url' => Storage::disk('public')->url($att->file_path),
                             'is_image' => str_starts_with($att->file_type ?? '', 'image/')
                         ];
                     }),
