@@ -25,6 +25,42 @@ class adminController extends Controller
 
     // Add the above calls in your actual suspend/unsuspend/delete logic as needed.
 
+    /**
+     * Verify admin access code (POST /admin/verify-code)
+     * Validates the access code against environment variable
+     */
+    public function verifyAccessCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'access_code' => 'required|string'
+        ]);
+
+        $enteredCode = $request->input('access_code');
+        $correctCode = env('ADMIN_ACCESS_CODE', '202689723'); // Default fallback for backward compatibility
+
+        if ($enteredCode === $correctCode) {
+            // Set session flag to allow admin login
+            Session::put('admin_code_verified', true);
+            Session::put('admin_code_verified_at', now()->timestamp);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Access code verified'
+            ]);
+        }
+
+        // Log failed attempt
+        Log::warning('Failed admin access code attempt', [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid access code'
+        ], 401);
+    }
+
     public function notificationSettings()
     {
         return view('admin.settings.notifications');

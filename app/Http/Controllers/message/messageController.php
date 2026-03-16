@@ -486,6 +486,31 @@ class messageController extends Controller
                 $responseContent = messageClass::censorBadWords($message->content);
             }
 
+            $conversation = DB::table('conversations')
+                ->where('conversation_id', $message->conversation_id)
+                ->first();
+            
+            $actualSenderId = $userId;
+            
+
+            if ($message->from_sender) {
+                // Message is from the conversation's original sender
+                $actualReceiverId = $conversation->receiver_id;
+            } else {
+                // Message is from the conversation's original receiver
+                $actualReceiverId = $conversation->sender_id;
+            }
+
+            \Log::info('Controller response sender/receiver', [
+                'userId' => $userId,
+                'actualSenderId' => $actualSenderId,
+                'actualReceiverId' => $actualReceiverId,
+                'message_from_sender' => $message->from_sender,
+                'conversation_sender_id' => $conversation->sender_id,
+                'conversation_receiver_id' => $conversation->receiver_id,
+                'conversation_id' => $message->conversation_id
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Message sent successfully',
@@ -493,8 +518,8 @@ class messageController extends Controller
                     'message_id' => $message->message_id,
                     'conversation_id' => $message->conversation_id,
                     'content' => $responseContent,
-                    'sender' => messageClass::getUserDetails($userId, $isAdminSession),
-                    'receiver' => messageClass::getUserDetails($validated['receiver_id'], $isAdminSession),
+                    'sender' => messageClass::getUserDetails($actualSenderId, $isAdminSession),
+                    'receiver' => messageClass::getUserDetails($actualReceiverId, $isAdminSession),
                     'attachments' => $message->attachments->map(function ($att) {
                         return [
                             'attachment_id' => $att->attachment_id,

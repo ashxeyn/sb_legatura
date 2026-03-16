@@ -542,22 +542,39 @@ class messageClass extends Model
                 $conversation = DB::table('conversations')->where('conversation_id', $data['conversation_id'])->first();
             }
 
-            // Determine if message is from sender or receiver
+
             if ($isAdminSending) {
                 $messageFromSender = false; // admin sent → from_sender=false
             } elseif ($receiverIsAdmin) {
                 $messageFromSender = true;  // user sent to admin → from_sender=true
             } elseif (!empty($data['contractor_id'])) {
-                // from_sender=true  → external user sent it (incoming to contractor)
-                // from_sender=false → contractor owner replied
-                $cOwnerId2 = DB::table('contractors')->where('contractor_id', $data['contractor_id'])->value('owner_id');
-                $cOwnerUserId2 = $cOwnerId2
-                    ? DB::table('property_owners')->where('owner_id', $cOwnerId2)->value('user_id')
-                    : null;
-                $messageFromSender = ($data['sender_id'] != $cOwnerUserId2);
+
+                $messageFromSender = ($data['sender_id'] == $conversation->sender_id);
+                
+                \Log::info('Contractor conversation from_sender', [
+                    'data_sender_id' => $data['sender_id'],
+                    'conversation_sender_id' => $conversation->sender_id,
+                    'conversation_receiver_id' => $conversation->receiver_id,
+                    'contractor_id' => $data['contractor_id'],
+                    'messageFromSender' => $messageFromSender
+                ]);
             } else {
+
                 $messageFromSender = ($data['sender_id'] == $conversation->sender_id);
             }
+
+            \Log::info('from_sender calculation DETAILED', [
+                'current_sender_id' => $data['sender_id'],
+                'current_receiver_id' => $data['receiver_id'],
+                'conversation_sender_id' => $conversation->sender_id,
+                'conversation_receiver_id' => $conversation->receiver_id,
+                'comparison' => $data['sender_id'] . ' == ' . $conversation->sender_id,
+                'result' => $messageFromSender,
+                'result_as_int' => $messageFromSender ? 1 : 0,
+                'isAdminSending' => $isAdminSending,
+                'receiverIsAdmin' => $receiverIsAdmin,
+                'contractor_id' => $data['contractor_id'] ?? null
+            ]);
 
             // Rule B: Prepare message data with auto-flag if suspicious keywords detected
             $messageData = [
@@ -567,6 +584,12 @@ class messageClass extends Model
                 'is_read' => 0
             ];
 
+            \Log::info('About to create message', [
+                'messageData' => $messageData,
+                'messageFromSender_type' => gettype($messageFromSender),
+                'messageFromSender_value' => $messageFromSender
+            ]);
+
             // Apply automated flagging if validation detected keywords
             if ($validation['flagged']) {
                 $messageData['is_flagged'] = 1;
@@ -575,6 +598,11 @@ class messageClass extends Model
 
             // Create message
             $message = self::create($messageData);
+
+            \Log::info('Message created', [
+                'message_id' => $message->message_id,
+                'from_sender_in_db' => $message->from_sender
+            ]);
 
             // Mark conversation as admin conversation if admin is involved
             if ($isAdminSending || $receiverIsAdmin) {

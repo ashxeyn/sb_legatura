@@ -612,7 +612,6 @@ if (hero && heroImg) {
     const loginOverlay = document.getElementById('adminLoginModal');
     const loginCloseBtn = document.getElementById('adminModalClose');
 
-    const ADMIN_ACCESS_CODE = '202689723';
     let codeVerified = false;
 
     function openCodeModal() {
@@ -652,9 +651,9 @@ if (hero && heroImg) {
         document.documentElement.style.overflow = '';
     }
 
-    // Code form submission
+    // Code form submission - verify with backend
     if (codeForm) {
-        codeForm.addEventListener('submit', (e) => {
+        codeForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const enteredCode = codeInput.value.trim();
@@ -667,19 +666,69 @@ if (hero && heroImg) {
                 return;
             }
 
-            // Validate code
-            if (enteredCode === ADMIN_ACCESS_CODE) {
-                codeVerified = true;
-                closeCodeModal();
-                setTimeout(() => openAdminModal(), 300);
-            } else {
-                if (codeError) codeError.style.display = 'flex';
-                if (codeInput) {
-                    codeInput.classList.add('admin-input-error');
-                    codeInput.value = '';
-                    codeInput.focus();
+            // Disable form while verifying
+            const submitBtn = codeForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn ? submitBtn.textContent : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Verifying...';
+            }
+
+            try {
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                
+                if (!csrfToken) {
+                    console.error('CSRF token not found in page');
+                    throw new Error('CSRF token missing');
                 }
-                if (codeFieldError) codeFieldError.style.display = 'none';
+
+                // Verify code with backend
+                const response = await fetch('/admin/verify-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ access_code: enteredCode })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    codeVerified = true;
+                    closeCodeModal();
+                    setTimeout(() => openAdminModal(), 300);
+                } else {
+                    // Invalid code
+                    if (codeError) {
+                        const errorMsg = data.message || 'Invalid access code. Please try again.';
+                        codeError.querySelector('p').textContent = errorMsg;
+                        codeError.style.display = 'flex';
+                    }
+                    if (codeInput) {
+                        codeInput.classList.add('admin-input-error');
+                        codeInput.value = '';
+                        codeInput.focus();
+                    }
+                    if (codeFieldError) codeFieldError.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error verifying admin code:', error);
+                if (codeError) {
+                    const errorMsg = error.message === 'CSRF token missing' 
+                        ? 'Security token missing. Please refresh the page.'
+                        : 'Network error. Please check your connection and try again.';
+                    codeError.querySelector('p').textContent = errorMsg;
+                    codeError.style.display = 'flex';
+                }
+            } finally {
+                // Re-enable form
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalBtnText;
+                }
             }
         });
     }

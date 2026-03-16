@@ -521,6 +521,7 @@ Route::post('/accounts/password/reset', [passwordController::class, 'resetPasswo
 Route::get('/admin/login', function () {
     abort(404);
 })->name('admin.login');
+Route::post('/admin/verify-code', [adminController::class, 'verifyAccessCode'])->middleware('throttle:5,1')->name('admin.verify-code');
 Route::post('/admin/login', [authController::class, 'login'])->middleware('throttle:3,1')->name('admin.login.post');
 
 Route::get('/admin/signup', function () {
