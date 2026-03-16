@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - Legatura</title>
+  <title>Suspended Accounts - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -59,31 +60,29 @@
             <div class="flex flex-wrap items-center gap-2">
               <!-- From -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateFrom"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
 
               <span class="text-gray-300 font-bold text-lg">→</span>
 
               <!-- To -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateTo"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
             </div>
 
             <!-- Contractor Filter (only visible for Staff tab) -->
             <div id="contractorFilterWrap" class="hidden items-center gap-2">
-              <label class="text-sm font-medium text-gray-700">Company:</label>
-              <select id="contractorFilter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 min-w-[200px]">
+              <label class="text-xs font-medium text-gray-700">Company:</label>
+              <select id="contractorFilter" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[200px]">
                 <option value="">All Companies</option>
                 @foreach($allContractors ?? [] as $contractor)
                   <option value="{{ $contractor->contractor_id }}">{{ $contractor->company_name }}</option>

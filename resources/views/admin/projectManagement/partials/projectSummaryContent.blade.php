@@ -34,80 +34,194 @@
   $fmt     = fn($n) => '₱' . number_format((float)($n ?? 0), 2);
   $fmtDate = fn($d) => $d ? \Carbon\Carbon::parse($d)->format('M j, Y') : '—';
   $fmtDt   = fn($d) => $d ? \Carbon\Carbon::parse($d)->format('M j, Y g:i A') : '—';
+  $totalMilestones     = (int)($overview['total_milestones'] ?? 0);
+  $completedMilestones = (int)($overview['completed_milestones'] ?? 0);
+  $progressPct         = $totalMilestones > 0 ? round(($completedMilestones / $totalMilestones) * 100) : 0;
+  $currentBudget       = (float)($overview['current_budget'] ?? 0);
+  $totalPaid           = (float)($overview['total_paid'] ?? 0);
+  $remainingBalance    = (float)($overview['remaining_balance'] ?? 0);
+  $paymentModeLabel    = ucwords(str_replace('_', ' ', $overview['payment_mode'] ?? '—'));
+  $projectStatusLabel  = strtoupper(str_replace('_', ' ', $header['status'] ?? '—'));
 @endphp
 
-{{-- ═══ A. PROJECT HEADER ═══ --}}
-<div class="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
-  <div class="flex items-start justify-between gap-2">
-    <div class="flex-1 min-w-0">
-      <h3 class="text-sm font-bold text-gray-900 leading-tight">{{ $header['project_title'] ?? '—' }}</h3>
-      @if(!empty($header['project_description']))
-        <p class="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{{ $header['project_description'] }}</p>
-      @endif
-      <div class="flex items-center gap-1 mt-1 text-[11px] text-gray-400">
-        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        {{ $header['project_location'] ?? '—' }}
+<style>
+  .psm-summary .psm-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.35rem;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  .psm-summary .psm-glass {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  .psm-summary .psm-section {
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  }
+
+  .psm-summary .psm-section-trigger {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.92);
+    transition: background-color 0.2s ease;
+  }
+
+  .psm-summary .psm-section-trigger:hover {
+    background: #f8fafc;
+  }
+
+  .psm-summary .psm-section-body {
+    border-top: 1px solid #eef2f7;
+    padding: 1rem;
+    background: #f8fafc;
+  }
+
+  .psm-summary .psm-mini-card {
+    border-radius: 0.95rem;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .psm-summary .psm-data-card {
+    border-radius: 0.95rem;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+
+  .psm-summary .psm-table-wrap {
+    overflow-x: auto;
+  }
+
+  .psm-summary .psm-table-wrap::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .psm-summary .psm-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.55);
+    border-radius: 999px;
+  }
+</style>
+
+<div class="psm-summary space-y-3">
+  {{-- ═══ A. PROJECT HEADER ═══ --}}
+  <div class="psm-hero p-4 md:p-5 text-slate-900">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <span class="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-600">Project Summary</span>
+          <span class="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-500">Lifecycle Snapshot</span>
+        </div>
+
+        <div class="mt-3 flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="text-xl md:text-2xl font-bold leading-tight">{{ $header['project_title'] ?? '—' }}</h3>
+            @if(!empty($header['project_description']))
+              <p class="mt-2 max-w-2xl text-[12px] leading-relaxed text-slate-600">{{ $header['project_description'] }}</p>
+            @endif
+          </div>
+          <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap {{ $statusClass($header['status'] ?? null) }}">
+            {{ $projectStatusLabel }}
+          </span>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-600">
+          <span class="psm-glass rounded-full px-3 py-1 inline-flex items-center gap-1.5">
+            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            {{ $header['project_location'] ?? '—' }}
+          </span>
+          <span class="psm-glass rounded-full px-3 py-1 inline-flex items-center gap-1.5">
+            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            Start {{ $fmtDate($header['original_start_date'] ?? null) }}
+          </span>
+          <span class="psm-glass rounded-full px-3 py-1 inline-flex items-center gap-1.5">
+            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            {{ !empty($header['was_extended']) ? 'Current End' : 'End' }} {{ $fmtDate($header['current_end_date'] ?? null) }}
+          </span>
+          @if(!empty($header['was_extended']))
+            <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700">Extended timeline</span>
+          @endif
+        </div>
+      </div>
+
+      <div class="w-full lg:max-w-sm grid sm:grid-cols-2 lg:grid-cols-1 gap-2">
+        <div class="psm-glass rounded-2xl p-3">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Property Owner</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ $header['owner_name'] ?? '—' }}</p>
+          @if(!empty($header['owner_email']))
+            <p class="text-[11px] text-slate-500 mt-0.5">{{ $header['owner_email'] }}</p>
+          @endif
+        </div>
+        <div class="psm-glass rounded-2xl p-3">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Contractor</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ $header['contractor_name'] ?? '—' }}</p>
+          @if(!empty($header['contractor_company']))
+            <p class="text-[11px] text-slate-500 mt-0.5">{{ $header['contractor_company'] }}</p>
+          @endif
+        </div>
       </div>
     </div>
-    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold {{ $statusClass($header['status'] ?? '') }} flex-shrink-0">
-      {{ strtoupper(str_replace('_', ' ', $header['status'] ?? '—')) }}
-    </span>
+
+    <div class="mt-4 grid grid-cols-2 xl:grid-cols-4 gap-2.5">
+      <div class="psm-glass psm-mini-card">
+        <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Current Budget</p>
+        <p class="mt-1 text-base font-bold text-slate-900">{{ $fmt($currentBudget) }}</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">Live approved budget</p>
+      </div>
+      <div class="psm-glass psm-mini-card">
+        <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Paid to Date</p>
+        <p class="mt-1 text-base font-bold text-slate-900">{{ $fmt($totalPaid) }}</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">Verified payments</p>
+      </div>
+      <div class="psm-glass psm-mini-card">
+        <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Remaining Balance</p>
+        <p class="mt-1 text-base font-bold text-slate-900">{{ $fmt($remainingBalance) }}</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">Outstanding amount</p>
+      </div>
+      <div class="psm-glass psm-mini-card">
+        <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Milestone Progress</p>
+        <p class="mt-1 text-base font-bold text-slate-900">{{ $progressPct }}%</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">{{ $completedMilestones }} of {{ $totalMilestones }} completed</p>
+      </div>
+    </div>
   </div>
-  <div class="border-t border-gray-100 pt-2 grid grid-cols-2 gap-2">
-    <div>
-      <p class="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Property Owner</p>
-      <p class="text-xs font-semibold text-gray-900">{{ $header['owner_name'] ?? '—' }}</p>
-      @if(!empty($header['owner_email']))<p class="text-[10px] text-gray-400">{{ $header['owner_email'] }}</p>@endif
-    </div>
-    <div>
-      <p class="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Contractor</p>
-      <p class="text-xs font-semibold text-gray-900">{{ $header['contractor_name'] ?? '—' }}</p>
-      @if(!empty($header['contractor_company']))<p class="text-[10px] text-gray-400">{{ $header['contractor_company'] }}</p>@endif
-    </div>
-  </div>
-  <div class="border-t border-gray-100 pt-2 flex items-center gap-2 flex-wrap">
-    <div>
-      <span class="text-[9px] text-gray-400 uppercase tracking-wide">Start</span>
-      <p class="text-xs font-semibold text-gray-900">{{ $fmtDate($header['original_start_date'] ?? null) }}</p>
-    </div>
-    <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <div>
-      <span class="text-[9px] text-gray-400 uppercase tracking-wide">{{ !empty($header['was_extended']) ? 'Current End' : 'End' }}</span>
-      <p class="text-xs font-semibold text-gray-900">{{ $fmtDate($header['current_end_date'] ?? null) }}</p>
-    </div>
-    @if(!empty($header['was_extended']))
-      <span class="inline-flex px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-semibold rounded-full">Extended</span>
-    @endif
-  </div>
-</div>
 
 {{-- ═══ B. EXECUTIVE OVERVIEW (collapsible) ═══ --}}
 @php
-  $totalMilestones     = (int)($overview['total_milestones'] ?? 0);
-  $completedMilestones = (int)($overview['completed_milestones'] ?? 0);
-  $progressPct   = $totalMilestones > 0 ? round(($completedMilestones / $totalMilestones) * 100) : 0;
-  $currentBudget = (float)($overview['current_budget'] ?? 0);
-  $totalPaid     = (float)($overview['total_paid'] ?? 0);
   $budgetPct     = $currentBudget > 0 ? min(round(($totalPaid / $currentBudget) * 100), 100) : 0;
 @endphp
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <button type="button" onclick="psmToggle('psmOverview','psmOverviewChevron')" class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+<div class="psm-section">
+  <button type="button" onclick="psmToggle('psmOverview','psmOverviewChevron')" class="psm-section-trigger">
     <div class="flex items-center gap-2 text-xs font-bold text-gray-800">
-      <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
       </svg>
       Executive Overview
     </div>
-    <svg id="psmOverviewChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg id="psmOverviewChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
-  <div id="psmOverview" class="border-t border-gray-100 p-3 space-y-2.5">
+  <div id="psmOverview" class="psm-section-body space-y-3">
     <div>
       <div class="flex justify-between text-[11px] font-semibold text-gray-600 mb-1">
         <span>Milestone Progress</span><span>{{ $progressPct }}%</span>
@@ -131,7 +245,7 @@
         </svg>
       </div>
     </div>
-    <div class="grid grid-cols-3 gap-1.5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
       @php
         $ovItems = [
           ['Original Budget',   $fmt($overview['original_budget']   ?? 0), false, ''],
@@ -143,7 +257,7 @@
         ];
       @endphp
       @foreach($ovItems as [$label, $value, $highlight, $color])
-        <div class="rounded-lg p-2 border {{ $highlight ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50' }}">
+        <div class="psm-data-card p-2.5 {{ $highlight ? 'border-slate-200 bg-slate-50' : 'bg-white' }}">
           <p class="text-[9px] text-gray-400 mb-0.5">{{ $label }}</p>
           <p class="text-xs font-bold {{ $color ?: 'text-gray-900' }}">{{ $value }}</p>
         </div>
@@ -153,19 +267,19 @@
 </div>
 
 {{-- ═══ C. MILESTONE BREAKDOWN (collapsible) ═══ --}}
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <button type="button" onclick="psmToggle('psmMilestones','psmMilestonesChevron')" class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+<div class="psm-section">
+  <button type="button" onclick="psmToggle('psmMilestones','psmMilestonesChevron')" class="psm-section-trigger">
     <div class="flex items-center gap-2 text-xs font-bold text-gray-800">
-      <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
       </svg>
       Milestones ({{ count($milestones) }})
     </div>
-    <svg id="psmMilestonesChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg id="psmMilestonesChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
-  <div id="psmMilestones" class="border-t border-gray-100 p-2.5 space-y-2">
+  <div id="psmMilestones" class="psm-section-body space-y-2.5">
     @forelse($milestones as $m)
       @php
         $mAlloc = (float)$get($m, 'current_allocation', 0);
@@ -180,9 +294,9 @@
         $mExtended = (bool)$get($m, 'was_extended', false);
         $mExtCount = (int)$get($m, 'extension_count', 0);
       @endphp
-      <div class="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+      <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div class="flex items-start gap-2">
-          <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+          <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
             {{ $mSeq }}
           </div>
           <div class="flex-1 min-w-0">
@@ -220,19 +334,19 @@
 
 {{-- ═══ D. BUDGET HISTORY (collapsible) ═══ --}}
 @if(count($budgetHistory) > 0)
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <button type="button" onclick="psmToggle('psmBudget','psmBudgetChevron')" class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+<div class="psm-section">
+  <button type="button" onclick="psmToggle('psmBudget','psmBudgetChevron')" class="psm-section-trigger">
     <div class="flex items-center gap-2 text-xs font-bold text-gray-800">
-      <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
       </svg>
       Budget History ({{ count($budgetHistory) }})
     </div>
-    <svg id="psmBudgetChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg id="psmBudgetChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
-  <div id="psmBudget" class="border-t border-gray-100 p-2.5 space-y-2 hidden">
+  <div id="psmBudget" class="psm-section-body space-y-2 hidden">
     @foreach($budgetHistory as $bh)
       @php
         $bhStatus   = $get($bh, 'status', '');
@@ -242,7 +356,7 @@
         $bhReason   = $get($bh, 'reason', '');
         $bhDate     = $get($bh, 'date_proposed');
       @endphp
-      <div class="flex gap-2">
+      <div class="flex gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
         <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0"></div>
         <div class="flex-1">
           <div class="flex items-center justify-between gap-2">
@@ -263,19 +377,19 @@
 
 {{-- ═══ E. CHANGE LOG (collapsible) ═══ --}}
 @if(count($changeHistory) > 0)
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <button type="button" onclick="psmToggle('psmChangelog','psmChangelogChevron')" class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+<div class="psm-section">
+  <button type="button" onclick="psmToggle('psmChangelog','psmChangelogChevron')" class="psm-section-trigger">
     <div class="flex items-center gap-2 text-xs font-bold text-gray-800">
-      <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
       </svg>
       Change Log ({{ count($changeHistory) }})
     </div>
-    <svg id="psmChangelogChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg id="psmChangelogChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
-  <div id="psmChangelog" class="border-t border-gray-100 p-2.5 space-y-2 hidden">
+  <div id="psmChangelog" class="psm-section-body space-y-2 hidden">
     @foreach($changeHistory as $evt)
       @php
         $evtAction = $get($evt, 'action', '—');
@@ -284,7 +398,7 @@
         $evtRef    = $get($evt, 'reference', '');
         $evtDate   = $get($evt, 'date');
       @endphp
-      <div class="flex gap-2">
+      <div class="flex gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
         <div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
         <div class="flex-1">
           <p class="text-xs font-semibold text-gray-900">{{ $evtAction }}</p>
@@ -365,19 +479,19 @@
     return ['label' => $diff.'d left', 'class' => 'text-green-600 bg-green-50'];
   };
 @endphp
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <button type="button" onclick="psmToggle('psmPayments','psmPaymentsChevron')" class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+<div class="psm-section">
+  <button type="button" onclick="psmToggle('psmPayments','psmPaymentsChevron')" class="psm-section-trigger">
     <div class="flex items-center gap-2 text-xs font-bold text-gray-800">
-      <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
       </svg>
       Payments ({{ count($payRecords) }})
     </div>
-    <svg id="psmPaymentsChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg id="psmPaymentsChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
-  <div id="psmPayments" class="border-t border-gray-100 p-2.5 space-y-2.5 hidden">
+  <div id="psmPayments" class="psm-section-body space-y-2.5 hidden">
 
     {{-- ── Status Alert Banners ── --}}
     @if($allMilestoneDone && $allFullyPaid)
@@ -524,8 +638,8 @@
     @if(count($payRecords) > 0)
       <div>
         <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Transaction History</p>
-        <div class="rounded-lg border border-gray-200 overflow-hidden">
-          <table class="w-full text-[11px]">
+        <div class="psm-table-wrap rounded-xl border border-gray-200 bg-white">
+          <table class="min-w-[640px] w-full text-[11px]">
             <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th class="text-left px-2.5 py-1.5 font-semibold text-gray-500">Milestone</th>
@@ -569,19 +683,19 @@
 
 {{-- ═══ G. PROGRESS REPORTS (collapsible) ═══ --}}
 @if(count($progressReports) > 0)
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <button type="button" onclick="psmToggle('psmProgress','psmProgressChevron')" class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+<div class="psm-section">
+  <button type="button" onclick="psmToggle('psmProgress','psmProgressChevron')" class="psm-section-trigger">
     <div class="flex items-center gap-2 text-xs font-bold text-gray-800">
-      <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
       Progress Reports ({{ count($progressReports) }})
     </div>
-    <svg id="psmProgressChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg id="psmProgressChevron" class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
-  <div id="psmProgress" class="border-t border-gray-100 p-2.5 space-y-1.5 hidden">
+  <div id="psmProgress" class="psm-section-body space-y-2 hidden">
     @foreach($progressReports as $pr)
       @php
         $prTitle    = $get($pr, 'report_title', 'Progress Report');
@@ -591,7 +705,7 @@
         $prStatus   = $get($pr, 'status', '');
         $prDate     = $get($pr, 'submitted_at');
       @endphp
-      <div class="flex items-start justify-between gap-2 py-1.5 border-b border-gray-100 last:border-0">
+      <div class="flex items-start justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
         <div class="flex-1 min-w-0">
           <p class="text-[11px] font-semibold text-gray-900 truncate">{{ $prTitle }}</p>
           @if($prMilestone)<p class="text-[10px] text-gray-500">{{ $prMilestone }}</p>@endif
@@ -611,4 +725,12 @@
 </div>
 @endif
 
-<p class="text-[10px] text-gray-400 text-center pt-1.5">Generated {{ $fmtDt($generatedAt) }}</p>
+<div class="flex justify-center pt-1">
+  <span class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-medium text-slate-500 shadow-sm">
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+    </svg>
+    Generated {{ $fmtDt($generatedAt) }}
+  </span>
+</div>
+</div>

@@ -23,6 +23,20 @@ function showNotification(message, type = "success") {
     }, 3000);
 }
 
+function animatePostingRows() {
+    const rows = document.querySelectorAll("#ownersTableWrap tbody tr");
+    rows.forEach((row, index) => {
+        row.style.opacity = "0";
+        row.style.transform = "translateY(20px)";
+
+        setTimeout(() => {
+            row.style.transition = "all 0.4s ease";
+            row.style.opacity = "1";
+            row.style.transform = "translateY(0)";
+        }, index * 50);
+    });
+}
+
 // Define attachModalListeners globally so filters.js can call it
 window.attachModalListeners = function () {
     // View Modal
@@ -461,23 +475,26 @@ window.attachModalListeners = function () {
         });
     });
 
-    // Add hover effects to table rows
-    const tableRows = document.querySelectorAll("tbody tr");
-    tableRows.forEach((row) => {
-        row.addEventListener("mouseenter", function () {
-            this.style.transform = "translateX(4px)";
-        });
-
-        row.addEventListener("mouseleave", function () {
-            this.style.transform = "translateX(0)";
-        });
-    });
+    animatePostingRows();
 };
 
 document.addEventListener("DOMContentLoaded", function () {
     if (typeof window.attachModalListeners === "function") {
         window.attachModalListeners();
     }
+
+    const originalFetchAndUpdate = window.fetchAndUpdate;
+    if (typeof originalFetchAndUpdate === "function" && !originalFetchAndUpdate.__postingAnimationWrapped) {
+        const wrappedFetchAndUpdate = async function (...args) {
+            const result = await originalFetchAndUpdate.apply(this, args);
+            animatePostingRows();
+            return result;
+        };
+        wrappedFetchAndUpdate.__postingAnimationWrapped = true;
+        window.fetchAndUpdate = wrappedFetchAndUpdate;
+    }
+
+    animatePostingRows();
 
     const viewModal = document.getElementById("viewModal");
     const approveModal = document.getElementById("approveModal");

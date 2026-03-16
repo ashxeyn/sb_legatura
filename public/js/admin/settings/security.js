@@ -272,9 +272,83 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Profile edit modal ---
-  document.getElementById('openEditBtn').addEventListener('click', () => { document.getElementById('profileError').classList.add('hidden'); openModal('editModal'); });
+  let initialProfileFormState = null;
+
+  function normalizeProfileValue(v) {
+    return String(v || '').trim();
+  }
+
+  function captureProfileFormState() {
+    return {
+      first_name: normalizeProfileValue(document.getElementById('editFirstName')?.value),
+      middle_name: normalizeProfileValue(document.getElementById('editMiddleName')?.value),
+      last_name: normalizeProfileValue(document.getElementById('editLastName')?.value),
+      email: normalizeProfileValue(document.getElementById('editEmail')?.value),
+      username: normalizeProfileValue(document.getElementById('editUsername')?.value),
+    };
+  }
+
+  function clearProfileEditErrors() {
+    const alertEl = document.getElementById('profileEditErrorAlert');
+    const listEl = document.getElementById('profileEditErrorList');
+    if (listEl) listEl.innerHTML = '';
+    if (alertEl) alertEl.classList.add('hidden');
+  }
+
+  function showProfileEditErrors(errors) {
+    const alertEl = document.getElementById('profileEditErrorAlert');
+    const listEl = document.getElementById('profileEditErrorList');
+    if (!alertEl || !listEl) return;
+
+    const validErrors = (errors || []).filter(Boolean);
+    if (!validErrors.length) return;
+
+    listEl.innerHTML = validErrors.map(function(msg) {
+      return '<li>' + esc(msg) + '</li>';
+    }).join('');
+
+    alertEl.classList.remove('hidden');
+  }
+
+  function hasProfileFormChanged() {
+    if (!initialProfileFormState) return true;
+
+    const currentState = captureProfileFormState();
+    const avatarInput = document.getElementById('avatarInput');
+    const hasNewAvatar = Boolean(avatarInput && avatarInput.files && avatarInput.files.length);
+
+    if (hasNewAvatar) return true;
+
+    return Object.keys(initialProfileFormState).some(function(key) {
+      return currentState[key] !== initialProfileFormState[key];
+    });
+  }
+
+  document.getElementById('openEditBtn').addEventListener('click', () => {
+    clearProfileEditErrors();
+    const avatarInput = document.getElementById('avatarInput');
+    if (avatarInput) avatarInput.value = '';
+    initialProfileFormState = captureProfileFormState();
+    openModal('editModal');
+  });
   document.getElementById('closeEditBtn').addEventListener('click',  () => closeModal('editModal'));
   document.getElementById('cancelEditBtn').addEventListener('click', () => closeModal('editModal'));
+
+  const closeProfileEditErrorAlertBtn = document.getElementById('closeProfileEditErrorAlert');
+  if (closeProfileEditErrorAlertBtn) {
+    closeProfileEditErrorAlertBtn.addEventListener('click', clearProfileEditErrors);
+  }
+
+  ['editFirstName', 'editMiddleName', 'editLastName', 'editEmail', 'editUsername'].forEach(function(id) {
+    const field = document.getElementById(id);
+    if (!field) return;
+    field.addEventListener('input', clearProfileEditErrors);
+  });
+
+  const avatarInputEl = document.getElementById('avatarInput');
+  if (avatarInputEl) {
+    avatarInputEl.addEventListener('change', clearProfileEditErrors);
+  }
 
   document.getElementById('avatarInput').addEventListener('change', e => {
     const file = e.target.files[0]; if (!file) return;
@@ -285,13 +359,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('profileForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const errEl = document.getElementById('profileError'); const spinner = document.getElementById('savingSpinner'); const saveBtn = document.getElementById('saveProfileBtn');
-    errEl.classList.add('hidden'); spinner.classList.remove('hidden'); saveBtn.disabled = true;
+    const spinner = document.getElementById('savingSpinner'); const saveBtn = document.getElementById('saveProfileBtn');
+    clearProfileEditErrors();
+
+    if (!hasProfileFormChanged()) {
+      showProfileEditErrors(['No changes detected. Please modify at least one field before saving.']);
+      return;
+    }
+
+    spinner.classList.remove('hidden'); saveBtn.disabled = true;
     const { ok, data, redirect } = await apiFetch('/admin/settings/security/update', { method:'POST', body:new FormData(e.target) });
     spinner.classList.add('hidden'); saveBtn.disabled = false;
     if (redirect) { window.location.href = '/login'; return; }
     if (ok && data.success) { closeModal('editModal'); toast('Profile updated successfully.'); loadData(); }
-    else { errEl.textContent = data.message || 'Update failed.'; errEl.classList.remove('hidden'); }
+    else { showProfileEditErrors([data.message || 'Update failed.']); }
   });
 
   // --- Password strength ---
@@ -467,8 +548,72 @@ document.addEventListener('DOMContentLoaded', () => {
     else { errEl.textContent = data.message || 'Failed to create admin.'; errEl.classList.remove('hidden'); }
   });
 
+  let initialMemberEditFormState = null;
+
+  function normalizeMemberEditValue(v) {
+    return String(v || '').trim();
+  }
+
+  function captureMemberEditFormState() {
+    return {
+      first_name: normalizeMemberEditValue(document.getElementById('memberEditFirstName')?.value),
+      middle_name: normalizeMemberEditValue(document.getElementById('memberEditMiddleName')?.value),
+      last_name: normalizeMemberEditValue(document.getElementById('memberEditLastName')?.value),
+      email: normalizeMemberEditValue(document.getElementById('memberEditEmail')?.value),
+      username: normalizeMemberEditValue(document.getElementById('memberEditUsername')?.value),
+    };
+  }
+
+  function clearMemberEditErrors() {
+    const alertEl = document.getElementById('memberEditErrorAlert');
+    const listEl = document.getElementById('memberEditErrorList');
+    if (listEl) listEl.innerHTML = '';
+    if (alertEl) alertEl.classList.add('hidden');
+  }
+
+  function showMemberEditErrors(errors) {
+    const alertEl = document.getElementById('memberEditErrorAlert');
+    const listEl = document.getElementById('memberEditErrorList');
+    if (!alertEl || !listEl) return;
+
+    const validErrors = (errors || []).filter(Boolean);
+    if (!validErrors.length) return;
+
+    listEl.innerHTML = validErrors.map(function(msg) {
+      return '<li>' + esc(msg) + '</li>';
+    }).join('');
+
+    alertEl.classList.remove('hidden');
+  }
+
+  function hasMemberEditFormChanged() {
+    if (!initialMemberEditFormState) return true;
+
+    const currentState = captureMemberEditFormState();
+    const passwordInput = document.getElementById('memberEditPassword');
+    const hasNewPassword = normalizeMemberEditValue(passwordInput?.value).length > 0;
+
+    if (hasNewPassword) return true;
+
+    return Object.keys(initialMemberEditFormState).some(function(key) {
+      return currentState[key] !== initialMemberEditFormState[key];
+    });
+  }
+
+  const closeMemberEditErrorAlertBtn = document.getElementById('closeMemberEditErrorAlert');
+  if (closeMemberEditErrorAlertBtn) {
+    closeMemberEditErrorAlertBtn.addEventListener('click', clearMemberEditErrors);
+  }
+
+  ['memberEditFirstName', 'memberEditMiddleName', 'memberEditLastName', 'memberEditEmail', 'memberEditUsername', 'memberEditPassword'].forEach(function(id) {
+    const field = document.getElementById(id);
+    if (!field) return;
+    field.addEventListener('input', clearMemberEditErrors);
+  });
+
   async function openMemberModal(adminId) {
-    document.getElementById('memberEditError').classList.add('hidden');
+    initialMemberEditFormState = null;
+    clearMemberEditErrors();
     document.getElementById('memberLogsBody').innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-300 text-xs">Loading...</td></tr>';
     openModal('memberModal');
     const { ok, data, redirect } = await apiFetch('/admin/settings/security/members/' + encodeURIComponent(adminId) + '/data');
@@ -486,6 +631,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('memberEditLastName').value   = a.last_name   || '';
     document.getElementById('memberEditEmail').value      = a.email       || '';
     document.getElementById('memberEditUsername').value   = a.username    || '';
+    const memberEditPasswordInput = document.getElementById('memberEditPassword');
+    if (memberEditPasswordInput) memberEditPasswordInput.value = '';
+    initialMemberEditFormState = captureMemberEditFormState();
     const logs = data.data.logs;
     const logsBody = document.getElementById('memberLogsBody');
     if (!logs || !logs.length) { logsBody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-300 text-xs">No activity yet.</td></tr>'; }
@@ -494,15 +642,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('memberEditForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const errEl = document.getElementById('memberEditError'); const spinner = document.getElementById('memberEditSpinner'); const btn = document.getElementById('memberEditSaveBtn');
-    errEl.classList.add('hidden');
+    const spinner = document.getElementById('memberEditSpinner'); const btn = document.getElementById('memberEditSaveBtn');
+    clearMemberEditErrors();
+
+    if (!hasMemberEditFormChanged()) {
+      showMemberEditErrors(['No changes detected. Please modify at least one field before saving.']);
+      return;
+    }
+
     const targetId = document.getElementById('memberEditId').value;
     spinner.classList.remove('hidden'); btn.disabled = true;
     const { ok, data, redirect } = await apiFetch('/admin/settings/security/members/' + encodeURIComponent(targetId) + '/update', { method:'POST', body:new FormData(e.target) });
     spinner.classList.add('hidden'); btn.disabled = false;
     if (redirect) { window.location.href = '/login'; return; }
     if (ok && data.success) { toast('Admin account updated.'); closeModal('memberModal'); loadMembers(); if (teamLogLoaded) loadTeamActivity(); }
-    else { errEl.textContent = data.message || 'Update failed.'; errEl.classList.remove('hidden'); }
+    else { showMemberEditErrors([data.message || 'Update failed.']); }
   });
 
   let _deactivateTargetId = null;

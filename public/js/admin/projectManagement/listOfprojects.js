@@ -1,5 +1,19 @@
 document.addEventListener('DOMContentLoaded', function() {
 
+  function animateProjectRows() {
+    const rows = document.querySelectorAll('#projectsTableBody tr');
+    rows.forEach((row, index) => {
+      row.style.opacity = '0';
+      row.style.transform = 'translateY(20px)';
+
+      setTimeout(() => {
+        row.style.transition = 'all 0.4s ease';
+        row.style.opacity = '1';
+        row.style.transform = 'translateY(0)';
+      }, index * 50);
+    });
+  }
+
   // Fetch and update table content (similar to propertyOwner module)
   async function fetchAndUpdate(url) {
     try {
@@ -16,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const projectsWrap = document.getElementById('projectsTableWrap');
       if (projectsWrap && data.html) {
         projectsWrap.innerHTML = data.html;
+        animateProjectRows();
       }
 
       // Re-attach action listeners after updating the table
@@ -114,6 +129,19 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof window.attachActionListeners === 'function') {
     window.attachActionListeners();
   }
+
+  const originalFetchAndUpdate = window.fetchAndUpdate;
+  if (typeof originalFetchAndUpdate === 'function' && !originalFetchAndUpdate.__lopAnimationWrapped) {
+    const wrappedFetchAndUpdate = async function(...args) {
+      const result = await originalFetchAndUpdate.apply(this, args);
+      animateProjectRows();
+      return result;
+    };
+    wrappedFetchAndUpdate.__lopAnimationWrapped = true;
+    window.fetchAndUpdate = wrappedFetchAndUpdate;
+  }
+
+  animateProjectRows();
 
   // Fetch project details and open appropriate modal
   async function fetchProjectDetails(projectId) {
@@ -949,6 +977,30 @@ document.addEventListener('DOMContentLoaded', function() {
           modalContainer.innerHTML = result.html;
           const existingModal = document.getElementById('deleteProjectModal');
           if (existingModal) {
+            const deleteReasonInput = document.getElementById('deleteReason');
+            const deleteReasonError = document.getElementById('error-delete-reason');
+
+            if (deleteReasonInput) {
+              deleteReasonInput.value = '';
+              deleteReasonInput.classList.remove('border-red-500');
+
+              if (!deleteReasonInput.dataset.validationBound) {
+                deleteReasonInput.addEventListener('input', function () {
+                  this.classList.remove('border-red-500');
+                  if (deleteReasonError) {
+                    deleteReasonError.classList.add('hidden');
+                    deleteReasonError.textContent = 'Reason is required.';
+                  }
+                });
+                deleteReasonInput.dataset.validationBound = '1';
+              }
+            }
+
+            if (deleteReasonError) {
+              deleteReasonError.classList.add('hidden');
+              deleteReasonError.textContent = 'Reason is required.';
+            }
+
             existingModal.classList.remove('hidden');
             existingModal.classList.add('flex');
             document.body.style.overflow = 'hidden';
@@ -991,9 +1043,13 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       // Clear previous error
       const errorElement = document.getElementById('error-delete-reason');
+      const deleteReasonInput = document.getElementById('deleteReason');
       if (errorElement) {
         errorElement.classList.add('hidden');
-        errorElement.textContent = '';
+        errorElement.textContent = 'Reason is required.';
+      }
+      if (deleteReasonInput) {
+        deleteReasonInput.classList.remove('border-red-500');
       }
 
       // Get project ID from modal
@@ -1006,7 +1062,18 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // Get the deletion reason from the textarea
-      const reason = document.getElementById('deleteReason')?.value || '';
+      const reason = deleteReasonInput?.value.trim() || '';
+
+      if (!reason) {
+        if (deleteReasonInput) {
+          deleteReasonInput.classList.add('border-red-500');
+        }
+        if (errorElement) {
+          errorElement.textContent = 'Reason is required.';
+          errorElement.classList.remove('hidden');
+        }
+        return;
+      }
 
       // Get CSRF token
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
@@ -1037,6 +1104,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle validation errors
         if (response.status === 422 && result.errors) {
           if (result.errors.reason && errorElement) {
+            if (deleteReasonInput) {
+              deleteReasonInput.classList.add('border-red-500');
+            }
             errorElement.textContent = result.errors.reason[0];
             errorElement.classList.remove('hidden');
           }
@@ -1572,11 +1642,105 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
+  function showEditProjectValidationErrors(errors) {
+    const errorDiv = document.getElementById('editProjectValidationError');
+    const errorList = document.getElementById('editProjectValidationErrorList');
+
+    if (!errorDiv || !errorList) return;
+
+    errorList.innerHTML = '';
+
+    if (Array.isArray(errors)) {
+      errors.forEach(error => {
+        const li = document.createElement('li');
+        li.textContent = error;
+        errorList.appendChild(li);
+      });
+    } else if (typeof errors === 'object' && errors !== null) {
+      Object.values(errors).forEach(messages => {
+        if (Array.isArray(messages)) {
+          messages.forEach(message => {
+            const li = document.createElement('li');
+            li.textContent = message;
+            errorList.appendChild(li);
+          });
+        } else {
+          const li = document.createElement('li');
+          li.textContent = messages;
+          errorList.appendChild(li);
+        }
+      });
+    }
+
+    errorDiv.classList.remove('hidden');
+    errorDiv.style.display = '';
+
+    const scrollArea = errorDiv.closest('.edit-project-scroll') || errorDiv.closest('.overflow-y-auto');
+    if (scrollArea) {
+      scrollArea.scrollTop = 0;
+    }
+  }
+
+  function clearEditProjectValidationErrors() {
+    const errorDiv = document.getElementById('editProjectValidationError');
+    const errorList = document.getElementById('editProjectValidationErrorList');
+
+    if (errorDiv) {
+      errorDiv.classList.add('hidden');
+      errorDiv.style.display = 'none';
+    }
+
+    if (errorList) {
+      errorList.innerHTML = '';
+    }
+  }
+
+  function clearEditProjectFieldErrors() {
+    document.querySelectorAll('#editProjectModal .edit-project-field.error').forEach(field => {
+      field.classList.remove('error');
+    });
+
+    document.querySelectorAll('#editProjectModal [id^="error-"]').forEach(errorEl => {
+      errorEl.classList.add('hidden');
+      errorEl.textContent = '';
+    });
+  }
+
+  function getEditProjectFieldTargets(field) {
+    const fieldMap = {
+      project_title: ['editProjectTitle'],
+      project_description: ['editProjectDescription'],
+      property_type: ['editPropertyType'],
+      lot_size: ['editLotSize'],
+      floor_area: ['editFloorArea'],
+      project_location: ['editProvince', 'editCity', 'editBarangay', 'editStreet'],
+      selected_contractor_id: ['editContractorSelect']
+    };
+
+    return fieldMap[field] || [];
+  }
+
+  function showEditProjectFieldError(field, message) {
+    const errorElement = document.getElementById(`error-${field}`);
+    if (errorElement) {
+      errorElement.textContent = message;
+      errorElement.classList.remove('hidden');
+    }
+
+    getEditProjectFieldTargets(field).forEach(targetId => {
+      const fieldElement = document.getElementById(targetId);
+      if (fieldElement) {
+        fieldElement.classList.add('error');
+      }
+    });
+  }
+
   // Validate that at least one field has changed before saving
   window.validateAndEditProject = function() {
-    const errorDiv = document.getElementById('editProjectValidationError');
     const fields = document.querySelectorAll('.change-detector');
     let hasAnyChange = false;
+
+    clearEditProjectValidationErrors();
 
     fields.forEach(function(field) {
       if (field.getAttribute('data-original-value') !== field.value) {
@@ -1585,19 +1749,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     if (!hasAnyChange) {
-      if (errorDiv) {
-        errorDiv.style.display = 'block';
-        errorDiv.classList.remove('hidden');
-        const contentArea = errorDiv.closest('.overflow-y-auto');
-        if (contentArea) contentArea.scrollTop = 0;
-      }
+      showEditProjectValidationErrors(['No changes detected. Please modify at least one field before saving.']);
       return false;
     }
 
-    if (errorDiv) {
-      errorDiv.style.display = 'none';
-      errorDiv.classList.add('hidden');
-    }
     if (typeof showEditProjectConfirmModal === 'function') {
       showEditProjectConfirmModal();
     }
@@ -1605,20 +1760,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Attach input/change listeners to hide validation error on any edit
   function initEditProjectChangeListeners() {
+    const closeErrorBtn = document.getElementById('closeEditProjectValidationError');
+    if (closeErrorBtn && !closeErrorBtn.dataset.bound) {
+      closeErrorBtn.addEventListener('click', clearEditProjectValidationErrors);
+      closeErrorBtn.dataset.bound = '1';
+    }
+
     document.querySelectorAll('.change-detector').forEach(function(field) {
+      const clearFieldError = function() {
+        clearEditProjectValidationErrors();
+
+        if (field.classList.contains('edit-project-field')) {
+          field.classList.remove('error');
+        }
+
+        const fieldErrorMap = {
+          editProjectTitle: 'error-project_title',
+          editProjectDescription: 'error-project_description',
+          editPropertyType: 'error-property_type',
+          editLotSize: 'error-lot_size',
+          editFloorArea: 'error-floor_area',
+          editProvince: 'error-project_location',
+          editCity: 'error-project_location',
+          editBarangay: 'error-project_location',
+          editStreet: 'error-project_location',
+          editContractorSelect: 'error-selected_contractor_id'
+        };
+
+        const errorId = fieldErrorMap[field.id];
+        if (errorId) {
+          const errorEl = document.getElementById(errorId);
+          if (errorEl) {
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+          }
+
+          if (errorId === 'error-project_location') {
+            ['editProvince', 'editCity', 'editBarangay', 'editStreet'].forEach(id => {
+              const locationField = document.getElementById(id);
+              if (locationField) {
+                locationField.classList.remove('error');
+              }
+            });
+          }
+        }
+      };
+
       field.addEventListener('change', function() {
-        const errorDiv = document.getElementById('editProjectValidationError');
-        if (errorDiv) {
-          errorDiv.style.display = 'none';
-          errorDiv.classList.add('hidden');
-        }
+        clearFieldError();
       });
+
       field.addEventListener('input', function() {
-        const errorDiv = document.getElementById('editProjectValidationError');
-        if (errorDiv) {
-          errorDiv.style.display = 'none';
-          errorDiv.classList.add('hidden');
-        }
+        clearFieldError();
       });
     });
   }
@@ -1742,10 +1935,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Show Edit Project Confirmation Modal (placeholder - implement as needed)
   window.showEditProjectConfirmModal = async function() {
     // Clear previous errors
-    document.querySelectorAll('[id^="error-"]').forEach(el => {
-      el.classList.add('hidden');
-      el.textContent = '';
-    });
+    clearEditProjectValidationErrors();
+    clearEditProjectFieldErrors();
 
     // Get project ID
     const modalContent = document.querySelector('#editProjectModal .bg-white');
@@ -1814,14 +2005,15 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
         // Handle validation errors
         if (response.status === 422 && result.errors) {
+          const errorMessages = [];
+
           Object.keys(result.errors).forEach(field => {
-            const errorElement = document.getElementById(`error-${field}`);
-            if (errorElement) {
-              errorElement.textContent = result.errors[field][0];
-              errorElement.classList.remove('hidden');
-            }
+            const message = result.errors[field][0];
+            errorMessages.push(message);
+            showEditProjectFieldError(field, message);
           });
-          // No toast notification for validation errors - errors shown below fields
+
+          showEditProjectValidationErrors(errorMessages);
         } else {
           showNotification(result.message || 'Failed to update project', 'error');
         }
@@ -3859,13 +4051,14 @@ async function showProjectSummaryModal(projectId) {
   // Reset state — show spinner
   modal.classList.remove('hidden');
   body.innerHTML = `
-    <div class="flex items-center justify-center py-12">
-      <div class="text-center">
-        <svg class="w-10 h-10 text-gray-300 mx-auto mb-3 animate-spin" fill="none" viewBox="0 0 24 24">
+    <div class="flex items-center justify-center py-14">
+      <div class="rounded-2xl border border-slate-200 bg-white px-8 py-7 text-center shadow-sm">
+        <svg class="w-8 h-8 text-slate-300 mx-auto mb-3 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
         </svg>
-        <p class="text-sm text-gray-500">Loading summary…</p>
+        <p class="text-xs font-semibold text-slate-600">Loading project summary...</p>
+        <p class="text-[11px] text-slate-400 mt-1">Preparing milestones, payments, and history</p>
       </div>
     </div>`;
 
@@ -3880,13 +4073,13 @@ async function showProjectSummaryModal(projectId) {
     const html = await res.text();
 
     if (!res.ok) {
-      body.innerHTML = `<div class="p-6 text-center text-red-600 font-semibold">Server error (${res.status}). Please try again.</div>`;
+      body.innerHTML = `<div class="rounded-2xl border border-red-200 bg-red-50 px-6 py-8 text-center text-red-700 shadow-sm"><p class="text-sm font-semibold">Server error (${res.status}). Please try again.</p></div>`;
       return;
     }
 
     body.innerHTML = html;
   } catch (err) {
-    body.innerHTML = `<div class="p-6 text-center text-red-600 font-semibold">Failed to load summary. Please try again.</div>`;
+    body.innerHTML = `<div class="rounded-2xl border border-red-200 bg-red-50 px-6 py-8 text-center text-red-700 shadow-sm"><p class="text-sm font-semibold">Failed to load summary. Please try again.</p></div>`;
     console.error('Project summary fetch error:', err);
   }
 }

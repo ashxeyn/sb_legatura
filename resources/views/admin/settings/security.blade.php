@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Security Settings - Legatura</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
@@ -25,6 +26,16 @@
       --sec-slate-200: #e2e8f0;
       --sec-slate-500: #64748b;
       --sec-slate-700: #334155;
+    }
+
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0.5;
+      cursor: pointer;
+      filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
+    }
+
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
     }
 
     #toast {
@@ -805,6 +816,10 @@
         justify-content: center;
       }
     }
+
+    /* Hide scrollbars inside modals */
+    .modal-backdrop *::-webkit-scrollbar { display: none; }
+    .modal-backdrop * { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -980,31 +995,49 @@
           </div>
 
           <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-b from-blue-50/40 to-white">
-            <div class="activity-log-filter-grid">
-              <div class="activity-log-filter-field activity-log-from">
-                <label for="myLogDateFrom">From</label>
-                <input type="date" id="myLogDateFrom">
+            <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                  <i class="fi fi-rr-filter text-gray-500"></i>
+                  <span>Filter By</span>
+                </div>
+
+                <div class="relative">
+                  <select id="myLogActionFilter" aria-label="Filter activity log by action" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[170px]">
+                    <option value="">All Actions</option>
+                  </select>
+                  <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                      <i class="fi fi-rr-calendar text-white text-[11px]"></i>
+                    </div>
+                    <input type="date" id="myLogDateFrom" aria-label="From date" class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
+                  </div>
+
+                  <span class="text-gray-300 font-bold text-lg">&rarr;</span>
+
+                  <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                      <i class="fi fi-rr-calendar text-white text-[11px]"></i>
+                    </div>
+                    <input type="date" id="myLogDateTo" aria-label="To date" class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
+                  </div>
+                </div>
+
+                <div class="relative min-w-[230px]">
+                  <i class="fi fi-rr-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                  <input type="text" id="myLogSearch" placeholder="Action, details, IP..." aria-label="Search activity logs" class="w-full appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pl-8 text-xs font-medium text-gray-700 placeholder-gray-400 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition">
+                </div>
               </div>
 
-              <div class="activity-log-filter-field activity-log-to">
-                <label for="myLogDateTo">To</label>
-                <input type="date" id="myLogDateTo">
-              </div>
-
-              <div class="activity-log-filter-field activity-log-action">
-                <label for="myLogActionFilter">Action</label>
-                <select id="myLogActionFilter">
-                  <option value="">All Actions</option>
-                </select>
-              </div>
-
-              <div class="activity-log-filter-field activity-log-search">
-                <label for="myLogSearch">Search</label>
-                <input type="text" id="myLogSearch" placeholder="Action, details, IP...">
-              </div>
-
-              <div class="activity-log-reset-wrap">
-                <button id="myLogResetBtn" class="activity-log-reset-btn" type="button">Reset Filters</button>
+              <div class="flex items-center gap-2">
+                <button id="myLogResetBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition" type="button">
+                  <i class="fi fi-rr-rotate-left"></i>
+                  <span>Reset Filter</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1108,31 +1141,49 @@
           </div>
 
           <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-b from-blue-50/40 to-white">
-            <div class="team-log-filter-grid">
-              <div class="team-log-filter-field team-log-from">
-                <label for="teamLogDateFrom">From</label>
-                <input type="date" id="teamLogDateFrom">
+            <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                  <i class="fi fi-rr-filter text-gray-500"></i>
+                  <span>Filter By</span>
+                </div>
+
+                <div class="relative">
+                  <select id="teamLogActionFilter" aria-label="Filter team log by action" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[170px]">
+                    <option value="">All Actions</option>
+                  </select>
+                  <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                      <i class="fi fi-rr-calendar text-white text-[11px]"></i>
+                    </div>
+                    <input type="date" id="teamLogDateFrom" aria-label="From date" class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
+                  </div>
+
+                  <span class="text-gray-300 font-bold text-lg">&rarr;</span>
+
+                  <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                      <i class="fi fi-rr-calendar text-white text-[11px]"></i>
+                    </div>
+                    <input type="date" id="teamLogDateTo" aria-label="To date" class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
+                  </div>
+                </div>
+
+                <div class="relative min-w-[260px]">
+                  <i class="fi fi-rr-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                  <input type="text" id="teamLogSearch" placeholder="Admin, action, details, IP..." aria-label="Search team activity logs" class="w-full appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pl-8 text-xs font-medium text-gray-700 placeholder-gray-400 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition">
+                </div>
               </div>
 
-              <div class="team-log-filter-field team-log-to">
-                <label for="teamLogDateTo">To</label>
-                <input type="date" id="teamLogDateTo">
-              </div>
-
-              <div class="team-log-filter-field team-log-action">
-                <label for="teamLogActionFilter">Action</label>
-                <select id="teamLogActionFilter">
-                  <option value="">All Actions</option>
-                </select>
-              </div>
-
-              <div class="team-log-filter-field team-log-search">
-                <label for="teamLogSearch">Search</label>
-                <input type="text" id="teamLogSearch" placeholder="Admin, action, details, IP...">
-              </div>
-
-              <div class="team-log-reset-wrap">
-                <button id="teamLogResetBtn" class="team-log-reset-btn" type="button">Reset Filters</button>
+              <div class="flex items-center gap-2">
+                <button id="teamLogResetBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition" type="button">
+                  <i class="fi fi-rr-rotate-left"></i>
+                  <span>Reset Filter</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1210,6 +1261,21 @@
         </span>
       </div>
 
+      <div id="profileEditErrorAlert" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <i class="fi fi-rr-alert text-red-500 text-base"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xs font-semibold text-red-800">Validation Errors</h3>
+            <ul id="profileEditErrorList" class="text-xs text-red-700 mt-2 space-y-1 list-disc list-inside"></ul>
+          </div>
+          <button type="button" id="closeProfileEditErrorAlert" class="text-red-500 hover:text-red-700 transition p-1">
+            <i class="fi fi-rr-cross"></i>
+          </button>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div><label class="field-label">First Name <span class="text-red-500">*</span></label><input id="editFirstName" name="first_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required></div>
         <div><label class="field-label">Middle Name</label><input id="editMiddleName" name="middle_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
@@ -1220,8 +1286,6 @@
         <div><label class="field-label">Email <span class="text-red-500">*</span></label><input id="editEmail" name="email" type="email" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required></div>
         <div><label class="field-label">Username <span class="text-red-500">*</span></label><input id="editUsername" name="username" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required></div>
       </div>
-
-      <div id="profileError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
 
       <div class="modal-footer-soft -mx-5 mt-1 px-5 py-4 flex justify-end gap-2">
         <button type="button" id="cancelEditBtn" class="px-5 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition text-gray-600 bg-white">Cancel</button>
@@ -1259,11 +1323,15 @@
         <p class="text-xs text-slate-600 leading-relaxed">Use a strong temporary password. The new admin can update it after first login for better account security.</p>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label class="field-label">First Name <span class="text-red-500">*</span></label>
           <input id="createFirstName" name="first_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
           <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createFirstName">First name is required.</p>
+        </div>
+        <div>
+          <label class="field-label">Middle Name <span class="text-[10px] text-gray-400 font-normal">(optional)</span></label>
+          <input id="createMiddleName" name="middle_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" placeholder="Optional">
         </div>
         <div>
           <label class="field-label">Last Name <span class="text-red-500">*</span></label>
@@ -1271,20 +1339,20 @@
           <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createLastName">Last name is required.</p>
         </div>
       </div>
-      <div>
-        <label class="field-label">Middle Name <span class="text-xs text-gray-400 font-normal">(optional)</span></label>
-        <input id="createMiddleName" name="middle_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" placeholder="Optional">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="field-label">Email <span class="text-red-500">*</span></label>
+          <input id="createEmail" name="email" type="email" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+          <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createEmail">A valid email is required.</p>
+        </div>
+        <div>
+          <label class="field-label">Username <span class="text-red-500">*</span></label>
+          <input id="createUsername" name="username" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+          <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createUsername">Username is required.</p>
+        </div>
       </div>
-      <div>
-        <label class="field-label">Email <span class="text-red-500">*</span></label>
-        <input id="createEmail" name="email" type="email" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
-        <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createEmail">A valid email is required.</p>
-      </div>
-      <div>
-        <label class="field-label">Username <span class="text-red-500">*</span></label>
-        <input id="createUsername" name="username" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
-        <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createUsername">Username is required.</p>
-      </div>
+
       <div>
         <label class="field-label">Temporary Password <span class="text-red-500">*</span></label>
         <input id="createPassword" name="password" type="password" minlength="8" placeholder="Min. 8 characters" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
@@ -1335,6 +1403,21 @@
         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-blue-200 text-[11px] font-semibold text-blue-700">Team Member</span>
       </div>
 
+      <div id="memberEditErrorAlert" class="hidden -mt-1 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <i class="fi fi-rr-alert text-red-500 text-base"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xs font-semibold text-red-800">Validation Errors</h3>
+            <ul id="memberEditErrorList" class="text-xs text-red-700 mt-2 space-y-1 list-disc list-inside"></ul>
+          </div>
+          <button type="button" id="closeMemberEditErrorAlert" class="text-red-500 hover:text-red-700 transition p-1">
+            <i class="fi fi-rr-cross"></i>
+          </button>
+        </div>
+      </div>
+
       <form id="memberEditForm" class="space-y-3">
         @csrf
         <input type="hidden" id="memberEditId" name="_target_id" value="">
@@ -1347,8 +1430,7 @@
           <div><label class="field-label">Email <span class="text-red-500">*</span></label><input id="memberEditEmail" name="email" type="email" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
           <div><label class="field-label">Username <span class="text-red-500">*</span></label><input id="memberEditUsername" name="username" type="text" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
         </div>
-        <div><label class="field-label">Reset Password <span class="text-gray-300 font-normal">(leave blank to keep unchanged)</span></label><input name="password" type="password" minlength="8" placeholder="New password (min. 8 chars)" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
-        <div id="memberEditError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
+        <div><label class="field-label">Reset Password <span class="text-gray-300 font-normal">(leave blank to keep unchanged)</span></label><input id="memberEditPassword" name="password" type="password" minlength="8" placeholder="New password (min. 8 chars)" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
 
         <div class="modal-footer-soft -mx-5 mt-1 px-5 py-4 flex justify-end">
           <button type="submit" id="memberEditSaveBtn" class="px-6 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center gap-2 font-semibold">

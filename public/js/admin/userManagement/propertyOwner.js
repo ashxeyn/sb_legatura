@@ -8,6 +8,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let debounceTimer;
 
+  function animateOwnerTableRows() {
+    const rows = document.querySelectorAll('#propertyOwnersTable tr');
+    rows.forEach((row, index) => {
+      row.style.opacity = '0';
+      row.style.transform = 'translateY(20px)';
+
+      setTimeout(() => {
+        row.style.transition = 'all 0.4s ease';
+        row.style.opacity = '1';
+        row.style.transform = 'translateY(0)';
+      }, index * 50);
+    });
+  }
+
   async function fetchAndUpdate(url) {
     try {
       const response = await fetch(url, {
@@ -195,11 +209,139 @@ document.addEventListener('DOMContentLoaded', function () {
   const cancelBtn = document.getElementById('cancelBtn');
   const saveBtn = document.getElementById('saveBtn');
 
+  const addFormErrorFieldMap = {
+    'addFirstName': 'addFirstNameError',
+    'addLastName': 'addLastNameError',
+    'occupationSelect': 'addOccupationError',
+    'occupationOtherInput': 'addOccupationError',
+    'addEmail': 'addEmailError',
+    'addDateOfBirth': 'addDateOfBirthError',
+    'owner_address_province': 'addProvinceError',
+    'owner_address_city': 'addCityError',
+    'owner_address_barangay': 'addBarangayError',
+    'addStreetAddress': 'addStreetAddressError',
+    'addZipCode': 'addZipCodeError',
+    'addValidIdType': 'addValidIdTypeError',
+    'idFrontUpload': 'addIdFrontError',
+    'idBackUpload': 'addIdBackError',
+    'policeClearanceUpload': 'addPoliceClearanceError'
+  };
+
+  const addFormErrorTargetMap = {
+    'addFirstNameError': 'addFirstName',
+    'addLastNameError': 'addLastName',
+    'addOccupationError': 'occupationSelect',
+    'addEmailError': 'addEmail',
+    'addDateOfBirthError': 'addDateOfBirth',
+    'addProvinceError': 'owner_address_province',
+    'addCityError': 'owner_address_city',
+    'addBarangayError': 'owner_address_barangay',
+    'addStreetAddressError': 'addStreetAddress',
+    'addZipCodeError': 'addZipCode',
+    'addValidIdTypeError': 'addValidIdType',
+    'addIdFrontError': 'idFrontUploadArea',
+    'addIdBackError': 'idBackUploadArea',
+    'addPoliceClearanceError': 'policeClearanceUploadArea'
+  };
+
+  function getAddFieldByIdOrName(id, name) {
+    return document.getElementById(id) || (modal ? modal.querySelector(`[name="${name}"]`) : null);
+  }
+
+  function getFallbackTargetForError(errorElementId) {
+    if (errorElementId === 'addStreetAddressError') {
+      return getAddFieldByIdOrName('addStreetAddress', 'street_address');
+    }
+    if (errorElementId === 'addZipCodeError') {
+      return getAddFieldByIdOrName('addZipCode', 'zip_code');
+    }
+    return null;
+  }
+
+  function clearAddFieldError(errorElementId) {
+    const errorElement = document.getElementById(errorElementId);
+    if (errorElement) {
+      errorElement.classList.add('hidden');
+      errorElement.textContent = '';
+    }
+
+    let targetId = addFormErrorTargetMap[errorElementId];
+    if (errorElementId === 'addOccupationError') {
+      const occupationSelect = document.getElementById('occupationSelect');
+      const occupationOtherInput = document.getElementById('occupationOtherInput');
+      const useOtherInput = occupationSelect && occupationSelect.value === 'others' && occupationOtherInput && !occupationOtherInput.classList.contains('hidden');
+      targetId = useOtherInput ? 'occupationOtherInput' : 'occupationSelect';
+    }
+
+    let targetElement = targetId ? document.getElementById(targetId) : null;
+    if (!targetElement) {
+      targetElement = getFallbackTargetForError(errorElementId);
+    }
+    if (targetElement) {
+      targetElement.classList.remove('error');
+
+      const dynamicError = targetElement.parentElement
+        ? targetElement.parentElement.querySelector(`.dynamic-add-owner-error[data-error-id="${errorElementId}"]`)
+        : null;
+      if (dynamicError) {
+        dynamicError.remove();
+      }
+    }
+  }
+
+  function setAddFieldError(errorElementId, message) {
+    const errorElement = document.getElementById(errorElementId);
+    if (errorElement) {
+      errorElement.textContent = message;
+      errorElement.classList.remove('hidden');
+    }
+
+    let targetId = addFormErrorTargetMap[errorElementId];
+    if (errorElementId === 'addOccupationError') {
+      const occupationSelect = document.getElementById('occupationSelect');
+      const occupationOtherInput = document.getElementById('occupationOtherInput');
+      const useOtherInput = occupationSelect && occupationSelect.value === 'others' && occupationOtherInput && !occupationOtherInput.classList.contains('hidden');
+      targetId = useOtherInput ? 'occupationOtherInput' : 'occupationSelect';
+    }
+
+    let targetElement = targetId ? document.getElementById(targetId) : null;
+    if (!targetElement) {
+      targetElement = getFallbackTargetForError(errorElementId);
+    }
+    if (targetElement) {
+      targetElement.classList.add('error');
+
+      if (!errorElement && targetElement.parentElement) {
+        let dynamicError = targetElement.parentElement.querySelector(`.dynamic-add-owner-error[data-error-id="${errorElementId}"]`);
+        if (!dynamicError) {
+          dynamicError = document.createElement('p');
+          dynamicError.className = 'dynamic-add-owner-error add-owner-error text-red-500 text-xs mt-1';
+          dynamicError.dataset.errorId = errorElementId;
+          targetElement.parentElement.appendChild(dynamicError);
+        }
+        dynamicError.textContent = message;
+      }
+    }
+  }
+
+  function clearAllAddOwnerErrors() {
+    Object.values(addFormErrorFieldMap).forEach(errorId => {
+      clearAddFieldError(errorId);
+    });
+
+    if (modal) {
+      modal.querySelectorAll('.add-owner-field.error').forEach(el => el.classList.remove('error'));
+      modal.querySelectorAll('.add-owner-dropzone.error').forEach(el => el.classList.remove('error'));
+    }
+  }
+
   if (addBtn && modal) {
 
     addBtn.addEventListener('click', function () {
       modal.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
+
+      clearAllAddOwnerErrors();
 
       const modalContent = modal.querySelector('.modal-content');
       modalContent.style.transform = 'scale(0.9)';
@@ -240,36 +382,21 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    // Clear all error messages when user interacts with fields
-    const clearError = (errorElementId) => {
-      const errorElement = document.getElementById(errorElementId);
-      if (errorElement) {
-        errorElement.classList.add('hidden');
-        errorElement.textContent = '';
-      }
-    };
-
-    // Add event listeners to clear errors on user input
-    const errorFieldMap = {
-      'addFirstName': 'addFirstNameError',
-      'addLastName': 'addLastNameError',
-      'occupationSelect': 'addOccupationError',
-      'addEmail': 'addEmailError',
-      'addDateOfBirth': 'addDateOfBirthError',
-      'owner_address_province': 'addProvinceError',
-      'owner_address_city': 'addCityError',
-      'owner_address_barangay': 'addBarangayError',
-      'addValidIdType': 'addValidIdTypeError',
-      'idFrontUpload': 'addIdFrontError',
-      'idBackUpload': 'addIdBackError',
-      'policeClearanceUpload': 'addPoliceClearanceError'
-    };
-
-    Object.entries(errorFieldMap).forEach(([fieldId, errorId]) => {
+    Object.entries(addFormErrorFieldMap).forEach(([fieldId, errorId]) => {
       const field = document.getElementById(fieldId);
       if (field) {
-        field.addEventListener('change', () => clearError(errorId));
-        field.addEventListener('input', () => clearError(errorId));
+        field.addEventListener('change', () => clearAddFieldError(errorId));
+        field.addEventListener('input', () => clearAddFieldError(errorId));
+      }
+    });
+
+    // Fallback listeners in case markup is stale and id attributes are missing
+    ['street_address', 'zip_code'].forEach(name => {
+      const field = modal.querySelector(`[name="${name}"]`);
+      const errorId = name === 'street_address' ? 'addStreetAddressError' : 'addZipCodeError';
+      if (field) {
+        field.addEventListener('change', () => clearAddFieldError(errorId));
+        field.addEventListener('input', () => clearAddFieldError(errorId));
       }
     });
 
@@ -279,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const errors = {};
 
       // Clear all errors first
-      Object.values(errorFieldMap).forEach(errorId => clearError(errorId));
+      clearAllAddOwnerErrors();
 
       // Check First Name
       const firstName = document.getElementById('addFirstName');
@@ -354,6 +481,20 @@ document.addEventListener('DOMContentLoaded', function () {
         isValid = false;
       }
 
+      // Check Street Address
+      const streetAddress = getAddFieldByIdOrName('addStreetAddress', 'street_address');
+      if (!streetAddress || !streetAddress.value.trim()) {
+        errors['addStreetAddressError'] = 'Street address / unit no. is required';
+        isValid = false;
+      }
+
+      // Check Zip Code
+      const zipCode = getAddFieldByIdOrName('addZipCode', 'zip_code');
+      if (!zipCode || !zipCode.value.trim()) {
+        errors['addZipCodeError'] = 'Zip code is required';
+        isValid = false;
+      }
+
       // Check Valid ID Type
       const validIdType = document.getElementById('addValidIdType');
       if (!validIdType || !validIdType.value) {
@@ -384,11 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Display errors
       Object.entries(errors).forEach(([errorId, message]) => {
-        const errorElement = document.getElementById(errorId);
-        if (errorElement) {
-          errorElement.textContent = message;
-          errorElement.classList.remove('hidden');
-        }
+        setAddFieldError(errorId, message);
       });
 
       return isValid;
@@ -446,6 +583,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       console.log('============================');
 
+      clearAllAddOwnerErrors();
       modal.querySelectorAll('.error-message').forEach(el => el.remove());
       modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
@@ -467,58 +605,34 @@ document.addEventListener('DOMContentLoaded', function () {
           handleFilterChange();
         } else {
           if (result.errors) {
+            const backendFieldMap = {
+              first_name: 'addFirstNameError',
+              last_name: 'addLastNameError',
+              occupation_id: 'addOccupationError',
+              occupation_other: 'addOccupationError',
+              email: 'addEmailError',
+              date_of_birth: 'addDateOfBirthError',
+              province: 'addProvinceError',
+              province_name: 'addProvinceError',
+              city: 'addCityError',
+              city_name: 'addCityError',
+              barangay: 'addBarangayError',
+              barangay_name: 'addBarangayError',
+              street_address: 'addStreetAddressError',
+              zip_code: 'addZipCodeError',
+              valid_id_id: 'addValidIdTypeError',
+              valid_id_photo: 'addIdFrontError',
+              valid_id_back_photo: 'addIdBackError',
+              police_clearance: 'addPoliceClearanceError'
+            };
+
             for (const [key, messages] of Object.entries(result.errors)) {
-              const input = modal.querySelector(`[name="${key}"]`);
-              if (input) {
-                input.classList.add('border-red-500');
-                const errorMsg = document.createElement('p');
-                errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                errorMsg.textContent = messages[0];
-                input.parentElement.appendChild(errorMsg);
-              } else {
+              const errorMsg = Array.isArray(messages) ? messages[0] : messages;
 
-                if (key === 'valid_id_photo') {
-                  const area = document.getElementById('idFrontUploadArea');
-                  if (area) {
-                    area.classList.add('border-red-500');
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                    errorMsg.textContent = messages[0];
-                    area.parentElement.appendChild(errorMsg);
-                  }
-                } else if (key === 'valid_id_back_photo') {
-                  const area = document.getElementById('idBackUploadArea');
-                  if (area) {
-                    area.classList.add('border-red-500');
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                    errorMsg.textContent = messages[0];
-                    area.parentElement.appendChild(errorMsg);
-                  }
-                } else if (key === 'police_clearance') {
-                  const area = document.getElementById('policeClearanceUploadArea');
-                  if (area) {
-                    area.classList.add('border-red-500');
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                    errorMsg.textContent = messages[0];
-                    area.parentElement.appendChild(errorMsg);
-                  }
-                } else if (key === 'profile_pic') {
-                  const container = document.querySelector('.relative.group'); // Profile pic container
-                  if (container) {
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message text-center';
-                    errorMsg.textContent = messages[0];
-                    container.parentElement.appendChild(errorMsg);
-                  }
-                }
+              const mappedErrorId = backendFieldMap[key];
+              if (mappedErrorId) {
+                setAddFieldError(mappedErrorId, errorMsg);
               }
-            }
-
-            const firstError = modal.querySelector('.error-message');
-            if (firstError) {
-              firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
           } else {
             alert(result.message || 'An error occurred');
@@ -628,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  function setupFileUpload(uploadId, areaId, fileNameId) {
+  function setupFileUpload(uploadId, areaId, fileNameId, errorId) {
     const upload = document.getElementById(uploadId);
     const area = document.getElementById(areaId);
     const fileName = document.getElementById(fileNameId);
@@ -641,6 +755,21 @@ document.addEventListener('DOMContentLoaded', function () {
           fileName.textContent = this.files[0].name;
           fileName.classList.remove('hidden');
           area.classList.add('border-orange-400', 'bg-orange-50');
+          if (errorId) {
+            clearAddFieldError(errorId);
+          }
+          if (area.classList.contains('edit-owner-dropzone')) {
+            area.classList.remove('error');
+            const staticError = area.parentElement ? area.parentElement.querySelector('.edit-owner-error') : null;
+            if (staticError) {
+              staticError.classList.add('hidden');
+              staticError.textContent = '';
+            }
+            const dynamicError = area.parentElement ? area.parentElement.querySelector('.dynamic-edit-owner-error') : null;
+            if (dynamicError) {
+              dynamicError.remove();
+            }
+          }
         }
       });
 
@@ -661,14 +790,29 @@ document.addEventListener('DOMContentLoaded', function () {
           fileName.textContent = e.dataTransfer.files[0].name;
           fileName.classList.remove('hidden');
           area.classList.add('border-orange-400', 'bg-orange-50');
+          if (errorId) {
+            clearAddFieldError(errorId);
+          }
+          if (area.classList.contains('edit-owner-dropzone')) {
+            area.classList.remove('error');
+            const staticError = area.parentElement ? area.parentElement.querySelector('.edit-owner-error') : null;
+            if (staticError) {
+              staticError.classList.add('hidden');
+              staticError.textContent = '';
+            }
+            const dynamicError = area.parentElement ? area.parentElement.querySelector('.dynamic-edit-owner-error') : null;
+            if (dynamicError) {
+              dynamicError.remove();
+            }
+          }
         }
       });
     }
   }
 
-  setupFileUpload('idFrontUpload', 'idFrontUploadArea', 'idFrontFileName');
-  setupFileUpload('idBackUpload', 'idBackUploadArea', 'idBackFileName');
-  setupFileUpload('policeClearanceUpload', 'policeClearanceUploadArea', 'policeClearanceFileName');
+  setupFileUpload('idFrontUpload', 'idFrontUploadArea', 'idFrontFileName', 'addIdFrontError');
+  setupFileUpload('idBackUpload', 'idBackUploadArea', 'idBackFileName', 'addIdBackError');
+  setupFileUpload('policeClearanceUpload', 'policeClearanceUploadArea', 'policeClearanceFileName', 'addPoliceClearanceError');
 
   const profileUpload = document.getElementById('profileUpload');
   const profilePreview = document.getElementById('profilePreview');
@@ -737,23 +881,10 @@ document.addEventListener('DOMContentLoaded', function () {
         input.value = '';
       }
 
-      input.classList.remove('border-red-500');
+      input.classList.remove('border-red-500', 'error');
     });
 
-    // Clear validation error messages
-    const validationErrorIds = [
-      'addFirstNameError', 'addLastNameError', 'addOccupationError', 'addEmailError',
-      'addDateOfBirthError', 'addProvinceError', 'addCityError', 'addBarangayError', 
-      'addValidIdTypeError', 'addIdFrontError', 'addIdBackError', 'addPoliceClearanceError'
-    ];
-    
-    validationErrorIds.forEach(errorId => {
-      const errorElement = document.getElementById(errorId);
-      if (errorElement) {
-        errorElement.classList.add('hidden');
-        errorElement.textContent = '';
-      }
-    });
+    clearAllAddOwnerErrors();
 
     modal.querySelectorAll('.error-message').forEach(el => el.remove());
 
@@ -776,7 +907,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     ['idFrontUploadArea', 'idBackUploadArea', 'policeClearanceUploadArea'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.classList.remove('border-orange-400', 'bg-orange-50');
+      if (el) el.classList.remove('border-orange-400', 'bg-orange-50', 'error');
     });
   }
 
@@ -792,6 +923,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     input.addEventListener('input', function () {
+      const mappedErrorId = addFormErrorFieldMap[this.id];
+      if (mappedErrorId) {
+        clearAddFieldError(mappedErrorId);
+      }
+
       if (this.classList.contains('border-red-500')) {
         this.classList.remove('border-red-500');
         const errorMsg = this.parentElement.querySelector('.error-message');
@@ -803,6 +939,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (input.tagName === 'SELECT') {
       input.addEventListener('change', function () {
+        const mappedErrorId = addFormErrorFieldMap[this.id];
+        if (mappedErrorId) {
+          clearAddFieldError(mappedErrorId);
+        }
+
         if (this.classList.contains('border-red-500')) {
           this.classList.remove('border-red-500');
           const errorMsg = this.parentElement.querySelector('.error-message');
@@ -833,29 +974,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 600);
   }
 
-  const avatars = document.querySelectorAll('.w-10.h-10.rounded-full');
-  avatars.forEach(avatar => {
-    avatar.addEventListener('mouseenter', function () {
-      this.style.transform = 'scale(1.1) rotate(5deg)';
-      this.style.transition = 'all 0.3s ease';
-    });
-
-    avatar.addEventListener('mouseleave', function () {
-      this.style.transform = 'scale(1) rotate(0deg)';
-    });
-  });
-
-  const rows = document.querySelectorAll('#propertyOwnersTable tr');
-  rows.forEach((row, index) => {
-    row.style.opacity = '0';
-    row.style.transform = 'translateY(20px)';
-
-    setTimeout(() => {
-      row.style.transition = 'all 0.4s ease';
-      row.style.opacity = '1';
-      row.style.transform = 'translateY(0)';
-    }, index * 50);
-  });
+  animateOwnerTableRows();
 
   const editModal = document.getElementById('editPropertyOwnerModal');
   const editModalContent = editModal ? editModal.querySelector('.modal-content') : null;
@@ -866,9 +985,206 @@ document.addEventListener('DOMContentLoaded', function () {
   const editProfilePreview = document.getElementById('editProfilePreview');
   const editProfileIcon = document.getElementById('editProfileIcon');
   const defaultSaveEditBtnHtml = saveEditBtn ? saveEditBtn.innerHTML : '';
+  const editPropertyOwnerErrorAlert = document.getElementById('editPropertyOwnerErrorAlert');
+  const editPropertyOwnerErrorList = document.getElementById('editPropertyOwnerErrorList');
+  const closeEditPropertyOwnerErrorAlert = document.getElementById('closeEditPropertyOwnerErrorAlert');
+  let editPropertyOwnerFormInitialState = null;
+
+  function captureEditPropertyOwnerFormState() {
+    const form = document.getElementById('editPropertyOwnerForm');
+    if (!form) {
+      editPropertyOwnerFormInitialState = null;
+      return;
+    }
+
+    editPropertyOwnerFormInitialState = {};
+    form.querySelectorAll('input, select, textarea').forEach(input => {
+      if (!input.name) {
+        return;
+      }
+
+      if (input.type === 'file') {
+        editPropertyOwnerFormInitialState[input.name] = input.files.length;
+      } else if (input.type === 'checkbox' || input.type === 'radio') {
+        editPropertyOwnerFormInitialState[input.name] = input.checked;
+      } else {
+        editPropertyOwnerFormInitialState[input.name] = input.value;
+      }
+    });
+  }
+
+  function hasEditPropertyOwnerFormChanged() {
+    const form = document.getElementById('editPropertyOwnerForm');
+    if (!form || !editPropertyOwnerFormInitialState) {
+      return true;
+    }
+
+    const inputs = form.querySelectorAll('input, select, textarea');
+    for (const input of inputs) {
+      if (!input.name) {
+        continue;
+      }
+
+      let currentValue;
+      if (input.type === 'file') {
+        currentValue = input.files.length;
+      } else if (input.type === 'checkbox' || input.type === 'radio') {
+        currentValue = input.checked;
+      } else {
+        currentValue = input.value;
+      }
+
+      if (currentValue !== editPropertyOwnerFormInitialState[input.name]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function showEditPropertyOwnerModalErrors(errors) {
+    if (!editPropertyOwnerErrorAlert || !editPropertyOwnerErrorList) return;
+
+    editPropertyOwnerErrorList.innerHTML = '';
+
+    if (Array.isArray(errors)) {
+      errors.forEach(error => {
+        const li = document.createElement('li');
+        li.textContent = error;
+        editPropertyOwnerErrorList.appendChild(li);
+      });
+    } else if (typeof errors === 'object' && errors !== null) {
+      Object.values(errors).forEach(messages => {
+        if (Array.isArray(messages)) {
+          messages.forEach(msg => {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            editPropertyOwnerErrorList.appendChild(li);
+          });
+        } else {
+          const li = document.createElement('li');
+          li.textContent = messages;
+          editPropertyOwnerErrorList.appendChild(li);
+        }
+      });
+    }
+
+    editPropertyOwnerErrorAlert.classList.remove('hidden');
+
+    const modalBody = document.querySelector('#editPropertyOwnerModal .edit-modal-scroll');
+    if (modalBody) {
+      modalBody.scrollTop = 0;
+    }
+  }
+
+  function clearEditPropertyOwnerModalErrors() {
+    if (editPropertyOwnerErrorAlert) {
+      editPropertyOwnerErrorAlert.classList.add('hidden');
+    }
+    if (editPropertyOwnerErrorList) {
+      editPropertyOwnerErrorList.innerHTML = '';
+    }
+  }
+
+  function resolveEditErrorTarget(key) {
+    const occupationSelect = document.getElementById('edit_occupationSelect');
+    const occupationOtherInput = document.getElementById('edit_occupationOtherInput');
+    const useOccupationOther = occupationSelect && occupationSelect.value === 'others' && occupationOtherInput && !occupationOtherInput.classList.contains('hidden');
+
+    const map = {
+      first_name: { targetId: 'edit_first_name', errorId: 'editFirstNameError' },
+      last_name: { targetId: 'edit_last_name', errorId: 'editLastNameError' },
+      date_of_birth: { targetId: 'edit_date_of_birth', errorId: 'editDateOfBirthError' },
+      occupation_id: { targetId: 'edit_occupationSelect', errorId: 'editOccupationError' },
+      occupation_other: { targetId: useOccupationOther ? 'edit_occupationOtherInput' : 'edit_occupationSelect', errorId: 'editOccupationError' },
+      email: { targetId: 'edit_email', errorId: 'editEmailError' },
+      username: { targetId: 'edit_username', errorId: 'editUsernameError' },
+      password: { targetId: 'edit_password', errorId: 'editPasswordError' },
+      province: { targetId: 'edit_owner_address_province', errorId: 'editProvinceError' },
+      province_name: { targetId: 'edit_owner_address_province', errorId: 'editProvinceError' },
+      city: { targetId: 'edit_owner_address_city', errorId: 'editCityError' },
+      city_name: { targetId: 'edit_owner_address_city', errorId: 'editCityError' },
+      barangay: { targetId: 'edit_owner_address_barangay', errorId: 'editBarangayError' },
+      barangay_name: { targetId: 'edit_owner_address_barangay', errorId: 'editBarangayError' },
+      street_address: { targetId: 'edit_street_address', errorId: 'editStreetAddressError' },
+      zip_code: { targetId: 'edit_zip_code', errorId: 'editZipCodeError' },
+      valid_id_id: { targetId: 'edit_valid_id_id', errorId: 'editValidIdTypeError' },
+      valid_id_photo: { targetId: 'editIdFrontUploadArea', errorId: 'editValidIdFrontError' },
+      valid_id_back_photo: { targetId: 'editIdBackUploadArea', errorId: 'editValidIdBackError' },
+      police_clearance: { targetId: 'editPoliceClearanceUploadArea', errorId: 'editPoliceClearanceError' },
+      profile_pic: { targetId: 'editProfileUpload', errorId: 'editProfilePicError' }
+    };
+
+    return map[key] || null;
+  }
+
+  function clearEditPropertyOwnerInlineErrors() {
+    if (!editModal) return;
+
+    editModal.querySelectorAll('.edit-owner-field.error').forEach(el => el.classList.remove('error'));
+    editModal.querySelectorAll('.edit-owner-dropzone.error').forEach(el => el.classList.remove('error'));
+    editModal.querySelectorAll('.edit-owner-error').forEach(el => {
+      el.classList.add('hidden');
+      el.textContent = '';
+    });
+    editModal.querySelectorAll('.dynamic-edit-owner-error').forEach(el => el.remove());
+
+    editModal.querySelectorAll('.error-message').forEach(el => el.remove());
+    editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+  }
+
+  function showEditPropertyOwnerFieldError(key, message) {
+    if (!editModal) return;
+
+    const resolved = resolveEditErrorTarget(key);
+    const target = resolved ? document.getElementById(resolved.targetId) : editModal.querySelector(`[name="${key}"]`);
+    const mappedErrorElement = resolved && resolved.errorId ? document.getElementById(resolved.errorId) : null;
+
+    if (!target && !mappedErrorElement) {
+      return;
+    }
+
+    if (mappedErrorElement) {
+      mappedErrorElement.textContent = message;
+      mappedErrorElement.classList.remove('hidden');
+    }
+
+    if (target && (target.classList.contains('edit-owner-field') || target.classList.contains('edit-owner-dropzone'))) {
+      target.classList.add('error');
+
+      let errorElement = mappedErrorElement;
+      if (!errorElement && target.parentElement) {
+        errorElement = target.parentElement.querySelector('.edit-owner-error');
+      }
+      if (!errorElement && target.parentElement) {
+        errorElement = document.createElement('p');
+        errorElement.className = 'edit-owner-error dynamic-edit-owner-error text-red-500 text-[11px] mt-1';
+        target.parentElement.appendChild(errorElement);
+      }
+
+      if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.classList.remove('hidden');
+      }
+    } else if (target && !mappedErrorElement) {
+      target.classList.add('border-red-500');
+      const errorMsg = document.createElement('p');
+      errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
+      errorMsg.textContent = message;
+      target.parentElement.appendChild(errorMsg);
+    }
+  }
+
+  if (closeEditPropertyOwnerErrorAlert) {
+    closeEditPropertyOwnerErrorAlert.addEventListener('click', clearEditPropertyOwnerModalErrors);
+  }
 
   async function openEditModal(userId) {
     if (!editModal || !editModalContent) return;
+
+    clearEditPropertyOwnerModalErrors();
+    clearEditPropertyOwnerInlineErrors();
+    editPropertyOwnerFormInitialState = null;
 
     // Show modal instantly, then hydrate fields as data arrives.
     editModal.classList.remove('hidden');
@@ -1071,6 +1387,8 @@ document.addEventListener('DOMContentLoaded', function () {
         currentPoliceClearance.innerHTML = '';
       }
 
+      captureEditPropertyOwnerFormState();
+
     } catch (error) {
       console.error('Error fetching user data:', error);
       alert('Failed to load user data.');
@@ -1096,10 +1414,11 @@ document.addEventListener('DOMContentLoaded', function () {
       editModal.classList.remove('flex');
       document.body.style.overflow = 'auto';
 
-      document.getElementById('editPropertyOwnerForm').reset();
+      clearEditPropertyOwnerModalErrors();
+      clearEditPropertyOwnerInlineErrors();
+      editPropertyOwnerFormInitialState = null;
 
-      editModal.querySelectorAll('.error-message').forEach(el => el.remove());
-      editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+      document.getElementById('editPropertyOwnerForm').reset();
 
       editProfilePreview.classList.add('hidden');
       editProfileIcon.classList.remove('hidden');
@@ -1244,6 +1563,14 @@ document.addEventListener('DOMContentLoaded', function () {
     editForm.addEventListener('submit', async function (e) {
       e.preventDefault();
 
+      clearEditPropertyOwnerModalErrors();
+      clearEditPropertyOwnerInlineErrors();
+
+      if (!hasEditPropertyOwnerFormChanged()) {
+        showEditPropertyOwnerModalErrors(['No changes detected. Please modify at least one field before saving.']);
+        return;
+      }
+
       const userId = document.getElementById('edit_user_id').value;
       const formData = new FormData(this);
 
@@ -1267,9 +1594,6 @@ document.addEventListener('DOMContentLoaded', function () {
       const originalContent = saveEditBtn.innerHTML;
       saveEditBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
       saveEditBtn.disabled = true;
-
-      editModal.querySelectorAll('.error-message').forEach(el => el.remove());
-      editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
       try {
         const response = await fetch(`/admin/user-management/property-owners/${userId}`, {
@@ -1296,67 +1620,22 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         } else {
           if (result.errors) {
+            const errorMessages = [];
+
             for (const [key, messages] of Object.entries(result.errors)) {
-
-              let input = editModal.querySelector(`[name="${key}"]`);
-
-              if (!input) {
-                if (key === 'valid_id_photo') {
-                  const area = document.getElementById('editIdFrontUploadArea');
-                  if (area) {
-                    area.classList.add('border-red-500');
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                    errorMsg.textContent = messages[0];
-                    area.parentElement.appendChild(errorMsg);
-                  }
-                } else if (key === 'valid_id_back_photo') {
-                  const area = document.getElementById('editIdBackUploadArea');
-                  if (area) {
-                    area.classList.add('border-red-500');
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                    errorMsg.textContent = messages[0];
-                    area.parentElement.appendChild(errorMsg);
-                  }
-                } else if (key === 'police_clearance') {
-                  const area = document.getElementById('editPoliceClearanceUploadArea');
-                  if (area) {
-                    area.classList.add('border-red-500');
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                    errorMsg.textContent = messages[0];
-                    area.parentElement.appendChild(errorMsg);
-                  }
-                } else if (key === 'profile_pic') {
-                  const container = document.querySelector('#editPropertyOwnerModal .relative.group');
-                  if (container) {
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 text-xs mt-1 error-message text-center';
-                    errorMsg.textContent = messages[0];
-                    container.parentElement.appendChild(errorMsg);
-                  }
-                }
-              } else {
-                input.classList.add('border-red-500');
-                const errorMsg = document.createElement('p');
-                errorMsg.className = 'text-red-500 text-xs mt-1 error-message';
-                errorMsg.textContent = messages[0];
-                input.parentElement.appendChild(errorMsg);
-              }
+              const errorMsg = Array.isArray(messages) ? messages[0] : messages;
+              errorMessages.push(errorMsg);
+              showEditPropertyOwnerFieldError(key, errorMsg);
             }
 
-            const firstError = editModal.querySelector('.error-message');
-            if (firstError) {
-              firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            showEditPropertyOwnerModalErrors(errorMessages);
           } else {
-            alert(result.message || 'An error occurred');
+            showEditPropertyOwnerModalErrors([result.message || 'An error occurred']);
           }
         }
       } catch (error) {
         console.error('Error updating property owner:', error);
-        alert('An error occurred while updating.');
+        showEditPropertyOwnerModalErrors(['An error occurred while updating.']);
       } finally {
         saveEditBtn.innerHTML = originalContent;
         saveEditBtn.disabled = false;
@@ -1364,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  const editInputs = editModal ? editModal.querySelectorAll('input, select') : [];
+  const editInputs = editModal ? editModal.querySelectorAll('input, select, textarea') : [];
   editInputs.forEach(input => {
     input.addEventListener('focus', function () {
       this.parentElement.classList.add('ring-2', 'ring-orange-200');
@@ -1382,6 +1661,21 @@ document.addEventListener('DOMContentLoaded', function () {
           errorMsg.remove();
         }
       }
+
+      if (this.classList.contains('edit-owner-field') && this.classList.contains('error')) {
+        this.classList.remove('error');
+      }
+
+      const inlineError = this.parentElement.querySelector('.edit-owner-error');
+      if (inlineError) {
+        inlineError.classList.add('hidden');
+        inlineError.textContent = '';
+      }
+
+      const dynamicInlineError = this.parentElement.querySelector('.dynamic-edit-owner-error');
+      if (dynamicInlineError) {
+        dynamicInlineError.remove();
+      }
     });
 
     if (input.tagName === 'SELECT') {
@@ -1392,6 +1686,21 @@ document.addEventListener('DOMContentLoaded', function () {
           if (errorMsg) {
             errorMsg.remove();
           }
+        }
+
+        if (this.classList.contains('edit-owner-field') && this.classList.contains('error')) {
+          this.classList.remove('error');
+        }
+
+        const inlineError = this.parentElement.querySelector('.edit-owner-error');
+        if (inlineError) {
+          inlineError.classList.add('hidden');
+          inlineError.textContent = '';
+        }
+
+        const dynamicInlineError = this.parentElement.querySelector('.dynamic-edit-owner-error');
+        if (dynamicInlineError) {
+          dynamicInlineError.remove();
         }
       });
     }
@@ -1588,14 +1897,6 @@ style.textContent = `
 
   .action-btn:active {
     transform: scale(0.95);
-  }
-
-  #propertyOwnersTable tr {
-    transition: all 0.2s ease;
-  }
-
-  #propertyOwnersTable tr:hover {
-    transform: translateX(4px);
   }
 
   .scale-95 {

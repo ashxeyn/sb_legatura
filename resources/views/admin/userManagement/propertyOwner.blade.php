@@ -5,7 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>Admin Dashboard - Legatura</title>
+  <title>Property Owners - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -53,6 +54,52 @@
       width: 0;
       height: 0;
     }
+
+    .add-owner-field.error {
+      border-color: rgb(239, 68, 68) !important;
+      background-color: rgb(254, 242, 242);
+    }
+
+    .add-owner-field.error:focus {
+      box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.35) !important;
+      border-color: rgb(239, 68, 68) !important;
+    }
+
+    .add-owner-dropzone.error {
+      border-color: rgb(239, 68, 68) !important;
+      background-color: rgb(254, 242, 242) !important;
+    }
+
+    .edit-owner-field.error {
+      border-color: rgb(239, 68, 68) !important;
+      background-color: rgb(254, 242, 242);
+    }
+
+    .edit-owner-field.error:focus {
+      box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.35) !important;
+      border-color: rgb(239, 68, 68) !important;
+    }
+
+    .edit-owner-dropzone.error {
+      border-color: rgb(239, 68, 68) !important;
+      background-color: rgb(254, 242, 242) !important;
+    }
+
+    #editPropertyOwnerErrorAlert {
+      animation: editOwnerSlideDown 0.3s ease-out;
+    }
+
+    @keyframes editOwnerSlideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
   </style>
 
 </head>
@@ -81,24 +128,22 @@
             <div class="flex flex-wrap items-center gap-2">
               <!-- From -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateFrom"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
 
               <span class="text-gray-300 font-bold text-lg">→</span>
 
               <!-- To -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateTo"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
             </div>
           </div>
@@ -176,13 +221,13 @@
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">First name <span class="text-red-500">*</span></label>
               <input type="text" id="addFirstName" name="first_name" placeholder="Enter first name"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              <p id="addFirstNameError" class="text-red-500 text-xs mt-1 hidden"></p>
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
+              <p id="addFirstNameError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Occupation <span class="text-red-500">*</span></label>
               <select name="occupation_id" id="occupationSelect"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
                 <option value="">Select Occupation</option>
                 @foreach($occupations as $occupation)
                   @if(strtolower($occupation->occupation_name) !== 'others')
@@ -193,8 +238,8 @@
               </select>
               <input type="text" name="occupation_other" id="occupationOtherInput"
                 placeholder="Please specify occupation"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition mt-1.5 hidden">
-              <p id="addOccupationError" class="text-red-500 text-xs mt-1 hidden"></p>
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition mt-1.5 hidden add-owner-field">
+              <p id="addOccupationError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Middle name <span
@@ -205,14 +250,14 @@
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Date of birth <span class="text-red-500">*</span></label>
               <input type="date" name="date_of_birth" id="addDateOfBirth"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              <p id="addDateOfBirthError" class="text-red-500 text-xs mt-1 hidden"></p>
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
+              <p id="addDateOfBirthError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Last name <span class="text-red-500">*</span></label>
               <input type="text" id="addLastName" name="last_name" placeholder="Enter last name"
-                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              <p id="addLastNameError" class="text-red-500 text-xs mt-1 hidden"></p>
+                class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
+              <p id="addLastNameError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
             </div>
           </div>
         </div>
@@ -229,8 +274,8 @@
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
                   <input type="email" id="addEmail" name="email" placeholder="Enter email address"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-                  <p id="addEmailError" class="text-red-500 text-xs mt-1 hidden"></p>
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
+                  <p id="addEmailError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
                 </div>
               </div>
             </div>
@@ -244,42 +289,44 @@
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Province <span class="text-red-500">*</span></label>
                   <select id="owner_address_province" name="province"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
                     <option value="">Select Province</option>
                     @foreach($provinces as $province)
                       <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">{{ $province['name'] }}
                       </option>
                     @endforeach
                   </select>
-                  <p id="addProvinceError" class="text-red-500 text-xs mt-1 hidden"></p>
+                  <p id="addProvinceError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">City/Municipality <span class="text-red-500">*</span></label>
                   <select id="owner_address_city" name="city"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field"
                     disabled>
                     <option value="">Select City/Municipality</option>
                   </select>
-                  <p id="addCityError" class="text-red-500 text-xs mt-1 hidden"></p>
+                  <p id="addCityError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Barangay <span class="text-red-500">*</span></label>
                   <select id="owner_address_barangay" name="barangay"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field"
                     disabled>
                     <option value="">Select Barangay</option>
                   </select>
-                  <p id="addBarangayError" class="text-red-500 text-xs mt-1 hidden"></p>
+                  <p id="addBarangayError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div>
-                  <label class="block text-xs font-medium text-gray-700 mb-1">Street Address / Unit No.</label>
-                  <input type="text" name="street_address" placeholder="Enter street address"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Street Address / Unit No. <span class="text-red-500">*</span></label>
+                  <input type="text" id="addStreetAddress" name="street_address" placeholder="Enter street address"
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
+                  <p id="addStreetAddressError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
                 </div>
                 <div>
-                  <label class="block text-xs font-medium text-gray-700 mb-1">Zip Code</label>
-                  <input type="text" name="zip_code" placeholder="Enter zip code"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Zip Code <span class="text-red-500">*</span></label>
+                  <input type="text" id="addZipCode" name="zip_code" placeholder="Enter zip code"
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
+                  <p id="addZipCodeError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
                 </div>
               </div>
             </div>
@@ -295,55 +342,55 @@
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Type of Valid ID <span class="text-red-500">*</span></label>
                 <select id="addValidIdType" name="valid_id_id"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition add-owner-field">
                   <option value="">Select ID type</option>
                   @foreach($validIds as $validId)
                     <option value="{{ $validId->id }}">{{ $validId->valid_id_name }}</option>
                   @endforeach
                 </select>
-                <p id="addValidIdTypeError" class="text-red-500 text-xs mt-1 hidden"></p>
+                <p id="addValidIdTypeError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
               </div>
 
               <!-- Valid ID Front -->
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Valid ID (Front) <span class="text-red-500">*</span></label>
                 <div
-                  class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50"
+                  class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50 add-owner-dropzone"
                   id="idFrontUploadArea">
                   <input type="file" id="idFrontUpload" name="valid_id_photo" class="hidden" accept="image/*">
                   <i class="fi fi-rr-id-card-clip-alt text-xl text-gray-400 mb-1"></i>
                   <p class="text-xs text-gray-600 font-medium">Upload Front Side</p>
                   <div id="idFrontFileName" class="text-xs text-orange-500 mt-1 hidden font-medium"></div>
                 </div>
-                <p id="addIdFrontError" class="text-red-500 text-xs mt-1 hidden"></p>
+                <p id="addIdFrontError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
               </div>
 
               <!-- Valid ID Back -->
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Valid ID (Back) <span class="text-red-500">*</span></label>
                 <div
-                  class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50"
+                  class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50 add-owner-dropzone"
                   id="idBackUploadArea">
                   <input type="file" id="idBackUpload" name="valid_id_back_photo" class="hidden" accept="image/*">
                   <i class="fi fi-rr-id-card-clip-alt text-xl text-gray-400 mb-1"></i>
                   <p class="text-xs text-gray-600 font-medium">Upload Back Side</p>
                   <div id="idBackFileName" class="text-xs text-orange-500 mt-1 hidden font-medium"></div>
                 </div>
-                <p id="addIdBackError" class="text-red-500 text-xs mt-1 hidden"></p>
+                <p id="addIdBackError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
               </div>
 
               <!-- Police Clearance -->
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Police Clearance <span class="text-red-500">*</span></label>
                 <div
-                  class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50"
+                  class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50 add-owner-dropzone"
                   id="policeClearanceUploadArea">
                   <input type="file" id="policeClearanceUpload" name="police_clearance" class="hidden" accept="image/*">
                   <i class="fi fi-rr-shield-check text-xl text-gray-400 mb-1"></i>
                   <p class="text-xs text-gray-600 font-medium">Upload Police Clearance</p>
                   <div id="policeClearanceFileName" class="text-xs text-orange-500 mt-1 hidden font-medium"></div>
                 </div>
-                <p id="addPoliceClearanceError" class="text-red-500 text-xs mt-1 hidden"></p>
+                <p id="addPoliceClearanceError" class="add-owner-error text-red-500 text-xs mt-1 hidden"></p>
               </div>
             </div>
           </div>
@@ -403,8 +450,25 @@
             <div>
               <h3 class="text-xs font-semibold text-gray-800">Profile Picture</h3>
               <p class="text-[11px] text-gray-500">Update profile photo for this owner</p>
+              <p id="editProfilePicError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
             </div>
           </div>
+
+            <!-- Error Alert Section -->
+            <div id="editPropertyOwnerErrorAlert" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                  <i class="fi fi-rr-alert text-red-500 text-base"></i>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-xs font-semibold text-red-800">Validation Errors</h3>
+                  <ul id="editPropertyOwnerErrorList" class="text-xs text-red-700 mt-2 space-y-1 list-disc list-inside"></ul>
+                </div>
+                <button type="button" id="closeEditPropertyOwnerErrorAlert" class="text-red-500 hover:text-red-700 transition p-1">
+                  <i class="fi fi-rr-cross"></i>
+                </button>
+              </div>
+            </div>
 
           <!-- Personal Information Section -->
           <div>
@@ -417,12 +481,13 @@
                 <label class="block text-xs font-medium text-gray-700 mb-1">First name</label>
                 <input type="text" id="edit_first_name" name="first_name" placeholder="Enter first name"
                   style="text-transform: none;"
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition edit-owner-field">
+                <p id="editFirstNameError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Occupation</label>
                 <select name="occupation_id" id="edit_occupationSelect"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
                   <option value="">Select Occupation</option>
                   @foreach($occupations as $occupation)
                     @if(strtolower($occupation->occupation_name) !== 'others')
@@ -433,7 +498,8 @@
                 </select>
                 <input type="text" name="occupation_other" id="edit_occupationOtherInput"
                   placeholder="Please specify occupation"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition mt-1.5 hidden">
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition mt-1.5 hidden edit-owner-field">
+                <p id="editOccupationError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Middle name <span
@@ -445,13 +511,15 @@
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Date of birth</label>
                 <input type="date" id="edit_date_of_birth" name="date_of_birth"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
+                <p id="editDateOfBirthError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Last name</label>
                 <input type="text" id="edit_last_name" name="last_name" placeholder="Enter last name"
                   style="text-transform: none;"
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition edit-owner-field">
+                <p id="editLastNameError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
               </div>
             </div>
           </div>
@@ -468,17 +536,20 @@
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Email</label>
                     <input type="email" id="edit_email" name="email" placeholder="Enter email address"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
+                    <p id="editEmailError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Username</label>
                     <input type="text" id="edit_username" name="username" placeholder="Enter username"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
+                    <p id="editUsernameError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">New Password <span class="text-gray-400">(optional)</span></label>
                     <input type="password" id="edit_password" name="password" placeholder="Enter new password"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
+                    <p id="editPasswordError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                     <p class="text-[10px] text-gray-500 mt-1">Leave blank if you do not want to change the password.</p>
                   </div>
                 </div>
@@ -493,39 +564,44 @@
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Province</label>
                     <select id="edit_owner_address_province" name="province"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
                       <option value="">Select Province</option>
                       @foreach($provinces as $province)
                         <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">
                           {{ $province['name'] }}</option>
                       @endforeach
                     </select>
+                    <p id="editProvinceError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">City/Municipality</label>
                     <select id="edit_owner_address_city" name="city"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field"
                       disabled>
                       <option value="">Select City/Municipality</option>
                     </select>
+                    <p id="editCityError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Barangay</label>
                     <select id="edit_owner_address_barangay" name="barangay"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field"
                       disabled>
                       <option value="">Select Barangay</option>
                     </select>
+                    <p id="editBarangayError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Street Address / Unit No.</label>
                     <input type="text" id="edit_street_address" name="street_address" placeholder="Enter street address"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
+                    <p id="editStreetAddressError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Zip Code</label>
                     <input type="text" id="edit_zip_code" name="zip_code" placeholder="Enter zip code"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
+                    <p id="editZipCodeError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   </div>
                 </div>
               </div>
@@ -541,48 +617,52 @@
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Type of Valid ID</label>
                   <select id="edit_valid_id_id" name="valid_id_id"
-                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                    class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-owner-field">
                     <option value="">Select ID type</option>
                     @foreach($validIds as $validId)
                       <option value="{{ $validId->id }}">{{ $validId->valid_id_name }}</option>
                     @endforeach
                   </select>
+                  <p id="editValidIdTypeError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
 
                 <!-- Valid ID Front -->
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Valid ID (Front)</label>
-                  <div class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editIdFrontUploadArea">
+                  <div class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50 edit-owner-dropzone" id="editIdFrontUploadArea">
                     <input type="file" id="editIdFrontUpload" name="valid_id_photo" class="hidden" accept="image/*">
                     <i class="fi fi-rr-id-card-clip-alt text-xl text-gray-400 mb-1"></i>
                     <p class="text-xs text-gray-600 font-medium">Upload Front Side</p>
                     <div id="editIdFrontFileName" class="text-xs text-orange-500 mt-1 hidden font-medium"></div>
                   </div>
+                  <p id="editValidIdFrontError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   <div id="currentIdFront" class="mt-1 text-xs text-gray-500"></div>
                 </div>
 
                 <!-- Valid ID Back -->
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Valid ID (Back)</label>
-                  <div class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editIdBackUploadArea">
+                  <div class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50 edit-owner-dropzone" id="editIdBackUploadArea">
                     <input type="file" id="editIdBackUpload" name="valid_id_back_photo" class="hidden" accept="image/*">
                     <i class="fi fi-rr-id-card-clip-alt text-xl text-gray-400 mb-1"></i>
                     <p class="text-xs text-gray-600 font-medium">Upload Back Side</p>
                     <div id="editIdBackFileName" class="text-xs text-orange-500 mt-1 hidden font-medium"></div>
                   </div>
+                  <p id="editValidIdBackError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   <div id="currentIdBack" class="mt-1 text-xs text-gray-500"></div>
                 </div>
 
                 <!-- Police Clearance -->
                 <div>
                   <label class="block text-xs font-medium text-gray-700 mb-1">Police Clearance</label>
-                  <div class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editPoliceClearanceUploadArea">
+                  <div class="border border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-orange-300 transition cursor-pointer bg-gray-50 hover:bg-orange-50 edit-owner-dropzone" id="editPoliceClearanceUploadArea">
                     <input type="file" id="editPoliceClearanceUpload" name="police_clearance" class="hidden"
                       accept="image/*">
                     <i class="fi fi-rr-shield-check text-xl text-gray-400 mb-1"></i>
                     <p class="text-xs text-gray-600 font-medium">Upload Police Clearance</p>
                     <div id="editPoliceClearanceFileName" class="text-xs text-orange-500 mt-1 hidden font-medium"></div>
                   </div>
+                  <p id="editPoliceClearanceError" class="edit-owner-error text-red-500 text-[11px] mt-1 hidden"></p>
                   <div id="currentPoliceClearance" class="mt-1 text-xs text-gray-500"></div>
                 </div>
               </div>

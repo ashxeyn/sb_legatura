@@ -1,10 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>User Activity Analytics – Legatura Admin</title>
+  <title>User Activity Analytics - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -52,7 +53,7 @@
               </div>
               <input type="date" id="globalDateFrom" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <span class="text-gray-300 font-bold text-base">→</span>
+            <span class="text-gray-300 font-bold text-base">?</span>
             <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
               <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2 self-stretch">
                 <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
@@ -84,14 +85,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </div>
-            @if($userMetrics['mom_change'] >= 0)
-              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-                +{{ $userMetrics['mom_change'] }}%
-              </span>
-            @else
-              <span class="text-[11px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{{ $userMetrics['mom_change'] }}%</span>
-            @endif
           </div>
           <div id="statTotalUsers" class="text-2xl font-bold text-gray-900">{{ number_format($userMetrics['total_users']) }}</div>
           <div class="text-xs font-medium text-gray-500 mt-0.5">Total Users</div>
@@ -222,7 +215,7 @@
               <span class="text-[11px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{{ $growthPct }}%</span>
             @endif
           </div>
-          <p class="text-[11px] text-gray-400">Registrations in {{ now()->format('F Y') }} &nbsp;·&nbsp; last month: {{ number_format($prevMonth) }}</p>
+          <p class="text-[11px] text-gray-400">Registrations in {{ now()->format('F Y') }} &nbsp;-&nbsp; last month: {{ number_format($prevMonth) }}</p>
         </div>
 
       </div>
@@ -234,7 +227,7 @@
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="mb-3">
             <h3 class="text-sm font-semibold text-gray-800">User Growth</h3>
-            <p class="text-[11px] text-gray-400 mt-0.5">Monthly registrations — last 12 months</p>
+            <p class="text-[11px] text-gray-400 mt-0.5">Monthly registrations - last 12 months</p>
           </div>
           <div style="height:230px; position:relative;">
             <canvas id="userGrowthChart"></canvas>
@@ -281,7 +274,7 @@
               <p class="text-[11px] text-gray-400 mt-0.5">Latest user actions from bids &amp; project posts</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-              <input type="text" id="activitySearch" placeholder="Search user…"
+              <input type="text" id="activitySearch" placeholder="Search user..."
                 class="px-2.5 py-1.5 rounded-lg text-xs border border-gray-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none w-40">
               <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
                 <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-1.5 self-stretch">
@@ -290,7 +283,7 @@
                 </div>
                 <input type="date" id="activityDateFrom" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-1.5 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
               </div>
-              <span class="text-gray-300 font-bold">→</span>
+              <span class="text-gray-300 font-bold">?</span>
               <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
                 <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-1.5 self-stretch">
                   <i class="fi fi-rr-calendar text-white text-[10px] leading-none"></i>
@@ -458,7 +451,7 @@
   buildUserDistChart(distLabels, distValues);
 
 
-  // ── GLOBAL DATE FILTER ──────────────────────────────────────────────
+  // -- GLOBAL DATE FILTER ----------------------------------------------
   function getDateRange(preset) {
     const now = new Date();
     let from = '', to = now.toISOString().split('T')[0];
@@ -536,7 +529,7 @@
   });
 
 
-  // ── RECENT ACTIVITY FEED ────────────────────────────────────────────
+  // -- RECENT ACTIVITY FEED --------------------------------------------
   let activityPage = 1;
 
   function fetchActivity(page) {

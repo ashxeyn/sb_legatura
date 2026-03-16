@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Bid Management - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
@@ -137,10 +138,10 @@
 
       {{-- ══ FILTER BAR (below stats, above table — same as proofOfPayments) ══ --}}
       <form id="bidsFilterForm" method="GET" action="{{ route('admin.globalManagement.bidManagement') }}">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 flex flex-wrap items-center gap-3">
-          <div class="flex flex-wrap items-center gap-3 flex-1 min-w-[260px]">
-            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
-              <i class="fi fi-rr-filter text-gray-500"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3.5 mb-5 flex flex-wrap items-center gap-2.5">
+          <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[260px]">
+            <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              <i class="fi fi-rr-filter text-[12px]"></i>
               <span>Filter By</span>
             </div>
 
@@ -148,14 +149,14 @@
               <input id="bidSearch" name="search" type="text"
                 placeholder="Search project or contractor…"
                 value="{{ request('search') }}"
-                class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+                class="w-full bg-white text-sm text-gray-700 font-medium pl-3 pr-10 py-2.5 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none transition">
               <i class="fi fi-rr-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
             </div>
           </div>
 
-          <div class="ml-auto flex flex-wrap items-center justify-end gap-3 w-full sm:w-auto">
+          <div class="ml-auto flex flex-wrap items-center justify-end gap-2.5 w-full sm:w-auto">
             <select id="bidStatusFilter" name="status"
-              class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-white text-gray-700">
+              class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none min-w-[150px] transition">
               <option value="">All Statuses</option>
               <option value="submitted"    {{ request('status') === 'submitted'    ? 'selected' : '' }}>Submitted</option>
               <option value="under_review" {{ request('status') === 'under_review' ? 'selected' : '' }}>Under Review</option>
@@ -165,13 +166,13 @@
             </select>
 
             <button type="submit"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition">
               Filter
             </button>
 
             @if(request('search') || request('status'))
               <a href="{{ route('admin.globalManagement.bidManagement') }}"
-                 class="clear-bids-filters px-3 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                 class="clear-bids-filters flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 border border-gray-300 transition">
                 Clear
               </a>
             @endif
@@ -292,8 +293,7 @@
     <div class="flex-1 overflow-y-auto scrollbar-hidden p-4 space-y-3.5">
       <!-- Validation Error Section -->
       <div id="editBidErrorAlert" class="hidden bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-left">
-        <div class="flex items-start gap-2">
-          <i class="fi fi-rr-exclamation text-red-600 text-sm flex-shrink-0 mt-0.5"></i>
+        <div class="flex items-start">
           <div class="flex-1">
             <p class="text-xs font-semibold text-red-800 mb-1">Validation Error</p>
             <ul id="editBidErrorList" class="text-xs text-red-700 space-y-0.5 list-disc list-inside">
@@ -438,6 +438,19 @@ document.addEventListener('DOMContentLoaded', function () {
   var bidStatusFilter = document.getElementById('bidStatusFilter');
   var bidSearchTimer = null;
 
+  function animateBidRows() {
+    var rows = document.querySelectorAll('#bidsTable tr');
+    rows.forEach(function(row, index) {
+      row.style.opacity = '0';
+      row.style.transform = 'translateY(20px)';
+      setTimeout(function() {
+        row.style.transition = 'all 0.4s ease';
+        row.style.opacity = '1';
+        row.style.transform = 'translateY(0)';
+      }, index * 50);
+    });
+  }
+
   function openModal(id) { var el = document.getElementById('modal-' + id); if (!el) return; el.classList.add('modal-active'); document.body.style.overflow = 'hidden'; }
   function closeModal(id) { var el = document.getElementById('modal-' + id); if (!el) return; el.classList.remove('modal-active'); if (!document.querySelector('.modal-active')) document.body.style.overflow = ''; }
 
@@ -535,6 +548,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .then(function (data) {
       if (!data.bids_html) throw new Error('Missing bids table payload.');
       bidsTableWrap.innerHTML = data.bids_html;
+      animateBidRows();
       if (shouldPushState !== false) window.history.pushState({}, '', url);
       syncFilterInputs(url);
     })
@@ -568,6 +582,8 @@ document.addEventListener('DOMContentLoaded', function () {
   window.addEventListener('popstate', function () {
     fetchBidsTable(window.location.href, false);
   });
+
+  animateBidRows();
 
   function openViewFromButton(btn) {
     var d = btn.dataset;

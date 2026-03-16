@@ -78,9 +78,9 @@
           id="deleteReason"
           rows="3"
           placeholder="Please provide a reason for deleting this project..."
-          class="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all hover:border-rose-300 bg-white resize-none text-xs"
+          class="w-full px-2 py-1.5 text-[11px] border border-gray-300 rounded-md focus:ring-2 focus:ring-red-300 focus:border-red-300 focus:outline-none transition resize-none"
         ></textarea>
-        <p class="text-rose-500 text-xs mt-1 hidden" id="error-delete-reason"></p>
+        <p class="text-red-500 text-[11px] mt-1 hidden" id="error-delete-reason">Reason is required.</p>
         <p class="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>

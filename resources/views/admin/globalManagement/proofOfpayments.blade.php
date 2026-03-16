@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Proof of Payments - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
@@ -26,6 +27,63 @@
       filter: invert(30%) sepia(80%) saturate(400%) hue-rotate(210deg);
     }
     .date-pill input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+    .payment-view-modal {
+      --payment-modal-from: #f97316;
+      --payment-modal-to: #ea580c;
+      --payment-modal-border: #f97316;
+      --payment-modal-muted: rgba(255, 255, 255, 0.82);
+      --payment-modal-icon-bg: rgba(255, 255, 255, 0.2);
+      --payment-modal-icon-border: rgba(255, 255, 255, 0.24);
+    }
+
+    .payment-view-modal[data-status-theme="submitted"] {
+      --payment-modal-from: #f97316;
+      --payment-modal-to: #ea580c;
+      --payment-modal-border: #f97316;
+    }
+
+    .payment-view-modal[data-status-theme="approved"] {
+      --payment-modal-from: #16a34a;
+      --payment-modal-to: #0d9488;
+      --payment-modal-border: #16a34a;
+    }
+
+    .payment-view-modal[data-status-theme="rejected"] {
+      --payment-modal-from: #dc2626;
+      --payment-modal-to: #f97316;
+      --payment-modal-border: #dc2626;
+    }
+
+    .payment-view-modal[data-status-theme="deleted"] {
+      --payment-modal-from: #4b5563;
+      --payment-modal-to: #6b7280;
+      --payment-modal-border: #4b5563;
+    }
+
+    .payment-view-modal-header {
+      background: linear-gradient(to right, var(--payment-modal-from), var(--payment-modal-to)) !important;
+      border-bottom-color: var(--payment-modal-border) !important;
+      color: #fff !important;
+    }
+
+    .payment-view-modal-header .payment-modal-icon-wrap {
+      background: var(--payment-modal-icon-bg) !important;
+      border-color: var(--payment-modal-icon-border) !important;
+    }
+
+    .payment-view-modal-header .payment-modal-subtitle {
+      color: var(--payment-modal-muted) !important;
+    }
+
+    .payment-view-modal-header [data-close-modal] {
+      color: rgba(255, 255, 255, 0.85) !important;
+    }
+
+    .payment-view-modal-header [data-close-modal]:hover {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.14) !important;
+    }
   </style>
 </head>
 
@@ -117,55 +175,52 @@
         </div>{{-- /stats --}}
 
         <form id="paymentsFilterForm" method="GET" action="{{ route('admin.globalManagement.proofOfpayments') }}">
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3.5 mb-5 flex flex-wrap items-center gap-2.5">
-            <div class="flex flex-wrap items-center gap-2.5 flex-1">
-              <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                <i class="fi fi-rr-filter text-[12px]"></i>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2.5">
+              <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                <i class="fi fi-rr-filter text-gray-500"></i>
                 <span>Filter By</span>
               </div>
 
               <!-- Date From -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateFrom" name="date_from" value="{{ request('date_from') }}"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
 
               <span class="text-gray-300 font-bold text-lg">→</span>
 
               <!-- Date To -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateTo" name="date_to" value="{{ request('date_to') }}"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
 
               <!-- Status Filter -->
-              <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-filter text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Status</span>
-                </div>
+              <div class="relative">
                 <select id="paymentsStatusFilter" name="status"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none min-w-[150px] border-0">
+                  class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[150px]">
                   <option value="">All Status</option>
                   <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>Pending</option>
                   <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Completed</option>
                   <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Invalid</option>
                 </select>
+                <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
               </div>
             </div>
 
-            <button type="button" id="resetPaymentsFilter" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
-              <i class="fi fi-rr-rotate-left"></i>
-              <span>Reset Filter</span>
-            </button>
+            <div class="flex items-center gap-2">
+              <button type="button" id="resetPaymentsFilter" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                <i class="fi fi-rr-rotate-left"></i>
+                <span>Reset Filter</span>
+              </button>
+            </div>
           </div>
         </form>
 
@@ -186,13 +241,13 @@
     {{-- 1. PENDING PAYMENT MODAL --}}
     <div id="pendingPaymentModal" class="fixed inset-0 z-[100] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col">
-        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 border-b border-orange-600 text-white flex-shrink-0">
+      <div class="payment-view-modal relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col" data-status-theme="submitted">
+        <div class="payment-view-modal-header flex items-center justify-between px-4 py-3.5 border-b text-white flex-shrink-0">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-white bg-opacity-20 flex items-center justify-center shadow"><i class="fi fi-ss-bolt text-white text-base"></i></div>
+            <div class="payment-modal-icon-wrap w-9 h-9 rounded-xl border flex items-center justify-center shadow"><i class="fi fi-ss-bolt text-white text-base"></i></div>
             <div>
               <h3 class="text-[15px] font-bold text-white leading-tight">Proof of Payment (Pending)</h3>
-              <p class="text-[10px] text-orange-100">Awaiting verification</p>
+              <p class="payment-modal-subtitle text-[10px]">Awaiting verification</p>
             </div>
           </div>
           <button data-close-modal class="p-1.5 rounded-xl hover:bg-white/20 text-white/80 hover:text-white transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
@@ -322,13 +377,13 @@
     {{-- 4. COMPLETED MODAL --}}
     <div id="completedPaymentModal" class="fixed inset-0 z-[100] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col">
-        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-green-500 to-green-600 border-b border-green-600 text-white flex-shrink-0">
+      <div class="payment-view-modal relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col" data-status-theme="approved">
+        <div class="payment-view-modal-header flex items-center justify-between px-4 py-3.5 border-b text-white flex-shrink-0">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shadow"><i class="fi fi-sr-check-circle text-white text-base"></i></div>
+            <div class="payment-modal-icon-wrap w-9 h-9 rounded-xl border flex items-center justify-center shadow"><i class="fi fi-sr-check-circle text-white text-base"></i></div>
             <div>
               <h3 class="text-[15px] font-bold leading-tight">Proof of Payment (Completed)</h3>
-              <p class="text-[10px] text-green-50">Verified transaction details</p>
+              <p class="payment-modal-subtitle text-[10px]">Verified transaction details</p>
             </div>
           </div>
           <button data-close-modal class="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
@@ -462,16 +517,16 @@
     {{-- 6. INVALID MODAL --}}
     <div id="invalidPaymentModal" class="fixed inset-0 z-[100] hidden items-center justify-center">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col">
-        <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-rose-50 via-red-50 to-orange-50 border-b flex-shrink-0">
+      <div class="payment-view-modal relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col" data-status-theme="rejected">
+        <div class="payment-view-modal-header flex items-center justify-between px-4 py-3.5 border-b text-white flex-shrink-0">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shadow"><i class="fi fi-sr-triangle-warning text-white text-base"></i></div>
+            <div class="payment-modal-icon-wrap w-9 h-9 rounded-xl border flex items-center justify-center shadow"><i class="fi fi-sr-triangle-warning text-white text-base"></i></div>
             <div>
-              <h3 class="text-[15px] font-bold text-gray-800 leading-tight">Proof of Payment (Invalid)</h3>
-              <p class="text-[10px] text-gray-500">Receipt flagged as invalid</p>
+              <h3 class="text-[15px] font-bold text-white leading-tight">Proof of Payment (Invalid)</h3>
+              <p class="payment-modal-subtitle text-[10px]">Receipt flagged as invalid</p>
             </div>
           </div>
-          <button data-close-modal class="p-1.5 rounded-xl hover:bg-white/80 text-gray-500 hover:text-gray-700 transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
+          <button data-close-modal class="p-1.5 rounded-xl transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
         </div>
         <div id="ip-loading" class="py-8 text-center text-gray-400 flex-shrink-0">
           <i class="fi fi-rr-spinner text-2xl fi-spin block mb-2.5"></i><p class="text-sm">Loading payment details…</p>
@@ -636,6 +691,20 @@
     var statusFilter = document.getElementById('paymentsStatusFilter');
     var searchTimer = null;
 
+    function animatePaymentsRows() {
+      if (!paymentsTableWrap) return;
+      var rows = document.querySelectorAll('#paymentsTable tr');
+      rows.forEach(function(row, index) {
+        row.style.opacity = '0';
+        row.style.transform = 'translateY(20px)';
+        setTimeout(function() {
+          row.style.transition = 'all 0.4s ease';
+          row.style.opacity = '1';
+          row.style.transform = 'translateY(0)';
+        }, index * 50);
+      });
+    }
+
     function esc(v) { if (v==null) return '—'; return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function peso(v) { return '₱'+Number(v).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
     function fmtDate(s) { if(!s)return'—'; try{return new Date(s).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});}catch(e){return s;} }
@@ -644,6 +713,26 @@
 
     function openModal(id){var el=document.getElementById(id);if(!el)return;el.classList.remove('hidden');el.classList.add('flex');}
     function closeModal(id){var el=document.getElementById(id);if(!el)return;el.classList.add('hidden');el.classList.remove('flex');}
+
+    function normalizePaymentStatus(status){
+      var normalized=String(status||'').toLowerCase();
+      if(normalized==='pending')return'submitted';
+      if(normalized==='completed'||normalized==='verified')return'approved';
+      if(normalized==='invalid'||normalized==='failed')return'rejected';
+      return normalized;
+    }
+
+    function applyViewModalTheme(modalId,status){
+      var modal=document.getElementById(modalId);
+      if(!modal)return;
+      var modalCard=modal.querySelector('.payment-view-modal');
+      if(!modalCard)return;
+      var normalized=normalizePaymentStatus(status);
+      if(['submitted','approved','rejected','deleted'].indexOf(normalized)===-1){
+        normalized='submitted';
+      }
+      modalCard.setAttribute('data-status-theme',normalized);
+    }
 
     document.addEventListener('click',function(e){
       var btn=e.target.closest('[data-close-modal]');
@@ -755,6 +844,7 @@
       .then(function(data){
         if(!data.payments_html)throw new Error('Missing payment table payload.');
         paymentsTableWrap.innerHTML=data.payments_html;
+        animatePaymentsRows();
         if(shouldPushState!==false)window.history.pushState({},'',url);
         syncFilterInputs(url);
       })
@@ -856,10 +946,39 @@
 
       var viewBtn=e.target.closest('.btn-view');
       if(viewBtn){
-        var viewId=viewBtn.dataset.id,viewStatus=viewBtn.dataset.status;
-        if(viewStatus==='submitted'){showLoading('pp-loading','pp-body');openModal('pendingPaymentModal');fetchDetail(viewId,function(d){populatePending(d);showBody('pp-loading','pp-body');});}
-        else if(viewStatus==='approved'){showLoading('cp-loading','cp-body');openModal('completedPaymentModal');fetchDetail(viewId,function(d){populateCompleted(d);showBody('cp-loading','cp-body');});}
-        else{showLoading('ip-loading','ip-body');openModal('invalidPaymentModal');fetchDetail(viewId,function(d){populateInvalid(d);showBody('ip-loading','ip-body');});}
+        var viewId=viewBtn.dataset.id;
+        var viewStatus=normalizePaymentStatus(viewBtn.dataset.status);
+        if(viewStatus==='submitted'){
+          applyViewModalTheme('pendingPaymentModal',viewStatus);
+          showLoading('pp-loading','pp-body');
+          openModal('pendingPaymentModal');
+          fetchDetail(viewId,function(d){
+            applyViewModalTheme('pendingPaymentModal',d.payment_status||viewStatus);
+            populatePending(d);
+            showBody('pp-loading','pp-body');
+          });
+        }
+        else if(viewStatus==='approved'){
+          applyViewModalTheme('completedPaymentModal',viewStatus);
+          showLoading('cp-loading','cp-body');
+          openModal('completedPaymentModal');
+          fetchDetail(viewId,function(d){
+            applyViewModalTheme('completedPaymentModal',d.payment_status||viewStatus);
+            populateCompleted(d);
+            showBody('cp-loading','cp-body');
+          });
+        }
+        else{
+          var invalidTheme=viewStatus==='deleted'?'deleted':'rejected';
+          applyViewModalTheme('invalidPaymentModal',invalidTheme);
+          showLoading('ip-loading','ip-body');
+          openModal('invalidPaymentModal');
+          fetchDetail(viewId,function(d){
+            applyViewModalTheme('invalidPaymentModal',d.payment_status||invalidTheme);
+            populateInvalid(d);
+            showBody('ip-loading','ip-body');
+          });
+        }
         return;
       }
 
@@ -1209,6 +1328,8 @@
 
         console.log('UFV: Initialization complete');
     })();
+
+    animatePaymentsRows();
 
   }());
   </script>

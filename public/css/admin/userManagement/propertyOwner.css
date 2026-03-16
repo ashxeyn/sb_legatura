@@ -179,31 +179,6 @@ button[class*="from-orange-500"]:hover::before {
   background: linear-gradient(90deg, #eef2ff 0%, #e0e7ff 100%);
 }
 
-/* Row fade-in animation on load */
-#propertyOwnersTable tr {
-  animation: fadeInOwnerRow 0.5s ease-out backwards;
-}
-
-#propertyOwnersTable tr:nth-child(1) { animation-delay: 0.1s; }
-#propertyOwnersTable tr:nth-child(2) { animation-delay: 0.15s; }
-#propertyOwnersTable tr:nth-child(3) { animation-delay: 0.2s; }
-#propertyOwnersTable tr:nth-child(4) { animation-delay: 0.25s; }
-#propertyOwnersTable tr:nth-child(5) { animation-delay: 0.3s; }
-#propertyOwnersTable tr:nth-child(6) { animation-delay: 0.35s; }
-#propertyOwnersTable tr:nth-child(7) { animation-delay: 0.4s; }
-#propertyOwnersTable tr:nth-child(8) { animation-delay: 0.45s; }
-
-@keyframes fadeInOwnerRow {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
 /* Loading State (for future use) */
 .table-loading {
   position: relative;

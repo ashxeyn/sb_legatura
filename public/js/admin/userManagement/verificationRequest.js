@@ -5,6 +5,28 @@
     const contractorsWrap = document.getElementById("contractorsTableWrap");
     const ownersWrap = document.getElementById("ownersTableWrap");
 
+    function animateRowsInWrap(wrap) {
+        if (!wrap) return;
+        const rows = wrap.querySelectorAll("tbody tr");
+        rows.forEach((row, index) => {
+            row.style.opacity = "0";
+            row.style.transform = "translateY(20px)";
+
+            setTimeout(() => {
+                row.style.transition = "all 0.4s ease";
+                row.style.opacity = "1";
+                row.style.transform = "translateY(0)";
+            }, index * 50);
+        });
+    }
+
+    function animateVisibleVerificationRows() {
+        const visibleWrap = contractorsWrap?.classList.contains("hidden")
+            ? ownersWrap
+            : contractorsWrap;
+        animateRowsInWrap(visibleWrap);
+    }
+
     function activate(tab) {
         if (tab === "contractors") {
             tabContractors?.classList.add("text-gray-700", "border-orange-500");
@@ -13,6 +35,7 @@
             tabOwners?.classList.add("text-gray-600", "border-transparent");
             contractorsWrap?.classList.remove("hidden");
             ownersWrap?.classList.add("hidden");
+            requestAnimationFrame(() => animateRowsInWrap(contractorsWrap));
         } else {
             tabOwners?.classList.add("text-gray-700", "border-orange-500");
             tabOwners?.classList.remove("text-gray-600", "border-transparent");
@@ -20,11 +43,30 @@
             tabContractors?.classList.add("text-gray-600", "border-transparent");
             ownersWrap?.classList.remove("hidden");
             contractorsWrap?.classList.add("hidden");
+            requestAnimationFrame(() => animateRowsInWrap(ownersWrap));
         }
     }
 
     tabContractors?.addEventListener("click", () => activate("contractors"));
     tabOwners?.addEventListener("click", () => activate("owners"));
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const originalFetchAndUpdate = window.fetchAndUpdate;
+        if (
+            typeof originalFetchAndUpdate === "function" &&
+            !originalFetchAndUpdate.__vrAnimationWrapped
+        ) {
+            const wrappedFetchAndUpdate = async function (...args) {
+                const result = await originalFetchAndUpdate.apply(this, args);
+                animateVisibleVerificationRows();
+                return result;
+            };
+            wrappedFetchAndUpdate.__vrAnimationWrapped = true;
+            window.fetchAndUpdate = wrappedFetchAndUpdate;
+        }
+
+        animateVisibleVerificationRows();
+    });
 })();
 
 // Verification Modal Logic

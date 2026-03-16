@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Admin Dashboard - Legatura</title>
+    <title>Report Management - Legatura Admin</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
@@ -19,6 +20,74 @@
         html {
             scrollbar-gutter: stable;
         }
+
+        .report-tabs-shell {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem;
+            border-radius: 0.9rem;
+            border: 1px solid #dbeafe;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 12px 30px rgba(79, 70, 229, 0.12);
+            backdrop-filter: blur(2px);
+        }
+
+        .tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid transparent;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            border-color: #c7d2fe;
+            background: #eef2ff;
+            color: #3730a3;
+        }
+
+        .tab-btn.active {
+            color: #ffffff;
+            border-color: #4f46e5;
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 52%, #8b5cf6 100%);
+            box-shadow: 0 8px 18px rgba(79, 70, 229, 0.28);
+        }
+
+        .tab-btn .tab-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 1.3rem;
+            padding: 0.15rem 0.35rem;
+            border-radius: 9999px;
+            border: 1px solid #c7d2fe;
+            background: #e0e7ff;
+            color: #4338ca;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .tab-btn.active .tab-count {
+            border-color: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .report-filter-surface {
+            border-color: #dbeafe;
+            background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+            box-shadow: 0 10px 26px rgba(30, 64, 175, 0.08);
+        }
+
         /* Modal: hide scrollbar, match proofOfpayments */
         .modal-scroll-hidden {
             -ms-overflow-style: none;
@@ -28,6 +97,109 @@
             width: 0;
             height: 0;
             display: none;
+        }
+
+        .report-view-modal {
+            --report-modal-from: #4f46e5;
+            --report-modal-to: #7c3aed;
+            --report-modal-border: #c7d2fe;
+            --report-modal-soft: #eef2ff;
+            --report-modal-soft-text: #dbeafe;
+            --report-modal-accent: #4f46e5;
+            --report-modal-footer: #f8faff;
+            --report-modal-header-border: rgba(255, 255, 255, 0.18);
+            border-color: var(--report-modal-border) !important;
+        }
+
+        .report-view-modal[data-status-theme="pending"] {
+            --report-modal-from: #d97706;
+            --report-modal-to: #f59e0b;
+            --report-modal-border: #fcd34d;
+            --report-modal-soft: #fff7ed;
+            --report-modal-soft-text: #fde68a;
+            --report-modal-accent: #d97706;
+            --report-modal-footer: #fffbeb;
+        }
+
+        .report-view-modal[data-status-theme="under_review"] {
+            --report-modal-from: #2563eb;
+            --report-modal-to: #4f46e5;
+            --report-modal-border: #93c5fd;
+            --report-modal-soft: #eff6ff;
+            --report-modal-soft-text: #dbeafe;
+            --report-modal-accent: #2563eb;
+            --report-modal-footer: #f8fbff;
+        }
+
+        .report-view-modal[data-status-theme="resolved"] {
+            --report-modal-from: #059669;
+            --report-modal-to: #14b8a6;
+            --report-modal-border: #a7f3d0;
+            --report-modal-soft: #ecfdf5;
+            --report-modal-soft-text: #d1fae5;
+            --report-modal-accent: #059669;
+            --report-modal-footer: #f0fdf4;
+        }
+
+        .report-view-modal[data-status-theme="dismissed"] {
+            --report-modal-from: #dc2626;
+            --report-modal-to: #f43f5e;
+            --report-modal-border: #fecaca;
+            --report-modal-soft: #fef2f2;
+            --report-modal-soft-text: #fecdd3;
+            --report-modal-accent: #dc2626;
+            --report-modal-footer: #fff1f2;
+        }
+
+        .report-view-modal-header {
+            background: linear-gradient(135deg, var(--report-modal-from) 0%, var(--report-modal-to) 100%);
+            border-bottom-color: var(--report-modal-header-border) !important;
+        }
+
+        #modalCaseId {
+            color: var(--report-modal-soft-text);
+        }
+
+        .report-view-modal-body {
+            background: linear-gradient(180deg, var(--report-modal-soft) 0%, #ffffff 26%);
+        }
+
+        .report-view-modal-body > .grid:first-child {
+            padding: 0.9rem;
+            border: 1px solid var(--report-modal-border);
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .report-view-modal-body > .rounded-xl.border,
+        .report-view-modal-body > #disputeWorkflowSection #disputeWorkflowBanner,
+        .report-view-modal-body > #disputeWorkflowSection #disputeInformationHierarchy,
+        .report-view-modal-body > #disputeWorkflowSection > .bg-gradient-to-br,
+        .report-view-modal-body > #modalAdminNotesWrap > .bg-gray-50 {
+            border-color: var(--report-modal-border) !important;
+            background: linear-gradient(180deg, #ffffff 0%, var(--report-modal-soft) 140%) !important;
+        }
+
+        .report-view-modal-body > .border-t,
+        .report-view-modal-body > #disputeWorkflowSection,
+        .report-view-modal-body > #modalAdminNotesWrap,
+        .report-view-modal-body > #disputeWorkflowSection .border-t {
+            border-color: var(--report-modal-border) !important;
+        }
+
+        .report-view-modal-body > .border-t h4 i,
+        .report-view-modal-body > #disputeWorkflowSection h4 i,
+        .report-view-modal #modalActionsFooter > div:first-child > i {
+            color: var(--report-modal-accent) !important;
+        }
+
+        .report-view-modal #modalActionsFooter button i {
+            color: inherit !important;
+        }
+
+        .report-view-modal #modalActionsFooter {
+            background: #ffffff;
+            border-top-color: var(--report-modal-border) !important;
         }
     </style>
 
@@ -111,14 +283,16 @@
 
                 {{-- ── Tab Navigation & Content ── --}}
                 <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
-                        <div class="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 via-blue-50 to-purple-50">
+                        <div class="report-tabs-shell">
                             <button class="tab-btn active" data-tab="moderationHub" id="tabModerationHub">
-                                <i class="fi fi-rr-shield-check mr-1"></i> Submitted Cases
-                                <span class="ml-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{{ $counts['total'] }}</span>
+                                <i class="fi fi-rr-shield-check"></i>
+                                <span>Submitted Cases</span>
+                                <span class="tab-count">{{ $counts['total'] }}</span>
                             </button>
                             <button class="tab-btn" data-tab="adminAction" id="tabAdminAction">
-                                <i class="fi fi-rr-megaphone mr-1"></i> Direct Admin Action
+                                <i class="fi fi-rr-megaphone"></i>
+                                <span>Direct Admin Action</span>
                             </button>
                         </div>
                     </div>
@@ -126,50 +300,70 @@
                     {{-- ── Tab 1: Active Moderation ── --}}
                     <div id="panelModerationHub" class="tab-panel">
                         {{-- Header with Filters --}}
-                        <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
-                            <h3 class="text-lg font-semibold text-gray-800">Active Reports</h3>
-                            <div class="flex flex-wrap items-center gap-2.5">
-                                <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
-                                    <i class="fi fi-rr-filter text-gray-500"></i>
-                                    <span>Filter By</span>
-                                </div>
-
-                                {{-- Source Type Pill --}}
-                                <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
-                                        <i class="fi fi-rr-layers text-white text-xs leading-none"></i>
-                                        <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Source</span>
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+                                <h3 class="text-lg font-semibold text-gray-800">Active Reports</h3>
+                                <p class="text-[11px] font-medium text-gray-500">Review and moderate submitted cases.</p>
+                            </div>
+                            <div class="controls-wrapper report-filter-surface rounded-xl border p-4 flex flex-wrap items-center justify-between gap-3">
+                                <div class="flex flex-wrap items-center gap-2.5">
+                                    <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                                        <i class="fi fi-rr-filter text-gray-500"></i>
+                                        <span>Filter By</span>
                                     </div>
-                                    <select id="filterSource" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-2 focus:outline-none cursor-pointer border-0">
-                                        <option value="all">All</option>
-                                        <option value="project">Project</option>
-                                        <option value="showcase">Showcase</option>
-                                        <option value="review">Review</option>
-                                        <option value="user">User</option>
-                                        <option value="dispute">Dispute</option>
-                                    </select>
-                                </div>
 
-                                {{-- Status Pill --}}
-                                <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
-                                        <i class="fi fi-rr-badge-check text-white text-xs leading-none"></i>
-                                        <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Status</span>
+                                    {{-- Source Type Filter --}}
+                                    <div class="relative">
+                                        <select id="filterSource" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm">
+                                            <option value="all">All</option>
+                                            <option value="project">Project</option>
+                                            <option value="showcase">Showcase</option>
+                                            <option value="review">Review</option>
+                                            <option value="user">User</option>
+                                            <option value="dispute">Dispute</option>
+                                        </select>
+                                        <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
                                     </div>
-                                    <select id="filterStatus" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-2 focus:outline-none cursor-pointer border-0">
-                                        <option value="all">All</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="under_review">Under Review</option>
-                                        <option value="resolved">Resolved</option>
-                                        <option value="dismissed">Dismissed</option>
-                                    </select>
+
+                                    {{-- Case Type Filter --}}
+                                    <div class="relative">
+                                        <select id="filterCaseType" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm">
+                                            <option value="all">All</option>
+                                            <option value="report">Report</option>
+                                            <option value="dispute">Dispute</option>
+                                        </select>
+                                        <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                                    </div>
+
+                                    {{-- Status Filter --}}
+                                    <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
+                                        <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                                            <i class="fi fi-rr-badge-check text-white text-xs leading-none"></i>
+                                            <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Status</span>
+                                        </div>
+                                        <select id="filterStatus" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-2 focus:outline-none cursor-pointer border-0">
+                                            <option value="all">All</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="under_review">Under Review</option>
+                                            <option value="resolved">Resolved</option>
+                                            <option value="dismissed">Dismissed</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- Search Filter --}}
+                                    <div class="relative">
+                                        <input type="text" id="filterSearch" placeholder="Search reports..."
+                                            class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pl-8 text-xs font-medium text-gray-700 w-44 placeholder-gray-400 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition">
+                                        <i class="fi fi-rr-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                                    </div>
                                 </div>
 
-                                {{-- Reset Button --}}
-                                <button id="resetFilters" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
-                                    <i class="fi fi-rr-rotate-left"></i>
-                                    <span>Reset</span>
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <button id="resetFilters" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                                        <i class="fi fi-rr-rotate-left"></i>
+                                        <span>Reset Filter</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -425,19 +619,19 @@
                  ════════════════════════════════════════════════════════════ --}}
             <div id="viewReportModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center hidden">
                 <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                <div class="modal-content relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col">
-                    <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-indigo-600 text-white flex-shrink-0">
+                <div class="modal-content report-view-modal relative bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[78vh] flex flex-col" data-status-theme="default">
+                    <div class="report-view-modal-header flex items-center justify-between px-4 py-3.5 border-b text-white flex-shrink-0">
                         <div class="flex items-center gap-2.5">
                             <div class="w-9 h-9 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shadow"><i class="fi fi-sr-document text-white text-base"></i></div>
                             <div>
                                 <h3 class="text-[15px] font-bold text-white leading-tight">Case Details</h3>
-                                <p class="text-[10px] text-indigo-100" id="modalCaseId">Case #---</p>
+                                <p class="text-[10px]" id="modalCaseId">Case #---</p>
                             </div>
                         </div>
                         <button class="modal-close p-1.5 rounded-xl hover:bg-white/20 text-white/80 hover:text-white transition"><i class="fi fi-rr-cross-small text-lg"></i></button>
                     </div>
 
-                    <div class="modal-scroll-hidden flex-1 overflow-y-auto p-4 space-y-3">
+                    <div class="report-view-modal-body modal-scroll-hidden flex-1 overflow-y-auto p-4 space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div class="space-y-2">
                                 <div><label class="text-[10px] font-semibold text-gray-500 uppercase">Source</label><p class="text-[12px] font-semibold text-gray-800" id="modalSource">-</p></div>
@@ -596,6 +790,7 @@
                         <div>
                             <label class="block text-[12px] font-semibold text-gray-800 mb-1.5">Warning Message *</label>
                             <textarea id="disputeWarningMessage" rows="4" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-[12px] focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300 transition resize-none" placeholder="Enter warning message..."></textarea>
+                            <p id="disputeWarningMessageError" class="text-red-500 text-[11px] mt-1 hidden">Warning message must be at least 10 characters.</p>
                         </div>
                         <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-200">
                             <button class="modal-close px-3.5 py-2 rounded-lg border border-gray-300 text-gray-700 text-[12px] font-medium hover:bg-gray-50 transition">Cancel</button>
@@ -740,6 +935,7 @@
                         <div>
                             <label class="block text-[12px] font-semibold text-gray-800 mb-1.5">Dismissal Reason *</label>
                             <textarea id="dismissReason" rows="3" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-[12px] focus:ring-2 focus:ring-amber-300 focus:border-amber-300 transition resize-none" placeholder="Explain why this report is being dismissed..."></textarea>
+                            <p id="dismissReasonError" class="text-red-500 text-[11px] mt-1 hidden">Reason is required.</p>
                         </div>
                         <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-200">
                             <button class="modal-close px-3.5 py-2 rounded-lg border border-gray-300 text-gray-700 text-[12px] font-medium hover:bg-gray-50 transition">Cancel</button>
@@ -946,3 +1142,5 @@
 </body>
 
 </html>
+
+

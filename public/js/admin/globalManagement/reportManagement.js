@@ -8,7 +8,19 @@
     let moderationLastPage = 1;
     let isOpeningReportModal = false;
 
-    // ── Toast helper ──
+    function animateRowsInWrap(wrap) {
+        if (!wrap) return;
+        const rows = Array.from(wrap.querySelectorAll('tbody tr')).filter(r => r.style.display !== 'none');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                row.style.transition = 'all 0.4s ease';
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 50);
+        });
+}
     function toast(msg, type) {
         const t = document.createElement("div");
         t.className = `fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium transition-all duration-300 ${
@@ -45,6 +57,30 @@
         const cls = map[status] || "bg-gray-100 text-gray-700 border-gray-200";
         const label = (status || "-").toUpperCase().replace(/_/g, " ");
         return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}">${label}</span>`;
+    }
+
+    function getReportModalTheme(status) {
+        const normalized = String(status || "").toLowerCase();
+        const map = {
+            pending: "pending",
+            under_review: "under_review",
+            resolved: "resolved",
+            approved: "resolved",
+            resumed: "resolved",
+            dismissed: "dismissed",
+            rejected: "dismissed",
+            deleted: "dismissed",
+            deleted_post: "dismissed",
+            hidden: "dismissed",
+            removed: "dismissed",
+        };
+        return map[normalized] || "default";
+    }
+
+    function applyViewModalTheme(status) {
+        const modalCard = document.querySelector("#viewReportModal .report-view-modal");
+        if (!modalCard) return;
+        modalCard.dataset.statusTheme = getReportModalTheme(status);
     }
 
     function getSourceBadge(source) {
@@ -304,7 +340,10 @@
             document.querySelectorAll(".tab-panel").forEach((p) => p.classList.add("hidden"));
             const tab = this.dataset.tab;
             const panel = document.getElementById("panel" + tab.charAt(0).toUpperCase() + tab.slice(1));
-            if (panel) panel.classList.remove("hidden");
+            if (panel) {
+                panel.classList.remove("hidden");
+                requestAnimationFrame(() => animateRowsInWrap(panel));
+            }
         });
     });
 
@@ -444,13 +483,14 @@
                     <td class="px-2.5 py-2.5">${getAdminActionBadge(r.admin_action)}</td>
                     <td class="px-2.5 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">${date}</td>
                     <td class="px-2.5 py-2.5 text-center">
-                        <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all view-report-btn" title="View" data-id="${r.case_ref_id}" data-source="${r.source}" data-case-type="${r.case_type}">
+                        <button class="action-btn view-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all view-report-btn" title="View" data-id="${r.case_ref_id}" data-source="${r.source}" data-case-type="${r.case_type}" data-status="${escapeHtml(r.status || "")}">
                             <i class="fi fi-rr-eye text-[13px] leading-none"></i>
                         </button>
                     </td>
                 </tr>`;
             })
             .join("");
+        animateRowsInWrap(tbody);
     }
 
     function bindModerationTableDelegates() {
@@ -467,7 +507,9 @@
             isOpeningReportModal = true;
 
             try {
-                await openViewModal(button.dataset.source, button.dataset.id, button.dataset.caseType);
+                const row = button.closest("tr[data-status]");
+                const initialStatus = button.dataset.status || (row ? row.dataset.status : null);
+                await openViewModal(button.dataset.source, button.dataset.id, button.dataset.caseType, initialStatus);
             } finally {
                 isOpeningReportModal = false;
             }
@@ -533,9 +575,10 @@
     // ══════════════════════════════════════════════════════
     // VIEW REPORT MODAL — load detail with evidence
     // ══════════════════════════════════════════════════════
-    async function openViewModal(source, reportId, caseType = null) {
+    async function openViewModal(source, reportId, caseType = null, initialStatus = null) {
         currentReport = null;
         hideAllModalActionGroups();
+        applyViewModalTheme(initialStatus || "default");
 
         // Show modal with loading state
         document.getElementById("modalCaseId").textContent = `Case #${reportId}`;
@@ -608,6 +651,7 @@
                 (r.content_type || "-").charAt(0).toUpperCase() + (r.content_type || "-").slice(1);
             document.getElementById("modalDate").textContent = formatDisplayDate(r.created_at);
             document.getElementById("modalStatus").innerHTML = getStatusBadge(r.status);
+            applyViewModalTheme(r.status);
             const extra = source === "dispute" && r.requested_action
                 ? `\n\nRequested Action: ${r.requested_action}`
                 : "";
@@ -1247,20 +1291,52 @@
     // ══════════════════════════════════════════════════════
     // DISMISS FLOW
     // ══════════════════════════════════════════════════════
+    const dismissReasonInput = document.getElementById("dismissReason");
+    const dismissReasonError = document.getElementById("dismissReasonError");
+    const disputeWarningMessageInput = document.getElementById("disputeWarningMessage");
+    const disputeWarningMessageError = document.getElementById("disputeWarningMessageError");
+
+    function clearInlineReasonError(input, errorEl) {
+        if (input) input.classList.remove("border-red-500");
+        if (errorEl) errorEl.classList.add("hidden");
+    }
+
+    function showInlineReasonError(input, errorEl, message) {
+        if (input) input.classList.add("border-red-500");
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove("hidden");
+        }
+    }
+
+    function resetReportReasonErrors() {
+        clearInlineReasonError(dismissReasonInput, dismissReasonError);
+        clearInlineReasonError(disputeWarningMessageInput, disputeWarningMessageError);
+    }
+
+    dismissReasonInput?.addEventListener("input", () => clearInlineReasonError(dismissReasonInput, dismissReasonError));
+    dismissReasonInput?.addEventListener("change", () => clearInlineReasonError(dismissReasonInput, dismissReasonError));
+    disputeWarningMessageInput?.addEventListener("input", () => clearInlineReasonError(disputeWarningMessageInput, disputeWarningMessageError));
+    disputeWarningMessageInput?.addEventListener("change", () => clearInlineReasonError(disputeWarningMessageInput, disputeWarningMessageError));
+
     document.getElementById("btnDismissReport")?.addEventListener("click", () => {
         if (!currentReport) return;
-        document.getElementById("dismissReason").value = "";
+        if (dismissReasonInput) dismissReasonInput.value = "";
+        clearInlineReasonError(dismissReasonInput, dismissReasonError);
         const modal = document.getElementById("dismissConfirmModal");
         if (modal) { modal.classList.remove("hidden"); modal.classList.add("flex"); }
     });
 
     document.getElementById("confirmDismissBtn")?.addEventListener("click", async () => {
         if (!currentReport) return;
-        const reason = document.getElementById("dismissReason")?.value?.trim();
+        const reason = dismissReasonInput?.value?.trim();
         if (!reason) {
-            toast("Please provide a dismissal reason", "error");
+            showInlineReasonError(dismissReasonInput, dismissReasonError, "Reason is required.");
+            dismissReasonInput?.focus();
             return;
         }
+
+        clearInlineReasonError(dismissReasonInput, dismissReasonError);
 
         const btn = document.getElementById("confirmDismissBtn");
         btn.disabled = true;
@@ -1454,6 +1530,7 @@
     // MODAL CLOSE HELPERS
     // ══════════════════════════════════════════════════════
     function closeAllModals() {
+        resetReportReasonErrors();
         ["viewReportModal", "dismissConfirmModal", "disputeProjectDecisionModal", "disputeHaltConfirmModal", "disputeWarningModal", "suspensionModal", "resolutionActionModal", "hidePostModal", "hideReviewModal", "removeReviewModal"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) { el.classList.add("hidden"); el.classList.remove("flex"); }
@@ -1463,6 +1540,7 @@
     // Close buttons (modal-close class)
     document.querySelectorAll(".modal-close").forEach((btn) => {
         btn.addEventListener("click", function () {
+            resetReportReasonErrors();
             const overlay = this.closest(".modal-overlay");
             if (overlay) { overlay.classList.add("hidden"); overlay.classList.remove("flex"); }
         });
@@ -1472,6 +1550,7 @@
     document.querySelectorAll(".modal-overlay").forEach((overlay) => {
         overlay.addEventListener("click", function (e) {
             if (e.target === this) {
+                resetReportReasonErrors();
                 this.classList.add("hidden");
                 this.classList.remove("flex");
             }
@@ -1631,8 +1710,8 @@
 
         if (needsWarningModal) {
             const warningModal = document.getElementById("disputeWarningModal");
-            const warningMessage = document.getElementById("disputeWarningMessage");
-            if (warningMessage) warningMessage.value = "";
+            if (disputeWarningMessageInput) disputeWarningMessageInput.value = "";
+            clearInlineReasonError(disputeWarningMessageInput, disputeWarningMessageError);
             if (warningModal) {
                 warningModal.classList.remove("hidden");
                 warningModal.classList.add("flex");
@@ -1645,7 +1724,8 @@
 
     document.getElementById("btnRejectDispute")?.addEventListener("click", async () => {
         if (!currentReport || currentReport.source !== "dispute") return;
-        document.getElementById("dismissReason").value = "";
+        if (dismissReasonInput) dismissReasonInput.value = "";
+        clearInlineReasonError(dismissReasonInput, dismissReasonError);
         const modal = document.getElementById("dismissConfirmModal");
         if (modal) { modal.classList.remove("hidden"); modal.classList.add("flex"); }
     });
@@ -1711,11 +1791,18 @@
     document.getElementById("confirmDisputeWarningBtn")?.addEventListener("click", async function () {
         if (!currentReport || currentReport.source !== "dispute") return;
 
-        const warningMessage = document.getElementById("disputeWarningMessage")?.value?.trim() || "";
+        const warningMessage = disputeWarningMessageInput?.value?.trim() || "";
         if (warningMessage.length < 10) {
-            toast("Please provide at least 10 characters for the warning message", "error");
+            showInlineReasonError(
+                disputeWarningMessageInput,
+                disputeWarningMessageError,
+                "Warning message must be at least 10 characters."
+            );
+            disputeWarningMessageInput?.focus();
             return;
         }
+
+        clearInlineReasonError(disputeWarningMessageInput, disputeWarningMessageError);
 
         this.disabled = true;
         const original = this.textContent;
@@ -1940,6 +2027,7 @@
             else if (type === "review") renderAdminReviewResults(thead, tbody, results);
 
             renderAdminPagination(pagination);
+            animateRowsInWrap(tbody);
 
         } catch (e) {
             console.error(e);
@@ -2146,6 +2234,7 @@
         if (!item) return;
 
         currentReport = null;
+        applyViewModalTheme("default");
         currentDirectPreviewItem = {
             type: itemType,
             id: itemType === "showcase" ? item.post_id : itemType === "project" ? item.project_id : item.review_id,
@@ -2184,6 +2273,7 @@
                 : ((item.is_deleted ? "deleted" : "active"));
 
         document.getElementById("modalStatus").innerHTML = `<span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">${escapeHtml(String(overviewStatus).toUpperCase().replace(/_/g, " "))}</span>`;
+        applyViewModalTheme(overviewStatus);
 
         if (itemType === "showcase") {
             document.getElementById("modalReporter").textContent = `${(item.first_name || "")} ${(item.last_name || "")}`.trim() || "Unknown";
@@ -2539,3 +2629,4 @@
     bindModerationTableDelegates();
     fetchReports();
 })();
+

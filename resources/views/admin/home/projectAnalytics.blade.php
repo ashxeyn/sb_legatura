@@ -1,9 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Analytics — Legatura Admin</title>
+  <title>Project Analytics - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -50,7 +51,7 @@
               </div>
               <input type="date" id="dateFrom" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <span class="text-gray-300 font-bold text-base">→</span>
+            <span class="text-gray-300 font-bold text-base">?</span>
             <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
               <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2 self-stretch">
                 <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
@@ -271,7 +272,7 @@
           <div class="an-progress-wrap mt-2.5">
             <div class="an-progress-fill progress-bar-fill" data-width="{{ min(100, round($projectPerformance['avg_duration'])) }}" style="width:0%; background:#22d3ee;"></div>
           </div>
-          <p class="text-[11px] text-gray-400 mt-1.5">Based on milestone start → end dates</p>
+          <p class="text-[11px] text-gray-400 mt-1.5">Based on milestone start ? end dates</p>
         </div>
 
         <div class="an-metric bg-white border border-gray-200 border-l-4 border-l-emerald-400 rounded-xl p-4 shadow-sm">
@@ -313,7 +314,7 @@
           <div class="flex items-center justify-between mb-3">
             <div>
               <h3 class="text-sm font-semibold text-gray-800">Project Completion Trends</h3>
-              <p class="text-[11px] text-gray-400 mt-0.5">Monthly new vs completed — last 12 months</p>
+              <p class="text-[11px] text-gray-400 mt-0.5">Monthly new vs completed - last 12 months</p>
             </div>
             <span class="text-[11px] font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">Last 12 Months</span>
           </div>
@@ -380,7 +381,7 @@
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h3 class="text-sm font-semibold text-gray-800">Top 5 Contractors</h3>
-              <p class="text-[11px] text-gray-400">Ranked by completed projects · live data</p>
+              <p class="text-[11px] text-gray-400">Ranked by completed projects - live data</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               <input type="text" id="contractorSearch" placeholder="Search contractor..." class="px-3 py-1.5 rounded-lg text-xs border border-gray-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none w-40">
@@ -391,7 +392,7 @@
                 </div>
                 <input type="date" id="contractorDateFrom" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-1.5 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
               </div>
-              <span class="text-gray-300 font-bold">→</span>
+              <span class="text-gray-300 font-bold">?</span>
               <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
                 <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-1.5 self-stretch">
                   <i class="fi fi-rr-calendar text-white text-[10px] leading-none"></i>

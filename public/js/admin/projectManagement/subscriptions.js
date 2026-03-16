@@ -1,5 +1,19 @@
 // Subscriptions Page Interactivity
 
+function animateRowsInWrap(wrap) {
+  if (!wrap) return;
+  var rows = wrap.querySelectorAll('tbody tr');
+  rows.forEach(function(row, index) {
+    row.style.opacity = '0';
+    row.style.transform = 'translateY(20px)';
+    setTimeout(function() {
+      row.style.transition = 'all 0.4s ease';
+      row.style.opacity = '1';
+      row.style.transform = 'translateY(0)';
+    }, index * 50);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   // Tab Switching
   const tabActive = document.getElementById('tabActiveSubscriptions');
@@ -28,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
         tab.btn.classList.add('active', 'border-orange-500', 'text-gray-700');
         tab.btn.classList.remove('border-transparent', 'text-gray-600');
         tab.table.classList.remove('hidden');
+        requestAnimationFrame(function() { animateRowsInWrap(tab.table); });
       });
     }
   });
@@ -1228,6 +1243,27 @@ document.addEventListener('DOMContentLoaded', function () {
       this.style.transform = '';
     });
   });
+
+  // Wrap window.fetchAndUpdate from filters.js to re-animate after table refresh
+  var _origFetchAndUpdate = window.fetchAndUpdate;
+  if (typeof _origFetchAndUpdate === 'function' && !_origFetchAndUpdate.__subAnimationWrapped) {
+    var _wrapped = async function () {
+      var result = await _origFetchAndUpdate.apply(this, arguments);
+      var tables = [
+        document.getElementById('activeSubscriptionsTable'),
+        document.getElementById('expiredSubscriptionsTable'),
+        document.getElementById('cancelledSubscriptionsTable')
+      ];
+      var visible = tables.find(function(t) { return t && !t.classList.contains('hidden'); });
+      animateRowsInWrap(visible);
+      return result;
+    };
+    _wrapped.__subAnimationWrapped = true;
+    window.fetchAndUpdate = _wrapped;
+  }
+
+  // Initial page load animation
+  animateRowsInWrap(document.getElementById('activeSubscriptionsTable'));
 });
 
 // Toast Notification Function

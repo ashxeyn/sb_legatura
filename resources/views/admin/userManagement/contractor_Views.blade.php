@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -784,7 +785,6 @@
         <!-- Validation Error Section -->
         <div id="addTeamMemberErrorAlert" class="hidden bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg">
           <div class="flex items-start gap-2">
-            <i class="fi fi-rr-exclamation text-red-600 text-sm flex-shrink-0 mt-0.5"></i>
             <div class="flex-1">
               <p class="text-xs font-semibold text-red-800 mb-1">Validation Error</p>
               <ul id="addTeamMemberErrorList" class="text-xs text-red-700 space-y-0.5 list-disc list-inside">

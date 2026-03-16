@@ -1,3 +1,27 @@
+function animateRowsInWrap(wrap) {
+	if (!wrap) return;
+	const rows = wrap.querySelectorAll('tbody tr');
+	rows.forEach((row, index) => {
+		row.style.opacity = '0';
+		row.style.transform = 'translateY(20px)';
+		setTimeout(() => {
+			row.style.transition = 'all 0.4s ease';
+			row.style.opacity = '1';
+			row.style.transform = 'translateY(0)';
+		}, index * 50);
+	});
+}
+
+function animateVisibleSuspendedRows() {
+	const cWrap = document.getElementById('contractorsTableWrap');
+	const oWrap = document.getElementById('ownersTableWrap');
+	const sWrap = document.getElementById('staffTableWrap');
+	const visibleWrap = !cWrap?.classList.contains('hidden') ? cWrap
+		: !oWrap?.classList.contains('hidden') ? oWrap
+		: sWrap;
+	animateRowsInWrap(visibleWrap);
+}
+
 (function(){
 	const cTab = document.getElementById('saTabContractors');
 	const oTab = document.getElementById('saTabOwners');
@@ -23,14 +47,17 @@
 			cTab?.classList.add('text-gray-700','border-orange-500');
 			cTab?.classList.remove('text-gray-600','border-transparent');
 			cWrap?.classList.remove('hidden');
+			requestAnimationFrame(() => animateRowsInWrap(cWrap));
 		} else if(which==='owners') {
 			oTab?.classList.add('text-gray-700','border-orange-500');
 			oTab?.classList.remove('text-gray-600','border-transparent');
 			oWrap?.classList.remove('hidden');
+			requestAnimationFrame(() => animateRowsInWrap(oWrap));
 		} else if(which==='staff') {
 			sTab?.classList.add('text-gray-700','border-orange-500');
 			sTab?.classList.remove('text-gray-600','border-transparent');
 			sWrap?.classList.remove('hidden');
+			requestAnimationFrame(() => animateRowsInWrap(sWrap));
 		}
 	}
 	
@@ -38,6 +65,20 @@
 	oTab?.addEventListener('click', ()=>activate('owners'));
 	sTab?.addEventListener('click', ()=>activate('staff'));
 })();
+
+document.addEventListener('DOMContentLoaded', function() {
+	const originalFetchAndUpdate = window.fetchAndUpdate;
+	if (typeof originalFetchAndUpdate === 'function' && !originalFetchAndUpdate.__saAnimationWrapped) {
+		const wrappedFetchAndUpdate = async function (...args) {
+			const result = await originalFetchAndUpdate.apply(this, args);
+			animateVisibleSuspendedRows();
+			return result;
+		};
+		wrappedFetchAndUpdate.__saAnimationWrapped = true;
+		window.fetchAndUpdate = wrappedFetchAndUpdate;
+	}
+	animateVisibleSuspendedRows();
+});
 
 document.addEventListener('DOMContentLoaded', function() {
 	attachReactivateListeners();
