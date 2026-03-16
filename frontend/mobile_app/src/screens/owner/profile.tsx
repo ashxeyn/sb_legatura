@@ -351,9 +351,6 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           <View style={styles.profileInfoContainer}>
             <View style={styles.avatarContainer}>
               <ImageFallback uri={getStorageUrl(ownerProfilePicPath || userData?.profile_pic || undefined)} defaultImage={defaultOwnerAvatar} style={styles.avatar} resizeMode="cover" />
-              <TouchableOpacity style={styles.editAvatarButton}>
-                <MaterialIcons name="camera-alt" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
             </View>
 
             <Text style={styles.userName}>{userData?.username || 'Property Owner'}</Text>
@@ -489,19 +486,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  editAvatarButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#333333',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
   },
   userName: {
     fontSize: 22,

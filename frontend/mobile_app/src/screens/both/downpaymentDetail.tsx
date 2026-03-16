@@ -72,6 +72,9 @@ export default function DownpaymentDetail({
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectingPaymentId, setRejectingPaymentId] = useState<number | null>(null);
+  // Separate states for payment approve/reject so only the active action shows loading
+  const [approvingPaymentId, setApprovingPaymentId] = useState<number | null>(null);
+  const [rejectingPaymentSubmittingId, setRejectingPaymentSubmittingId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const isOwner = userRole === 'owner';
@@ -141,7 +144,8 @@ export default function DownpaymentDetail({
         {
           text: 'Approve',
           onPress: async () => {
-            setActionLoading(paymentId);
+            setApprovingPaymentId(paymentId);
+            setRejectingPaymentSubmittingId(null);
             try {
               const response = await payment_service.approve_downpayment(paymentId, userId);
               if (response.success) {
@@ -153,7 +157,7 @@ export default function DownpaymentDetail({
             } catch (error) {
               Alert.alert('Error', 'An error occurred');
             } finally {
-              setActionLoading(null);
+              setApprovingPaymentId(null);
             }
           },
         },
@@ -173,7 +177,8 @@ export default function DownpaymentDetail({
       return;
     }
     if (!rejectingPaymentId) return;
-    setActionLoading(rejectingPaymentId);
+    setRejectingPaymentSubmittingId(rejectingPaymentId);
+    setApprovingPaymentId(null);
     try {
       const response = await payment_service.reject_downpayment(rejectingPaymentId, userId, rejectReason);
       if (response.success) {
@@ -185,7 +190,7 @@ export default function DownpaymentDetail({
     } catch (error) {
       Alert.alert('Error', 'An error occurred');
     } finally {
-      setActionLoading(null);
+      setRejectingPaymentSubmittingId(null);
       setShowRejectModal(false);
       setRejectingPaymentId(null);
       setRejectReason('');
@@ -557,20 +562,32 @@ export default function DownpaymentDetail({
                 {isContractor && payment.payment_status === 'submitted' && (
                   <View style={styles.actionButtons}>
                     <TouchableOpacity
-                      style={[styles.approveBtn, actionLoading === payment.payment_id && { opacity: 0.5 }]}
+                      style={[styles.approveBtn, approvingPaymentId === payment.payment_id && { opacity: 0.5 }]}
                       onPress={() => handleApprovePayment(payment.payment_id)}
-                      disabled={actionLoading === payment.payment_id}
+                      disabled={approvingPaymentId === payment.payment_id || rejectingPaymentSubmittingId === payment.payment_id}
                     >
-                      <Feather name="check" size={16} color={COLORS.surface} />
-                      <Text style={styles.approveBtnText}>Approve</Text>
+                      {approvingPaymentId === payment.payment_id ? (
+                        <ActivityIndicator size="small" color={COLORS.surface} />
+                      ) : (
+                        <>
+                          <Feather name="check" size={16} color={COLORS.surface} />
+                          <Text style={styles.approveBtnText}>Approve</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.rejectBtn, actionLoading === payment.payment_id && { opacity: 0.5 }]}
+                      style={[styles.rejectBtn, rejectingPaymentSubmittingId === payment.payment_id && { opacity: 0.5 }]}
                       onPress={() => handleRejectPayment(payment.payment_id)}
-                      disabled={actionLoading === payment.payment_id}
+                      disabled={rejectingPaymentSubmittingId === payment.payment_id || approvingPaymentId === payment.payment_id}
                     >
-                      <Feather name="x" size={16} color={COLORS.surface} />
-                      <Text style={styles.rejectBtnText}>Reject</Text>
+                      {rejectingPaymentSubmittingId === payment.payment_id ? (
+                        <ActivityIndicator size="small" color={COLORS.surface} />
+                      ) : (
+                        <>
+                          <Feather name="x" size={16} color={COLORS.surface} />
+                          <Text style={styles.rejectBtnText}>Reject</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   </View>
                 )}

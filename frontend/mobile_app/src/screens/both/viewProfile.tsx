@@ -536,6 +536,8 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const [reviews, setReviews] = useState<Review[]>([]);
   const [profilePic, setProfilePic] = useState(userData?.profile_pic);
   const [coverPhoto, setCoverPhoto] = useState(userData?.cover_photo);
+  // Persisted storage entries (seeded on mount) so we can fall back to them
+  const [storedPaths, setStoredPaths] = useState<{ profile_pic?: string | null; cover_photo?: string | null }>({ profile_pic: null, cover_photo: null });
   // Local previews so uploads reflect immediately without a full refresh
   const [previewProfileUri, setPreviewProfileUri] = useState<string | null>(null);
   const [previewCoverUri, setPreviewCoverUri] = useState<string | null>(null);
@@ -795,17 +797,55 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     return `${api_config.base_url}/storage/${filePath}`;
   }, []);
 
+  // Compute the effective images to display (preview > role-specific > stored fallbacks)
+  const effectiveProfilePic = useMemo(() => {
+    if (previewProfileUri) return previewProfileUri;
+    const displayRole = activeRoleState || null;
+    if (displayRole === 'contractor') {
+      return (
+        contractorInfo?.company_logo || contractorInfo?.profile_pic ||
+        userData?.company_logo || userData?.profile_pic ||
+        profilePic || storedPaths.profile_pic || undefined
+      );
+    }
+    if (displayRole === 'owner') {
+      return (userData?.profile_pic || ownerInfo?.profile_pic || profilePic || storedPaths.profile_pic || undefined);
+    }
+    // fallback
+    return (
+      contractorInfo?.company_logo || userData?.profile_pic || ownerInfo?.profile_pic || profilePic || storedPaths.profile_pic || undefined
+    );
+  }, [previewProfileUri, contractorInfo, userData, ownerInfo, profilePic, storedPaths, activeRoleState]);
+
+  const effectiveCoverPhoto = useMemo(() => {
+    if (previewCoverUri) return previewCoverUri;
+    const displayRole = activeRoleState || null;
+    if (displayRole === 'contractor') {
+      return (
+        contractorInfo?.company_banner || contractorInfo?.cover_photo ||
+        userData?.company_banner || userData?.cover_photo ||
+        coverPhoto || storedPaths.cover_photo || undefined
+      );
+    }
+    if (displayRole === 'owner') {
+      return (userData?.cover_photo || ownerInfo?.cover_photo || coverPhoto || storedPaths.cover_photo || undefined);
+    }
+    return (
+      contractorInfo?.company_banner || userData?.cover_photo || ownerInfo?.cover_photo || coverPhoto || storedPaths.cover_photo || undefined
+    );
+  }, [previewCoverUri, contractorInfo, userData, ownerInfo, coverPhoto, storedPaths, activeRoleState]);
+
   // Debug: log profile/cover sources and resolved URLs
   useEffect(() => {
     try {
       console.log('[viewProfile] profilePic:', profilePic, 'coverPhoto:', coverPhoto);
-      console.log('[viewProfile] resolved profileUrl:', getStorageUrl(profilePic), 'resolved coverUrl:', getStorageUrl(coverPhoto));
+      console.log('[viewProfile] resolved profileUrl:', getStorageUrl(effectiveProfilePic), 'resolved coverUrl:', getStorageUrl(effectiveCoverPhoto));
       console.log('[viewProfile] userState.user_type:', userState?.user_type, 'activeRoleState:', activeRoleState);
       console.log('[viewProfile] ownerInfo.profile_pic:', ownerInfo?.profile_pic, 'contractorInfo.company_logo:', contractorInfo?.company_logo);
       console.log('[viewProfile] contractorInfo:', contractorInfo);
       console.log('[viewProfile] contractorInfo.company_name:', contractorInfo?.company_name);
     } catch (e) { /* no-op */ }
-  }, [profilePic, coverPhoto, userState?.user_type, activeRoleState, ownerInfo, contractorInfo]);
+  }, [profilePic, coverPhoto, userState?.user_type, activeRoleState, ownerInfo, contractorInfo, effectiveProfilePic, effectiveCoverPhoto]);
 
   const handleError = useCallback((error: any, defaultMessage: string): string => {
     console.error(error);
@@ -927,7 +967,9 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           const contractorLogo = data.contractor && (data.contractor.company_logo || data.contractor.profile_pic);
           const contractorBanner = data.contractor && (data.contractor.company_banner || data.contractor.cover_photo);
 
-          const roleFromResponse = (data.role || '').toString().toLowerCase();
+          // Prefer the current UI role (`activeRoleState`) when choosing which
+          // images to display; fall back to the server `finalRole` if absent.
+          const displayRole = activeRoleState || finalRole;
           const isStaff = (data.user?.user_type || '').toString().toLowerCase() === 'staff' || (data?.user?.user_type || '').toString().toLowerCase() === 'owner_staff';
 
           let candidateProfile;
@@ -939,8 +981,8 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
               (data.user && (data.user.profile_pic || data.user.profilePic)) || undefined;
             candidateCover =
               (data.user && (data.user.cover_photo || data.user.coverPhoto)) || undefined;
-          } else if (roleFromResponse === 'owner') {
-            // Strict: prefer user/owner images when preferred role is owner
+          } else if (displayRole === 'owner') {
+            // OWNER ROLE: Strictly prefer user/owner images, never contractor images
             candidateProfile =
               (data.user && (data.user.profile_pic || data.user.profilePic)) ||
               (data.owner && (data.owner.profile_pic || data.owner.profilePic)) ||
@@ -950,21 +992,12 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
               (data.user && (data.user.cover_photo || data.user.coverPhoto)) ||
               (data.owner && (data.owner.cover_photo || data.owner.coverPhoto)) ||
               data.cover_photo || undefined;
-          } else if (roleFromResponse === 'contractor') {
-            // Prefer contractor media when preferred role is contractor
-            candidateProfile =
-              contractorLogo ||
-              (data.user && (data.user.profile_pic || data.user.profilePic)) ||
-              (data.owner && (data.owner.profile_pic || data.owner.profilePic)) ||
-              data.owner_profile_pic || data.owner_profile || undefined;
-
-            candidateCover =
-              contractorBanner ||
-              (data.user && (data.user.cover_photo || data.user.coverPhoto)) ||
-              (data.owner && (data.owner.cover_photo || data.owner.coverPhoto)) ||
-              data.cover_photo || undefined;
+          } else if (displayRole === 'contractor') {
+            // CONTRACTOR ROLE: Strictly prefer contractor media (company_logo/company_banner)
+            candidateProfile = contractorLogo || undefined;
+            candidateCover = contractorBanner || undefined;
           } else {
-            // No explicit preferred role: fall back to previous behavior (prefer contractor if present)
+            // No explicit role: fall back to contractor if present, then owner
             candidateProfile =
               contractorLogo ||
               (data.user && (data.user.profile_pic || data.user.profilePic)) ||
@@ -1004,7 +1037,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     } finally {
       setLoading(prev => ({ ...prev, profile: false }));
     }
-  }, [userState?.user_id, userState?.username, handleError]);
+  }, [userState?.user_id, userState?.username, handleError, activeRoleState]);
 
   const fetchProjects = useCallback(async () => {
     if (!userId) return;
@@ -1369,6 +1402,8 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             if (type === 'profile' && returnedPath) merged.profile_pic = returnedPath;
             if (type === 'cover' && returnedPath) merged.cover_photo = returnedPath;
             await storage_service.save_user_data(merged);
+            // update local stored paths so UI switches pick up the new values immediately
+            try { setStoredPaths({ profile_pic: merged.profile_pic ?? null, cover_photo: merged.cover_photo ?? null }); } catch (e) { /* non-fatal */ }
           }
         } catch (e) { /* non-critical */ }
         if (returnedPath) {
@@ -1404,16 +1439,17 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                   const contractorLogo = d.contractor && (d.contractor.company_logo || d.contractor.profile_pic);
                   const contractorBanner = d.contractor && (d.contractor.company_banner || d.contractor.cover_photo);
                   const roleFromResponse = (d.role || '').toString().toLowerCase();
+                  const displayRole = activeRoleState || roleFromResponse;
                   const isStaff = (d.user?.user_type || '').toString().toLowerCase() === 'staff' || (d.user?.user_type || '').toString().toLowerCase() === 'owner_staff';
                   let candidateProfile;
                   let candidateCover;
                   if (isStaff) {
                     candidateProfile = (d.user && (d.user.profile_pic || d.user.profilePic)) || undefined;
                     candidateCover = (d.user && (d.user.cover_photo || d.user.coverPhoto)) || undefined;
-                  } else if (roleFromResponse === 'owner') {
+                  } else if (displayRole === 'owner') {
                     candidateProfile = (d.user && (d.user.profile_pic || d.user.profilePic)) || (d.owner && (d.owner.profile_pic || d.owner.profilePic)) || d.owner_profile_pic || d.owner_profile || undefined;
                     candidateCover = (d.user && (d.user.cover_photo || d.user.coverPhoto)) || (d.owner && (d.owner.cover_photo || d.owner.coverPhoto)) || d.cover_photo || undefined;
-                  } else if (roleFromResponse === 'contractor') {
+                  } else if (displayRole === 'contractor') {
                     candidateProfile = contractorLogo || (d.user && (d.user.profile_pic || d.user.profilePic)) || (d.owner && (d.owner.profile_pic || d.owner.profilePic)) || d.owner_profile_pic || d.owner_profile || undefined;
                     candidateCover = contractorBanner || (d.user && (d.user.cover_photo || d.user.coverPhoto)) || (d.owner && (d.owner.cover_photo || d.owner.coverPhoto)) || d.cover_photo || undefined;
                   } else {
@@ -1487,18 +1523,21 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     } finally {
       setIsUploading(false);
     }
-  }, [userToken]);
+  }, [userToken, activeRoleState]);
 
   // Effects
   useEffect(() => {
     // Seed profile/cover from storage immediately so the latest saved data shows
     // before the API fetch completes (editProfile saves updated data to storage on save)
     storage_service.get_user_data().then(stored => {
-      if (stored?.profile_pic) setProfilePic(stored.profile_pic);
-      if (stored?.cover_photo) setCoverPhoto(stored.cover_photo);
+      if (stored) {
+        setStoredPaths({ profile_pic: stored.profile_pic ?? null, cover_photo: stored.cover_photo ?? null });
+        if (stored?.profile_pic) setProfilePic(stored.profile_pic);
+        if (stored?.cover_photo) setCoverPhoto(stored.cover_photo);
+      }
     }).catch(() => {});
     fetchProfile();
-  }, [fetchProfile]);
+  }, [fetchProfile, activeRoleState]);
 
   useEffect(() => {
     if (activeRoleState === 'contractor' || userState?.user_type === 'both') {
@@ -1537,9 +1576,9 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         <View style={styles.coverWrapper}>
           {previewCoverUri ? (
             <Image source={{ uri: previewCoverUri }} style={styles.coverImg} resizeMode="cover" />
-          ) : (
+            ) : (
             <ImageFallback
-              uri={getStorageUrl(coverPhoto)}
+              uri={getStorageUrl(effectiveCoverPhoto)}
               defaultImage={defaultCoverPhoto}
               style={styles.coverImg}
               resizeMode="cover"
@@ -1571,7 +1610,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
               <Image source={{ uri: previewProfileUri }} style={styles.avatarImg} resizeMode="cover" />
             ) : (
               <ImageFallback
-                uri={getStorageUrl(profilePic)}
+                uri={getStorageUrl(effectiveProfilePic)}
                 defaultImage={activeRoleState === 'contractor' ? defaultContractorAvatar : defaultOwnerAvatar}
                 style={styles.avatarImg}
                 resizeMode="cover"
@@ -1716,9 +1755,9 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         <View style={styles.postInputAvatar}>
           {previewProfileUri ? (
             <Image source={{ uri: previewProfileUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
-          ) : profilePic ? (
+          ) : effectiveProfilePic ? (
             <Image
-              source={{ uri: String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}` }}
+              source={{ uri: getStorageUrl(effectiveProfilePic) }}
               style={{ width: 38, height: 38, borderRadius: 19 }}
             />
           ) : (
@@ -2123,9 +2162,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           }).filter(Boolean);
           const postDate = post.created_at ? formatDate(post.created_at) : '';
           const authorName = displayName || userState?.username || 'Contractor';
-          const authorPicUrl = profilePic
-            ? (String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}`)
-            : null;
+          const authorPicUrl = effectiveProfilePic ? getStorageUrl(effectiveProfilePic) : null;
           const authorInitials = authorName.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) || 'C';
 
           return (
@@ -2314,9 +2351,9 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         <View style={styles.postInputAvatar}>
           {previewProfileUri ? (
             <Image source={{ uri: previewProfileUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
-          ) : profilePic ? (
+          ) : effectiveProfilePic ? (
             <Image
-              source={{ uri: String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}` }}
+              source={{ uri: getStorageUrl(effectiveProfilePic) }}
               style={{ width: 38, height: 38, borderRadius: 19 }}
             />
           ) : (

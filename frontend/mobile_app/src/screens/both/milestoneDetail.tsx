@@ -146,7 +146,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectingPaymentId, setRejectingPaymentId] = useState<number | null>(null);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  // Track which payment is being approved or submitted-for-rejection separately
+  const [approvingPaymentId, setApprovingPaymentId] = useState<number | null>(null);
+  const [rejectingPaymentSubmittingId, setRejectingPaymentSubmittingId] = useState<number | null>(null);
 
   // Settlement due date & derived payment status
   const [derivedPaymentStatus, setDerivedPaymentStatus] = useState<string>('Unpaid');
@@ -316,7 +318,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           text: 'Approve',
           onPress: async () => {
             try {
-              setActionLoading(paymentId);
+              // mark this payment as approving; clear any rejecting submission flag
+              setApprovingPaymentId(paymentId);
+              setRejectingPaymentSubmittingId(null);
               const response = await payment_service.approve_payment(paymentId, userId);
               if (response.success) {
                 Alert.alert('Success', 'Payment receipt approved');
@@ -327,7 +331,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             } catch (error) {
               Alert.alert('Error', 'An error occurred');
             } finally {
-              setActionLoading(null);
+              setApprovingPaymentId(null);
             }
           },
         },
@@ -348,7 +352,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     }
     if (rejectingPaymentId === null) return;
     try {
-      setActionLoading(rejectingPaymentId);
+      // mark this payment as submitting for rejection; clear any approving flag
+      setRejectingPaymentSubmittingId(rejectingPaymentId);
+      setApprovingPaymentId(null);
       setShowRejectModal(false);
       const response = await payment_service.reject_payment(rejectingPaymentId, userId, rejectReason.trim());
       if (response.success) {
@@ -360,7 +366,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     } catch (error) {
       Alert.alert('Error', 'An error occurred');
     } finally {
-      setActionLoading(null);
+      setRejectingPaymentSubmittingId(null);
       setRejectingPaymentId(null);
     }
   };
@@ -1210,15 +1216,14 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                             resizeMode="contain"
                           />
                         )}
-
                         {!isProjectHalted && isContractor && payment.payment_status === 'submitted' && (
                           <View style={styles.fdPaymentActions}>
                             <TouchableOpacity
                               style={styles.fdPaymentRejectBtn}
                               onPress={() => handleRejectPayment(payment.payment_id)}
-                              disabled={actionLoading === payment.payment_id}
+                              disabled={rejectingPaymentSubmittingId === payment.payment_id || approvingPaymentId === payment.payment_id}
                             >
-                              {actionLoading === payment.payment_id ? (
+                              {rejectingPaymentSubmittingId === payment.payment_id ? (
                                 <ActivityIndicator size="small" color={COLORS.error} />
                               ) : (
                                 <>
@@ -1230,9 +1235,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                             <TouchableOpacity
                               style={styles.fdPaymentApproveBtn}
                               onPress={() => handleApprovePayment(payment.payment_id)}
-                              disabled={actionLoading === payment.payment_id}
+                              disabled={approvingPaymentId === payment.payment_id || rejectingPaymentSubmittingId === payment.payment_id}
                             >
-                              {actionLoading === payment.payment_id ? (
+                              {approvingPaymentId === payment.payment_id ? (
                                 <ActivityIndicator size="small" color={COLORS.surface} />
                               ) : (
                                 <>

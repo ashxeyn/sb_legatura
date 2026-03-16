@@ -136,7 +136,8 @@ class disputeClass
 
         $query = DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            // selected_contractor_id is stored on project_relationships (pr)
+            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
             ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id');
 
         if ($currentRole === 'owner' && $ownerId) {
@@ -153,11 +154,11 @@ class disputeClass
         }
 
         return $query->select(
-            'p.project_id',
-            'p.project_title',
-            'p.project_description',
-            'c_po.user_id as contractor_user_id',
-            'p.selected_contractor_id',
+                'p.project_id',
+                'p.project_title',
+                'p.project_description',
+                'c_po.user_id as contractor_user_id',
+                'pr.selected_contractor_id',
             'pr.owner_id',
             'p.project_status',
             'pr.created_at'
@@ -204,7 +205,8 @@ class disputeClass
     {
         return DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            // selected_contractor_id is on project_relationships
+            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
             ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
             ->where('p.project_id', $projectId)
             ->select(
@@ -222,7 +224,7 @@ class disputeClass
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('property_owners as owner_user', 'pr.owner_id', '=', 'owner_user.owner_id')
             ->leftJoin('users as owner_u', 'owner_user.user_id', '=', 'owner_u.user_id')
-            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
             ->leftJoin('property_owners as c_po', 'c.owner_id', '=', 'c_po.owner_id')
             ->leftJoin('users as contractor_user', 'c_po.user_id', '=', 'contractor_user.user_id')
             ->where('p.project_id', $projectId)
@@ -394,8 +396,8 @@ class disputeClass
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
             // Join contractor based on projects table first
-            ->leftJoin('contractors as c1', 'p.selected_contractor_id', '=', 'c1.contractor_id')
-            // Join contractor based on project_relationships table as fallback
+            ->leftJoin('contractors as c1', 'pr.selected_contractor_id', '=', 'c1.contractor_id')
+            // Join contractor based on project_relationships table as fallback (kept for compatibility)
             ->leftJoin('contractors as c2', 'pr.selected_contractor_id', '=', 'c2.contractor_id')
             ->leftJoin('property_owners as c1_po', 'c1.owner_id', '=', 'c1_po.owner_id')
             ->leftJoin('property_owners as c2_po', 'c2.owner_id', '=', 'c2_po.owner_id')
@@ -406,7 +408,8 @@ class disputeClass
                 'po.user_id as owner_user_id',
                 'p.project_title',
                 DB::raw('COALESCE(c1_po.user_id, c2_po.user_id) as contractor_user_id'),
-                DB::raw('COALESCE(p.selected_contractor_id, pr.selected_contractor_id) as selected_contractor_id')
+                // selected_contractor_id lives on project_relationships
+                'pr.selected_contractor_id as selected_contractor_id'
             )
             ->first();
 
