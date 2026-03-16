@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storeBidRequest;
 use App\Http\Requests\admin\updateBidRequest;
 use App\Models\admin\bid;
+use App\Traits\WithAtomicLock;
 use Illuminate\Http\Request;
 use App\Services\AdminActivityLog;
 
 class bidController extends Controller
 {
+    use WithAtomicLock;
+
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
@@ -32,26 +35,32 @@ class bidController extends Controller
 
     public function store(storeBidRequest $request)
     {
-        $bid = bid::create($request->validated());
-        AdminActivityLog::log('bid_created', ['bid_id' => $bid->bid_id ?? $bid->id]);
-        return response()->json($bid,201);
+        return $this->withLock("admin_create_bid_" . auth()->id(), function () use ($request) {
+            $bid = bid::create($request->validated());
+            AdminActivityLog::log('bid_created', ['bid_id' => $bid->bid_id ?? $bid->id]);
+            return response()->json($bid, 201);
+        });
     }
 
     public function update(updateBidRequest $request, $id)
     {
         $bid = bid::find($id);
         if (!$bid) return response()->json(['error'=>'Not found'],404);
-        $bid->update($request->validated());
-        AdminActivityLog::log('bid_updated_direct', ['bid_id' => $id]);
-        return response()->json($bid);
+        return $this->withLock("admin_update_bid_{$id}", function () use ($request, $bid, $id) {
+            $bid->update($request->validated());
+            AdminActivityLog::log('bid_updated_direct', ['bid_id' => $id]);
+            return response()->json($bid);
+        });
     }
 
     public function destroy($id)
     {
         $bid = bid::find($id);
         if (!$bid) return response()->json(['error'=>'Not found'],404);
-        $bid->delete();
-        AdminActivityLog::log('bid_deleted_direct', ['bid_id' => $id]);
-        return response()->json(['deleted'=>true]);
+        return $this->withLock("admin_delete_bid_{$id}", function () use ($bid, $id) {
+            $bid->delete();
+            AdminActivityLog::log('bid_deleted_direct', ['bid_id' => $id]);
+            return response()->json(['deleted'=>true]);
+        });
     }
 }

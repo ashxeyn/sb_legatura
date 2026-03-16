@@ -12,9 +12,11 @@ use App\Models\admin\reviewsClass;
 use App\Models\admin\reportManagementClass;
 use Illuminate\Support\Facades\Http;
 use App\Services\AdminActivityLog;
+use App\Traits\WithAtomicLock;
 
 class globalManagementController extends Controller
 {
+    use WithAtomicLock;
     /**
      * Display the bid management page
      */
@@ -145,6 +147,7 @@ class globalManagementController extends Controller
      */
     public function analyzeProject($id)
     {
+        return $this->withLock("admin_analyze_project_{$id}", function () use ($id) {
         try {
             // 1. Call Python API using configured URL
             $aiUrl = config('services.ai.url', 'http://127.0.0.1:5001');
@@ -179,6 +182,7 @@ class globalManagementController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     /**
@@ -187,6 +191,7 @@ class globalManagementController extends Controller
      */
     public function deleteAnalysis($id)
     {
+        return $this->withLock("admin_delete_analysis_{$id}", function () use ($id) {
         try {
             $log = DB::table('ai_prediction_logs')->where('id', $id)->first();
             
@@ -203,6 +208,7 @@ class globalManagementController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     /**
@@ -274,37 +280,39 @@ class globalManagementController extends Controller
             'deletion_reason' => 'required|string|max:500'
         ]);
 
-        $model = new reviewsClass();
-        $deleted = $model->deleteReview($id, $request->deletion_reason);
+        return $this->withLock("admin_delete_review_{$id}", function () use ($request, $id) {
+            $model = new reviewsClass();
+            $deleted = $model->deleteReview($id, $request->deletion_reason);
 
-        if ($deleted) {
-            AdminActivityLog::log('review_deleted', ['review_id' => $id, 'reason' => $request->deletion_reason]);
+            if ($deleted) {
+                AdminActivityLog::log('review_deleted', ['review_id' => $id, 'reason' => $request->deletion_reason]);
 
-            try {
-                $review = DB::table('reviews as r')
-                    ->join('users as u', 'r.reviewer_user_id', '=', 'u.user_id')
-                    ->join('projects as p', 'r.project_id', '=', 'p.project_id')
-                    ->select('u.email', 'u.username', 'p.project_title')
-                    ->where('r.review_id', $id)
-                    ->first();
+                try {
+                    $review = DB::table('reviews as r')
+                        ->join('users as u', 'r.reviewer_user_id', '=', 'u.user_id')
+                        ->join('projects as p', 'r.project_id', '=', 'p.project_id')
+                        ->select('u.email', 'u.username', 'p.project_title')
+                        ->where('r.review_id', $id)
+                        ->first();
 
-                if ($review && !empty($review->email)) {
-                    Mail::raw(
-                        "Dear {$review->username},\n\n" .
-                        "Your review for the project \"{$review->project_title}\" has been removed by the admin.\n\n" .
-                        "Reason: {$request->deletion_reason}\n\n" .
-                        "Best regards,\nLegatura",
-                        fn($m) => $m->to($review->email)->subject('Review Removed - Legatura')
-                    );
+                    if ($review && !empty($review->email)) {
+                        Mail::raw(
+                            "Dear {$review->username},\n\n" .
+                            "Your review for the project \"{$review->project_title}\" has been removed by the admin.\n\n" .
+                            "Reason: {$request->deletion_reason}\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($review->email)->subject('Review Removed - Legatura')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send review deleted email: ' . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Log::error('Failed to send review deleted email: ' . $e->getMessage());
+
+                return response()->json(['success' => true, 'message' => 'Review successfully deleted.']);
             }
 
-            return response()->json(['success' => true, 'message' => 'Review successfully deleted.']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Failed to delete review.'], 400);
+            return response()->json(['success' => false, 'message' => 'Failed to delete review.'], 400);
+        }); // end withLock
     }
 
     /**
@@ -394,41 +402,43 @@ class globalManagementController extends Controller
             return response()->json(['success' => false, 'message' => 'No data to update.'], 422);
         }
 
-        $updated = DB::table('bids')->where('bid_id', $id)->update($data);
+        return $this->withLock("admin_update_bid_{$id}", function () use ($request, $id, $data, $status) {
+            $updated = DB::table('bids')->where('bid_id', $id)->update($data);
 
-        if ($updated !== false) {
-            AdminActivityLog::log('bid_updated', ['bid_id' => $id, 'status' => $status]);
+            if ($updated !== false) {
+                AdminActivityLog::log('bid_updated', ['bid_id' => $id, 'status' => $status]);
 
-            try {
-                $bid = DB::table('bids')
-                    ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
-                    ->join('projects', 'bids.project_id', '=', 'projects.project_id')
-                    ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
-                    ->where('bids.bid_id', $id)
-                    ->first();
+                try {
+                    $bid = DB::table('bids')
+                        ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                        ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
+                        ->where('bids.bid_id', $id)
+                        ->first();
 
-                if ($bid && !empty($bid->company_email)) {
-                    $changes = [];
-                    if ($status) $changes[] = "Status: {$status}";
-                    if ($request->input('proposed_cost')) $changes[] = "Proposed Cost: PHP " . number_format($request->input('proposed_cost'), 2);
-                    if ($request->input('contractor_notes')) $changes[] = "Notes updated";
+                    if ($bid && !empty($bid->company_email)) {
+                        $changes = [];
+                        if ($status) $changes[] = "Status: {$status}";
+                        if ($request->input('proposed_cost')) $changes[] = "Proposed Cost: PHP " . number_format($request->input('proposed_cost'), 2);
+                        if ($request->input('contractor_notes')) $changes[] = "Notes updated";
 
-                    Mail::raw(
-                        "Dear {$bid->company_name},\n\n" .
-                        "Your bid for the project \"{$bid->project_title}\" has been updated by the admin.\n\n" .
-                        (count($changes) ? "Changes:\n" . implode("\n", $changes) . "\n\n" : '') .
-                        "Best regards,\nLegatura",
-                        fn($m) => $m->to($bid->company_email)->subject('Bid Updated by Admin - Legatura')
-                    );
+                        Mail::raw(
+                            "Dear {$bid->company_name},\n\n" .
+                            "Your bid for the project \"{$bid->project_title}\" has been updated by the admin.\n\n" .
+                            (count($changes) ? "Changes:\n" . implode("\n", $changes) . "\n\n" : '') .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($bid->company_email)->subject('Bid Updated by Admin - Legatura')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send bid updated email: ' . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Log::error('Failed to send bid updated email: ' . $e->getMessage());
+
+                return response()->json(['success' => true, 'message' => 'Bid updated successfully.']);
             }
 
-            return response()->json(['success' => true, 'message' => 'Bid updated successfully.']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Failed to update bid.'], 400);
+            return response()->json(['success' => false, 'message' => 'Failed to update bid.'], 400);
+        }); // end withLock
     }
 
     // ----------------------------------------------------------------
@@ -438,17 +448,19 @@ class globalManagementController extends Controller
 
     public function deleteBid($id)
     {
-        // Also remove associated files
-        DB::table('bid_files')->where('bid_id', $id)->delete();
+        return $this->withLock("admin_delete_bid_{$id}", function () use ($id) {
+            // Also remove associated files
+            DB::table('bid_files')->where('bid_id', $id)->delete();
 
-        $deleted = DB::table('bids')->where('bid_id', $id)->delete();
+            $deleted = DB::table('bids')->where('bid_id', $id)->delete();
 
-        if ($deleted) {
-            AdminActivityLog::log('bid_deleted', ['bid_id' => $id]);
-            return response()->json(['success' => true, 'message' => 'Bid deleted.']);
-        }
+            if ($deleted) {
+                AdminActivityLog::log('bid_deleted', ['bid_id' => $id]);
+                return response()->json(['success' => true, 'message' => 'Bid deleted.']);
+            }
 
-        return response()->json(['success' => false, 'message' => 'Failed to delete bid.'], 400);
+            return response()->json(['success' => false, 'message' => 'Failed to delete bid.'], 400);
+        }); // end withLock
     }
     /**
      * Get all payment proofs â€” joined correctly using milestone_payments schema.
@@ -600,38 +612,40 @@ class globalManagementController extends Controller
      */
     public function approveBid($id)
     {
-        $updated = DB::table('bids')
-            ->where('bid_id', $id)
-            ->update(['bid_status' => 'approved']);
+        return $this->withLock("admin_approve_bid_{$id}", function () use ($id) {
+            $updated = DB::table('bids')
+                ->where('bid_id', $id)
+                ->update(['bid_status' => 'approved']);
 
-        if ($updated) {
-            AdminActivityLog::log('bid_approved', ['bid_id' => $id]);
+            if ($updated) {
+                AdminActivityLog::log('bid_approved', ['bid_id' => $id]);
 
-            try {
-                $bid = DB::table('bids')
-                    ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
-                    ->join('projects', 'bids.project_id', '=', 'projects.project_id')
-                    ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
-                    ->where('bids.bid_id', $id)
-                    ->first();
+                try {
+                    $bid = DB::table('bids')
+                        ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                        ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
+                        ->where('bids.bid_id', $id)
+                        ->first();
 
-                if ($bid && !empty($bid->company_email)) {
-                    Mail::raw(
-                        "Dear {$bid->company_name},\n\n" .
-                        "Your bid for the project \"{$bid->project_title}\" has been approved by the admin.\n\n" .
-                        "Please log in to the app to proceed.\n\n" .
-                        "Best regards,\nLegatura",
-                        fn($m) => $m->to($bid->company_email)->subject('Bid Approved - Legatura')
-                    );
+                    if ($bid && !empty($bid->company_email)) {
+                        Mail::raw(
+                            "Dear {$bid->company_name},\n\n" .
+                            "Your bid for the project \"{$bid->project_title}\" has been approved by the admin.\n\n" .
+                            "Please log in to the app to proceed.\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($bid->company_email)->subject('Bid Approved - Legatura')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send bid approved email: ' . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Log::error('Failed to send bid approved email: ' . $e->getMessage());
+
+                return response()->json(['success' => true, 'message' => 'Bid approved']);
             }
 
-            return response()->json(['success' => true, 'message' => 'Bid approved']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Failed to approve bid'], 400);
+            return response()->json(['success' => false, 'message' => 'Failed to approve bid'], 400);
+        }); // end withLock
     }
 
     /**
@@ -641,41 +655,43 @@ class globalManagementController extends Controller
     {
         $reason = $request->input('reason', 'Rejected by admin');
 
-        $updated = DB::table('bids')
-            ->where('bid_id', $id)
-            ->update([
-                'bid_status' => 'rejected',
-                'rejection_reason' => $reason
-            ]);
+        return $this->withLock("admin_reject_bid_{$id}", function () use ($id, $reason) {
+            $updated = DB::table('bids')
+                ->where('bid_id', $id)
+                ->update([
+                    'bid_status' => 'rejected',
+                    'rejection_reason' => $reason
+                ]);
 
-        if ($updated) {
-            AdminActivityLog::log('bid_rejected', ['bid_id' => $id, 'reason' => $reason]);
+            if ($updated) {
+                AdminActivityLog::log('bid_rejected', ['bid_id' => $id, 'reason' => $reason]);
 
-            try {
-                $bid = DB::table('bids')
-                    ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
-                    ->join('projects', 'bids.project_id', '=', 'projects.project_id')
-                    ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
-                    ->where('bids.bid_id', $id)
-                    ->first();
+                try {
+                    $bid = DB::table('bids')
+                        ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+                        ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                        ->select('contractors.company_name', 'contractors.company_email', 'projects.project_title')
+                        ->where('bids.bid_id', $id)
+                        ->first();
 
-                if ($bid && !empty($bid->company_email)) {
-                    Mail::raw(
-                        "Dear {$bid->company_name},\n\n" .
-                        "Your bid for the project \"{$bid->project_title}\" has been rejected by the admin.\n\n" .
-                        "Reason: {$reason}\n\n" .
-                        "Best regards,\nLegatura",
-                        fn($m) => $m->to($bid->company_email)->subject('Bid Rejected - Legatura')
-                    );
+                    if ($bid && !empty($bid->company_email)) {
+                        Mail::raw(
+                            "Dear {$bid->company_name},\n\n" .
+                            "Your bid for the project \"{$bid->project_title}\" has been rejected by the admin.\n\n" .
+                            "Reason: {$reason}\n\n" .
+                            "Best regards,\nLegatura",
+                            fn($m) => $m->to($bid->company_email)->subject('Bid Rejected - Legatura')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send bid rejected email: ' . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Log::error('Failed to send bid rejected email: ' . $e->getMessage());
+
+                return response()->json(['success' => true, 'message' => 'Bid rejected']);
             }
 
-            return response()->json(['success' => true, 'message' => 'Bid rejected']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Failed to reject bid'], 400);
+            return response()->json(['success' => false, 'message' => 'Failed to reject bid'], 400);
+        }); // end withLock
     }
 
     /**
@@ -754,16 +770,18 @@ class globalManagementController extends Controller
 
         $data['updated_at'] = now();
 
-        $updated = DB::table('milestone_payments')
-            ->where('payment_id', $id)
-            ->update($data);
+        return $this->withLock("admin_update_payment_{$id}", function () use ($id, $data, $status) {
+            $updated = DB::table('milestone_payments')
+                ->where('payment_id', $id)
+                ->update($data);
 
-        if ($updated !== false) {
-            AdminActivityLog::log('payment_updated', ['payment_id' => $id, 'status' => $status]);
-            return response()->json(['success' => true, 'message' => 'Payment updated successfully.']);
-        }
+            if ($updated !== false) {
+                AdminActivityLog::log('payment_updated', ['payment_id' => $id, 'status' => $status]);
+                return response()->json(['success' => true, 'message' => 'Payment updated successfully.']);
+            }
 
-        return response()->json(['success' => false, 'message' => 'Failed to update payment.'], 400);
+            return response()->json(['success' => false, 'message' => 'Failed to update payment.'], 400);
+        }); // end withLock
     }
 
     /**
@@ -771,6 +789,7 @@ class globalManagementController extends Controller
      */
     public function verifyPayment($id)
     {
+        return $this->withLock("admin_verify_payment_{$id}", function () use ($id) {
         try {
             DB::beginTransaction();
 
@@ -862,6 +881,7 @@ class globalManagementController extends Controller
                 'message' => 'Error approving payment: ' . $e->getMessage()
             ], 500);
         }
+        }); // end withLock
     }
 
     /**

@@ -150,19 +150,6 @@
                                     </select>
                                 </div>
 
-                                {{-- Case Type Pill --}}
-                                <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
-                                        <i class="fi fi-rr-document text-white text-xs leading-none"></i>
-                                        <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Type</span>
-                                    </div>
-                                    <select id="filterCaseType" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-2 focus:outline-none cursor-pointer border-0">
-                                        <option value="all">All</option>
-                                        <option value="report">Report</option>
-                                        <option value="dispute">Dispute</option>
-                                    </select>
-                                </div>
-
                                 {{-- Status Pill --}}
                                 <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
                                     <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
@@ -176,15 +163,6 @@
                                         <option value="resolved">Resolved</option>
                                         <option value="dismissed">Dismissed</option>
                                     </select>
-                                </div>
-
-                                {{-- Search Pill --}}
-                                <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                    <div class="flex items-center bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
-                                        <i class="fi fi-rr-search text-white text-xs leading-none"></i>
-                                    </div>
-                                    <input type="text" id="filterSearch" placeholder="Search reports..."
-                                        class="bg-white text-xs text-gray-700 font-medium px-2.5 py-2 focus:outline-none border-0 w-44 placeholder-gray-400">
                                 </div>
 
                                 {{-- Reset Button --}}

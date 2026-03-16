@@ -10,6 +10,11 @@ let currentReceiverId = null;
 let currentContractorId = null; // Track contractor_id for contractor-scoped conversations
 let selectedRecipients = [];
 
+// Polling fallback — silently refreshes active conversation every N seconds
+// in case Pusher misses an event (e.g. auth failure, network blip)
+let chatPollInterval = null;
+const CHAT_POLL_MS = 8000; // 8 seconds
+
 // Typing indicator state
 let typingTimeout = null;
 let typingDebounceTimer = null;
@@ -600,6 +605,12 @@ async function selectConversation(conversationId, receiverId) {
     // Load conversation history
     await loadConversationHistory(conversationId);
 
+    // Mark conversation as read in the backend
+    await markConversationAsRead(conversationId);
+
+    // Reload inbox to reflect updated unread counts in the list and badge
+    loadInbox();
+
     // Clear unread badge for this conversation (messages marked as read on backend)
     const conversationItem = document.querySelector(`[data-conversation-id="${conversationId}"]`);
     const unreadBadge = conversationItem?.querySelector('.unread-badge');
@@ -608,6 +619,9 @@ async function selectConversation(conversationId, receiverId) {
         // Also remove 'unread' class from conversation item
         conversationItem?.classList.remove('unread');
     }
+
+    // Start polling fallback for active conversation (catches any Pusher misses)
+    startChatPoll(conversationId);
 }
 
 /**
@@ -900,9 +914,12 @@ function showSuspensionInfoModal(conversation) {
  */
 async function markConversationAsRead(conversationId) {
     try {
-        // Just fetch the conversation - backend marks as read automatically
-        await fetch(`${getApiPrefix()}/${conversationId}`, {
-            headers: getAuthHeaders(),
+        await fetch(`${getApiPrefix()}/${conversationId}/read`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeaders(),
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
             credentials: 'include'
         });
     } catch (error) {
@@ -1036,7 +1053,11 @@ function renderAttachments(attachments) {
 /**
  * Send a new message
  */
+let isSending = false;
+
 async function sendMessage() {
+    if (isSending) return; // prevent double-send
+
     const input = document.getElementById('messageInput');
     const fileInput = document.getElementById('attachmentInput');
     const content = input.value.trim();
@@ -1050,6 +1071,16 @@ async function sendMessage() {
         toast('Please select a conversation', 'warning');
         return;
     }
+
+    isSending = true;
+    const sendBtn = document.getElementById('sendMessageBtn');
+    if (sendBtn) sendBtn.disabled = true;
+
+    // Button loading state
+    const sendBtnIcon = document.getElementById('sendBtnIcon');
+    const sendBtnText = document.getElementById('sendBtnText');
+    if (sendBtnIcon) sendBtnIcon.innerHTML = '<svg class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>';
+    if (sendBtnText) sendBtnText.textContent = 'Sending...';
 
     const formData = new FormData();
     formData.append('receiver_id', currentReceiverId);
@@ -1109,9 +1140,8 @@ async function sendMessage() {
             previewArea.innerHTML = '';
         }
 
-        // Add message to UI immediately
+        // Add message to UI
         appendMessage(data);
-
         // Update conversation ID if new
         if (!currentConversationId && data.conversation_id) {
             currentConversationId = data.conversation_id;
@@ -1123,8 +1153,15 @@ async function sendMessage() {
         toast('Message sent', 'success');
 
     } catch (error) {
-        // console.error('Error sending message:', error);
         toast(error.message || 'Failed to send message', 'error');
+    } finally {
+        isSending = false;
+        const sendBtn = document.getElementById('sendMessageBtn');
+        if (sendBtn) sendBtn.disabled = false;
+        const sendBtnIcon = document.getElementById('sendBtnIcon');
+        const sendBtnText = document.getElementById('sendBtnText');
+        if (sendBtnIcon) sendBtnIcon.innerHTML = '<i class="fi fi-rr-paper-plane text-xs"></i>';
+        if (sendBtnText) sendBtnText.textContent = 'Send';
     }
 }
 
@@ -1193,6 +1230,58 @@ function renderFilePreview(files) {
 }
 
 /**
+ * Start polling fallback for the active conversation.
+ * Silently fetches new messages every CHAT_POLL_MS ms so the chat stays
+ * up-to-date even if a Pusher event is missed (e.g. auth failure, network blip).
+ */
+function startChatPoll(conversationId) {
+    stopChatPoll(); // clear any existing poll first
+    chatPollInterval = setInterval(async () => {
+        if (!currentConversationId) return;
+        try {
+            const response = await fetch(`${getApiPrefix()}/${currentConversationId}`, {
+                headers: getAuthHeaders(),
+                credentials: 'include',
+                cache: 'no-store'
+            });
+            if (!response.ok) return;
+            const { data } = await response.json();
+            if (!data || !data.messages) return;
+
+            const container = document.getElementById('messagesDisplay');
+            if (!container) return;
+
+            // Count existing rendered messages
+            const existingIds = new Set(
+                Array.from(container.querySelectorAll('[data-message-id]'))
+                    .map(el => el.dataset.messageId)
+            );
+
+            // Append only genuinely new messages
+            let appended = false;
+            for (const msg of data.messages) {
+                if (!existingIds.has(String(msg.message_id))) {
+                    appendMessage(msg);
+                    appended = true;
+                }
+            }
+
+            if (appended) {
+                markConversationAsRead(currentConversationId);
+                loadInbox();
+            }
+        } catch { /* silent — poll is best-effort */ }
+    }, CHAT_POLL_MS);
+}
+
+function stopChatPoll() {
+    if (chatPollInterval) {
+        clearInterval(chatPollInterval);
+        chatPollInterval = null;
+    }
+}
+
+/**
  * Handle incoming real-time message from Pusher
  */
 function handleIncomingMessage(event) {
@@ -1207,7 +1296,10 @@ function handleIncomingMessage(event) {
     // });
 
     const userId = getUserId();
-    const isMessageFromMe = event.sender.id === userId;
+    // For admin conversations, treat any message with sender.type === 'Admin' as "from me"
+    // since all admins share the same Legatura Support identity
+    const isMessageFromMe = event.sender.id === userId ||
+        (isAdmin() && event.sender.type === 'Admin');
 
     // Skip messages sent by current user (already added via sendMessage())
     if (isMessageFromMe) {
@@ -1294,6 +1386,7 @@ function handleConversationSuspension(event) {
             // Conversation was suspended
             if (currentFilter === 'flagged') {
                 // In flagged filter, conversation moves to suspended list - clear view
+                stopChatPoll();
                 currentConversationId = null;
                 currentReceiverId = null;
                 document.getElementById('emptyState')?.classList.remove('hidden');
@@ -1307,6 +1400,7 @@ function handleConversationSuspension(event) {
             // Conversation was unsuspended
             if (currentFilter === 'suspended') {
                 // In suspended filter, conversation moves to all/flagged list - clear view
+                stopChatPoll();
                 currentConversationId = null;
                 currentReceiverId = null;
                 document.getElementById('emptyState')?.classList.remove('hidden');
@@ -2430,6 +2524,7 @@ async function suspendCurrentConversation() {
         // Clear current conversation since it's now suspended and removed from flagged list
         if (currentFilter === 'flagged') {
             // Conversation moved to suspended list, clear the view
+            stopChatPoll();
             currentConversationId = null;
             currentReceiverId = null;
             document.getElementById('emptyState')?.classList.remove('hidden');
@@ -2469,6 +2564,7 @@ async function restoreCurrentConversation() {
 
         // Clear current conversation since it's no longer in suspended list
         if (currentFilter === 'suspended') {
+            stopChatPoll();
             currentConversationId = null;
             currentReceiverId = null;
             document.getElementById('emptyState')?.classList.remove('hidden');

@@ -21,9 +21,11 @@ use App\Http\Requests\admin\deactivateContractorTeamMemberRequest;
 use App\Http\Requests\admin\reactivateContractorTeamMemberRequest;
 use App\Services\PsgcApiService;
 use Illuminate\Support\Facades\Mail;
+use App\Traits\WithAtomicLock;
 
 class userManagementController extends authController
 {
+    use WithAtomicLock;
     /**
      * Show property owners list
      */
@@ -121,7 +123,7 @@ class userManagementController extends authController
     public function addContractor(contractorRequest $request)
     {
         $validated = $request->validated();
-
+        return $this->withLock("admin_create_contractor_" . auth()->id(), function () use ($request, $validated) {
         try {
             // Handle File Uploads
             $dtiSecPath = $request->file('dti_sec_registration_photo')->store('DTI_SEC', 'public');
@@ -217,12 +219,13 @@ class userManagementController extends authController
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function updateContractor(contractorRequest $request, $id)
     {
         $validated = $request->validated();
-
+        return $this->withLock("admin_update_contractor_{$id}", function () use ($request, $validated, $id) {
         // Debug: Log owner_id
         \Log::info('=== Update Contractor Debug ===');
         \Log::info('Contractor ID:', ['id' => $id]);
@@ -369,6 +372,7 @@ class userManagementController extends authController
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function fetchContractor($id)
@@ -420,7 +424,7 @@ class userManagementController extends authController
     public function addPropertyOwner(propertyOwnerRequest $request)
     {
         $validated = $request->validated();
-
+        return $this->withLock("admin_create_owner_" . auth()->id(), function () use ($request, $validated) {
         // Debug: Log validated data
         \Log::info('=== Add Property Owner - Validated Data ===');
         \Log::info('Address fields:', [
@@ -541,6 +545,7 @@ class userManagementController extends authController
                 'message' => 'An error occurred: ' . $e->getMessage()
             ], 500);
         }
+        }); // end withLock
     }
 
     public function fetchPropertyOwner($id)
@@ -591,7 +596,7 @@ class userManagementController extends authController
     public function updatePropertyOwner(propertyOwnerRequest $request, $id)
     {
         $validated = $request->validated();
-
+        return $this->withLock("admin_update_owner_{$id}", function () use ($request, $validated, $id) {
         try {
             // Handle File Uploads
             $profilePicPath = null;
@@ -656,6 +661,7 @@ class userManagementController extends authController
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function deletePropertyOwner(Request $request, $id)
@@ -663,6 +669,7 @@ class userManagementController extends authController
         $request->validate([
             'deletion_reason' => 'required|string|max:500',
         ]);
+        return $this->withLock("admin_delete_owner_{$id}", function () use ($request, $id) {
 
         try {
             // Get owner info before deletion
@@ -698,6 +705,7 @@ class userManagementController extends authController
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function deleteContractor(Request $request, $id)
@@ -705,7 +713,7 @@ class userManagementController extends authController
         $request->validate([
             'deletion_reason' => 'required|string|max:500',
         ]);
-
+        return $this->withLock("admin_delete_contractor_{$id}", function () use ($request, $id) {
         try {
             // Get contractor info before deletion
             $contractor = DB::table('contractors')
@@ -741,6 +749,7 @@ class userManagementController extends authController
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     /**
@@ -945,98 +954,79 @@ class userManagementController extends authController
     public function addContractorTeamMember(contractorTeamMemberRequest $request)
     {
         $validated = $request->validated();
+        return $this->withLock("admin_add_team_member_" . $validated['contractor_id'], function () use ($validated) {
+            try {
+                $data = [
+                    'owner_id' => $validated['owner_id'],
+                    'role' => $validated['role'],
+                    'role_other' => $validated['role_other'] ?? null,
+                    'contractor_id' => $validated['contractor_id']
+                ];
 
-        try {
-            // Prepare Data for Model
-            $data = [
-                'owner_id' => $validated['owner_id'], // Now we receive owner_id from the form
-                'role' => $validated['role'],
-                'role_other' => $validated['role_other'] ?? null,
-                'contractor_id' => $validated['contractor_id']
-            ];
+                $contractorModel = new contractorClass();
+                $result = $contractorModel->addTeamMember($data);
 
-            // Call Model to Link Property Owner as Team Member
-            $contractorModel = new contractorClass();
-            $result = $contractorModel->addTeamMember($data);
+                $owner = DB::table('property_owners')
+                    ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->where('property_owners.owner_id', $validated['owner_id'])
+                    ->select('users.first_name', 'users.last_name', 'users.email')
+                    ->first();
 
-            // Get the property owner details for the response
-            $owner = DB::table('property_owners')
-                ->join('users', 'property_owners.user_id', '=', 'users.user_id')
-                ->where('property_owners.owner_id', $validated['owner_id'])
-                ->select('users.first_name', 'users.last_name', 'users.email')
-                ->first();
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Team member added successfully',
+                    'data' => [
+                        'name' => ($owner->first_name ?? '') . ' ' . ($owner->last_name ?? ''),
+                        'email' => $owner->email ?? ''
+                    ]
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Team member added successfully',
-                'data' => [
-                    'name' => ($owner->first_name ?? '') . ' ' . ($owner->last_name ?? ''),
-                    'email' => $owner->email ?? ''
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error: ' . $e->getMessage()
+                ], 500);
+            }
+        }); // end withLock
     }
 
     public function cancelInvitation(Request $request, $staffId)
     {
-        try {
-            $validated = $request->validate([
-                'reason' => 'required|string|max:500'
-            ]);
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500'
+        ]);
+        return $this->withLock("admin_cancel_invitation_{$staffId}", function () use ($validated, $staffId) {
+            try {
+                $contractorModel = new contractorClass();
+                $result = $contractorModel->cancelInvitation($staffId, $validated['reason']);
 
-            $contractorModel = new contractorClass();
-            $result = $contractorModel->cancelInvitation($staffId, $validated['reason']);
+                if ($result) {
+                    return response()->json(['success' => true, 'message' => 'Invitation canceled successfully']);
+                }
+                return response()->json(['success' => false, 'message' => 'Failed to cancel invitation'], 400);
 
-            if ($result) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Invitation canceled successfully'
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to cancel invitation'
-                ], 400);
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
             }
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+        }); // end withLock
     }
 
     public function reapplyInvitation(Request $request, $staffId)
     {
-        try {
-            $contractorModel = new contractorClass();
-            $result = $contractorModel->reapplyInvitation($staffId);
+        return $this->withLock("admin_reapply_invitation_{$staffId}", function () use ($staffId) {
+            try {
+                $contractorModel = new contractorClass();
+                $result = $contractorModel->reapplyInvitation($staffId);
 
-            if ($result) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Invitation reapplied successfully'
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to reapply invitation'
-                ], 400);
+                if ($result) {
+                    return response()->json(['success' => true, 'message' => 'Invitation reapplied successfully']);
+                }
+                return response()->json(['success' => false, 'message' => 'Failed to reapply invitation'], 400);
+
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
             }
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+        }); // end withLock
     }
 
     /**
@@ -1045,55 +1035,40 @@ class userManagementController extends authController
     public function changeContractorRepresentative(changeContractorRepresentativeRequest $request)
     {
         $validated = $request->validated();
-
-        try {
-            $contractorModel = new contractorClass();
-            $result = $contractorModel->changeRepresentative(
-                $validated['contractor_id'],
-                $validated['new_representative_id']
-            );
-
-            // Get updated representative details for notification
-            $newRep = DB::table('contractor_staff')
-                ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
-                ->join('users', 'property_owners.user_id', '=', 'users.user_id')
-                ->where('contractor_staff.staff_id', $validated['new_representative_id'])
-                ->select(
-                    'contractor_staff.*',
-                    'users.email',
-                    'users.username',
-                    'users.first_name',
-                    'users.last_name'
-                )
-                ->first();
-
-            // Send notification email to new representative
+        return $this->withLock("admin_change_representative_" . $validated['contractor_id'], function () use ($validated) {
             try {
-                Mail::raw(
-                    "You have been assigned as the Company Representative.\n\n" .
-                    "This role gives you authorization to represent the company in all official matters.\n\n" .
-                    "If you have any questions, please contact the administrator.",
-                    function ($message) use ($newRep) {
-                        $message->to($newRep->email)
-                            ->subject('Company Representative Assignment - Legatura');
-                    }
+                $contractorModel = new contractorClass();
+                $result = $contractorModel->changeRepresentative(
+                    $validated['contractor_id'],
+                    $validated['new_representative_id']
                 );
+
+                $newRep = DB::table('contractor_staff')
+                    ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+                    ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->where('contractor_staff.staff_id', $validated['new_representative_id'])
+                    ->select('contractor_staff.*', 'users.email', 'users.username', 'users.first_name', 'users.last_name')
+                    ->first();
+
+                try {
+                    Mail::raw(
+                        "You have been assigned as the Company Representative.\n\n" .
+                        "This role gives you authorization to represent the company in all official matters.\n\n" .
+                        "If you have any questions, please contact the administrator.",
+                        function ($message) use ($newRep) {
+                            $message->to($newRep->email)->subject('Company Representative Assignment - Legatura');
+                        }
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send representative change email: ' . $e->getMessage());
+                }
+
+                return response()->json(['success' => true, 'message' => 'Company representative changed successfully', 'data' => $result]);
+
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to send representative change email: ' . $e->getMessage());
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
             }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Company representative changed successfully',
-                'data' => $result
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+        }); // end withLock
     }
 
     /**
@@ -1193,51 +1168,34 @@ class userManagementController extends authController
      */
     public function updateContractorTeamMember(updateContractorTeamMemberRequest $request)
     {
-        try {
-            $validated = $request->validated();
+        $validated = $request->validated();
+        return $this->withLock("admin_update_team_member_" . $validated['staff_id'], function () use ($validated) {
+            try {
+                $staffMember = DB::table('contractor_staff')->where('staff_id', $validated['staff_id'])->first();
 
-            // Get the contractor_staff record to get owner_id
-            $staffMember = DB::table('contractor_staff')
-                ->where('staff_id', $validated['staff_id'])
-                ->first();
+                if (!$staffMember) {
+                    return response()->json(['success' => false, 'message' => 'Team member not found'], 404);
+                }
 
-            if (!$staffMember) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Team member not found'
-                ], 404);
+                $staffData = [
+                    'company_role' => $validated['role'],
+                    'company_role_before' => $staffMember->company_role
+                ];
+
+                if ($validated['role'] === 'others' && isset($validated['role_other'])) {
+                    $staffData['role_if_others'] = $validated['role_other'];
+                } else {
+                    $staffData['role_if_others'] = null;
+                }
+
+                DB::table('contractor_staff')->where('staff_id', $validated['staff_id'])->update($staffData);
+
+                return response()->json(['success' => true, 'message' => 'Team member updated successfully']);
+
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
             }
-
-            // Prepare contractor_staff table update data - only update role
-            $staffData = [
-                'company_role' => $validated['role'],
-                'company_role_before' => $staffMember->company_role  // Save the previous role
-            ];
-
-            // Handle role "others" - store custom role in role_if_others column
-            if ($validated['role'] === 'others' && isset($validated['role_other'])) {
-                $staffData['role_if_others'] = $validated['role_other'];
-            } else {
-                // Clear role_if_others if role is not "others"
-                $staffData['role_if_others'] = null;
-            }
-
-            // Update contractor_staff table
-            DB::table('contractor_staff')
-                ->where('staff_id', $validated['staff_id'])
-                ->update($staffData);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Team member updated successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+        }); // end withLock
     }
 
     /**
@@ -1245,78 +1203,55 @@ class userManagementController extends authController
      */
     public function suspendContractorTeamMember(Request $request, $staffId)
     {
-        try {
-            $validated = $request->validate([
-                'suspension_reason' => 'required|string|max:500',
-                'duration' => 'required|in:temporary,permanent',
-                'suspension_until' => 'required_if:duration,temporary|date|after:today'
-            ]);
+        $validated = $request->validate([
+            'suspension_reason' => 'required|string|max:500',
+            'duration' => 'required|in:temporary,permanent',
+            'suspension_until' => 'required_if:duration,temporary|date|after:today'
+        ]);
+        return $this->withLock("admin_suspend_team_member_{$staffId}", function () use ($validated, $staffId) {
+            try {
+                $suspensionUntil = $validated['duration'] === 'permanent' ? '9999-12-31' : ($validated['suspension_until'] ?? null);
 
-            // Determine suspension_until date
-            $suspensionUntil = null;
-            if ($validated['duration'] === 'permanent') {
-                $suspensionUntil = '9999-12-31';
-            } else {
-                $suspensionUntil = $validated['suspension_until'];
-            }
-
-            // Update contractor_staff table to suspend the member
-            DB::table('contractor_staff')
-                ->where('staff_id', $staffId)
-                ->update([
+                DB::table('contractor_staff')->where('staff_id', $staffId)->update([
                     'is_active' => 0,
                     'is_suspended' => 1,
                     'suspension_reason' => $validated['suspension_reason'],
                     'suspension_until' => $suspensionUntil
                 ]);
 
-            // Send email notification
-            try {
-                $staff = DB::table('contractor_staff')
-                    ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
-                    ->join('users', 'property_owners.user_id', '=', 'users.user_id')
-                    ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
-                    ->where('contractor_staff.staff_id', $staffId)
-                    ->select('users.email', 'users.first_name', 'users.last_name', 'contractors.company_name')
-                    ->first();
+                try {
+                    $staff = DB::table('contractor_staff')
+                        ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
+                        ->join('users', 'property_owners.user_id', '=', 'users.user_id')
+                        ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
+                        ->where('contractor_staff.staff_id', $staffId)
+                        ->select('users.email', 'users.first_name', 'users.last_name', 'contractors.company_name')
+                        ->first();
 
-                if ($staff && $staff->email) {
-                    $durationText = $validated['duration'] === 'permanent' ? 'Permanent' : 'Until ' . date('F d, Y', strtotime($suspensionUntil));
-
-                    \Mail::raw(
-                        "Dear {$staff->first_name} {$staff->last_name},\n\n" .
-                        "Your staff membership at {$staff->company_name} has been suspended.\n\n" .
-                        "Reason: {$validated['suspension_reason']}\n" .
-                        "Duration: {$durationText}\n\n" .
-                        "Please contact the company administrator or support for more information.\n\n" .
-                        "Best regards,\nThe Legatura Team",
-                        function ($mailMsg) use ($staff) {
-                            $mailMsg->to($staff->email)
-                                ->subject('Legatura - Staff Membership Suspended');
-                        }
-                    );
+                    if ($staff && $staff->email) {
+                        $durationText = $validated['duration'] === 'permanent' ? 'Permanent' : 'Until ' . date('F d, Y', strtotime($suspensionUntil));
+                        \Mail::raw(
+                            "Dear {$staff->first_name} {$staff->last_name},\n\n" .
+                            "Your staff membership at {$staff->company_name} has been suspended.\n\n" .
+                            "Reason: {$validated['suspension_reason']}\nDuration: {$durationText}\n\n" .
+                            "Please contact the company administrator or support for more information.\n\nBest regards,\nThe Legatura Team",
+                            function ($mailMsg) use ($staff) {
+                                $mailMsg->to($staff->email)->subject('Legatura - Staff Membership Suspended');
+                            }
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send staff suspension email: ' . $e->getMessage());
                 }
+
+                return response()->json(['success' => true, 'message' => 'Team member suspended successfully']);
+
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
             } catch (\Exception $e) {
-                \Log::error('Failed to send staff suspension email: ' . $e->getMessage());
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
             }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Team member suspended successfully'
-            ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+        }); // end withLock
     }
 
     /**
@@ -1324,28 +1259,18 @@ class userManagementController extends authController
      */
     public function deactivateContractorTeamMember(deactivateContractorTeamMemberRequest $request)
     {
-        try {
-            $validated = $request->validated();
-
-            // Update contractor_staff table to set is_active = 0 and save reason
-            DB::table('contractor_staff')
-                ->where('staff_id', $validated['staff_id'])
-                ->update([
+        $validated = $request->validated();
+        return $this->withLock("admin_deactivate_team_member_" . $validated['staff_id'], function () use ($validated) {
+            try {
+                DB::table('contractor_staff')->where('staff_id', $validated['staff_id'])->update([
                     'is_active' => 0,
                     'deletion_reason' => $validated['deletion_reason']
                 ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Team member deactivated successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+                return response()->json(['success' => true, 'message' => 'Team member deactivated successfully']);
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+            }
+        }); // end withLock
     }
 
     /**
@@ -1353,34 +1278,27 @@ class userManagementController extends authController
      */
     public function reactivateContractorTeamMember(reactivateContractorTeamMemberRequest $request)
     {
-        try {
-            $validated = $request->validated();
+        $validated = $request->validated();
+        return $this->withLock("admin_reactivate_team_member_" . $validated['staff_id'], function () use ($validated) {
+            try {
+                $staff = DB::table('contractor_staff')
+                    ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
+                    ->where('contractor_staff.staff_id', $validated['staff_id'])
+                    ->select('contractors.is_active as contractor_active', 'contractors.company_name')
+                    ->first();
 
-            // Check if the contractor company is active
-            $staff = DB::table('contractor_staff')
-                ->join('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
-                ->where('contractor_staff.staff_id', $validated['staff_id'])
-                ->select('contractors.is_active as contractor_active', 'contractors.company_name')
-                ->first();
+                if (!$staff) {
+                    return response()->json(['success' => false, 'message' => 'Staff member not found'], 404);
+                }
 
-            if (!$staff) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Staff member not found'
-                ], 404);
-            }
+                if ($staff->contractor_active == 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot reactivate staff member. The contractor company "' . $staff->company_name . '" is currently suspended or inactive. Please reactivate the company first.'
+                    ], 400);
+                }
 
-            if ($staff->contractor_active == 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot reactivate staff member. The contractor company "' . $staff->company_name . '" is currently suspended or inactive. Please reactivate the company first.'
-                ], 400);
-            }
-
-            // Update contractor_staff table to reactivate the member
-            DB::table('contractor_staff')
-                ->where('staff_id', $validated['staff_id'])
-                ->update([
+                DB::table('contractor_staff')->where('staff_id', $validated['staff_id'])->update([
                     'is_active' => 1,
                     'is_suspended' => 0,
                     'deletion_reason' => null,
@@ -1388,17 +1306,12 @@ class userManagementController extends authController
                     'suspension_until' => null
                 ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Team member reactivated successfully'
-            ]);
+                return response()->json(['success' => true, 'message' => 'Team member reactivated successfully']);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+            }
+        }); // end withLock
     }
 
     /**
@@ -1517,7 +1430,8 @@ class userManagementController extends authController
      */
     public function approveVerification(Request $request, $id)
     {
-        $verificationModel = new userVerificationClass();
+        return $this->withLock("admin_approve_verification_{$id}", function () use ($request, $id) {
+            $verificationModel = new userVerificationClass();
         // Allow client to specify which role to approve (contractor | property_owner)
         $targetRole = $request->input('targetRole') ?? null;
         $result = $verificationModel->approveVerification($id, $targetRole);
@@ -1619,6 +1533,7 @@ class userManagementController extends authController
         }
 
         return response()->json($result);
+        }); // end withLock
     }
 
     /**
@@ -1626,6 +1541,7 @@ class userManagementController extends authController
      */
     public function rejectVerification(rejectVerificationRequest $request, $id)
     {
+        return $this->withLock("admin_reject_verification_{$id}", function () use ($request, $id) {
         $validated = $request->validated();
         // Safely obtain targetRole: prefer validated value, fall back to raw input
         $targetRole = $validated['targetRole'] ?? $request->input('targetRole') ?? null;
@@ -1702,6 +1618,7 @@ class userManagementController extends authController
         }
 
         return response()->json($result);
+        }); // end withLock
     }
 
     /**
@@ -1759,6 +1676,7 @@ class userManagementController extends authController
      */
     public function reactivateSuspendedUser(\App\Http\Requests\admin\reactivateContractorTeamMemberRequest $request)
     {
+        return $this->withLock("admin_reactivate_user_" . $request->input('contractor_user_id'), function () use ($request) {
         try {
             $userType = $request->input('user_type');
 
@@ -1882,6 +1800,7 @@ class userManagementController extends authController
                 'message' => $e->getMessage()
             ], 400);
         }
+        }); // end withLock
     }
 
     /**
@@ -1894,26 +1813,17 @@ class userManagementController extends authController
             'entityType' => 'required|in:contractor,owner',
             'mode' => 'required|in:keep,edit',
         ]);
+        return $this->withLock("admin_reactivate_account_" . $validated['entityType'] . "_" . $validated['id'], function () use ($validated) {
+            $table = $validated['entityType'] === 'contractor' ? 'contractors' : 'property_owners';
+            $idField = $validated['entityType'] === 'contractor' ? 'contractor_id' : 'owner_id';
 
-        $table = $validated['entityType'] === 'contractor' ? 'contractors' : 'property_owners';
-        $idField = $validated['entityType'] === 'contractor' ? 'contractor_id' : 'owner_id';
+            $updated = DB::table($table)->where($idField, $validated['id'])->update(['verification_status' => 'pending']);
 
-        // Update the account status (set back to pending/approved)
-        $updated = DB::table($table)
-            ->where($idField, $validated['id'])
-            ->update(['verification_status' => 'pending']);
-
-        if ($updated) {
-            return response()->json([
-                'success' => true,
-                'message' => ucfirst($validated['entityType']) . ' account reactivated successfully.'
-            ]);
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to reactivate account'
-        ], 400);
+            if ($updated) {
+                return response()->json(['success' => true, 'message' => ucfirst($validated['entityType']) . ' account reactivated successfully.']);
+            }
+            return response()->json(['success' => false, 'message' => 'Failed to reactivate account'], 400);
+        }); // end withLock
     }
 
     /**
@@ -2018,46 +1928,32 @@ class userManagementController extends authController
     public function suspendPropertyOwner(propertyOwnerRequest $request, $id)
     {
         $validated = $request->validated();
+        return $this->withLock("admin_suspend_owner_{$id}", function () use ($validated, $id) {
+            $reason = $validated['reason'];
+            $duration = $validated['duration'];
+            $suspensionUntil = $validated['suspension_until'] ?? null;
 
-        $reason = $validated['reason'];
-        $duration = $validated['duration'];
-        $suspensionUntil = $validated['suspension_until'] ?? null;
-
-        if ($duration === 'permanent') {
-            $suspensionUntil = '9999-12-31';
-        }
-
-        $propertyOwnerModel = new propertyOwnerClass();
-        $owner = $propertyOwnerModel->suspendOwner($id, $reason, $duration, $suspensionUntil);
-
-        if ($owner) {
-            // Get user email
-            $user = User::where('user_id', $owner->user_id)->first();
-
-            if ($user) {
-                // Send email notification
-                try {
-                    $emailData = [
-                        'name' => $owner->first_name,
-                        'reason' => $reason,
-                        'duration' => $duration,
-                        'until' => $suspensionUntil
-                    ];
-
-                    Mail::raw("Dear {$owner->first_name},\n\nYour account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
-                        $message->to($user->email)
-                            ->subject('Account Suspension Notification');
-                    });
-                } catch (\Exception $e) {
-                    // Log email error but don't fail the request
-                    // Log::error('Failed to send suspension email: ' . $e->getMessage());
-                }
+            if ($duration === 'permanent') {
+                $suspensionUntil = '9999-12-31';
             }
 
-            return response()->json(['success' => true, 'message' => 'Property owner suspended successfully']);
-        }
+            $propertyOwnerModel = new propertyOwnerClass();
+            $owner = $propertyOwnerModel->suspendOwner($id, $reason, $duration, $suspensionUntil);
 
-        return response()->json(['success' => false, 'message' => 'Failed to suspend property owner'], 400);
+            if ($owner) {
+                $user = User::where('user_id', $owner->user_id)->first();
+                if ($user) {
+                    try {
+                        Mail::raw("Dear {$owner->first_name},\n\nYour account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
+                            $message->to($user->email)->subject('Account Suspension Notification');
+                        });
+                    } catch (\Exception $e) {}
+                }
+                return response()->json(['success' => true, 'message' => 'Property owner suspended successfully']);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Failed to suspend property owner'], 400);
+        }); // end withLock
     }
 
     /**
@@ -2066,23 +1962,20 @@ class userManagementController extends authController
     public function suspendContractor(contractorRequest $request, $id)
     {
         $validated = $request->validated();
+        return $this->withLock("admin_suspend_contractor_{$id}", function () use ($validated, $id) {
+            $reason = $validated['reason'];
+            $duration = $validated['duration'];
+            $suspensionUntil = $validated['suspension_until'] ?? null;
 
-        $reason = $validated['reason'];
-        $duration = $validated['duration'];
-        $suspensionUntil = $validated['suspension_until'] ?? null;
+            if ($duration === 'permanent') {
+                $suspensionUntil = '9999-12-31';
+            }
 
-        if ($duration === 'permanent') {
-            $suspensionUntil = '9999-12-31';
-        }
+            $contractorModel = new contractorClass();
+            $contractor = $contractorModel->suspendContractor($id, $reason, $duration, $suspensionUntil);
 
-        $contractorModel = new contractorClass();
-        $contractor = $contractorModel->suspendContractor($id, $reason, $duration, $suspensionUntil);
-
-        if ($contractor) {
-            // Get user email through property_owners table
-            $owner = DB::table('property_owners')
-                ->where('owner_id', $contractor->owner_id)
-                ->first();
+            if ($contractor) {
+                $owner = DB::table('property_owners')->where('owner_id', $contractor->owner_id)->first();
 
             if ($owner) {
                 $user = User::where('user_id', $owner->user_id)->first();
@@ -2090,19 +1983,11 @@ class userManagementController extends authController
                 if ($user) {
                     // Send email notification
                     try {
-                        $emailData = [
-                            'name' => $contractor->company_name,
-                            'reason' => $reason,
-                            'duration' => $duration,
-                            'until' => $suspensionUntil
-                        ];
-
                         Mail::raw("Dear {$contractor->company_name},\n\nYour contractor account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
                             $message->to($user->email)
                                 ->subject('Contractor Account Suspension Notification');
                         });
                     } catch (\Exception $e) {
-                        // Log email error but don't fail the request
                         \Illuminate\Support\Facades\Log::error('Failed to send suspension email: ' . $e->getMessage());
                     }
                 }
@@ -2112,6 +1997,7 @@ class userManagementController extends authController
         }
 
         return response()->json(['success' => false, 'message' => 'Failed to suspend contractor'], 400);
+        }); // end withLock
     }
 
     /**
@@ -2163,70 +2049,59 @@ class userManagementController extends authController
      */
     public function approveContractorVerification($id)
     {
-        \Log::info("Approving contractor verification for user_id: {$id}");
+        return $this->withLock("admin_approve_contractor_verification_{$id}", function () use ($id) {
+            \Log::info("Approving contractor verification for user_id: {$id}");
 
-        $user = User::find($id);
+            $user = User::find($id);
 
-        if (!$user) {
-            \Log::error("User not found for verification approval: {$id}");
-            return response()->json(['success' => false, 'message' => 'User not found'], 404);
-        }
-
-        $updatePayload = [
-            'verification_status' => 'approved',
-            'verification_date' => now(),
-        ];
-
-        // Only set `is_active` if the column exists in the contractors table
-        if (Schema::hasColumn('contractors', 'is_active')) {
-            $updatePayload['is_active'] = 1;
-        } else {
-            \Log::warning("approveContractorVerification: 'is_active' column not present on contractors table; skipping setting is_active for user_id {$id}");
-        }
-
-        $updated = DB::table('contractors')
-            ->where('user_id', $id)
-            ->update($updatePayload);
-
-        if ($updated) {
-            \Log::info("Contractor verification approved for user_id: {$id}");
-
-            // Ensure users.user_type reflects both roles if a property_owner profile exists
-            try {
-                $hasOwner = DB::table('property_owners')->where('user_id', $id)->exists();
-                if ($hasOwner) {
-                    $currentUser = DB::table('users')->where('user_id', $id)->first();
-                    $updateData = ['user_type' => 'both'];
-                    // Preserve the user's current active role so approval doesn't auto-switch
-                    if ($currentUser && empty($currentUser->preferred_role)) {
-                        $preservedRole = $currentUser->user_type;
-                        if ($preservedRole === 'property_owner') {
-                            $preservedRole = 'owner';
-                        }
-                        if (in_array($preservedRole, ['contractor', 'owner'])) {
-                            $updateData['preferred_role'] = $preservedRole;
-                        }
-                    }
-                    DB::table('users')->where('user_id', $id)->update($updateData);
-                } else {
-                    // Only contractor profile exists
-                    // Note: 'contractor' is not a valid ENUM value for user_type
-                    // The valid values are: 'property_owner', 'both', 'staff'
-                    // For pure contractors, we should not update user_type as it will cause SQL error
-                    // The contractor record itself indicates the contractor role
-                    \Log::info('User has contractor role only, not updating user_type to avoid ENUM error', ['user_id' => $id]);
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('approveContractorVerification: failed to update users.user_type', ['user_id' => $id, 'error' => $e->getMessage()]);
+            if (!$user) {
+                \Log::error("User not found for verification approval: {$id}");
+                return response()->json(['success' => false, 'message' => 'User not found'], 404);
             }
-            return response()->json([
-                'success' => true,
-                'message' => 'Contractor verification approved successfully'
-            ]);
-        }
 
-        \Log::warning("No contractor record found for user_id: {$id}");
-        return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+            $updatePayload = [
+                'verification_status' => 'approved',
+                'verification_date' => now(),
+            ];
+
+            if (Schema::hasColumn('contractors', 'is_active')) {
+                $updatePayload['is_active'] = 1;
+            } else {
+                \Log::warning("approveContractorVerification: 'is_active' column not present on contractors table; skipping setting is_active for user_id {$id}");
+            }
+
+            $updated = DB::table('contractors')->where('user_id', $id)->update($updatePayload);
+
+            if ($updated) {
+                \Log::info("Contractor verification approved for user_id: {$id}");
+
+                try {
+                    $hasOwner = DB::table('property_owners')->where('user_id', $id)->exists();
+                    if ($hasOwner) {
+                        $currentUser = DB::table('users')->where('user_id', $id)->first();
+                        $updateData = ['user_type' => 'both'];
+                        if ($currentUser && empty($currentUser->preferred_role)) {
+                            $preservedRole = $currentUser->user_type;
+                            if ($preservedRole === 'property_owner') {
+                                $preservedRole = 'owner';
+                            }
+                            if (in_array($preservedRole, ['contractor', 'owner'])) {
+                                $updateData['preferred_role'] = $preservedRole;
+                            }
+                        }
+                        DB::table('users')->where('user_id', $id)->update($updateData);
+                    } else {
+                        \Log::info('User has contractor role only, not updating user_type to avoid ENUM error', ['user_id' => $id]);
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning('approveContractorVerification: failed to update users.user_type', ['user_id' => $id, 'error' => $e->getMessage()]);
+                }
+                return response()->json(['success' => true, 'message' => 'Contractor verification approved successfully']);
+            }
+
+            \Log::warning("No contractor record found for user_id: {$id}");
+            return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+        }); // end withLock
     }
 
     /**
@@ -2234,34 +2109,31 @@ class userManagementController extends authController
      */
     public function rejectContractorVerification(VerificationRequest $request, $id)
     {
-        \Log::info("Rejecting contractor verification for user_id: {$id}");
-
         $validated = $request->validated();
-        $user = User::find($id);
+        return $this->withLock("admin_reject_contractor_verification_{$id}", function () use ($validated, $id) {
+            \Log::info("Rejecting contractor verification for user_id: {$id}");
 
-        if (!$user) {
-            \Log::error("User not found for verification rejection: {$id}");
-            return response()->json(['success' => false, 'message' => 'User not found'], 404);
-        }
+            $user = User::find($id);
 
-        $updated = DB::table('contractors')
-            ->where('user_id', $id)
-            ->update([
+            if (!$user) {
+                \Log::error("User not found for verification rejection: {$id}");
+                return response()->json(['success' => false, 'message' => 'User not found'], 404);
+            }
+
+            $updated = DB::table('contractors')->where('user_id', $id)->update([
                 'verification_status' => 'rejected',
                 'rejection_reason' => $validated['reason'],
                 'verification_date' => now()
             ]);
 
-        if ($updated) {
-            \Log::info("Contractor verification rejected for user_id: {$id}");
-            return response()->json([
-                'success' => true,
-                'message' => 'Contractor verification rejected successfully'
-            ]);
-        }
+            if ($updated) {
+                \Log::info("Contractor verification rejected for user_id: {$id}");
+                return response()->json(['success' => true, 'message' => 'Contractor verification rejected successfully']);
+            }
 
-        \Log::warning("No contractor record found for user_id: {$id}");
-        return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+            \Log::warning("No contractor record found for user_id: {$id}");
+            return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+        }); // end withLock
     }
 
     /**

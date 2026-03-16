@@ -49,12 +49,18 @@ class messageSentEvent implements ShouldBroadcastNow
             $userChannel = new PrivateChannel('chat.' . $this->conversation->sender_id);
 
             if (!$this->message->is_flagged) {
-                // Clean message — safe to send to both user and admin on this event
-                $admin = DB::table('admin_users')->where('is_active', 1)->first();
-                if ($admin) {
+                // Clean message — broadcast to user AND all active admins
+                // (broadcast to all admins so any logged-in admin sees it in real-time)
+                $channels = [$userChannel];
+                $admins = DB::table('admin_users')->where('is_active', 1)->get();
+                foreach ($admins as $admin) {
                     $adminNumericId = (int) preg_replace('/[^0-9]/', '', $admin->admin_id);
-                    return [$userChannel, new PrivateChannel('chat.' . $adminNumericId)];
+                    // Avoid duplicate if user's ID happens to equal an admin's numeric ID
+                    if ($adminNumericId !== (int) $this->conversation->sender_id) {
+                        $channels[] = new PrivateChannel('chat.' . $adminNumericId);
+                    }
                 }
+                return $channels;
             }
 
             // Flagged message — user gets censored via this event, admin gets uncensored via messageSentEventUncensored

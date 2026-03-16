@@ -471,8 +471,12 @@
     // Confirm Actions
     document
         .getElementById("acceptConfirmBtn")
-        ?.addEventListener("click", async () => {
+        ?.addEventListener("click", async function() {
             if (!currentUserId) return;
+            const btn = this;
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Verifying...';
             try {
                 const response = await fetch(
                     `/api/admin/users/verification-requests/${currentUserId}/approve`,
@@ -497,11 +501,11 @@
                     toggleModal(contractorModal, false);
                     toggleModal(ownerModal, false);
 
-                    const btn = document.querySelector(
+                    const rowBtn = document.querySelector(
                         `button[data-key="${currentUserId}"]`
                     );
-                    if (btn) {
-                        const row = btn.closest("tr");
+                    if (rowBtn) {
+                        const row = rowBtn.closest("tr");
                         if (row) {
                             row.style.transition = "opacity 0.5s";
                             row.style.opacity = "0";
@@ -514,10 +518,14 @@
                     console.error('Approve failed', response.status, payload);
                     const errMsg = payload?.message || (payload?.errors ? Object.values(payload.errors).flat().join(' ') : null) || 'Failed to approve user.';
                     showNotification(errMsg, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
                 }
             } catch (error) {
                 console.error(error);
                 showNotification("An error occurred.", "error");
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
             }
         });
 
@@ -592,6 +600,9 @@
             } catch (error) {
                 console.error(error);
                 showNotification("An error occurred.", "error");
+            } finally {
+                isRejectSubmitting = false;
+                setRejectLoading(false);
             }
         });
 

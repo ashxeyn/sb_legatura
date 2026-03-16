@@ -42,11 +42,14 @@ class messageSentEventUncensored implements ShouldBroadcastNow
         $isAdminConv = (bool) ($this->conversation->is_admin_conversation ?? false);
 
         if ($isAdminConv) {
-            $admin = DB::table('admin_users')->where('is_active', 1)->first();
-            if ($admin) {
+            // Broadcast uncensored version to ALL active admins
+            $channels = [];
+            $admins = DB::table('admin_users')->where('is_active', 1)->get();
+            foreach ($admins as $admin) {
                 $adminNumericId = (int) preg_replace('/[^0-9]/', '', $admin->admin_id);
-                return [new PrivateChannel('chat.' . $adminNumericId)];
+                $channels[] = new PrivateChannel('chat.' . $adminNumericId);
             }
+            return $channels;
         }
 
         return [];

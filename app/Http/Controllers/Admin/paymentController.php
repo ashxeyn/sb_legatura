@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storePaymentRequest;
 use App\Models\admin\milestonePayment;
+use App\Traits\WithAtomicLock;
 use Illuminate\Http\Request;
 use App\Services\AdminActivityLog;
 
 class paymentController extends Controller
 {
+    use WithAtomicLock;
+
     public function index(Request $request)
     {
         $perPage = (int)$request->input('per_page',15);
@@ -29,26 +32,32 @@ class paymentController extends Controller
 
     public function store(storePaymentRequest $request)
     {
-        $p = milestonePayment::create($request->validated());
-        AdminActivityLog::log('milestone_payment_created', ['payment_id' => $p->payment_id ?? $p->id]);
-        return response()->json($p,201);
+        return $this->withLock("admin_create_payment_" . auth()->id(), function () use ($request) {
+            $p = milestonePayment::create($request->validated());
+            AdminActivityLog::log('milestone_payment_created', ['payment_id' => $p->payment_id ?? $p->id]);
+            return response()->json($p, 201);
+        });
     }
 
     public function update(Request $request, $id)
     {
         $p = milestonePayment::find($id);
         if (!$p) return response()->json(['error'=>'Not found'],404);
-        $p->update($request->only(['payment_status','amount','transaction_date']));
-        AdminActivityLog::log('milestone_payment_updated', ['payment_id' => $id]);
-        return response()->json($p);
+        return $this->withLock("admin_update_payment_{$id}", function () use ($request, $p, $id) {
+            $p->update($request->only(['payment_status','amount','transaction_date']));
+            AdminActivityLog::log('milestone_payment_updated', ['payment_id' => $id]);
+            return response()->json($p);
+        });
     }
 
     public function destroy($id)
     {
         $p = milestonePayment::find($id);
         if (!$p) return response()->json(['error'=>'Not found'],404);
-        $p->delete();
-        AdminActivityLog::log('milestone_payment_deleted', ['payment_id' => $id]);
-        return response()->json(['deleted'=>true]);
+        return $this->withLock("admin_delete_payment_{$id}", function () use ($p, $id) {
+            $p->delete();
+            AdminActivityLog::log('milestone_payment_deleted', ['payment_id' => $id]);
+            return response()->json(['deleted'=>true]);
+        });
     }
 }

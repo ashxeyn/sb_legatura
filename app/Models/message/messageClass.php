@@ -480,6 +480,8 @@ class messageClass extends Model
                 // Admin sending: use receiver's (user's) ID for both sides
                 $conversationSenderId = $data['receiver_id'];
                 $conversationReceiverId = $data['receiver_id'];
+                // Admin conversations never belong to a contractor context
+                $data['contractor_id'] = null;
                 \Log::info('After swap (admin sending)', [
                     'conversationSenderId' => $conversationSenderId,
                     'conversationReceiverId' => $conversationReceiverId
@@ -489,6 +491,10 @@ class messageClass extends Model
                 // so the FK constraint is satisfied (admin IDs don't exist in users table)
                 $conversationSenderId = $data['sender_id'];
                 $conversationReceiverId = $data['sender_id'];
+                // Admin conversations never belong to a contractor context — strip contractor_id
+                // so a 'both' user messaging admin from their contractor role doesn't create
+                // a hybrid contractor+admin conversation that breaks from_sender logic
+                $data['contractor_id'] = null;
                 \Log::info('After swap (user sending to admin)', [
                     'conversationSenderId' => $conversationSenderId,
                     'conversationReceiverId' => $conversationReceiverId
@@ -604,37 +610,16 @@ class messageClass extends Model
             ->where('is_active', 1)
             ->first();
 
-        if ($admin) {
-            $fullName = trim(($admin->first_name ?? '') . ' ' . ($admin->middle_name ?? '') . ' ' . ($admin->last_name ?? ''));
-            $name = !empty($fullName) ? $fullName : ($admin->username ?? 'Admin');
-            
-            // Extract numeric ID from admin_id (e.g., 'ADMIN-1' -> 1)
-            $numericId = (int) preg_replace('/[^0-9]/', '', $admin->admin_id);
-            
-            // Get avatar from profile_pic or use UI Avatars fallback
-            $avatar = null;
-            if (!empty($admin->profile_pic)) {
-                $avatar = asset('storage/' . $admin->profile_pic);
-            } else {
-                $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
-            }
-            
-            return [
-                'id' => $numericId,
-                'name' => $name,
-                'type' => 'Admin',
-                'avatar' => $avatar,
-                'online' => false // Will be updated in real-time by frontend presence channel
-            ];
-        }
+        // Extract numeric ID from admin_id for channel/conversation purposes
+        $numericId = $admin ? (int) preg_replace('/[^0-9]/', '', $admin->admin_id) : 1;
 
-        // Fallback if no admin found
+        // Always display as "Legatura Support" with the brand logo regardless of which admin account is active
         return [
-            'id' => 1,
-            'name' => 'Admin',
+            'id' => $numericId,
+            'name' => 'Legatura Support',
             'type' => 'Admin',
-            'avatar' => 'https://ui-avatars.com/api/?name=Admin&background=dc2626&color=fff&bold=true',
-            'online' => false
+            'avatar' => asset('img/legatura_watermark.png'),
+            'online' => false // Will be updated in real-time by frontend presence channel
         ];
     }
 
@@ -762,31 +747,14 @@ class messageClass extends Model
         // If null (auto-detect), use legacy behavior (check admin first) - but this can cause ID collision issues
 
         if ($isAdminConversation === true) {
-            // This is an admin conversation - the ID refers to admin_users
-            $admin = DB::table('admin_users')->where('admin_id', 'ADMIN-' . $userId)->first();
-            if ($admin) {
-                $name = $admin->username ?? $admin->email ?? 'Admin';
-                $fullName = trim(($admin->first_name ?? '') . ' ' . ($admin->middle_name ?? '') . ' ' . ($admin->last_name ?? ''));
-                if (!empty($fullName)) {
-                    $name = $fullName;
-                }
-                
-                // Get avatar from profile_pic or use UI Avatars fallback
-                $avatar = null;
-                if (!empty($admin->profile_pic)) {
-                    $avatar = asset('storage/' . $admin->profile_pic);
-                } else {
-                    $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
-                }
-                
-                return [
-                    'id' => $userId,
-                    'name' => $name,
-                    'type' => 'Admin',
-                    'avatar' => $avatar,
-                    'online' => false
-                ];
-            }
+            // This is an admin conversation - always return Legatura Support branding
+            return [
+                'id' => $userId,
+                'name' => 'Legatura Support',
+                'type' => 'Admin',
+                'avatar' => asset('img/legatura_watermark.png'),
+                'online' => false
+            ];
         }
 
         if ($isAdminConversation === false) {
@@ -795,28 +763,14 @@ class messageClass extends Model
         }
 
         if ($isAdminConversation === null) {
-            // Legacy auto-detect behavior (can cause ID collision - use sparingly)
+            // Legacy auto-detect behavior — check if this ID belongs to an admin
             $admin = DB::table('admin_users')->where('admin_id', 'ADMIN-' . $userId)->first();
             if ($admin) {
-                $name = $admin->username ?? $admin->email ?? 'Admin';
-                $fullName = trim(($admin->first_name ?? '') . ' ' . ($admin->middle_name ?? '') . ' ' . ($admin->last_name ?? ''));
-                if (!empty($fullName)) {
-                    $name = $fullName;
-                }
-                
-                // Get avatar from profile_pic or use UI Avatars fallback
-                $avatar = null;
-                if (!empty($admin->profile_pic)) {
-                    $avatar = asset('storage/' . $admin->profile_pic);
-                } else {
-                    $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
-                }
-                
                 return [
                     'id' => $userId,
-                    'name' => $name,
+                    'name' => 'Legatura Support',
                     'type' => 'Admin',
-                    'avatar' => $avatar,
+                    'avatar' => asset('img/legatura_watermark.png'),
                     'online' => false
                 ];
             }
@@ -931,6 +885,24 @@ class messageClass extends Model
 
         if (!empty($affectedRows) && $affectedRows > 0) {
             broadcast(new \App\Events\messagesReadEvent($conversationId, $userId));
+        }
+    }
+
+    // Mark messages as read from the admin side of an admin conversation.
+    // Admin reads messages sent by the user (from_sender = true).
+    public static function markAsReadByAdmin(int|string $conversationId): void
+    {
+        $affectedRows = self::where('conversation_id', $conversationId)
+            ->where('from_sender', true)  // user-sent messages
+            ->where('is_read', 0)
+            ->update(['is_read' => 1]);
+
+        if (!empty($affectedRows) && $affectedRows > 0) {
+            // Use conversation's sender_id as the reader ID for the read-receipt event
+            $conv = DB::table('conversations')->where('conversation_id', $conversationId)->first();
+            if ($conv) {
+                broadcast(new \App\Events\messagesReadEvent($conversationId, $conv->sender_id));
+            }
         }
     }
 

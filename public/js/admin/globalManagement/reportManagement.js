@@ -383,14 +383,12 @@
     async function fetchReports() {
         const params = new URLSearchParams();
         const sourceType = document.getElementById("filterSource")?.value || "all";
-        const caseType = document.getElementById("filterCaseType")?.value || "all";
         const status = document.getElementById("filterStatus")?.value || "all";
-        const search = document.getElementById("filterSearch")?.value || "";
+        const search = document.getElementById("topNavSearch")?.value || "";
         const dateFrom = document.getElementById("filterDateFrom")?.value || "";
         const dateTo = document.getElementById("filterDateTo")?.value || "";
 
         if (sourceType !== "all") params.set("source_type", sourceType);
-        if (caseType !== "all") params.set("case_type", caseType);
         if (status !== "all") params.set("status", status);
         if (search) params.set("search", search);
         if (dateFrom) params.set("date_from", dateFrom);
@@ -1563,13 +1561,8 @@
         });
     });
 
-    document.getElementById("filterCaseType")?.addEventListener("change", () => {
-        moderationCurrentPage = 1;
-        fetchReports();
-    });
-
     let searchTimer;
-    const searchEl = document.getElementById("filterSearch");
+    const searchEl = document.getElementById("topNavSearch");
     if (searchEl) {
         searchEl.addEventListener("input", () => {
             clearTimeout(searchTimer);
@@ -1579,12 +1572,14 @@
     }
 
     document.getElementById("resetFilters")?.addEventListener("click", () => {
-        ["filterSource", "filterStatus", "filterCaseType"].forEach((id) => {
+        ["filterSource", "filterStatus"].forEach((id) => {
             const el = document.getElementById(id); if (el) el.value = "all";
         });
-        ["filterDateFrom", "filterDateTo", "filterSearch"].forEach((id) => {
+        ["filterDateFrom", "filterDateTo"].forEach((id) => {
             const el = document.getElementById(id); if (el) el.value = "";
         });
+        const topSearch = document.getElementById("topNavSearch");
+        if (topSearch) topSearch.value = "";
         moderationCurrentPage = 1;
         fetchReports();
     });

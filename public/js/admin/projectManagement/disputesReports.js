@@ -667,6 +667,10 @@
                 const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
                 if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
 
+                const original = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<i class="fi fi-rr-spinner animate-spin mr-2"></i> Rejecting...';
+
                 try {
                     const resp = await fetch(
                         `/admin/project-management/disputes/${useId}/reject`,
@@ -685,6 +689,9 @@
                 } catch (e) {
                     console.error(e);
                     toast("Failed to reject case", "error");
+                } finally {
+                    this.disabled = false;
+                    this.innerHTML = original;
                 }
             };
         }
@@ -705,6 +712,10 @@
                 const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
                 if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
 
+                const original = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<i class="fi fi-rr-spinner animate-spin mr-2"></i> Halting...';
+
                 try {
                     const resp = await fetch(
                         `/admin/project-management/disputes/${useId}/halt-project`,
@@ -715,14 +726,12 @@
                     hideModal("viewDetailsModal");
 
                     if (j.success) {
-                        // Update table row badge
                         const tr = document.querySelector(`tr[data-id="${useId}"]`);
                         if (tr) {
                             tr.dataset.status = "resolved";
                             const statusCell  = tr.querySelector("td:nth-child(5)");
                             if (statusCell)   statusCell.innerHTML = getStatusBadgeHTML("resolved");
                         }
-
                         toast("Project halted and dispute resolved", "success");
                     } else {
                         toast("Failed to halt project", "error");
@@ -730,6 +739,9 @@
                 } catch (e) {
                     console.error(e);
                     toast("Failed to halt project", "error");
+                } finally {
+                    this.disabled = false;
+                    this.innerHTML = original;
                 }
             };
         }
@@ -759,6 +771,10 @@
                 const headers   = { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" };
                 if (tokenMeta && tokenMeta.content) headers["X-CSRF-TOKEN"] = tokenMeta.content;
 
+                const original = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<i class="fi fi-rr-spinner animate-spin mr-2"></i> Resolving...';
+
                 try {
                     const resp = await fetch(
                         `/admin/project-management/disputes/${useId}/finalize`,
@@ -782,6 +798,9 @@
                 } catch (e) {
                     console.error(e);
                     toast("Failed to finalize resolution", "error");
+                } finally {
+                    this.disabled = false;
+                    this.innerHTML = original;
                 }
             };
         }

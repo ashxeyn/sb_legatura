@@ -116,134 +116,93 @@ class userVerificationClass
      * Approve a verification request
      */
     public function approveVerification($userId)
-    {
-        $user = User::find($userId);
+        {
+            $user = User::find($userId);
 
-        if (!$user) {
-            return ['success' => false, 'message' => 'User not found'];
-        }
-
-        // Prefer role parameter if provided, otherwise detect profiles directly
-        $args = func_get_args();
-        $targetRole = isset($args[1]) ? $args[1] : null;
-
-        // If a specific role was requested, only update that profile table
-        if ($targetRole === 'contractor') {
-            $contractorId = $this->resolveContractorIdByUserId($userId);
-            if (!$contractorId) {
-                return ['success' => false, 'message' => 'Contractor profile not found'];
+            if (!$user) {
+                return ['success' => false, 'message' => 'User not found'];
             }
 
-            // Approve contractor profile and mark contractor as active
-            $updatePayload = [
-                'verification_status' => 'approved',
-                'verification_date' => now(),
-            ];
-            if (Schema::hasColumn('contractors', 'is_active')) {
-                $updatePayload['is_active'] = 1;
-            } else {
-                \Log::warning("ApproveVerification: 'is_active' column missing on contractors table for user_id {$userId}");
-            }
+            // Prefer role parameter if provided, otherwise detect profiles directly
+            $args = func_get_args();
+            $targetRole = isset($args[1]) ? $args[1] : null;
 
-            $affected = DB::table('contractors')
-                ->where('contractor_id', $contractorId)
-                ->update($updatePayload);
-
-            \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
-
-            // Also activate any contractor_users record that represents this user for the contractor
-            try {
-                if ($contractorId && Schema::hasTable('contractor_users')) {
-                    DB::table('contractor_users')
-                        ->where('contractor_id', $contractorId)
-                        ->where('user_id', $userId)
-                        ->update(['is_active' => 1, 'is_deleted' => 0]);
+            if ($targetRole === 'contractor') {
+                // Contractor is always linked through property_owners → contractors
+                $contractorId = $this->resolveContractorIdByUserId($userId);
+                if (!$contractorId) {
+                    return ['success' => false, 'message' => 'Contractor profile not found'];
                 }
-            } catch (\Throwable $e) {
-                \Log::warning('ApproveVerification: failed to activate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
-            }
-            // Ensure users.user_type reflects contractor (unless both)
-            if ($user->user_type !== 'both' && $user->user_type !== 'contractor') {
-                DB::table('users')->where('user_id', $userId)->update(['user_type' => 'contractor']);
-            }
-        } elseif ($targetRole === 'property_owner') {
-            $updatePayload = [
-                'verification_status' => 'approved',
-                'verification_date' => now()
-            ];
-            if (Schema::hasColumn('property_owners', 'is_active')) {
-                $updatePayload['is_active'] = 1;
-            } else {
-                \Log::warning("ApproveVerification: 'is_active' column missing on property_owners table for user_id {$userId}");
-            }
 
-            DB::table('property_owners')
-                ->where('user_id', $userId)
-                ->update($updatePayload);
-
-            if ($user->user_type !== 'both' && $user->user_type !== 'property_owner') {
-                DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
-            }
-
-            if ($user->user_type !== 'both' && $user->user_type !== 'property_owner') {
-                DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
-            }
-        } else {
-            // No explicit targetRole: detect which profile rows exist and update them
-            $contractorId = $this->resolveContractorIdByUserId($userId);
-            $hasContractor = !empty($contractorId);
-            $hasOwner = DB::table('property_owners')->where('user_id', $userId)->exists();
-
-            if ($hasContractor) {
-                $updatePayload = [
-                    'verification_status' => 'approved',
-                    'verification_date' => now(),
-                ];
+                $updatePayload = ['verification_status' => 'approved', 'verification_date' => now()];
                 if (Schema::hasColumn('contractors', 'is_active')) {
                     $updatePayload['is_active'] = 1;
                 }
+
                 $affected = DB::table('contractors')
                     ->where('contractor_id', $contractorId)
                     ->update($updatePayload);
-                \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
 
-                // Activate any contractor_users record linking this user to the contractor
-                try {
-                    if ($contractorId && Schema::hasTable('contractor_users')) {
-                        DB::table('contractor_users')
-                            ->where('contractor_id', $contractorId)
-                            ->where('user_id', $userId)
-                            ->update(['is_active' => 1, 'is_deleted' => 0]);
-                    }
-                } catch (\Throwable $e) {
-                    \Log::warning('ApproveVerification (auto): failed to activate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
+                \Log::info('ApproveVerification: contractors update', [
+                    'user_id' => $userId, 'contractor_id' => $contractorId, 'affected_rows' => $affected
+                ]);
+
+                // user_type → 'both' because contractor owners are always property_owners too.
+                // DB enum is ('property_owner','both','owner_staff') — no standalone 'contractor'.
+                if ($user->user_type !== 'both') {
+                    DB::table('users')->where('user_id', $userId)->update(['user_type' => 'both']);
                 }
-            }
 
-            if ($hasOwner) {
-                $ownerPayload = [
-                    'verification_status' => 'approved',
-                    'verification_date' => now()
-                ];
+            } elseif ($targetRole === 'property_owner') {
+                $updatePayload = ['verification_status' => 'approved', 'verification_date' => now()];
                 if (Schema::hasColumn('property_owners', 'is_active')) {
-                    $ownerPayload['is_active'] = 1;
+                    $updatePayload['is_active'] = 1;
                 }
-                DB::table('property_owners')
-                    ->where('user_id', $userId)
-                    ->update($ownerPayload);
+
+                DB::table('property_owners')->where('user_id', $userId)->update($updatePayload);
+
+                // Only set to property_owner if not already 'both'
+                if ($user->user_type !== 'both') {
+                    DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
+                }
+
+            } else {
+                // No explicit targetRole: detect which profiles exist and update both
+                $contractorId = $this->resolveContractorIdByUserId($userId);
+                $hasContractor = !empty($contractorId);
+                $hasOwner = DB::table('property_owners')->where('user_id', $userId)->exists();
+
+                if ($hasContractor) {
+                    $contractorPayload = ['verification_status' => 'approved', 'verification_date' => now()];
+                    if (Schema::hasColumn('contractors', 'is_active')) {
+                        $contractorPayload['is_active'] = 1;
+                    }
+                    DB::table('contractors')->where('contractor_id', $contractorId)->update($contractorPayload);
+                    \Log::info('ApproveVerification (auto): contractors update', [
+                        'user_id' => $userId, 'contractor_id' => $contractorId
+                    ]);
+                }
+
+                if ($hasOwner) {
+                    $ownerPayload = ['verification_status' => 'approved', 'verification_date' => now()];
+                    if (Schema::hasColumn('property_owners', 'is_active')) {
+                        $ownerPayload['is_active'] = 1;
+                    }
+                    DB::table('property_owners')->where('user_id', $userId)->update($ownerPayload);
+                }
+
+                // user_type logic:
+                // - has contractor profile → 'both' (they are owner + contractor)
+                // - owner only → 'property_owner'
+                if ($hasContractor) {
+                    DB::table('users')->where('user_id', $userId)->update(['user_type' => 'both']);
+                } elseif ($hasOwner) {
+                    DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
+                }
             }
 
-            // Update users.user_type to reflect available profiles
-            if ($hasContractor && $hasOwner) {
-                DB::table('users')->where('user_id', $userId)->update(['user_type' => 'both']);
-
-            } elseif ($hasOwner) {
-                DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
-            }
+            return ['success' => true, 'message' => 'User verified successfully'];
         }
-
-        return ['success' => true, 'message' => 'User verified successfully'];
-    }
 
     /**
      * Reject a verification request
@@ -279,17 +238,7 @@ class userVerificationClass
                 'user_id' => $userId,
                 'affected_rows' => $affectedContractors
             ]);
-            // Also deactivate any contractor_users records for this user under the contractor
-            try {
-                if ($contractorId && Schema::hasTable('contractor_users')) {
-                    DB::table('contractor_users')
-                        ->where('contractor_id', $contractorId)
-                        ->where('user_id', $userId)
-                        ->update(['is_active' => 0]);
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('RejectVerification: failed to deactivate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
-            }
+
         }
         // If target is owner, ONLY update property_owners table
         elseif ($targetRole === 'property_owner') {

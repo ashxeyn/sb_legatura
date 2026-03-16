@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storeMilestoneRequest;
 use App\Http\Requests\admin\updateMilestoneRequest;
 use App\Models\admin\milestone;
+use App\Traits\WithAtomicLock;
 use Illuminate\Http\Request;
 use App\Services\AdminActivityLog;
 
 class milestoneController extends Controller
 {
+    use WithAtomicLock;
+
     public function index(Request $request)
     {
         $perPage = (int)$request->input('per_page',15);
@@ -30,26 +33,32 @@ class milestoneController extends Controller
 
     public function store(storeMilestoneRequest $request)
     {
-        $m = milestone::create($request->validated());
-        AdminActivityLog::log('milestone_created', ['milestone_id' => $m->milestone_id ?? $m->id, 'project_id' => $m->project_id]);
-        return response()->json($m,201);
+        return $this->withLock("admin_create_milestone_" . auth()->id(), function () use ($request) {
+            $m = milestone::create($request->validated());
+            AdminActivityLog::log('milestone_created', ['milestone_id' => $m->milestone_id ?? $m->id, 'project_id' => $m->project_id]);
+            return response()->json($m, 201);
+        });
     }
 
     public function update(updateMilestoneRequest $request, $id)
     {
         $m = milestone::find($id);
         if (!$m) return response()->json(['error'=>'Not found'],404);
-        $m->update($request->validated());
-        AdminActivityLog::log('milestone_updated', ['milestone_id' => $id]);
-        return response()->json($m);
+        return $this->withLock("admin_update_milestone_{$id}", function () use ($request, $m, $id) {
+            $m->update($request->validated());
+            AdminActivityLog::log('milestone_updated', ['milestone_id' => $id]);
+            return response()->json($m);
+        });
     }
 
     public function destroy($id)
     {
         $m = milestone::find($id);
         if (!$m) return response()->json(['error'=>'Not found'],404);
-        $m->delete();
-        AdminActivityLog::log('milestone_deleted', ['milestone_id' => $id]);
-        return response()->json(['deleted'=>true]);
+        return $this->withLock("admin_delete_milestone_{$id}", function () use ($m, $id) {
+            $m->delete();
+            AdminActivityLog::log('milestone_deleted', ['milestone_id' => $id]);
+            return response()->json(['deleted'=>true]);
+        });
     }
 }

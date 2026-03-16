@@ -20,9 +20,11 @@ use App\Models\admin\showcaseClass;
 use App\Models\admin\propertyOwnerClass;
 use App\Models\admin\contractorClass;
 use App\Services\AdminActivityLog;
+use App\Traits\WithAtomicLock;
 
 class projectManagementController extends Controller
 {
+    use WithAtomicLock;
     public function listOfProjects(Request $request)
     {
         $search       = $request->query('search');
@@ -65,35 +67,37 @@ class projectManagementController extends Controller
     public function resolve($id, Request $request)
     {
         $notes = $request->input('notes', null);
-        disputeClass::resolveDispute($id, $notes);
-        AdminActivityLog::log('dispute_resolved', ['dispute_id' => $id]);
+        return $this->withLock("admin_resolve_dispute_{$id}", function () use ($id, $notes) {
+            disputeClass::resolveDispute($id, $notes);
+            AdminActivityLog::log('dispute_resolved', ['dispute_id' => $id]);
 
-        try {
-            $row = DB::table('disputes')
-                ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
-                ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
-                ->select(
-                    'reporter.email as reporter_email',
-                    'accused.email as accused_email',
-                    'disputes.title'
-                )
-                ->where('disputes.dispute_id', $id)
-                ->first();
+            try {
+                $row = DB::table('disputes')
+                    ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+                    ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
+                    ->select(
+                        'reporter.email as reporter_email',
+                        'accused.email as accused_email',
+                        'disputes.title'
+                    )
+                    ->where('disputes.dispute_id', $id)
+                    ->first();
 
-            $body = "The dispute \"{$row->title}\" has been marked as resolved by the admin." .
-                    ($notes ? "\n\nNotes: {$notes}" : '');
+                $body = "The dispute \"{$row->title}\" has been marked as resolved by the admin." .
+                        ($notes ? "\n\nNotes: {$notes}" : '');
 
-            if ($row && !empty($row->reporter_email)) {
-                Mail::raw($body, fn($m) => $m->to($row->reporter_email)->subject('Dispute Resolved - Legatura'));
+                if ($row && !empty($row->reporter_email)) {
+                    Mail::raw($body, fn($m) => $m->to($row->reporter_email)->subject('Dispute Resolved - Legatura'));
+                }
+                if ($row && !empty($row->accused_email)) {
+                    Mail::raw($body, fn($m) => $m->to($row->accused_email)->subject('Dispute Resolved - Legatura'));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send dispute resolved email: ' . $e->getMessage());
             }
-            if ($row && !empty($row->accused_email)) {
-                Mail::raw($body, fn($m) => $m->to($row->accused_email)->subject('Dispute Resolved - Legatura'));
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to send dispute resolved email: ' . $e->getMessage());
-        }
 
-        return back()->with('success', 'Dispute resolved.');
+            return back()->with('success', 'Dispute resolved.');
+        }); // end withLock
     }
 
     /**
@@ -211,46 +215,48 @@ class projectManagementController extends Controller
      */
     public function approveForReview($id, Request $request)
     {
-        disputeClass::updateStatus($id, 'under_review', null);
+        return $this->withLock("admin_approve_dispute_{$id}", function () use ($id) {
+            disputeClass::updateStatus($id, 'under_review', null);
 
-        $row = DB::table('disputes')
-            ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
-            ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
-            ->select(
-                'reporter.email as reporter_email',
-                'accused.email as accused_email',
-                'reporter.username as reporter_name',
-                'accused.username as accused_name',
-                'disputes.title'
-            )
-            ->where('disputes.dispute_id', $id)
-            ->first();
+            $row = DB::table('disputes')
+                ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+                ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
+                ->select(
+                    'reporter.email as reporter_email',
+                    'accused.email as accused_email',
+                    'reporter.username as reporter_name',
+                    'accused.username as accused_name',
+                    'disputes.title'
+                )
+                ->where('disputes.dispute_id', $id)
+                ->first();
 
-        try {
-            $details  = disputeClass::getDisputeDetails($id);
-            $mailData = [
-                'title'            => $details['content']['subject']          ?? ($details['dispute']->title         ?? $row->title ?? null),
-                'subject'          => $details['content']['subject']          ?? ($details['dispute']->title         ?? $row->title ?? null),
-                'description'      => $details['content']['dispute_desc']     ?? ($details['dispute']->dispute_desc  ?? null),
-                'dispute_desc'     => $details['content']['dispute_desc']     ?? ($details['dispute']->dispute_desc  ?? null),
-                'requested_action' => $details['content']['requested_action'] ?? ($details['dispute']->reason        ?? null),
-                'reason'           => $details['content']['requested_action'] ?? ($details['dispute']->reason        ?? null),
-                'project_title'    => $details['header']['project_title']     ?? null,
-                'dispute_type'     => $details['header']['dispute_type']      ?? null,
-            ];
+            try {
+                $details  = disputeClass::getDisputeDetails($id);
+                $mailData = [
+                    'title'            => $details['content']['subject']          ?? ($details['dispute']->title         ?? $row->title ?? null),
+                    'subject'          => $details['content']['subject']          ?? ($details['dispute']->title         ?? $row->title ?? null),
+                    'description'      => $details['content']['dispute_desc']     ?? ($details['dispute']->dispute_desc  ?? null),
+                    'dispute_desc'     => $details['content']['dispute_desc']     ?? ($details['dispute']->dispute_desc  ?? null),
+                    'requested_action' => $details['content']['requested_action'] ?? ($details['dispute']->reason        ?? null),
+                    'reason'           => $details['content']['requested_action'] ?? ($details['dispute']->reason        ?? null),
+                    'project_title'    => $details['header']['project_title']     ?? null,
+                    'dispute_type'     => $details['header']['dispute_type']      ?? null,
+                ];
 
-            if ($row && $row->reporter_email) {
-                Mail::to($row->reporter_email)->send(new disputeVerifiedReporterRequest($mailData));
+                if ($row && $row->reporter_email) {
+                    Mail::to($row->reporter_email)->send(new disputeVerifiedReporterRequest($mailData));
+                }
+                if ($row && $row->accused_email) {
+                    Mail::to($row->accused_email)->send(new disputeFiledRespondentRequest($mailData));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send approve emails: ' . $e->getMessage());
             }
-            if ($row && $row->accused_email) {
-                Mail::to($row->accused_email)->send(new disputeFiledRespondentRequest($mailData));
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to send approve emails: ' . $e->getMessage());
-        }
 
-        AdminActivityLog::log('dispute_approved_for_review', ['dispute_id' => $id]);
-        return response()->json(['success' => true]);
+            AdminActivityLog::log('dispute_approved_for_review', ['dispute_id' => $id]);
+            return response()->json(['success' => true]);
+        }); // end withLock
     }
 
     /**
@@ -259,33 +265,34 @@ class projectManagementController extends Controller
     public function rejectDispute($id, Request $request)
     {
         $reason = $request->input('reason', null);
-        disputeClass::updateStatus($id, 'cancelled', $reason);
-
         $penaltyApplied = false;
         if ($request->boolean('apply_penalty')) {
             $penaltyApplied = $this->applyDisputePenalty($id, $request, $reason);
         }
+        return $this->withLock("admin_reject_dispute_{$id}", function () use ($id, $reason, $penaltyApplied) {
+            disputeClass::updateStatus($id, 'cancelled', $reason);
 
-        $row = DB::table('disputes')
-            ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
-            ->select('reporter.email as reporter_email', 'reporter.username as reporter_name', 'disputes.title')
-            ->where('disputes.dispute_id', $id)
-            ->first();
+            $row = DB::table('disputes')
+                ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+                ->select('reporter.email as reporter_email', 'reporter.username as reporter_name', 'disputes.title')
+                ->where('disputes.dispute_id', $id)
+                ->first();
 
-        try {
-            if ($row && $row->reporter_email) {
-                $subject = "Dispute Rejected";
-                $body    = "Your dispute has been rejected by the admin." . ($reason ? "\n\nReason: {$reason}" : "");
-                Mail::raw($body, function ($m) use ($row, $subject) {
-                    $m->to($row->reporter_email)->subject($subject);
-                });
+            try {
+                if ($row && $row->reporter_email) {
+                    $subject = "Dispute Rejected";
+                    $body    = "Your dispute has been rejected by the admin." . ($reason ? "\n\nReason: {$reason}" : "");
+                    Mail::raw($body, function ($m) use ($row, $subject) {
+                        $m->to($row->reporter_email)->subject($subject);
+                    });
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send reject email: ' . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            Log::error('Failed to send reject email: ' . $e->getMessage());
-        }
 
-        AdminActivityLog::log('dispute_rejected', ['dispute_id' => $id, 'reason' => $reason, 'penalty_applied' => $penaltyApplied]);
-        return response()->json(['success' => true, 'penalty_applied' => $penaltyApplied]);
+            AdminActivityLog::log('dispute_rejected', ['dispute_id' => $id, 'reason' => $reason, 'penalty_applied' => $penaltyApplied]);
+            return response()->json(['success' => true, 'penalty_applied' => $penaltyApplied]);
+        }); // end withLock
     }
 
     /**
@@ -300,72 +307,57 @@ class projectManagementController extends Controller
 
         $dispute = DB::table('disputes')->where('dispute_id', $id)->first();
         if (!$dispute) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dispute not found.'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Dispute not found.'], 404);
         }
-
         if (!$dispute->project_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No project linked to this dispute.'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'No project linked to this dispute.'], 422);
         }
 
-        $project = DB::table('projects')->where('project_id', $dispute->project_id)->first();
-        if (!$project) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Linked project not found.'
-            ], 404);
-        }
+        return $this->withLock("admin_halt_project_{$dispute->project_id}", function () use ($id, $payload, $dispute) {
+            $project = DB::table('projects')->where('project_id', $dispute->project_id)->first();
+            if (!$project) {
+                return response()->json(['success' => false, 'message' => 'Linked project not found.'], 404);
+            }
 
-        $projectStatus = strtolower((string) ($project->project_status ?? ''));
-        if (!in_array($projectStatus, ['in_progress', 'bidding_closed', 'open'], true)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Project can only be halted when status is Open, In Progress, or Bidding Closed.'
-            ], 422);
-        }
+            $projectStatus = strtolower((string) ($project->project_status ?? ''));
+            if (!in_array($projectStatus, ['in_progress', 'bidding_closed', 'open'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project can only be halted when status is Open, In Progress, or Bidding Closed.'
+                ], 422);
+            }
 
-        $projectModel = new projectClass();
-        $result = $projectModel->haltProject($dispute->project_id, [
-            'dispute_id' => $id,
-            'halt_reason' => $payload['halt_reason'],
-        ]);
+            $projectModel = new projectClass();
+            $result = $projectModel->haltProject($dispute->project_id, [
+                'dispute_id' => $id,
+                'halt_reason' => $payload['halt_reason'],
+            ]);
 
-        if (empty($result['success'])) {
-            return response()->json([
-                'success' => false,
-                'message' => $result['message'] ?? 'Failed to halt project.'
-            ], 422);
-        }
+            if (empty($result['success'])) {
+                return response()->json(['success' => false, 'message' => $result['message'] ?? 'Failed to halt project.'], 422);
+            }
 
-        // Update dispute to resolved with admin action
-        $disputeUpdate = [
-            'dispute_status' => 'resolved',
-            'admin_response' => $payload['halt_reason'],
-            'resolved_at' => now(),
-        ];
-        if (Schema::hasColumn('disputes', 'admin_action')) {
-            $disputeUpdate['admin_action'] = 'Halted';
-        }
+            $disputeUpdate = [
+                'dispute_status' => 'resolved',
+                'admin_response' => $payload['halt_reason'],
+                'resolved_at' => now(),
+            ];
+            if (Schema::hasColumn('disputes', 'admin_action')) {
+                $disputeUpdate['admin_action'] = 'Halted';
+            }
 
-        DB::table('disputes')
-            ->where('dispute_id', $id)
-            ->update($disputeUpdate);
+            DB::table('disputes')->where('dispute_id', $id)->update($disputeUpdate);
 
-        // Send email notifications
-        $this->sendHaltNotifications($dispute, $project, $payload['halt_reason']);
+            $this->sendHaltNotifications($dispute, $project, $payload['halt_reason']);
 
-        AdminActivityLog::log('dispute_project_halted', [
-            'dispute_id' => $id,
-            'project_id' => $dispute->project_id,
-            'halt_reason' => $payload['halt_reason']
-        ]);
+            AdminActivityLog::log('dispute_project_halted', [
+                'dispute_id' => $id,
+                'project_id' => $dispute->project_id,
+                'halt_reason' => $payload['halt_reason']
+            ]);
 
-        return response()->json(['success' => true]);
+            return response()->json(['success' => true]);
+        }); // end withLock
     }
 
     /**
@@ -426,26 +418,20 @@ class projectManagementController extends Controller
 
         $linked = disputeClass::getLinkedProjectForDispute($id);
         if (!$linked || empty($linked['project'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No linked project found for this dispute.'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'No linked project found for this dispute.'], 404);
         }
-
-        $disputeStatus = strtolower((string) ($linked['dispute_status'] ?? ''));
 
         $project = $linked['project'];
         $projectId = (int) ($project->project_id ?? 0);
         if ($projectId <= 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid linked project.'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Invalid linked project.'], 422);
         }
 
-        $projectStatus = strtolower((string) ($project->project_status ?? ''));
-        $action = $payload['action'];
-        $projectModel = new projectClass();
+        return $this->withLock("admin_dispute_project_action_{$id}", function () use ($id, $payload, $linked, $project, $projectId) {
+            $disputeStatus = strtolower((string) ($linked['dispute_status'] ?? ''));
+            $projectStatus = strtolower((string) ($project->project_status ?? ''));
+            $action = $payload['action'];
+            $projectModel = new projectClass();
 
         if ($action === 'halt_project') {
             if ($disputeStatus !== 'under_review') {
@@ -596,6 +582,7 @@ class projectManagementController extends Controller
             'success' => true,
             'message' => 'Project action applied successfully.'
         ]);
+        }); // end withLock
     }
 
     /**
@@ -666,17 +653,10 @@ class projectManagementController extends Controller
         $requiresWarning = in_array($disputeType, ['payment', 'delay', 'quality', 'others'], true);
 
         if ($requiresWarning && $warningMessage === '') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Warning message is required before approving this dispute.'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Warning message is required before approving this dispute.'], 422);
         }
-
         if ($requiresWarning && strlen($warningMessage) < 10) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Warning message must be at least 10 characters.'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Warning message must be at least 10 characters.'], 422);
         }
 
         $penaltyApplied = false;
@@ -684,93 +664,93 @@ class projectManagementController extends Controller
             $penaltyApplied = $this->applyDisputePenalty($id, $request, 'Dispute resolution penalty: ' . ($notes ?: 'No notes'));
         }
 
-        $row = DB::table('disputes')
-            ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
-            ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
-            ->select(
-                'reporter.email as reporter_email',
-                'accused.email as accused_email',
-                'reporter.username as reporter_name',
-                'accused.username as accused_name',
-                'disputes.title'
-            )
-            ->where('disputes.dispute_id', $id)
-            ->first();
+        return $this->withLock("admin_finalize_dispute_{$id}", function () use ($id, $notes, $warningMessage, $requiresWarning, $penaltyApplied) {
+            $row = DB::table('disputes')
+                ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+                ->leftJoin('users as accused',  'disputes.against_user_id',   '=', 'accused.user_id')
+                ->select(
+                    'reporter.email as reporter_email',
+                    'accused.email as accused_email',
+                    'reporter.username as reporter_name',
+                    'accused.username as accused_name',
+                    'disputes.title'
+                )
+                ->where('disputes.dispute_id', $id)
+                ->first();
 
-        try {
-            DB::beginTransaction();
+            try {
+                DB::beginTransaction();
 
-            if ($requiresWarning) {
-                $accused = DB::table('disputes')
-                    ->leftJoin('users as accused', 'disputes.against_user_id', '=', 'accused.user_id')
-                    ->where('disputes.dispute_id', $id)
-                    ->select('disputes.against_user_id', 'accused.email as accused_email')
-                    ->first();
+                if ($requiresWarning) {
+                    $accused = DB::table('disputes')
+                        ->leftJoin('users as accused', 'disputes.against_user_id', '=', 'accused.user_id')
+                        ->where('disputes.dispute_id', $id)
+                        ->select('disputes.against_user_id', 'accused.email as accused_email')
+                        ->first();
 
-                if (!$accused || empty($accused->against_user_id) || empty($accused->accused_email)) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Unable to send warning. Reported user contact details are incomplete.'
-                    ], 422);
-                }
+                    if (!$accused || empty($accused->against_user_id) || empty($accused->accused_email)) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Unable to send warning. Reported user contact details are incomplete.'
+                        ], 422);
+                    }
 
-                // In-app warning notification
-                DB::table('notifications')->insert([
-                    'user_id' => (int) $accused->against_user_id,
-                    'title' => 'Official Warning from Admin',
-                    'message' => $warningMessage,
-                    'type' => 'Admin Announcement',
-                    'is_read' => 0,
-                    'delivery_method' => 'App',
-                    'priority' => 'high',
-                    'reference_type' => 'dispute',
-                    'reference_id' => $id,
-                    'created_at' => now(),
-                ]);
+                    // In-app warning notification
+                    DB::table('notifications')->insert([
+                        'user_id' => (int) $accused->against_user_id,
+                        'title' => 'Official Warning from Admin',
+                        'message' => $warningMessage,
+                        'type' => 'Admin Announcement',
+                        'is_read' => 0,
+                        'delivery_method' => 'App',
+                        'priority' => 'high',
+                        'reference_type' => 'dispute',
+                        'reference_id' => $id,
+                        'created_at' => now(),
+                    ]);
 
-                // Email warning
-                Mail::raw($warningMessage, function ($m) use ($accused) {
-                    $m->to($accused->accused_email)->subject('Official Warning from Admin');
-                });
-
-                $resolutionNotes = $notes ?: $warningMessage;
-                disputeClass::updateStatus($id, 'resolved', $resolutionNotes);
-
-                if (Schema::hasColumn('disputes', 'admin_action')) {
-                    DB::table('disputes')
-                        ->where('dispute_id', $id)
-                        ->update(['admin_action' => 'Warned']);
-                }
-            } else {
-                disputeClass::updateStatus($id, 'resolved', $notes);
-
-                $subject = "Dispute Resolved";
-                $body = "The dispute has been resolved by admin.\n\nResolution notes:\n" . ($notes ?: "(no notes provided)");
-                if ($row && $row->reporter_email) {
-                    Mail::raw($body, function ($m) use ($row, $subject) {
-                        $m->to($row->reporter_email)->subject($subject);
+                    // Email warning
+                    Mail::raw($warningMessage, function ($m) use ($accused) {
+                        $m->to($accused->accused_email)->subject('Official Warning from Admin');
                     });
+
+                    $resolutionNotes = $notes ?: $warningMessage;
+                    disputeClass::updateStatus($id, 'resolved', $resolutionNotes);
+
+                    if (Schema::hasColumn('disputes', 'admin_action')) {
+                        DB::table('disputes')->where('dispute_id', $id)->update(['admin_action' => 'Warned']);
+                    }
+                } else {
+                    disputeClass::updateStatus($id, 'resolved', $notes);
+
+                    $subject = "Dispute Resolved";
+                    $body = "The dispute has been resolved by admin.\n\nResolution notes:\n" . ($notes ?: "(no notes provided)");
+                    if ($row && $row->reporter_email) {
+                        Mail::raw($body, function ($m) use ($row, $subject) {
+                            $m->to($row->reporter_email)->subject($subject);
+                        });
+                    }
+                    if ($row && $row->accused_email) {
+                        Mail::raw($body, function ($m) use ($row, $subject) {
+                            $m->to($row->accused_email)->subject($subject);
+                        });
+                    }
                 }
-                if ($row && $row->accused_email) {
-                    Mail::raw($body, function ($m) use ($row, $subject) {
-                        $m->to($row->accused_email)->subject($subject);
-                    });
-                }
+
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Failed to finalize dispute: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to send warning/notification. Dispute remains under review.'
+                ], 500);
             }
 
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to finalize dispute: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send warning/notification. Dispute remains under review.'
-            ], 500);
-        }
-
-        AdminActivityLog::log('dispute_finalized', ['dispute_id' => $id, 'penalty_applied' => $penaltyApplied]);
-        return response()->json(['success' => true, 'penalty_applied' => $penaltyApplied]);
+            AdminActivityLog::log('dispute_finalized', ['dispute_id' => $id, 'penalty_applied' => $penaltyApplied]);
+            return response()->json(['success' => true, 'penalty_applied' => $penaltyApplied]);
+        }); // end withLock
     }
 
     /**
@@ -909,6 +889,7 @@ class projectManagementController extends Controller
 
     public function addSubscriptionPlan(addSubRequest $request)
     {
+        return $this->withLock("admin_create_subscription_plan_" . auth()->id(), function () use ($request) {
         try {
             $data = [
                 'name'          => $request->subscription_name,
@@ -950,10 +931,12 @@ class projectManagementController extends Controller
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Failed to create subscription plan: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function updateSubscriptionPlan(editSubRequest $request, $id)
     {
+        return $this->withLock("admin_update_subscription_plan_{$id}", function () use ($request, $id) {
         try {
             $data = [
                 'name'          => $request->edit_subscription_name,
@@ -993,10 +976,12 @@ class projectManagementController extends Controller
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Failed to update subscription plan: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function deleteSubscriptionPlan(Request $request, $id)
     {
+        return $this->withLock("admin_delete_subscription_plan_{$id}", function () use ($request, $id) {
         try {
             $request->validate(['reason' => 'required|string|max:255']);
             // Notify affected subscribers before deleting
@@ -1035,10 +1020,12 @@ class projectManagementController extends Controller
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Failed to delete subscription plan: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function deactivateSubscription(Request $request, $id)
     {
+        return $this->withLock("admin_deactivate_subscription_{$id}", function () use ($request, $id) {
         try {
             $reason = $request->input('reason');
             if (empty($reason)) {
@@ -1051,10 +1038,12 @@ class projectManagementController extends Controller
             Log::error('Error deactivating subscription: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function reactivateSubscription($id)
     {
+        return $this->withLock("admin_reactivate_subscription_{$id}", function () use ($id) {
         try {
             subscriptionClass::reactivate($id);
             AdminActivityLog::log('subscription_reactivated', ['subscription_id' => $id]);
@@ -1063,6 +1052,7 @@ class projectManagementController extends Controller
             Log::error('Error reactivating subscription: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     // =========================================================================
@@ -1183,6 +1173,7 @@ class projectManagementController extends Controller
 
     public function acceptBid(Request $request, $bidId)
     {
+        return $this->withLock("admin_accept_bid_{$bidId}", function () use ($bidId) {
         try {
             $projectModel = new \App\Models\admin\projectClass();
             $result       = $projectModel->acceptBid($bidId);
@@ -1231,6 +1222,7 @@ class projectManagementController extends Controller
             Log::error('Error accepting bid: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to accept bid: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function getRejectBidSummary($bidId)
@@ -1249,6 +1241,7 @@ class projectManagementController extends Controller
 
     public function rejectBid(Request $request, $bidId)
     {
+        return $this->withLock("admin_reject_bid_{$bidId}", function () use ($request, $bidId) {
         try {
             $reason       = $request->input('reason');
             $projectModel = new \App\Models\admin\projectClass();
@@ -1283,10 +1276,12 @@ class projectManagementController extends Controller
             Log::error('Error rejecting bid: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to reject bid: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function changeBidder(Request $request, $projectId)
     {
+        return $this->withLock("admin_change_bidder_{$projectId}", function () use ($request, $projectId) {
         try {
             $bidId = $request->input('bid_id');
             if (!$bidId) {
@@ -1350,6 +1345,7 @@ class projectManagementController extends Controller
                 'message' => 'Failed to change bidder: ' . $e->getMessage()
             ], 500);
         }
+        }); // end withLock
     }
 
     public function getTerminatedDetails($id)
@@ -1396,6 +1392,7 @@ class projectManagementController extends Controller
 
     public function cancelHalt(\App\Http\Requests\admin\cancelHaltedProjectsRequest $request, $id)
     {
+        return $this->withLock("admin_cancel_halt_{$id}", function () use ($request, $id) {
         try {
             $projectModel = new \App\Models\admin\projectClass();
             $success      = $projectModel->cancelHaltedProject($id, $request->remarks);
@@ -1405,10 +1402,12 @@ class projectManagementController extends Controller
             Log::error('Error terminating halted project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to terminate project: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function resumeHalt($id)
     {
+        return $this->withLock("admin_resume_halt_{$id}", function () use ($id) {
         try {
             $projectModel = new \App\Models\admin\projectClass();
             $success      = $projectModel->resumeHaltedProject($id);
@@ -1418,6 +1417,7 @@ class projectManagementController extends Controller
             Log::error('Error resuming halted project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to resume project: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function getEditProject($id)
@@ -1456,6 +1456,7 @@ class projectManagementController extends Controller
 
     public function deleteProject(\App\Http\Requests\admin\deleteProjectRequest $request, $id)
     {
+        return $this->withLock("admin_delete_project_{$id}", function () use ($request, $id) {
         try {
             $reason       = $request->input('reason');
             $projectModel = new projectClass();
@@ -1465,6 +1466,7 @@ class projectManagementController extends Controller
             Log::error('Error deleting project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to delete project: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function getRestoreSummary($id)
@@ -1483,6 +1485,7 @@ class projectManagementController extends Controller
 
     public function restoreProject($id)
     {
+        return $this->withLock("admin_restore_project_{$id}", function () use ($id) {
         try {
             $projectModel = new projectClass();
             $result       = $projectModel->restoreProject($id);
@@ -1491,6 +1494,7 @@ class projectManagementController extends Controller
             Log::error('Error restoring project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to restore project: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function getHaltSummary($id)
@@ -1511,6 +1515,7 @@ class projectManagementController extends Controller
 
     public function haltProject(\App\Http\Requests\admin\haltProjectRequest $request, $id)
     {
+        return $this->withLock("admin_halt_project_{$id}", function () use ($request, $id) {
         try {
             $projectModel = new projectClass();
             $result       = $projectModel->haltProject($id, [
@@ -1523,10 +1528,12 @@ class projectManagementController extends Controller
             Log::error('Error halting project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to halt project: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function resumeProject($id)
     {
+        return $this->withLock("admin_resume_project_{$id}", function () use ($id) {
         try {
             $projectModel = new projectClass();
             $result       = $projectModel->resumeProject($id);
@@ -1535,6 +1542,7 @@ class projectManagementController extends Controller
             Log::error('Error resuming project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to resume project: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function getMilestoneItemForEdit($itemId)
@@ -1553,6 +1561,7 @@ class projectManagementController extends Controller
 
     public function updateMilestoneItem(\App\Http\Requests\admin\editMilestoneRequest $request, $itemId)
     {
+        return $this->withLock("admin_update_milestone_item_{$itemId}", function () use ($request, $itemId) {
         try {
             $adminUser   = Session::get('admin');
             $adminUserId = $adminUser && isset($adminUser->admin_id) ? $adminUser->admin_id : 1;
@@ -1569,10 +1578,12 @@ class projectManagementController extends Controller
             Log::error('Error updating milestone item: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to update milestone item: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     public function updateProject(\App\Http\Requests\admin\editProjectRequest $request, $id)
     {
+        return $this->withLock("admin_update_project_{$id}", function () use ($request, $id) {
         try {
             $projectModel   = new projectClass();
             $currentProject = DB::table('projects')->where('project_id', $id)->first();
@@ -1605,6 +1616,7 @@ class projectManagementController extends Controller
             Log::error('Error updating project: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to update project: ' . $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     // =========================================================================

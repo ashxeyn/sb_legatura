@@ -197,6 +197,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('editUsername').value    = a.username    || '';
     document.getElementById('profileSkeleton').classList.add('hidden');
     document.getElementById('profileDisplay').classList.remove('hidden');
+
+    // Hide Add Members tab for non-super admins
+    const membersTabBtn = document.querySelector('[data-tab="members"]');
+    if (membersTabBtn) membersTabBtn.style.display = a.is_super ? '' : 'none';
+
     renderMyLogs(data.data.logs);
   }
 
@@ -320,7 +325,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('deleteAccountBtn').addEventListener('click', () => {
     document.getElementById('deleteAccountError').classList.add('hidden');
+    const input = document.getElementById('deleteAccountConfirmInput');
+    input.value = '';
+    document.getElementById('confirmDeleteAccountBtn').disabled = true;
     openModal('deleteAccountModal');
+  });
+
+  document.getElementById('deleteAccountConfirmInput').addEventListener('input', function () {
+    document.getElementById('confirmDeleteAccountBtn').disabled = this.value !== 'Confirm Delete';
   });
 
   document.getElementById('confirmDeleteAccountBtn').addEventListener('click', async () => {
@@ -373,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     tbody.innerHTML = members.map(function(m) {
-      var name = esc(((m.first_name || '') + ' ' + (m.last_name || '')).trim()) || '-';
+      var name = esc(((m.first_name || '') + (m.middle_name ? ' ' + m.middle_name : '') + ' ' + (m.last_name || '')).trim()) || '-';
       var statusBadge = m.is_active
         ? '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">&#9679; Active</span>'
         : '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">&#9679; Inactive</span>';
@@ -383,20 +395,69 @@ document.addEventListener('DOMContentLoaded', () => {
         + '<td class="px-4 py-3 text-slate-500 text-xs">'  + esc(m.email) + '</td>'
         + '<td class="px-4 py-3">' + statusBadge + '</td>'
         + '<td class="px-4 py-3 text-xs text-slate-400">' + formatDate(m.created_at) + '</td>'
-        + '<td class="px-4 py-3 text-center"><div class="flex items-center justify-center gap-2">'
-        +   '<button class="view-member-btn text-[11px] font-semibold px-3 py-1.5" data-id="' + esc(m.admin_id) + '">View / Edit</button>'
-        +   '<button class="delete-member-btn" data-id="' + esc(m.admin_id) + '" data-name="' + name + '">Deactivate</button>'
-        + '</div></td>'
+        + '<td class="px-4 py-3 text-center">'
+        +   '<div class="flex items-center justify-center gap-1.5">'
+        +   '<button class="view-member-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-indigo-100 hover:shadow-sm hover:border-indigo-300 hover:-translate-y-0.5 transition-all active:scale-95" data-id="' + esc(m.admin_id) + '" title="View &amp; Edit"><span class="inline-flex items-center gap-0.5"><i class="fi fi-rr-eye text-[11px] leading-none" style="pointer-events:none"></i><i class="fi fi-rr-pencil text-[11px] leading-none" style="pointer-events:none"></i></span></button>'
+        +   (!m.is_deleted
+              ? '<button class="toggle-member-btn ' + (m.is_active ? 'delete-member-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-red-200 bg-red-50 text-red-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-red-100 hover:shadow-sm hover:border-red-300 hover:-translate-y-0.5 transition-all active:scale-95' : 'reactivate-member-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-green-200 bg-green-50 text-green-600 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-green-100 hover:shadow-sm hover:border-green-300 hover:-translate-y-0.5 transition-all active:scale-95') + '" data-id="' + esc(m.admin_id) + '" data-name="' + name + '" data-active="' + (m.is_active ? '1' : '0') + '" title="' + (m.is_active ? 'Deactivate' : 'Reactivate') + '"><i class="' + (m.is_active ? 'fi fi-sr-user-slash' : 'fi fi-sr-user-check') + ' text-[13px] leading-none" style="pointer-events:none"></i></button>'
+              + '<button class="hard-delete-member-btn w-8 h-8 inline-flex items-center justify-center p-1.5 rounded-xl border border-gray-300 bg-gray-50 text-gray-500 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:bg-gray-100 hover:shadow-sm hover:border-gray-400 hover:-translate-y-0.5 transition-all active:scale-95" data-id="' + esc(m.admin_id) + '" data-name="' + name + '" title="Delete"><i class="fi fi-sr-trash text-[13px] leading-none" style="pointer-events:none"></i></button>'
+              : '')
+        +   '</div>'
+        + '</td>'
         + '</tr>';
     }).join('');
     document.querySelectorAll('.view-member-btn').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.id)));
-    document.querySelectorAll('.delete-member-btn').forEach(btn => btn.addEventListener('click', () => deleteMember(btn.dataset.id, btn.dataset.name)));
+    document.querySelectorAll('.toggle-member-btn').forEach(btn => btn.addEventListener('click', () => {
+      if (btn.dataset.active === '1') deleteMember(btn.dataset.id, btn.dataset.name);
+      else reactivateMember(btn.dataset.id, btn.dataset.name);
+    }));
+    document.querySelectorAll('.hard-delete-member-btn').forEach(btn => btn.addEventListener('click', () => hardDeleteMember(btn.dataset.id, btn.dataset.name)));
   }
 
-  document.getElementById('openCreateAdminBtn').addEventListener('click', () => { document.getElementById('createAdminForm').reset(); document.getElementById('createAdminError').classList.add('hidden'); openModal('createAdminModal'); });
+  document.getElementById('openCreateAdminBtn').addEventListener('click', () => {
+    document.getElementById('createAdminForm').reset();
+    document.getElementById('createAdminError').classList.add('hidden');
+    document.querySelectorAll('#createAdminForm .field-error').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('#createAdminForm input').forEach(el => el.classList.remove('border-red-400'));
+    openModal('createAdminModal');
+  });
+
+  function validateCreateAdminForm() {
+    const fields = [
+      { id: 'createFirstName',  check: v => v.trim() !== '' },
+      { id: 'createLastName',   check: v => v.trim() !== '' },
+      { id: 'createEmail',      check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) },
+      { id: 'createUsername',   check: v => v.trim() !== '' },
+      { id: 'createPassword',   check: v => v.length >= 8 },
+    ];
+    let valid = true;
+    fields.forEach(({ id, check }) => {
+      const input = document.getElementById(id);
+      const errEl = document.querySelector(`[data-for="${id}"]`);
+      if (!check(input.value)) {
+        input.classList.add('border-red-400');
+        if (errEl) errEl.classList.remove('hidden');
+        valid = false;
+      } else {
+        input.classList.remove('border-red-400');
+        if (errEl) errEl.classList.add('hidden');
+      }
+    });
+    return valid;
+  }
+
+  // Clear field error on input
+  ['createFirstName','createLastName','createEmail','createUsername','createPassword'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', function () {
+      this.classList.remove('border-red-400');
+      const errEl = document.querySelector(`[data-for="${id}"]`);
+      if (errEl) errEl.classList.add('hidden');
+    });
+  });
 
   document.getElementById('createAdminForm').addEventListener('submit', async e => {
     e.preventDefault();
+    if (!validateCreateAdminForm()) return;
     const errEl = document.getElementById('createAdminError'); const spinner = document.getElementById('createAdminSpinner'); const btn = document.getElementById('createAdminSubmitBtn');
     errEl.classList.add('hidden'); spinner.classList.remove('hidden'); btn.disabled = true;
     const { ok, data, redirect } = await apiFetch('/admin/settings/security/members/create', { method:'POST', body:new FormData(e.target) });
@@ -419,10 +480,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('memberModalName').textContent   = ((a.first_name || '') + ' ' + (a.last_name || '')).trim() || '-';
     document.getElementById('memberModalEmail').textContent  = a.email || '-';
     document.getElementById('memberModalJoined').textContent = a.created_at ? 'Joined ' + formatDate(a.created_at) : '';
-    document.getElementById('memberEditId').value        = a.admin_id;
-    document.getElementById('memberEditFirstName').value = a.first_name  || '';
-    document.getElementById('memberEditLastName').value  = a.last_name   || '';
-    document.getElementById('memberEditEmail').value     = a.email       || '';
+    document.getElementById('memberEditId').value         = a.admin_id;
+    document.getElementById('memberEditFirstName').value  = a.first_name  || '';
+    document.getElementById('memberEditMiddleName').value = a.middle_name || '';
+    document.getElementById('memberEditLastName').value   = a.last_name   || '';
+    document.getElementById('memberEditEmail').value      = a.email       || '';
     document.getElementById('memberEditUsername').value   = a.username    || '';
     const logs = data.data.logs;
     const logsBody = document.getElementById('memberLogsBody');
@@ -443,13 +505,118 @@ document.addEventListener('DOMContentLoaded', () => {
     else { errEl.textContent = data.message || 'Update failed.'; errEl.classList.remove('hidden'); }
   });
 
+  let _deactivateTargetId = null;
+
   async function deleteMember(adminId, name) {
-    if (!confirm('Deactivate "' + name + '"? They will no longer be able to log in.')) return;
-    const { ok, data, redirect } = await apiFetch('/admin/settings/security/members/' + encodeURIComponent(adminId) + '/delete', { method:'POST' });
-    if (redirect) { window.location.href = '/login'; return; }
-    if (ok && data.success) { toast('Admin account deactivated.', 'warn'); loadMembers(); if (teamLogLoaded) loadTeamActivity(); }
-    else toast(data.message || 'Could not deactivate.', 'error');
+    _deactivateTargetId = adminId;
+    document.getElementById('deactivateMemberName').textContent = name;
+    document.getElementById('deactivateMemberError').classList.add('hidden');
+    document.getElementById('deactivateMemberSpinner').classList.add('hidden');
+    document.getElementById('confirmDeactivateMemberBtn').disabled = false;
+    openModal('deactivateMemberModal');
   }
+
+  document.getElementById('confirmDeactivateMemberBtn').addEventListener('click', async () => {
+    const errEl   = document.getElementById('deactivateMemberError');
+    const spinner = document.getElementById('deactivateMemberSpinner');
+    const btn     = document.getElementById('confirmDeactivateMemberBtn');
+    errEl.classList.add('hidden');
+    spinner.classList.remove('hidden');
+    btn.disabled = true;
+
+    const { ok, data, redirect } = await apiFetch('/admin/settings/security/members/' + encodeURIComponent(_deactivateTargetId) + '/delete', { method: 'POST' });
+
+    spinner.classList.add('hidden');
+    btn.disabled = false;
+
+    if (redirect) { window.location.href = '/login'; return; }
+    if (ok && data.success) {
+      closeModal('deactivateMemberModal');
+      toast('Admin account deactivated.', 'warn');
+      loadMembers();
+      if (teamLogLoaded) loadTeamActivity();
+    } else {
+      errEl.textContent = data.message || 'Could not deactivate.';
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  let _reactivateTargetId = null;
+
+  async function reactivateMember(adminId, name) {
+    _reactivateTargetId = adminId;
+    document.getElementById('reactivateMemberName').textContent = name;
+    document.getElementById('reactivateMemberError').classList.add('hidden');
+    document.getElementById('reactivateMemberSpinner').classList.add('hidden');
+    document.getElementById('confirmReactivateMemberBtn').disabled = false;
+    openModal('reactivateMemberModal');
+  }
+
+  document.getElementById('confirmReactivateMemberBtn').addEventListener('click', async () => {
+    const errEl   = document.getElementById('reactivateMemberError');
+    const spinner = document.getElementById('reactivateMemberSpinner');
+    const btn     = document.getElementById('confirmReactivateMemberBtn');
+    errEl.classList.add('hidden');
+    spinner.classList.remove('hidden');
+    btn.disabled = true;
+
+    const { ok, data, redirect } = await apiFetch('/admin/settings/security/members/' + encodeURIComponent(_reactivateTargetId) + '/reactivate', { method: 'POST' });
+
+    spinner.classList.add('hidden');
+    btn.disabled = false;
+
+    if (redirect) { window.location.href = '/login'; return; }
+    if (ok && data.success) {
+      closeModal('reactivateMemberModal');
+      toast('Admin account reactivated.', 'success');
+      loadMembers();
+      if (teamLogLoaded) loadTeamActivity();
+    } else {
+      errEl.textContent = data.message || 'Could not reactivate.';
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  let _hardDeleteTargetId = null;
+
+  function hardDeleteMember(adminId, name) {
+    _hardDeleteTargetId = adminId;
+    document.getElementById('deleteMemberName').textContent = name;
+    document.getElementById('deleteMemberConfirmInput').value = '';
+    document.getElementById('confirmDeleteMemberBtn').disabled = true;
+    document.getElementById('deleteMemberError').classList.add('hidden');
+    document.getElementById('deleteMemberSpinner').classList.add('hidden');
+    openModal('deleteMemberModal');
+  }
+
+  document.getElementById('deleteMemberConfirmInput').addEventListener('input', function () {
+    document.getElementById('confirmDeleteMemberBtn').disabled = this.value !== 'Confirm Delete';
+  });
+
+  document.getElementById('confirmDeleteMemberBtn').addEventListener('click', async () => {
+    const errEl   = document.getElementById('deleteMemberError');
+    const spinner = document.getElementById('deleteMemberSpinner');
+    const btn     = document.getElementById('confirmDeleteMemberBtn');
+    errEl.classList.add('hidden');
+    spinner.classList.remove('hidden');
+    btn.disabled = true;
+
+    const { ok, data, redirect } = await apiFetch('/admin/settings/security/members/' + encodeURIComponent(_hardDeleteTargetId) + '/hard-delete', { method: 'POST' });
+
+    spinner.classList.add('hidden');
+    btn.disabled = false;
+
+    if (redirect) { window.location.href = '/login'; return; }
+    if (ok && data.success) {
+      closeModal('deleteMemberModal');
+      toast('Admin account deleted.', 'warn');
+      loadMembers();
+      if (teamLogLoaded) loadTeamActivity();
+    } else {
+      errEl.textContent = data.message || 'Could not delete account.';
+      errEl.classList.remove('hidden');
+    }
+  });
 
   // =========================================================
   // TAB 3: GLOBAL TEAM ACTIVITY TRACKING

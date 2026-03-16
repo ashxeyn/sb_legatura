@@ -50,6 +50,20 @@ class messageRequest extends FormRequest
                         ->exists();
                     if ($inAdmins) return;
 
+                    // Accept if replying to an existing admin conversation —
+                    // admin convs store the user's own ID on both sides, so receiver_id
+                    // will be the user's own ID which passes the users check above.
+                    // But if the conversation_id is provided and is an admin conversation,
+                    // allow it regardless (the backend storeMessage handles routing).
+                    $convId = $this->input('conversation_id');
+                    if ($convId) {
+                        $isAdminConv = DB::table('conversations')
+                            ->where('conversation_id', $convId)
+                            ->where('is_admin_conversation', 1)
+                            ->exists();
+                        if ($isAdminConv) return;
+                    }
+
                     $fail('The selected recipient does not exist.');
                 }
             ],

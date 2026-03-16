@@ -350,18 +350,7 @@ class contractorClass extends Model
                 throw new \Exception('Contractor not found');
             }
 
-            // Get property owner to update user email if changed
-            $owner = DB::table('property_owners')->where('owner_id', $contractor->owner_id)->first();
-
-            if ($owner && isset($data['company_email'])) {
-                // Update user email
-                DB::table('users')
-                    ->where('user_id', $owner->user_id)
-                    ->update([
-                        'email' => $data['company_email'],
-                        'updated_at' => now()
-                    ]);
-            }
+            // company_email is a business contact field only — it does not update the user login email
 
             // Update Contractor
             $contractorUpdateData = [

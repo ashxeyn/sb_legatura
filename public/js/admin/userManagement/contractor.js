@@ -975,14 +975,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('edit_company_website').value = data.company_website || '';
             document.getElementById('edit_company_social_media').value = data.company_social_media || '';
 
-            const editFirstNameEl = document.getElementById('edit_first_name');
-            if (editFirstNameEl) editFirstNameEl.value = data.first_name || '';
-            const editMiddleNameEl = document.getElementById('edit_middle_name');
-            if (editMiddleNameEl) editMiddleNameEl.value = data.middle_name || '';
-            const editLastNameEl = document.getElementById('edit_last_name');
-            if (editLastNameEl) editLastNameEl.value = data.last_name || '';
             document.getElementById('edit_company_email').value = data.company_email || '';
-            document.getElementById('edit_username').value = data.username || '';
 
             document.getElementById('edit_business_address_street').value = data.business_address_street || '';
             document.getElementById('edit_business_address_postal').value = data.business_address_postal || '';
@@ -1039,29 +1032,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 editProfileIcon.classList.remove('hidden');
             }
 
-            // Populate owner information if exists
-            const editSelectedOwnerIdInput = document.getElementById('edit_selectedOwnerId');
-            const editSelectedOwnerSummary = document.getElementById('edit_selectedOwnerSummary');
-            const editOwnerDisplayName = document.getElementById('edit_ownerDisplayName');
-            const editOwnerDisplayEmail = document.getElementById('edit_ownerDisplayEmail');
-
-            if (data.owner_id && editSelectedOwnerIdInput) {
-                editSelectedOwnerIdInput.value = data.owner_id;
-                
-                if (editSelectedOwnerSummary && editOwnerDisplayName && editOwnerDisplayEmail) {
-                    // Construct owner name from available data
-                    const ownerName = [data.owner_first_name, data.owner_middle_name, data.owner_last_name]
-                        .filter(Boolean)
-                        .join(' ') || 'N/A';
-                    
-                    editOwnerDisplayName.textContent = ownerName;
-                    editOwnerDisplayEmail.textContent = data.owner_email || 'N/A';
-                    editSelectedOwnerSummary.classList.remove('hidden');
-                }
-            } else if (editSelectedOwnerSummary) {
-                editSelectedOwnerSummary.classList.add('hidden');
-                if (editSelectedOwnerIdInput) editSelectedOwnerIdInput.value = '';
-            }
+            // Populate owner information (read-only display)
+            const ownerFullName = [data.owner_first_name, data.owner_middle_name, data.owner_last_name]
+                .filter(Boolean).join(' ') || '—';
+            const ownerFullNameEl = document.getElementById('edit_owner_fullname');
+            const ownerEmailEl = document.getElementById('edit_owner_email');
+            if (ownerFullNameEl) ownerFullNameEl.textContent = ownerFullName;
+            if (ownerEmailEl) ownerEmailEl.textContent = data.owner_email || '—';
 
             const provinceSelect = document.getElementById('edit_contractor_address_province');
             const citySelect = document.getElementById('edit_contractor_address_city');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Traits\WithAtomicLock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,7 @@ use Throwable;
 
 class accountController extends Controller
 {
+    use WithAtomicLock;
     /**
      * Resolve the currently authenticated admin.
      * Tries multiple session keys and falls back to auth()->user() email match.
@@ -159,6 +161,7 @@ class accountController extends Controller
                         'username'    => $admin->username    ?? '',
                         'profile_pic' => $admin->profile_pic ?? null,
                         'created_at'  => $admin->created_at  ?? null,
+                        'is_super'    => (bool) ($admin->is_super ?? false),
                     ],
                     'logs' => $logs,
                 ],
@@ -171,97 +174,85 @@ class accountController extends Controller
     // ── POST /admin/settings/security/update ───────────────────
     public function update(Request $request)
     {
-        try {
-            $this->ensureSchema();
-            $admin = $this->resolveAdmin($request);
-            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
-
-            $request->validate([
-                'email'       => 'required|email|unique:admin_users,email,' . $admin->admin_id . ',admin_id',
-                'username'    => 'required|string|max:50|unique:admin_users,username,' . $admin->admin_id . ',admin_id',
-                'first_name'  => 'required|string|max:100',
-                'middle_name' => 'nullable|string|max:100',
-                'last_name'   => 'required|string|max:100',
-                'avatar'      => 'nullable|image|max:2048',
-            ]);
-
-            $payload = [
-                'email'       => $request->input('email'),
-                'username'    => $request->input('username'),
-                'first_name'  => $request->input('first_name'),
-                'middle_name' => $request->input('middle_name') ?: null,
-                'last_name'   => $request->input('last_name'),
-            ];
-
-            if ($request->hasFile('avatar')) {
-                $file = $request->file('avatar');
-                $path = $file->storeAs('profiles', time() . '_admin_' . $file->getClientOriginalName(), 'public');
-                $payload['profile_pic'] = $path;
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        return $this->withLock("admin_update_profile_{$admin->admin_id}", function () use ($request, $admin) {
+            try {
+                $this->ensureSchema();
+                $request->validate([
+                    'email'       => 'required|email|unique:admin_users,email,' . $admin->admin_id . ',admin_id',
+                    'username'    => 'required|string|max:50|unique:admin_users,username,' . $admin->admin_id . ',admin_id',
+                    'first_name'  => 'required|string|max:100',
+                    'middle_name' => 'nullable|string|max:100',
+                    'last_name'   => 'required|string|max:100',
+                    'avatar'      => 'nullable|image|max:2048',
+                ]);
+                $payload = [
+                    'email'       => $request->input('email'),
+                    'username'    => $request->input('username'),
+                    'first_name'  => $request->input('first_name'),
+                    'middle_name' => $request->input('middle_name') ?: null,
+                    'last_name'   => $request->input('last_name'),
+                ];
+                if ($request->hasFile('avatar')) {
+                    $file = $request->file('avatar');
+                    $path = $file->storeAs('profiles', time() . '_admin_' . $file->getClientOriginalName(), 'public');
+                    $payload['profile_pic'] = $path;
+                }
+                DB::table('admin_users')->where('admin_id', $admin->admin_id)->update($payload);
+                $this->logActivity($admin->admin_id, 'profile_updated', ['email' => $payload['email'], 'username' => $payload['username']]);
+                Session::put('admin', DB::table('admin_users')->where('admin_id', $admin->admin_id)->first());
+                return response()->json(['success' => true, 'message' => 'Profile updated successfully.']);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
+            } catch (Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
-
-            DB::table('admin_users')->where('admin_id', $admin->admin_id)->update($payload);
-            $this->logActivity($admin->admin_id, 'profile_updated', ['email' => $payload['email'], 'username' => $payload['username']]);
-
-            // Refresh session
-            Session::put('admin', DB::table('admin_users')->where('admin_id', $admin->admin_id)->first());
-
-            return response()->json(['success' => true, 'message' => 'Profile updated successfully.']);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
-        } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+        });
     }
 
     // ── POST /admin/settings/security/change-password ──────────
     public function changePassword(Request $request)
     {
-        try {
-            $this->ensureSchema();
-            $admin = $this->resolveAdmin($request);
-            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
-
-            $request->validate([
-                'current_password' => 'required|string',
-                'new_password'     => 'required|string|min:8|confirmed',
-            ]);
-
-            if (!Hash::check($request->current_password, $admin->password_hash)) {
-                return response()->json(['success' => false, 'message' => 'Current password is incorrect.'], 422);
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        return $this->withLock("admin_change_password_{$admin->admin_id}", function () use ($request, $admin) {
+            try {
+                $this->ensureSchema();
+                $request->validate([
+                    'current_password' => 'required|string',
+                    'new_password'     => 'required|string|min:8|confirmed',
+                ]);
+                if (!Hash::check($request->current_password, $admin->password_hash)) {
+                    return response()->json(['success' => false, 'message' => 'Current password is incorrect.'], 422);
+                }
+                DB::table('admin_users')->where('admin_id', $admin->admin_id)->update(['password_hash' => bcrypt($request->new_password)]);
+                $this->logActivity($admin->admin_id, 'password_changed', null);
+                return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
+            } catch (Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
-
-            DB::table('admin_users')
-                ->where('admin_id', $admin->admin_id)
-                ->update(['password_hash' => bcrypt($request->new_password)]);
-
-            $this->logActivity($admin->admin_id, 'password_changed', null);
-
-            return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
-        } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+        });
     }
 
     // ── POST /admin/settings/security/delete ───────────────────
     public function delete(Request $request)
     {
-        try {
-            $admin = $this->resolveAdmin($request);
-            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
-
-            $this->logActivity($admin->admin_id, 'account_deleted', null);
-            DB::table('admin_users')->where('admin_id', $admin->admin_id)->update(['is_active' => 0]);
-            Session::flush();
-            auth()->logout();
-
-            return response()->json(['success' => true]);
-        } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        return $this->withLock("admin_delete_self_{$admin->admin_id}", function () use ($admin) {
+            try {
+                $this->logActivity($admin->admin_id, 'account_deleted', null);
+                DB::table('admin_users')->where('admin_id', $admin->admin_id)->update(['is_active' => 0, 'is_deleted' => 1]);
+                Session::flush();
+                auth()->logout();
+                return response()->json(['success' => true]);
+            } catch (Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+        });
     }
 
     // ── GET /admin/settings/security/debug  (REMOVE IN PRODUCTION) ──
@@ -305,6 +296,7 @@ class accountController extends Controller
             $this->ensureSchema();
             $admin = $this->resolveAdmin($request);
             if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+            if (empty($admin->is_super)) return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
 
             $members = DB::table('admin_users')
                 ->where('admin_id', '!=', $admin->admin_id)
@@ -313,11 +305,13 @@ class accountController extends Controller
                 ->map(fn($m) => [
                     'admin_id'    => $m->admin_id,
                     'first_name'  => $m->first_name  ?? '',
+                    'middle_name' => $m->middle_name ?? '',
                     'last_name'   => $m->last_name   ?? '',
                     'email'       => $m->email        ?? '',
                     'username'    => $m->username     ?? '',
                     'profile_pic' => $m->profile_pic  ?? null,
                     'is_active'   => $m->is_active    ?? 1,
+                    'is_deleted'  => $m->is_deleted   ?? 0,
                     'created_at'  => $m->created_at   ?? null,
                 ]);
 
@@ -370,14 +364,17 @@ class accountController extends Controller
     // ── POST /admin/settings/security/members/create ────────────────────────────
     public function createMember(Request $request)
     {
+        $this->ensureSchema();
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        if (empty($admin->is_super)) return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        return $this->withLock("admin_create_member_{$admin->admin_id}", function () use ($request, $admin) {
         try {
-            $this->ensureSchema();
-            $admin = $this->resolveAdmin($request);
-            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
 
             $request->validate([
                 'first_name' => 'required|string|max:100',
                 'last_name'  => 'required|string|max:100',
+                'middle_name'=> 'nullable|string|max:100',
                 'email'      => 'required|email|unique:admin_users,email',
                 'username'   => 'required|string|max:50|unique:admin_users,username',
                 'password'   => 'required|string|min:8',
@@ -391,6 +388,7 @@ class accountController extends Controller
             DB::table('admin_users')->insert([
                 'admin_id'      => $newId,
                 'first_name'    => $request->input('first_name'),
+                'middle_name'   => $request->input('middle_name') ?: null,
                 'last_name'     => $request->input('last_name'),
                 'email'         => $request->input('email'),
                 'username'      => $request->input('username'),
@@ -425,31 +423,35 @@ class accountController extends Controller
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     // ── POST /admin/settings/security/members/{id}/update ──────────────────────
     public function updateMember(Request $request, $id)
     {
+        $this->ensureSchema();
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        if (empty($admin->is_super)) return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        $member = DB::table('admin_users')->where('admin_id', $id)->first();
+        if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
+        return $this->withLock("admin_update_member_{$id}", function () use ($request, $admin, $id, $member) {
         try {
-            $this->ensureSchema();
-            $admin = $this->resolveAdmin($request);
-            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
-
-            $member = DB::table('admin_users')->where('admin_id', $id)->first();
-            if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
 
             $request->validate([
-                'first_name' => 'required|string|max:100',
-                'last_name'  => 'required|string|max:100',
-                'email'      => 'required|email|unique:admin_users,email,' . $id . ',admin_id',
-                'username'   => 'required|string|max:50|unique:admin_users,username,' . $id . ',admin_id',
+                'first_name'  => 'required|string|max:100',
+                'last_name'   => 'required|string|max:100',
+                'middle_name' => 'nullable|string|max:100',
+                'email'       => 'required|email|unique:admin_users,email,' . $id . ',admin_id',
+                'username'    => 'required|string|max:50|unique:admin_users,username,' . $id . ',admin_id',
             ]);
 
             $payload = [
-                'first_name' => $request->input('first_name'),
-                'last_name'  => $request->input('last_name'),
-                'email'      => $request->input('email'),
-                'username'   => $request->input('username'),
+                'first_name'  => $request->input('first_name'),
+                'middle_name' => $request->input('middle_name') ?: null,
+                'last_name'   => $request->input('last_name'),
+                'email'       => $request->input('email'),
+                'username'    => $request->input('username'),
             ];
 
             // Optionally reset password
@@ -488,22 +490,22 @@ class accountController extends Controller
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+        }); // end withLock
     }
 
     // ── POST /admin/settings/security/members/{id}/delete ──────────────────────
     public function deleteMember(Request $request, $id)
     {
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        if (empty($admin->is_super)) return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($id === $admin->admin_id) {
+            return response()->json(['success' => false, 'message' => 'You cannot delete your own account from this panel.'], 422);
+        }
+        $member = DB::table('admin_users')->where('admin_id', $id)->first();
+        if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
+        return $this->withLock("admin_deactivate_member_{$id}", function () use ($admin, $id, $member) {
         try {
-            $admin = $this->resolveAdmin($request);
-            if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
-
-            if ($id === $admin->admin_id) {
-                return response()->json(['success' => false, 'message' => 'You cannot delete your own account from this panel.'], 422);
-            }
-
-            $member = DB::table('admin_users')->where('admin_id', $id)->first();
-            if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
-
             DB::table('admin_users')->where('admin_id', $id)->update(['is_active' => 0]);
 
             $this->logActivity($admin->admin_id, 'member_deleted', [
@@ -529,6 +531,60 @@ class accountController extends Controller
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+        }); // end withLock
+    }
+
+    // ── POST /admin/settings/security/members/{id}/reactivate ──────────────────
+    public function reactivateMember(Request $request, $id)
+    {
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        if (empty($admin->is_super)) return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        $member = DB::table('admin_users')->where('admin_id', $id)->first();
+        if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
+        return $this->withLock("admin_reactivate_member_{$id}", function () use ($admin, $id, $member) {
+        try {
+            DB::table('admin_users')->where('admin_id', $id)->update(['is_active' => 1]);
+
+            $this->logActivity($admin->admin_id, 'member_updated', [
+                'target_admin_id' => $id,
+                'action'          => 'reactivated',
+                'email'           => $member->email ?? '',
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Admin account reactivated.']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+        }); // end withLock
+    }
+
+    // ── POST /admin/settings/security/members/{id}/hard-delete ─────────────────
+    public function hardDeleteMember(Request $request, $id)
+    {
+        $admin = $this->resolveAdmin($request);
+        if (!$admin) return response()->json(['success' => false, 'message' => 'Not authenticated.'], 401);
+        if (empty($admin->is_super)) return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($id === $admin->admin_id) {
+            return response()->json(['success' => false, 'message' => 'You cannot delete your own account from this panel.'], 422);
+        }
+        $member = DB::table('admin_users')->where('admin_id', $id)->first();
+        if (!$member) return response()->json(['success' => false, 'message' => 'Admin not found.'], 404);
+        return $this->withLock("admin_hard_delete_member_{$id}", function () use ($admin, $id, $member) {
+        try {
+            DB::table('admin_users')->where('admin_id', $id)->update(['is_active' => 0, 'is_deleted' => 1]);
+
+            $this->logActivity($admin->admin_id, 'member_deleted', [
+                'deleted_admin_id' => $id,
+                'email'            => $member->email ?? '',
+                'action'           => 'hard_deleted',
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Admin account deleted.']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+        }); // end withLock
     }
 
     // ── GET /admin/settings/security/team-activity ──────────────────────────────

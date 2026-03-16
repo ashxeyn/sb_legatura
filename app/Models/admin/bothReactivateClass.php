@@ -200,8 +200,7 @@ class bothReactivateClass extends Model
                 ->where('selected_contractor_id', $contractorId)
                 ->where('project_status', 'halt')
                 ->update([
-                    'project_status' => 'in_progress',
-                    'updated_at' => now()
+                    'project_status' => 'in_progress'
                 ]);
 
             return $result;

@@ -1260,12 +1260,36 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><label class="field-label">First Name <span class="text-red-500">*</span></label><input name="first_name" type="text" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
-        <div><label class="field-label">Last Name <span class="text-red-500">*</span></label><input name="last_name" type="text" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
+        <div>
+          <label class="field-label">First Name <span class="text-red-500">*</span></label>
+          <input id="createFirstName" name="first_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+          <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createFirstName">First name is required.</p>
+        </div>
+        <div>
+          <label class="field-label">Last Name <span class="text-red-500">*</span></label>
+          <input id="createLastName" name="last_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+          <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createLastName">Last name is required.</p>
+        </div>
       </div>
-      <div><label class="field-label">Email <span class="text-red-500">*</span></label><input name="email" type="email" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
-      <div><label class="field-label">Username <span class="text-red-500">*</span></label><input name="username" type="text" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
-      <div><label class="field-label">Temporary Password <span class="text-red-500">*</span></label><input name="password" type="password" required minlength="8" placeholder="Min. 8 characters" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
+      <div>
+        <label class="field-label">Middle Name <span class="text-xs text-gray-400 font-normal">(optional)</span></label>
+        <input id="createMiddleName" name="middle_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" placeholder="Optional">
+      </div>
+      <div>
+        <label class="field-label">Email <span class="text-red-500">*</span></label>
+        <input id="createEmail" name="email" type="email" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+        <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createEmail">A valid email is required.</p>
+      </div>
+      <div>
+        <label class="field-label">Username <span class="text-red-500">*</span></label>
+        <input id="createUsername" name="username" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+        <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createUsername">Username is required.</p>
+      </div>
+      <div>
+        <label class="field-label">Temporary Password <span class="text-red-500">*</span></label>
+        <input id="createPassword" name="password" type="password" minlength="8" placeholder="Min. 8 characters" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+        <p class="field-error hidden text-xs text-red-600 mt-1" data-for="createPassword">Password must be at least 8 characters.</p>
+      </div>
       <div id="createAdminError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
 
       <div class="modal-footer-soft -mx-5 mt-1 px-5 py-4 flex justify-end gap-2">
@@ -1318,6 +1342,7 @@
           <div><label class="field-label">First Name <span class="text-red-500">*</span></label><input id="memberEditFirstName" name="first_name" type="text" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
           <div><label class="field-label">Last Name <span class="text-red-500">*</span></label><input id="memberEditLastName" name="last_name" type="text" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
         </div>
+        <div><label class="field-label">Middle Name <span class="text-xs text-gray-400 font-normal">(optional)</span></label><input id="memberEditMiddleName" name="middle_name" type="text" class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" placeholder="Optional"></div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><label class="field-label">Email <span class="text-red-500">*</span></label><input id="memberEditEmail" name="email" type="email" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
           <div><label class="field-label">Username <span class="text-red-500">*</span></label><input id="memberEditUsername" name="username" type="text" required class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm"></div>
@@ -1360,6 +1385,119 @@
 </div>
 
 {{-- MODAL: DELETE ACCOUNT CONFIRMATION --}}
+<div id="deleteMemberModal" class="modal-backdrop">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-red-200 bg-red-600 text-white">
+      <div class="flex items-center gap-2.5">
+        <span class="w-8 h-8 rounded-lg bg-white/20 border border-white/20 inline-flex items-center justify-center">
+          <i class="fi fi-ss-trash text-sm"></i>
+        </span>
+        <div>
+          <h3 class="text-sm font-semibold leading-tight">Delete Admin Account</h3>
+          <p class="text-[11px] text-red-100 mt-0.5">This action cannot be undone.</p>
+        </div>
+      </div>
+      <button class="modal-close-btn w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white/90 text-xl transition" data-modal="deleteMemberModal">&times;</button>
+    </div>
+
+    <div class="px-6 py-5 space-y-4">
+      <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+        <p class="text-xs font-semibold text-red-700 uppercase tracking-wide">Critical Warning</p>
+        <p class="text-sm text-red-800 mt-1">You are about to permanently delete <span id="deleteMemberName" class="font-semibold"></span>. This will remove their access and mark the account as deleted.</p>
+      </div>
+      <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+        <p class="text-xs text-gray-600">Once deleted, the deactivate and delete buttons will no longer appear for this account.</p>
+      </div>
+      <div class="space-y-1">
+        <label for="deleteMemberConfirmInput" class="text-xs font-semibold text-gray-700">
+          Type <span class="font-bold text-red-600">Confirm Delete</span> to proceed
+        </label>
+        <input type="text" id="deleteMemberConfirmInput" placeholder="Confirm Delete"
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition" />
+      </div>
+      <div id="deleteMemberError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-white">
+      <button type="button" class="modal-close-btn px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition" data-modal="deleteMemberModal">Cancel</button>
+      <button type="button" id="confirmDeleteMemberBtn" disabled
+        class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+        <span>Delete Account</span>
+        <svg id="deleteMemberSpinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="reactivateMemberModal" class="modal-backdrop">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-green-200 bg-green-600 text-white">
+      <div class="flex items-center gap-2.5">
+        <span class="w-8 h-8 rounded-lg bg-white/20 border border-white/20 inline-flex items-center justify-center">
+          <i class="fi fi-ss-user-check text-sm"></i>
+        </span>
+        <div>
+          <h3 class="text-sm font-semibold leading-tight">Reactivate Admin Account</h3>
+          <p class="text-[11px] text-green-100 mt-0.5">The admin will regain access immediately.</p>
+        </div>
+      </div>
+      <button class="modal-close-btn w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white/90 text-xl transition" data-modal="reactivateMemberModal">&times;</button>
+    </div>
+
+    <div class="px-6 py-5 space-y-4">
+      <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+        <p class="text-xs font-semibold text-green-700 uppercase tracking-wide">Confirm Reactivation</p>
+        <p class="text-sm text-green-800 mt-1">You are about to reactivate <span id="reactivateMemberName" class="font-semibold"></span>. They will be able to log in again.</p>
+      </div>
+      <div id="reactivateMemberError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-white">
+      <button type="button" class="modal-close-btn px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition" data-modal="reactivateMemberModal">Cancel</button>
+      <button type="button" id="confirmReactivateMemberBtn" class="px-4 py-2 text-sm rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold transition inline-flex items-center gap-2">
+        <span>Reactivate</span>
+        <svg id="reactivateMemberSpinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="deactivateMemberModal" class="modal-backdrop">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-red-200 bg-red-600 text-white">
+      <div class="flex items-center gap-2.5">
+        <span class="w-8 h-8 rounded-lg bg-white/20 border border-white/20 inline-flex items-center justify-center">
+          <i class="fi fi-ss-user-slash text-sm"></i>
+        </span>
+        <div>
+          <h3 class="text-sm font-semibold leading-tight">Deactivate Admin Account</h3>
+          <p class="text-[11px] text-red-100 mt-0.5">The admin will lose access immediately.</p>
+        </div>
+      </div>
+      <button class="modal-close-btn w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white/90 text-xl transition" data-modal="deactivateMemberModal">&times;</button>
+    </div>
+
+    <div class="px-6 py-5 space-y-4">
+      <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+        <p class="text-xs font-semibold text-red-700 uppercase tracking-wide">Confirm Deactivation</p>
+        <p class="text-sm text-red-800 mt-1">You are about to deactivate <span id="deactivateMemberName" class="font-semibold"></span>. They will no longer be able to log in.</p>
+      </div>
+      <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+        <p class="text-xs text-gray-600">This can be reversed by re-activating the account later.</p>
+      </div>
+      <div id="deactivateMemberError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-white">
+      <button type="button" class="modal-close-btn px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition" data-modal="deactivateMemberModal">Cancel</button>
+      <button type="button" id="confirmDeactivateMemberBtn" class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition inline-flex items-center gap-2">
+        <span>Deactivate</span>
+        <svg id="deactivateMemberSpinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="deleteAccountModal" class="modal-backdrop">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
     <div class="flex items-center justify-between px-6 py-4 border-b border-red-200 bg-gradient-to-r from-red-600 to-rose-600 text-white">
@@ -1385,12 +1523,21 @@
         <p class="text-xs text-gray-600">If you continue, you will be signed out immediately after completion.</p>
       </div>
 
+      <div class="space-y-1">
+        <label for="deleteAccountConfirmInput" class="text-xs font-semibold text-gray-700">
+          Type <span class="font-bold text-red-600">Confirm Delete</span> to proceed
+        </label>
+        <input type="text" id="deleteAccountConfirmInput" placeholder="Confirm Delete"
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition" />
+      </div>
+
       <div id="deleteAccountError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
     </div>
 
     <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-white">
       <button type="button" class="modal-close-btn px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition" data-modal="deleteAccountModal">Cancel</button>
-      <button type="button" id="confirmDeleteAccountBtn" class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition inline-flex items-center gap-2">
+      <button type="button" id="confirmDeleteAccountBtn" disabled
+        class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
         <span>Delete Account</span>
         <svg id="deleteAccountSpinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
       </button>

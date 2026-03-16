@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class messageController extends Controller
 {
+    use \App\Traits\WithAtomicLock;
     // Get authenticated user ID from Bearer token, session, or X-User-Id header
     private function getAuthUserId(): ?int
     {
@@ -108,6 +109,15 @@ class messageController extends Controller
 
             if (!$conversation) {
                 return response()->json(['success' => false, 'message' => 'Conversation not found'], 404);
+            }
+
+            // Admin session: always allowed to mark admin conversations as read
+            $sessionUser = session('user');
+            $isAdminSession = $sessionUser && isset($sessionUser->admin_id);
+
+            if ($isAdminSession && $conversation->is_admin_conversation) {
+                messageClass::markAsReadByAdmin($conversationId);
+                return response()->json(['success' => true]);
             }
 
             $isParticipant = $conversation->sender_id == $userId || $conversation->receiver_id == $userId;
@@ -268,8 +278,10 @@ class messageController extends Controller
 
             $messages = messageClass::getConversationHistory($conversationId, null, $userId);
 
-            // Mark as read: direct participant OR contractor owner
-            if ($isParticipantInConv || $isContractorOwner) {
+            // Mark as read: admin session marks user messages as read; regular users mark received messages
+            if ($isAdminUser && $conversation->is_admin_conversation) {
+                messageClass::markAsReadByAdmin($conversationId);
+            } elseif ($isParticipantInConv || $isContractorOwner) {
                 messageClass::markAsRead($conversationId, $userId);
             }
 
@@ -301,17 +313,21 @@ class messageController extends Controller
     // Store new message, validate content, broadcast via Pusher
     public function store(messageRequest $request): JsonResponse
     {
-        try {
-            $userId = $this->getAuthUserId();
+        $userId = $this->getAuthUserId();
 
-            if (!$userId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not authenticated'
-                ], 401);
-            }
+        if (!$userId) {
+            return response()->json(['success' => false, 'message' => 'User not authenticated'], 401);
+        }
 
-            $validated = $request->validated();
+        $validated = $request->validated();
+
+        // Lock key scoped to sender + conversation (or receiver for new convos) — prevents double-send
+        $convKey = !empty($validated['conversation_id'])
+            ? $validated['conversation_id']
+            : 'new_' . ($validated['receiver_id'] ?? 'unknown');
+
+        return $this->withLock("msg_send_{$userId}_{$convKey}", function () use ($request, $validated, $userId) {
+            try {
 
             // SECURITY: Validate message content BEFORE storing
             $validation = messageClass::validateMessageContent($validated['content'] ?? '');
@@ -495,12 +511,13 @@ class messageController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send message',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to send message',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        }, 5); // end withLock — 5s TTL prevents double-send
     }
 
     // Get dashboard statistics for admin analytics cards

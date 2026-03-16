@@ -101,7 +101,6 @@ class reportManagementClass
         $mappedFilters = [
             'status' => $filters['status'] ?? 'all',
             'source' => 'all',
-            'search' => $filters['search'] ?? null,
             'date_from' => $filters['date_from'] ?? null,
             'date_to' => $filters['date_to'] ?? null,
         ];
@@ -128,6 +127,17 @@ class reportManagementClass
                 'created_at' => $row->created_at,
             ];
         });
+
+        // Apply search after mapping so reporter, target, and reason are all resolved
+        if (!empty($filters['search'])) {
+            $s = strtolower((string) $filters['search']);
+            $rows = $rows->filter(function ($row) use ($s) {
+                return str_contains(strtolower((string) ($row->reporter ?? '')), $s)
+                    || str_contains(strtolower((string) ($row->target ?? '')), $s)
+                    || str_contains(strtolower((string) ($row->reason ?? '')), $s)
+                    || str_contains(strtolower((string) ($row->case_id ?? '')), $s);
+            })->values();
+        }
 
         if (!empty($filters['case_type']) && $filters['case_type'] !== 'all') {
             $rows = $rows->where('case_type', strtolower((string) $filters['case_type']));

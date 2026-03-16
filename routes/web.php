@@ -107,6 +107,12 @@ Route::prefix('admin/settings/security')
         Route::post('/members/{id}/delete', [\App\Http\Controllers\Admin\accountController::class, 'deleteMember'])
             ->name('admin.settings.security.members.delete');
 
+        Route::post('/members/{id}/reactivate', [\App\Http\Controllers\Admin\accountController::class, 'reactivateMember'])
+            ->name('admin.settings.security.members.reactivate');
+
+        Route::post('/members/{id}/hard-delete', [\App\Http\Controllers\Admin\accountController::class, 'hardDeleteMember'])
+            ->name('admin.settings.security.members.hardDelete');
+
         Route::get('/team-activity', [\App\Http\Controllers\Admin\accountController::class, 'teamActivity'])
             ->name('admin.settings.security.teamActivity');
 
@@ -306,6 +312,7 @@ Route::prefix('owner/messages')->group(function () {
     Route::get('/api/search', [\App\Http\Controllers\message\messageController::class, 'search'])->name('owner.messages.search');
     Route::get('/api/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show'])->name('owner.messages.show');
     Route::post('/api', [\App\Http\Controllers\message\messageController::class, 'store'])->name('owner.messages.store');
+    Route::post('/api/{conversationId}/read', [\App\Http\Controllers\message\messageController::class, 'markRead'])->name('owner.messages.read');
     Route::post('/api/report', [\App\Http\Controllers\message\messageController::class, 'report'])->name('owner.messages.report');
 });
 
@@ -343,6 +350,7 @@ Route::prefix('contractor/messages')->group(function () {
     Route::get('/api/search', [\App\Http\Controllers\message\messageController::class, 'search'])->name('contractor.messages.search');
     Route::get('/api/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show'])->name('contractor.messages.show');
     Route::post('/api', [\App\Http\Controllers\message\messageController::class, 'store'])->name('contractor.messages.store');
+    Route::post('/api/{conversationId}/read', [\App\Http\Controllers\message\messageController::class, 'markRead'])->name('contractor.messages.read');
     Route::post('/api/report', [\App\Http\Controllers\message\messageController::class, 'report'])->name('contractor.messages.report');
 });
 
@@ -729,6 +737,7 @@ Route::prefix('admin/messages')->group(function () {
     Route::post('/', [\App\Http\Controllers\message\messageController::class, 'store'])->name('admin.messages.store');
     Route::post('/typing', [\App\Http\Controllers\message\messageController::class, 'typing'])->name('admin.messages.typing');
     Route::post('/report', [\App\Http\Controllers\message\messageController::class, 'report'])->name('admin.messages.report');
+    Route::post('/{conversationId}/read', [\App\Http\Controllers\message\messageController::class, 'markRead'])->name('admin.messages.read');
     Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class, 'suspend'])->name('admin.messages.suspend');
     Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class, 'restore'])->name('admin.messages.restore');
     Route::post('/conversation/{conversationId}/flag', [\App\Http\Controllers\message\messageController::class, 'flagConversation'])->name('admin.messages.conversation.flag');

@@ -593,82 +593,75 @@
               <div class="h-0.5 flex-1 rounded-full bg-gradient-to-r from-orange-400 via-orange-200 to-orange-50"></div>
             </div>
 
-            <div class="mb-2">
-              <label class="block text-xs font-medium text-gray-700 mb-2">Select Existing Verified Property Owner <span
-                  class="text-gray-400">(optional)</span></label>
-              <input type="hidden" name="owner_id" id="edit_selectedOwnerId">
-              <div class="relative">
-                <input type="text" id="edit_ownerSearchInput" placeholder="Search by owner name or email"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
-                  data-field="edit_owner_id">
-                <div id="edit_ownerSearchResults"
-                  class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 hidden max-h-48 overflow-y-auto">
-                </div>
-              </div>
-              <p class="add-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
-              <div id="edit_selectedOwnerSummary" class="mt-3 hidden bg-green-50 border border-green-200 rounded-lg p-3">
-                <div class="flex items-center justify-between gap-2">
-                  <div>
-                    <p class="text-xs font-medium text-gray-800"><span id="edit_ownerDisplayName"></span></p>
-                    <p class="text-[11px] text-gray-600"><span id="edit_ownerDisplayEmail"></span></p>
-                  </div>
-                  <button type="button" id="edit_clearOwnerBtn"
-                    class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition">
-                    <i class="fi fi-rr-cross"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">First Name</label>
-                <input type="text" id="edit_first_name" name="first_name" placeholder="Enter first name"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+                <p id="edit_owner_fullname" class="text-xs font-medium text-gray-800 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">—</p>
               </div>
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Middle Name <span
-                    class="text-gray-400">(optional)</span></label>
-                <input type="text" id="edit_middle_name" name="middle_name" placeholder="Enter middle name"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
-                <input type="text" id="edit_last_name" name="last_name" placeholder="Enter last name"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                <p id="edit_owner_email" class="text-xs text-gray-700 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">—</p>
               </div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div class="space-y-3">
-              <div>
-                <h3 class="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                  <i class="fi fi-rr-user-gear text-orange-500 text-xs"></i>
-                  Account Setup
-                </h3>
-                <div class="space-y-2">
-                  <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Username</label>
-                    <input type="text" id="edit_username" name="username" placeholder="Enter username"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg bg-gray-50 text-gray-500 focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
-                      readonly>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">New Password <span
-                        class="text-gray-400">(Optional)</span></label>
-                    <input type="password" id="edit_password" name="password" placeholder="Enter new password"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-                    <p class="text-[10px] text-gray-500 mt-1">Leave blank if you do not want to change the password.</p>
-                  </div>
-                </div>
-              </div>
+          <!-- Company Information Section -->
+          <div class="mb-3">
+            <div class="flex items-center gap-2.5 mb-2.5">
+              <h3 class="text-xs font-semibold text-orange-700 flex items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded-full bg-orange-50 border border-orange-200 shadow-sm">
+                <i class="fi fi-rr-building text-orange-500 text-xs"></i>
+                Company Information
+              </h3>
+              <div class="h-0.5 flex-1 rounded-full bg-gradient-to-r from-orange-400 via-orange-200 to-orange-50"></div>
+            </div>
 
+            <!-- Company Name / Date / Type / Email -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
               <div>
-                <h3 class="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Company Name</label>
+                <input type="text" id="edit_company_name" name="company_name" placeholder="Enter company name"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                  data-field="company_name">
+                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Date of Incorporation</label>
+                <input type="date" id="edit_company_start_date" name="company_start_date" max="{{ date('Y-m-d', strtotime('-1 day')) }}"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                  data-field="company_start_date">
+                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Contractor Type</label>
+                <select name="contractor_type_id" id="edit_contractorTypeSelect"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                  data-field="contractor_type_id">
+                  <option value="">Select Type</option>
+                  @foreach($contractorTypes as $type)
+                    <option value="{{ $type->type_id }}">{{ $type->type_name }}</option>
+                  @endforeach
+                </select>
+                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+                <input type="text" name="contractor_type_other_text" id="edit_contractorTypeOtherInput"
+                  placeholder="Please specify type"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition mt-1.5 hidden">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Company Email</label>
+                <input type="email" id="edit_company_email" name="company_email" placeholder="Enter email address"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                  data-field="company_email">
+                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+              </div>
+            </div>
+
+            <!-- Business Address (left) + Legal Documents (right) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+              <div>
+                <h4 class="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
                   <i class="fi fi-rr-map-marker text-orange-500 text-xs"></i>
                   Business Address
-                </h3>
+                </h4>
                 <div class="space-y-2">
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Province</label>
@@ -685,16 +678,14 @@
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">City/Municipality</label>
                     <select id="edit_contractor_address_city" name="business_address_city"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
-                      disabled>
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition" disabled>
                       <option value="">Select City/Municipality</option>
                     </select>
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Barangay</label>
                     <select id="edit_contractor_address_barangay" name="business_address_barangay"
-                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
-                      disabled>
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition" disabled>
                       <option value="">Select Barangay</option>
                     </select>
                   </div>
@@ -712,95 +703,104 @@
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div>
-              <h3 class="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                <i class="fi fi-rr-file-invoice text-orange-500 text-xs"></i>
-                Legal Documents
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Number <span
-                    class="text-red-500">*</span></label>
-                <input type="text" id="edit_picab_number" name="picab_number" placeholder="Enter PCAB number"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
-                  data-field="picab_number">
-                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Category <span
-                    class="text-red-500">*</span></label>
-                <select id="edit_picab_category" name="picab_category"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
-                  data-field="picab_category">
-                  <option value="">Select Category</option>
-                  @foreach($picabCategories as $category)
-                    <option value="{{ $category }}">{{ $category }}</option>
-                  @endforeach
-                </select>
-                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Expiration Date <span
-                    class="text-red-500">*</span></label>
-                <input type="date" id="edit_picab_expiration_date" name="picab_expiration_date"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit Number <span
-                    class="text-red-500">*</span></label>
-                <input type="text" id="edit_business_permit_number" name="business_permit_number"
-                  placeholder="Enter permit number"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit City <span
-                    class="text-red-500">*</span></label>
-                <select id="edit_business_permit_city" name="business_permit_city"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-                  <option value="">Select City</option>
-                  @foreach($allCities as $city)
-                    <option value="{{ $city['name'] }}">{{ $city['name'] }}</option>
-                  @endforeach
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit Expiration <span
-                    class="text-red-500">*</span></label>
-                <input type="date" id="edit_business_permit_expiration" name="business_permit_expiration"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">TIN Business Registration Number <span
-                    class="text-red-500">*</span></label>
-                <input type="text" id="edit_tin_business_reg_number" name="tin_business_reg_number"
-                  placeholder="Enter TIN/Business Reg. number"
-                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
-              </div>
-              <div class="md:col-span-2">
-                <label class="block text-xs font-medium text-gray-700 mb-1">DTI / SEC Registration <span
-                    class="text-gray-400">(Optional)</span></label>
-                <div id="editDtiDropzone"
-                  class="flex items-center justify-center w-full min-h-[96px] rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-600 hover:bg-orange-50 hover:border-orange-300 transition-all relative cursor-pointer p-3">
-                  <input id="editDtiUpload" name="dti_sec_registration_photo" type="file"
-                    accept="image/*,application/pdf" class="hidden">
-                  <div class="text-center pointer-events-none">
-                    <i class="fi fi-rr-upload text-xl text-gray-400"></i>
-                    <div class="text-xs font-medium mt-1">Upload image or file</div>
-                    <div id="editDtiFileName" class="text-xs text-orange-500 mt-1"></div>
+                <h4 class="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                  <i class="fi fi-rr-file-invoice text-orange-500 text-xs"></i>
+                  Legal Documents
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Number <span class="text-red-500">*</span></label>
+                    <input type="text" id="edit_picab_number" name="picab_number" placeholder="Enter PCAB number"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                      data-field="picab_number">
+                    <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Category <span class="text-red-500">*</span></label>
+                    <select id="edit_picab_category" name="picab_category"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                      data-field="picab_category">
+                      <option value="">Select Category</option>
+                      @foreach($picabCategories as $category)
+                        <option value="{{ $category }}">{{ $category }}</option>
+                      @endforeach
+                    </select>
+                    <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Expiration Date <span class="text-red-500">*</span></label>
+                    <input type="date" id="edit_picab_expiration_date" name="picab_expiration_date"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit Number <span class="text-red-500">*</span></label>
+                    <input type="text" id="edit_business_permit_number" name="business_permit_number"
+                      placeholder="Enter permit number"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit City <span class="text-red-500">*</span></label>
+                    <select id="edit_business_permit_city" name="business_permit_city"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                      <option value="">Select City</option>
+                      @foreach($allCities as $city)
+                        <option value="{{ $city['name'] }}">{{ $city['name'] }}</option>
+                      @endforeach
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit Expiration <span class="text-red-500">*</span></label>
+                    <input type="date" id="edit_business_permit_expiration" name="business_permit_expiration"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">TIN Business Registration Number <span class="text-red-500">*</span></label>
+                    <input type="text" id="edit_tin_business_reg_number" name="tin_business_reg_number"
+                      placeholder="Enter TIN/Business Reg. number"
+                      class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">DTI / SEC Registration <span class="text-gray-400">(Optional)</span></label>
+                    <div id="editDtiDropzone"
+                      class="flex items-center justify-center w-full min-h-[96px] rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-600 hover:bg-orange-50 hover:border-orange-300 transition-all relative cursor-pointer p-3">
+                      <input id="editDtiUpload" name="dti_sec_registration_photo" type="file"
+                        accept="image/*,application/pdf" class="hidden">
+                      <div class="text-center pointer-events-none">
+                        <i class="fi fi-rr-upload text-xl text-gray-400"></i>
+                        <div class="text-xs font-medium mt-1">Upload image or file</div>
+                        <div id="editDtiFileName" class="text-xs text-orange-500 mt-1"></div>
+                      </div>
+                    </div>
+                    <div id="editCurrentDtiFile" class="mt-1.5 text-[11px] text-gray-500 hidden">
+                      Current: <a href="#" class="text-orange-600 hover:underline font-medium open-doc-btn" data-doc-src="">View File</a>
+                    </div>
                   </div>
                 </div>
-                <div id="editCurrentDtiFile" class="mt-1.5 text-[11px] text-gray-500 hidden">
-                  Current: <a href="#" class="text-orange-600 hover:underline font-medium open-doc-btn" data-doc-src="">View File</a>
-                </div>
+              </div>
+            </div>
+
+            <!-- Services / Website / Social -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Services Offered</label>
+                <input type="text" id="edit_services_offered" name="services_offered"
+                  placeholder="e.g. Plumbing, Electrical, Roofing"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Company Website <span class="text-gray-400">(optional)</span></label>
+                <input type="url" id="edit_company_website" name="company_website" placeholder="https://"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Social Media <span class="text-gray-400">(optional)</span></label>
+                <input type="url" id="edit_company_social_media" name="company_social_media" placeholder="https://"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
               </div>
             </div>
           </div>
-          </div>
-
-          <!-- Company Information Section -->
-          <div class="mb-3">
+          <!-- <div class="mb-3">
             <div class="flex items-center gap-2.5 mb-2.5">
               <h3 class="text-xs font-semibold text-orange-700 flex items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded-full bg-orange-50 border border-orange-200 shadow-sm">
                 <i class="fi fi-rr-building text-orange-500 text-xs"></i>
@@ -864,9 +864,142 @@
                   class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
               </div>
             </div>
+          </div> -->
+
+          <!-- Business Address Section -->
+          <!-- <div class="mb-3">
+            <div class="flex items-center gap-2.5 mb-2.5">
+              <h3 class="text-xs font-semibold text-orange-700 flex items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded-full bg-orange-50 border border-orange-200 shadow-sm">
+                <i class="fi fi-rr-map-marker text-orange-500 text-xs"></i>
+                Business Address
+              </h3>
+              <div class="h-0.5 flex-1 rounded-full bg-gradient-to-r from-orange-400 via-orange-200 to-orange-50"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Province</label>
+                <select id="edit_contractor_address_province" name="business_address_province"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  <option value="">Select Province</option>
+                  @foreach($provinces as $province)
+                    <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">
+                      {{ $province['name'] }}
+                    </option>
+                  @endforeach
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">City/Municipality</label>
+                <select id="edit_contractor_address_city" name="business_address_city"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                  disabled>
+                  <option value="">Select City/Municipality</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Barangay</label>
+                <select id="edit_contractor_address_barangay" name="business_address_barangay"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition"
+                  disabled>
+                  <option value="">Select Barangay</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Street Address / Unit No.</label>
+                <input type="text" id="edit_business_address_street" name="business_address_street"
+                  placeholder="Enter street address"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Zip Code</label>
+                <input type="text" id="edit_business_address_postal" name="business_address_postal"
+                  placeholder="Enter zip code"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+            </div>
+          </div> -->
+
+          <!-- Legal Documents Section -->
+          <!-- <div class="mb-3">
+            <div class="flex items-center gap-2.5 mb-2.5">
+              <h3 class="text-xs font-semibold text-orange-700 flex items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded-full bg-orange-50 border border-orange-200 shadow-sm">
+                <i class="fi fi-rr-file-invoice text-orange-500 text-xs"></i>
+                Legal Documents
+              </h3>
+              <div class="h-0.5 flex-1 rounded-full bg-gradient-to-r from-orange-400 via-orange-200 to-orange-50"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Number <span class="text-red-500">*</span></label>
+                <input type="text" id="edit_picab_number" name="picab_number" placeholder="Enter PCAB number"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                  data-field="picab_number">
+                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Category <span class="text-red-500">*</span></label>
+                <select id="edit_picab_category" name="picab_category"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition edit-contractor-field"
+                  data-field="picab_category">
+                  <option value="">Select Category</option>
+                  @foreach($picabCategories as $category)
+                    <option value="{{ $category }}">{{ $category }}</option>
+                  @endforeach
+                </select>
+                <p class="edit-contractor-error text-red-500 text-[11px] mt-1 hidden"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">PCAB Expiration Date <span class="text-red-500">*</span></label>
+                <input type="date" id="edit_picab_expiration_date" name="picab_expiration_date"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit Number <span class="text-red-500">*</span></label>
+                <input type="text" id="edit_business_permit_number" name="business_permit_number"
+                  placeholder="Enter permit number"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit City <span class="text-red-500">*</span></label>
+                <select id="edit_business_permit_city" name="business_permit_city"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+                  <option value="">Select City</option>
+                  @foreach($allCities as $city)
+                    <option value="{{ $city['name'] }}">{{ $city['name'] }}</option>
+                  @endforeach
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Business Permit Expiration <span class="text-red-500">*</span></label>
+                <input type="date" id="edit_business_permit_expiration" name="business_permit_expiration"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">TIN Business Registration Number <span class="text-red-500">*</span></label>
+                <input type="text" id="edit_tin_business_reg_number" name="tin_business_reg_number"
+                  placeholder="Enter TIN/Business Reg. number"
+                  class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none transition">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-700 mb-1">DTI / SEC Registration <span class="text-gray-400">(Optional)</span></label>
+                <div id="editDtiDropzone"
+                  class="flex items-center justify-center w-full min-h-[96px] rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-600 hover:bg-orange-50 hover:border-orange-300 transition-all relative cursor-pointer p-3">
+                  <input id="editDtiUpload" name="dti_sec_registration_photo" type="file"
+                    accept="image/*,application/pdf" class="hidden">
+                  <div class="text-center pointer-events-none">
+                    <i class="fi fi-rr-upload text-xl text-gray-400"></i>
+                    <div class="text-xs font-medium mt-1">Upload image or file</div>
+                    <div id="editDtiFileName" class="text-xs text-orange-500 mt-1"></div>
+                  </div>
+                </div>
+                <div id="editCurrentDtiFile" class="mt-1.5 text-[11px] text-gray-500 hidden">
+                  Current: <a href="#" class="text-orange-600 hover:underline font-medium open-doc-btn" data-doc-src="">View File</a>
+                </div>
+              </div>
+            </div>
           </div>
         </form>
-      </div>
+      </div> -->
 
       <!-- Modal Footer -->
       <div class="bg-white border-t border-gray-200 px-3 sm:px-4 py-2.5 rounded-b-xl w-full flex items-center justify-end gap-1.5 sticky bottom-0 z-20 shadow-[0_-6px_14px_rgba(17,24,39,0.08)]">

@@ -162,27 +162,44 @@ const getRoleBadgeStyle = (type: string) => ROLE_CONFIG[type] ?? { color: '#6b72
  * Sub-components
  * ===================================================================== */
 
+const ADMIN_LOGO = require('../../../assets/images/logos/legatura-logo.png');
+
 const Avatar = React.memo(({
   uri,
   name,
   id,
   size = 48,
+  localSource,
 }: {
   uri: string | null;
   name: string;
   id: number;
   size?: number;
+  localSource?: any;
 }) => {
   const avatarUrl = getAvatarUri(uri);
   const color = getAvatarColor(id);
   const radius = size / 2;
   const fontSize = size * 0.36;
+  const [imgError, setImgError] = React.useState(false);
 
-  if (avatarUrl) {
+  // Local asset takes priority (e.g. Legatura Support logo)
+  if (localSource) {
+    return (
+      <Image
+        source={localSource}
+        style={{ width: size, height: size, borderRadius: radius }}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  if (avatarUrl && !imgError) {
     return (
       <Image
         source={{ uri: avatarUrl }}
         style={{ width: size, height: size, borderRadius: radius }}
+        onError={() => setImgError(true)}
       />
     );
   }
@@ -622,7 +639,8 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
         text,
         activeConversation.conversation_id,
         attachments.length > 0 ? attachments : undefined,
-        activeConversation.contractor_id ?? contractorId,
+        // Never pass contractor_id for admin conversations — it breaks from_sender logic
+        activeConversation.other_user.type === 'Admin' ? null : (activeConversation.contractor_id ?? contractorId),
       );
 
       if (res.success && res.data) {
@@ -824,6 +842,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
               name={item.other_user.name}
               id={item.other_user.id}
               size={52}
+              localSource={item.other_user.type === 'Admin' ? ADMIN_LOGO : undefined}
             />
             {hasUnread && <View style={styles.unreadDot} />}
           </View>
@@ -896,6 +915,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                 name={item.sender?.name || 'U'}
                 id={item.sender?.id || 0}
                 size={30}
+                localSource={item.sender?.type === 'Admin' ? ADMIN_LOGO : undefined}
               />
             </View>
           )}
@@ -1039,7 +1059,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.chatTopUser} activeOpacity={0.7}>
-            <Avatar uri={other.avatar} name={other.name} id={other.id} size={38} />
+            <Avatar uri={other.avatar} name={other.name} id={other.id} size={38} localSource={other.type === 'Admin' ? ADMIN_LOGO : undefined} />
             <View style={styles.chatTopTextWrap}>
               <Text style={styles.chatTopName} numberOfLines={1}>
                 {other.name}

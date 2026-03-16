@@ -237,8 +237,8 @@
                       placeholder="Type your message..."
                       style="max-height: 120px;"></textarea>
                     <button id="sendMessageBtn" class="px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-1.5">
-                      <i class="fi fi-rr-paper-plane text-xs"></i>
-                      Send
+                      <span id="sendBtnIcon"><i class="fi fi-rr-paper-plane text-xs"></i></span>
+                      <span id="sendBtnText">Send</span>
                     </button>
                   </div>
                   <div id="filePreviewArea" class="hidden mt-2.5 flex flex-wrap gap-2"></div>

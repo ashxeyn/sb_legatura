@@ -795,9 +795,18 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // Confirm accept bid
+  let _acceptBidSubmitting = false;
   window.confirmAcceptBid = async function(bidId) {
+    if (_acceptBidSubmitting) return;
+    _acceptBidSubmitting = true;
+
+    const btn = document.querySelector(`#acceptBidModal button[onclick*="confirmAcceptBid"], #acceptBidModal [data-action="confirm-accept"]`);
+    const originalContent = btn ? btn.innerHTML : null;
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="animate-spin w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg> Accepting...';
+    }
     try {
-      // Get CSRF token from meta tag or Laravel's global csrf token
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
         || document.querySelector('input[name="_token"]')?.value
         || '';
@@ -816,16 +825,19 @@ document.addEventListener('DOMContentLoaded', function() {
         showNotification('Bid accepted successfully', 'success');
         hideAcceptBidModal();
         hideBiddingModal();
-        // Refresh the table to show updated status
         if (typeof window.refreshProjectsTable === 'function') {
           window.refreshProjectsTable();
         }
       } else {
         showNotification(result.message || 'Failed to accept bid', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = originalContent; }
       }
     } catch (error) {
       console.error('Error accepting bid:', error);
       showNotification('An error occurred while accepting bid', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalContent; }
+    } finally {
+      _acceptBidSubmitting = false;
     }
   };
 
@@ -871,12 +883,20 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // Confirm reject bid
+  let _rejectBidSubmitting = false;
   window.confirmRejectBid = async function(bidId) {
+    if (_rejectBidSubmitting) return;
+    _rejectBidSubmitting = true;
+    const btn = document.querySelector('#rejectBidModal button[onclick*="confirmRejectBid"]') ||
+                document.querySelector('#rejectBidModal .confirm-reject-btn');
+    const originalContent = btn ? btn.innerHTML : null;
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="animate-spin w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg> Rejecting...';
+    }
     try {
-      // Get the rejection reason from the textarea
       const reason = document.getElementById('rejectReason')?.value || '';
 
-      // Get CSRF token
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
         || document.querySelector('input[name="_token"]')?.value
         || '';
@@ -896,16 +916,19 @@ document.addEventListener('DOMContentLoaded', function() {
         showNotification('Bid rejected successfully', 'success');
         hideRejectBidModal();
         hideBiddingModal();
-        // Refresh the table to show updated status
         if (typeof window.refreshProjectsTable === 'function') {
           window.refreshProjectsTable();
         }
       } else {
         showNotification(result.message || 'Failed to reject bid', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = originalContent; }
       }
     } catch (error) {
       console.error('Error rejecting bid:', error);
       showNotification('An error occurred while rejecting bid', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalContent; }
+    } finally {
+      _rejectBidSubmitting = false;
     }
   };
 
