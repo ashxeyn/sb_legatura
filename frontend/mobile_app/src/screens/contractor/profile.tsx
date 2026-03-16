@@ -148,10 +148,9 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           const banner = contractorPayload.company_banner ?? contractorPayload.cover_photo ?? contractorPayload.banner ?? null;
           if (isMounted) {
             setCompanyName(name || userData?.company_name);
-            if (isOwner) {
-              if (logo) setCompanyLogo(logo);
-              if (banner) setCompanyBanner(banner);
-            }
+            // Always set logo and banner from contractor profile, regardless of isOwner
+            if (logo) setCompanyLogo(logo);
+            if (banner) setCompanyBanner(banner);
             const status = contractorPayload?.verification_status ?? null;
             if (status === 'approved') setContractorVerified(true);
             else if (contractorVerifiedProp) setContractorVerified(true);
@@ -299,7 +298,7 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           <View style={styles.profileInfoContainer}>
             <View style={styles.avatarContainer}>
               <ImageFallback uri={getStorageUrl(companyLogo || userData?.profile_pic || undefined)} defaultImage={defaultContractorAvatar} style={styles.avatar} resizeMode="cover" />
-             </View>
+            </View>
 
             <Text style={styles.companyName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>
               {!isOwner
@@ -365,7 +364,6 @@ const styles = StyleSheet.create({
   profileInfoContainer: { alignItems: 'center', paddingBottom: 20, marginTop: -50 },
   avatarContainer: { position: 'relative' },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4, borderColor: '#FFFFFF' },
-  editAvatarButton: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#333333', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFFFFF' },
   companyName: { fontSize: 22, fontWeight: 'bold', color: '#333333', marginTop: 12, textAlign: 'center', paddingHorizontal: 20 },
   ownerNameSubtitle: { fontSize: 13, color: '#666666', marginTop: 4, textAlign: 'center', paddingHorizontal: 20, fontStyle: 'italic' },
   userName: { fontSize: 14, color: '#1877F2', marginTop: 2 },
