@@ -216,14 +216,14 @@ export default function ContractorDashboard({
     return () => sub.remove();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     if (!userData?.user_id) {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
       return;
     }
 
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
 
       // Fetch contractor projects
@@ -232,7 +232,7 @@ export default function ContractorDashboard({
         const projectsData = projectsResponse.data?.data || projectsResponse.data || [];
         const projectsArray = Array.isArray(projectsData) ? projectsData : [];
         setMyProjects(projectsArray);
-        fetchMilestoneItems(projectsArray);
+        fetchMilestoneItems(projectsArray, silent);
       } else {
         setMyProjects([]);
       }
@@ -257,19 +257,19 @@ export default function ContractorDashboard({
         setMyBids([]);
       }
 
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError('Failed to load data');
       setMyProjects([]);
       setMyBids([]);
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
-  const fetchMilestoneItems = async (projectsArray: any[]) => {
+  const fetchMilestoneItems = async (projectsArray: any[], silent = false) => {
     if (!projectsArray.length) { setActiveMilestoneItems([]); return; }
-    setLoadingMilestoneItems(true);
+    if (!silent) setLoadingMilestoneItems(true);
     try {
       const results: any[] = [];
       await Promise.all(
@@ -288,7 +288,7 @@ export default function ContractorDashboard({
       results.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
       setActiveMilestoneItems(results);
     } catch (e) { console.error('fetchMilestoneItems error:', e); }
-    finally { setLoadingMilestoneItems(false); }
+    finally { if (!silent) setLoadingMilestoneItems(false); }
   };
 
   const onRefresh = async () => {
@@ -296,6 +296,20 @@ export default function ContractorDashboard({
     await fetchData();
     setRefreshing(false);
   };
+
+  // Auto-refresh every 5 seconds (only when on main dashboard, not in sub-screens)
+  useEffect(() => {
+    if (!userData?.user_id || showMyProjects || showMyBids || showMembers || showAiAnalytics) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      fetchData(true); // Silent refresh
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [userData?.user_id, showMyProjects, showMyBids, showMembers, showAiAnalytics, canBid]);
+
 
   // Calculate stats
   const stats = {

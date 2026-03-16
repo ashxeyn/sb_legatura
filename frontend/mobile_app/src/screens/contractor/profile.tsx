@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -68,6 +69,7 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
   const [companyBanner, setCompanyBanner] = useState<string | undefined>(userData?.cover_photo);
   const [contractorVerified, setContractorVerified] = useState(contractorVerifiedProp ?? false);
   const [canSwitchRoles, setCanSwitchRoles] = useState(userData?.user_type === 'both');
+  const [refreshing, setRefreshing] = useState(false);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -135,33 +137,45 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
     return () => { isMounted = false; sub.remove(); };
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadProfile = async () => {
-      try {
-        const res = await contractors_service.get_my_contractor_profile();
-        // Normalize response shapes and prefer fields from contractors table
-        const contractorPayload = res?.data?.data ?? res?.data?.contractor ?? res?.contractor ?? res?.data ?? null;
-        if (res?.success && contractorPayload) {
-          const name = contractorPayload.company_name ?? contractorPayload.contractor_name ?? userData?.company_name;
-          const logo = contractorPayload.company_logo ?? contractorPayload.profile_pic ?? contractorPayload.logo ?? null;
-          const banner = contractorPayload.company_banner ?? contractorPayload.cover_photo ?? contractorPayload.banner ?? null;
-          if (isMounted) {
-            setCompanyName(name || userData?.company_name);
-            // Always set logo and banner from contractor profile, regardless of isOwner
-            if (logo) setCompanyLogo(logo);
-            if (banner) setCompanyBanner(banner);
-            const status = contractorPayload?.verification_status ?? null;
-            if (status === 'approved') setContractorVerified(true);
-            else if (contractorVerifiedProp) setContractorVerified(true);
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to load contractor profile', e);
+  const loadProfile = async () => {
+    try {
+      const res = await contractors_service.get_my_contractor_profile();
+      // Normalize response shapes and prefer fields from contractors table
+      const contractorPayload = res?.data?.data ?? res?.data?.contractor ?? res?.contractor ?? res?.data ?? null;
+      if (res?.success && contractorPayload) {
+        const name = contractorPayload.company_name ?? contractorPayload.contractor_name ?? userData?.company_name;
+        const logo = contractorPayload.company_logo ?? contractorPayload.profile_pic ?? contractorPayload.logo ?? null;
+        const banner = contractorPayload.company_banner ?? contractorPayload.cover_photo ?? contractorPayload.banner ?? null;
+        setCompanyName(name || userData?.company_name);
+        // Always set logo and banner from contractor profile, regardless of isOwner
+        if (logo) setCompanyLogo(logo);
+        if (banner) setCompanyBanner(banner);
+        const status = contractorPayload?.verification_status ?? null;
+        if (status === 'approved') setContractorVerified(true);
+        else if (contractorVerifiedProp) setContractorVerified(true);
       }
-    };
+    } catch (e) {
+      console.warn('Failed to load contractor profile', e);
+    }
+  };
+
+  useEffect(() => {
     loadProfile();
-    return () => { isMounted = false; };
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  };
+
+  // Auto-refresh profile every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadProfile();
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const getStorageUrl = (path?: string | null) => {
@@ -280,7 +294,19 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
   return (
     <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
       <StatusBar hidden={true} />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#1877F2']}
+            tintColor={'#1877F2'}
+          />
+        }
+      >
         <View style={styles.header}><Text style={styles.headerTitle}>Settings</Text></View>
 
         <View style={styles.profileCard}>

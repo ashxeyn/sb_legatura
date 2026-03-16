@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [ownerInfo, setOwnerInfo] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -129,8 +131,8 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   };
 
   // Define functions before any early returns
-  const fetchMembers = async () => {
-    setLoading(true);
+  const fetchMembers = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       // Get user_id from stored user data
       const storedUser = await storage_service.get_user_data();
@@ -178,7 +180,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     } catch (e) {
       console.warn('Failed fetching members', e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -225,6 +227,25 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   useEffect(() => {
     applyFilters();
   }, [searchQuery, roleFilter, statusFilter, members]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchMembers();
+    setRefreshing(false);
+  };
+
+  // Auto-refresh members every 15 seconds (only when not in modals)
+  useEffect(() => {
+    if (authLoading || !canViewMembers || modalVisible || viewModalVisible || reasonModalVisible) {
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      fetchMembers(true); // Silent refresh
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [authLoading, canViewMembers, modalVisible, viewModalVisible, reasonModalVisible]);
 
   // Authorization guard - block unauthorized access
   if (authLoading) {
@@ -865,6 +886,14 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
               contentContainerStyle={{ padding: 8 }}
               renderItem={renderMember}
               ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[COLORS.primary]}
+                  tintColor={COLORS.primary}
+                />
+              }
             />
           )}
         </>

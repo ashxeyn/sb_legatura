@@ -14,37 +14,44 @@ use Illuminate\Support\Facades\Cache;
  *
  * FEED_SCORE = Σ (component_score × weight)
  *
+ * ═══════════════════════════════════════════════════════════════════════
+ * "MARKETPLACE FLUIDITY" MODEL — Freshness is King
+ * ═══════════════════════════════════════════════════════════════════════
+ *
  * Components:
- *   1. Type Match Score       (30%) — contractor type vs. project required type
- *   2. Boost Score            (20%) — paid boost via platform_payments
- *   3. Freshness Score        (15%) — time decay from creation date
+ *   1. Freshness Score        (35%) — KING: ensures feed always looks alive
+ *   2. Type Match Score       (25%) — contractor type vs. project required type
+ *   3. Boost Score            (15%) — paid boost (significant but not dominant)
  *   4. Location Proximity     (10%) — text-based city/province matching
- *   5. Engagement Score       (10%) — bid count sweet-spot (3–10 ideal)
- *   6. Budget Relevance       ( 5%) — alignment with contractor's typical scale
- *   7. Diversity Score        (10%) — anti-monopoly per owner in result set
+ *   5. Engagement Score       ( 8%) — bid count sweet-spot (3–10 ideal)
+ *   6. Diversity Score        ( 5%) — anti-monopoly per owner in result set
+ *   7. Budget Relevance       ( 2%) — alignment with contractor's typical scale
  *
  * All component scores are normalised to 0.0 – 1.0 before weighting.
  * Final feed_score range: 0.0 – 1.0 (displayed as 0 – 100 when needed).
  *
  * Design principles:
- *   - Relevance-first: type match dominates at 30%
- *   - No pay-to-win: boost (20%) cannot override relevance + freshness + diversity
- *   - Fair rotation: diversity penalty prevents one owner flooding the feed
+ *   - Freshness-first: 35% weight + "Golden Window" (0-12h) ensures new posts dominate
+ *   - Marketplace vitality: contractors always see fresh opportunities at top
+ *   - Relevance matters: type match at 25% keeps feed useful, not just chronological
+ *   - Fair boost: 15% gives paying customers advantage without monopolizing feed
+ *   - Anti-stagnation: after 3 days, posts drop to 0.1 freshness score
  *   - Modular: each scorer is a standalone method, easy to extend
  *   - Efficient: batch-loads boost data, bid counts, and contractor context
  */
 class FeedRankingService
 {
     // ─── Configurable weights (must sum to 1.0) ────────────────────────
+    // "Marketplace Fluidity" Model: Freshness-first to keep feed alive
 
     private const WEIGHTS = [
-        'type_match'   => 0.30,
-        'boost'        => 0.20,
-        'freshness'    => 0.15,
+        'type_match'   => 0.25,
+        'boost'        => 0.15,  // Reduced to give freshness dominance
+        'freshness'    => 0.35,  // KING - ensures new posts always appear at top
         'location'     => 0.10,
-        'engagement'   => 0.10,
-        'budget'       => 0.05,
-        'diversity'    => 0.10,
+        'engagement'   => 0.08,
+        'budget'       => 0.02,
+        'diversity'    => 0.05,  // Reduced slightly to prioritize freshness
     ];
 
     // ─── Boost configuration ───────────────────────────────────────────
@@ -52,13 +59,13 @@ class FeedRankingService
     /** subscription_plans.id for the "Project Boost" plan */
     private const BOOST_PLAN_ID = 4;
 
-    // ─── Freshness decay thresholds (days → score) ─────────────────────
+    // ─── Freshness decay thresholds (hours/days → score) ───────────────
+    // "Golden Window" model: Front-loaded scoring for maximum freshness impact
 
-    private const FRESHNESS_FULL  = 3;   // 100% for first 3 days
-    private const FRESHNESS_HIGH  = 7;   // 80% up to 7 days
-    private const FRESHNESS_MED   = 14;  // 50% up to 14 days
-    private const FRESHNESS_LOW   = 30;  // linear decay to 0.2 at 30 days
-    private const FRESHNESS_FLOOR = 0.1; // minimum score for very old posts
+    private const FRESHNESS_GOLDEN_HOURS = 12;  // 0-12 hours = 1.0 (Golden Window)
+    private const FRESHNESS_DAY_ONE      = 24;  // 12-24 hours = 0.8
+    private const FRESHNESS_THREE_DAYS   = 3;   // 1-3 days = 0.5
+    private const FRESHNESS_FLOOR        = 0.1; // 3+ days = linear decay to 0.1
 
     // ─── Engagement sweet-spot ─────────────────────────────────────────
 
@@ -244,14 +251,22 @@ class FeedRankingService
     }
 
     /**
-     * 3. Freshness Score (15%)
+     * 3. Freshness Score (35%) — "MARKETPLACE FLUIDITY" MODEL
+     *
+     * Front-loaded scoring to ensure feed always looks alive.
+     * The "Golden Window" gives brand new posts maximum visibility.
      *
      * Time-decay curve:
-     *   ≤ 3 days  → 1.0
-     *   ≤ 7 days  → 0.8
-     *   ≤ 14 days → 0.5
-     *   ≤ 30 days → linear decay to 0.2
-     *   > 30 days → 0.1 floor
+     *   0–12 hours  → 1.0  (Golden Window - absolute priority)
+     *   12–24 hours → 0.8  (Still very fresh)
+     *   1–3 days    → 0.5  (Recent, but losing priority)
+     *   3+ days     → 0.1  (Old - minimal visibility)
+     *
+     * Why this works:
+     *   - Contractors see fresh opportunities immediately
+     *   - App always appears active and dynamic
+     *   - Boosted posts still get advantage, but can't monopolize feed
+     *   - After 3 days, posts rely on other factors (type match, boost, etc.)
      */
     private function scoreFreshness(object $project): float
     {
@@ -263,27 +278,31 @@ class FeedRankingService
         try {
             $created = new \DateTime($createdAt);
             $now     = new \DateTime();
-            $days    = max(0, (int) $now->diff($created)->days);
+            $interval = $now->diff($created);
+            
+            // Calculate total hours
+            $totalHours = ($interval->days * 24) + $interval->h + ($interval->i / 60);
+            $days = $interval->days;
         } catch (\Throwable $e) {
             return self::FRESHNESS_FLOOR;
         }
 
-        if ($days <= self::FRESHNESS_FULL) {
+        // Golden Window: 0-12 hours = MAXIMUM SCORE
+        if ($totalHours <= self::FRESHNESS_GOLDEN_HOURS) {
             return 1.0;
         }
-        if ($days <= self::FRESHNESS_HIGH) {
+
+        // Day One: 12-24 hours = HIGH SCORE
+        if ($totalHours <= self::FRESHNESS_DAY_ONE) {
             return 0.8;
         }
-        if ($days <= self::FRESHNESS_MED) {
+
+        // Recent: 1-3 days = MODERATE SCORE
+        if ($days <= self::FRESHNESS_THREE_DAYS) {
             return 0.5;
         }
-        if ($days <= self::FRESHNESS_LOW) {
-            // Linear decay from 0.5 at 14 days to 0.2 at 30 days
-            $range = self::FRESHNESS_LOW - self::FRESHNESS_MED; // 16
-            $elapsed = $days - self::FRESHNESS_MED;
-            return 0.5 - (0.3 * ($elapsed / $range));
-        }
 
+        // Old: 3+ days = FLOOR SCORE
         return self::FRESHNESS_FLOOR;
     }
 

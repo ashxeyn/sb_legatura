@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,6 +60,7 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
   const [contractorVerified, setContractorVerified] = useState(contractorVerifiedProp ?? false);
   // Company name when user is a staff/representative member of a contractor company via invitation
   const [staffCompanyName, setStaffCompanyName] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -79,28 +81,40 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
   const [ownerProfilePicPath, setOwnerProfilePicPath] = useState<string | null>(userData?.profile_pic || null);
   const [ownerCoverPhotoPath, setOwnerCoverPhotoPath] = useState<string | null>(userData?.cover_photo || null);
 
+  const loadProfile = async () => {
+    try {
+      const res = await api_request('/api/profile/fetch', { method: 'GET' });
+      if (res?.success && res.data) {
+        const payload = res.data?.data ?? res.data;
+        const user = payload?.user ?? payload;
+        const pic = user?.profile_pic ?? null;
+        const cover = user?.cover_photo ?? null;
+        const contractorStatus = payload?.contractor?.verification_status ?? null;
+        if (pic) setOwnerProfilePicPath(pic);
+        if (cover) setOwnerCoverPhotoPath(cover);
+        if (contractorStatus === 'approved') setContractorVerified(true);
+        else if (contractorVerifiedProp) setContractorVerified(true);
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
-    let isMounted = true;
-    const loadProfile = async () => {
-      try {
-        const res = await api_request('/api/profile/fetch', { method: 'GET' });
-        if (res?.success && res.data) {
-          const payload = res.data?.data ?? res.data;
-          const user = payload?.user ?? payload;
-          const pic = user?.profile_pic ?? null;
-          const cover = user?.cover_photo ?? null;
-          const contractorStatus = payload?.contractor?.verification_status ?? null;
-          if (isMounted) {
-            if (pic) setOwnerProfilePicPath(pic);
-            if (cover) setOwnerCoverPhotoPath(cover);
-            if (contractorStatus === 'approved') setContractorVerified(true);
-            else if (contractorVerifiedProp) setContractorVerified(true);
-          }
-        }
-      } catch (e) {}
-    };
     loadProfile();
-    return () => { isMounted = false; };
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  };
+
+  // Auto-refresh profile every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadProfile();
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   let navigation: any = null;
@@ -327,6 +341,14 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>

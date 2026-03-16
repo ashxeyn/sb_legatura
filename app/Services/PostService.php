@@ -637,18 +637,68 @@ class PostService
         // Merge primary content (projects + contractors) - these are the main feed items
         $primaryContent = $nonBoostedProjects->merge($contractors);
         
-        // Sort primary content chronologically first
-        $primaryContent = $primaryContent->sortByDesc('created_at')->values();
+        // Apply "Marketplace Fluidity" shuffle: TODAY's posts on top, old posts shuffled
+        // Separate items by date: today vs. older
+        $now = now();
+        $today = $now->startOfDay();
+        $todayPosts = collect();    // Posted today (March 16)
+        $olderPosts = collect();    // Posted before today
         
-        // Apply hourly seeded randomization to primary content
+        foreach ($primaryContent as $item) {
+            try {
+                $createdAt = new \DateTime($item->created_at);
+                $itemDate = \Carbon\Carbon::instance($createdAt)->startOfDay();
+                
+                // Check if posted today
+                if ($itemDate->equalTo($today)) {
+                    $todayPosts->push($item);
+                } else {
+                    $olderPosts->push($item);
+                }
+            } catch (\Exception $e) {
+                $olderPosts->push($item); // If date parsing fails, treat as old
+            }
+        }
+        
+        // Sort today's posts by newest first (no shuffle - chronological)
+        $todayPosts = $todayPosts->sortByDesc('created_at')->values();
+        
+        // Shuffle older posts with hourly seed for variety
         $hourlySeed = (int)(time() / 3600);
-        $primaryContent = $primaryContent->shuffle($hourlySeed);
+        $olderPosts = $olderPosts->shuffle($hourlySeed);
+        
+        // Merge: today's posts first (newest to oldest), then shuffled older posts
+        $primaryContent = $todayPosts->merge($olderPosts)->values();
         
         // Intersperse showcases (non-boosted) like ads throughout the primary content
-        // Place 1 showcase every 15-17 items randomly
+        // Place 1 showcase every 15-17 items, also date-grouped
         $interspersedContent = collect();
         $showcaseIndex = 0;
-        $showcaseArray = $nonBoostedShowcases->shuffle($hourlySeed)->values()->all();
+        
+        // Apply same date-based grouping to showcases
+        $showcaseToday = collect();
+        $showcaseOlder = collect();
+        
+        foreach ($nonBoostedShowcases as $showcase) {
+            try {
+                $createdAt = new \DateTime($showcase->created_at);
+                $itemDate = \Carbon\Carbon::instance($createdAt)->startOfDay();
+                
+                if ($itemDate->equalTo($today)) {
+                    $showcaseToday->push($showcase);
+                } else {
+                    $showcaseOlder->push($showcase);
+                }
+            } catch (\Exception $e) {
+                $showcaseOlder->push($showcase);
+            }
+        }
+        
+        // Sort today's showcases chronologically, shuffle older ones
+        $showcaseArray = $showcaseToday->sortByDesc('created_at')
+            ->merge($showcaseOlder->shuffle($hourlySeed))
+            ->values()
+            ->all();
         $showcaseCount = count($showcaseArray);
         
         foreach ($primaryContent as $index => $item) {
@@ -668,8 +718,34 @@ class PostService
             $showcaseIndex++;
         }
         
-        // Merge: boosted items first (sorted by created_at DESC), then interspersed content
-        $allBoosted = $boostedProjects->merge($boostedShowcases)->sortByDesc('created_at')->values();
+        // Merge: boosted items also follow date priority (today's boosted first, then older boosted)
+        $allBoosted = $boostedProjects->merge($boostedShowcases);
+        
+        // Separate boosted items by date: today vs. older
+        $boostedToday = collect();
+        $boostedOlder = collect();
+        
+        foreach ($allBoosted as $item) {
+            try {
+                $createdAt = new \DateTime($item->created_at);
+                $itemDate = \Carbon\Carbon::instance($createdAt)->startOfDay();
+                
+                if ($itemDate->equalTo($today)) {
+                    $boostedToday->push($item);
+                } else {
+                    $boostedOlder->push($item);
+                }
+            } catch (\Exception $e) {
+                $boostedOlder->push($item);
+            }
+        }
+        
+        // Sort today's boosted posts chronologically (newest first)
+        // Sort older boosted posts chronologically (newest first)
+        $allBoosted = $boostedToday->sortByDesc('created_at')
+            ->merge($boostedOlder->sortByDesc('created_at'))
+            ->values();
+        
         $merged = $allBoosted->merge($interspersedContent)->values();
         
         $pageItems = $merged->slice($offset, $perPage)->values();

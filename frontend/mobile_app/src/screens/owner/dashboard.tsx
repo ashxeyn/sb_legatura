@@ -121,6 +121,19 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     // pinned project loading removed
   }, [userData?.user_id]);
 
+  // Auto-refresh every 15 seconds (only when on main dashboard, not in sub-screens)
+  useEffect(() => {
+    if (!userData?.user_id || showProjectList || selectedProject || showCreateProject || showSearchScreen) {
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      fetchProjects(true); // Silent refresh
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [userData?.user_id, showProjectList, selectedProject, showCreateProject, showSearchScreen]);
+
   // Auto-refresh owner dashboard data on relevant app events
   useEffect(() => {
     const handleRefresh = () => {
@@ -204,18 +217,18 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     }
   };
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (silent = false) => {
     console.log('fetchProjects called, user_id:', userData?.user_id);
 
     if (!userData?.user_id) {
       console.log('No user_id, setting error');
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
       setError('User not logged in');
       return;
     }
 
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
 
       console.log('Calling API with user_id:', userData.user_id);
@@ -229,7 +242,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
         console.log('Projects loaded:', projectsArray.length, projectsArray);
         setProjects(projectsArray);
         // Fetch active milestone items for in-progress projects
-        fetchMilestoneItems(projectsArray);
+        fetchMilestoneItems(projectsArray, silent);
       } else {
         console.log('API error:', response.message);
         setError(response.message || 'Failed to load projects');
@@ -238,11 +251,11 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
       console.error('Error fetching projects:', err);
       setError('Failed to load projects');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
-  const fetchMilestoneItems = async (projectsArray: Project[]) => {
+  const fetchMilestoneItems = async (projectsArray: Project[], silent = false) => {
     const inProgressProjects = projectsArray.filter(
       p => p.project_status === 'in_progress' || p.project_status === 'bidding_closed'
     );
@@ -250,7 +263,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
       setActiveMilestoneItems([]);
       return;
     }
-    setLoadingMilestoneItems(true);
+    if (!silent) setLoadingMilestoneItems(true);
     try {
       const results: any[] = [];
       await Promise.all(
@@ -281,7 +294,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     } catch (e) {
       console.error('fetchMilestoneItems error:', e);
     } finally {
-      setLoadingMilestoneItems(false);
+      if (!silent) setLoadingMilestoneItems(false);
     }
   };
 

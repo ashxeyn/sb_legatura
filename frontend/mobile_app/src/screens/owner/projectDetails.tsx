@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   StatusBar,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -119,6 +120,7 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
   const [showEditProject, setShowEditProject] = useState(false);
   const [showBids, setShowBids] = useState(initialSection === 'bids');
   const [showMilestoneApproval, setShowMilestoneApproval] = useState(initialSection === 'milestones');
+  const [refreshing, setRefreshing] = useState(false);
 
   const hasContractor = !!currentProject.selected_contractor_id || !!currentProject.accepted_bid;
   const milestones: Milestone[] = currentProject.milestones || [];
@@ -158,6 +160,27 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
       }
     } catch (_) {}
   };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshProjectData();
+    setRefreshing(false);
+  };
+
+  // Auto-refresh every 5 seconds (only when not in edit mode or sub-screens)
+  useEffect(() => {
+    if (!userId || showEditProject || showBids || showMilestoneApproval) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      refreshProjectData();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [userId, showEditProject, showBids, showMilestoneApproval]);
+
+
 
   // â”€â”€ Status config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -260,7 +283,19 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scroll} 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
 
         {/* â”€â”€ Collapsible gradient summary card â”€â”€ */}
         <TouchableOpacity style={styles.summaryCard} onPress={() => setExpandedSummary(!expandedSummary)} activeOpacity={0.92}>
