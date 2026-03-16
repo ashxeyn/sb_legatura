@@ -79,6 +79,7 @@
         const dateTo = document.getElementById("dateTo");
         const verdictFilter = document.getElementById("verdictFilter");
         const contractorTypeFilter = document.getElementById("contractorTypeFilter");
+        const companyFilter = document.getElementById("companyFilter");
         const resetBtn = document.getElementById("resetFilters");
 
         if (searchInput) {
@@ -141,6 +142,10 @@
 
         if (contractorTypeFilter) {
             contractorTypeFilter.addEventListener("change", applyFilters);
+        }
+
+        if (companyFilter) {
+            companyFilter.addEventListener("change", applyFilters);
         }
         
         if (resetBtn) {
@@ -223,6 +228,7 @@
         const dateTo = document.getElementById("dateTo");
         const verdictFilter = document.getElementById("verdictFilter");
         const contractorTypeFilter = document.getElementById("contractorTypeFilter");
+        const companyFilter = document.getElementById("companyFilter");
         const tbody = document.getElementById("predictionTableBody");
 
         if (!tbody) return;
@@ -232,6 +238,7 @@
         const toDate = dateTo ? dateTo.value : "";
         const verdict = verdictFilter ? verdictFilter.value : "";
         const contractorType = contractorTypeFilter ? contractorTypeFilter.value : "";
+        const companyId = companyFilter ? companyFilter.value : "";
 
         const rows = tbody.querySelectorAll("tr[data-project]");
         let visibleCount = 0;
@@ -240,6 +247,7 @@
             const projectName = row.getAttribute("data-project") || "";
             const rowVerdict = row.getAttribute("data-verdict") || "";
             const rowContractorType = row.getAttribute("data-contractor-type") || "";
+            const rowCompanyId = row.getAttribute("data-company-id") || "";
             const rowDate = row.getAttribute("data-date") || "";
 
             let show = true;
@@ -256,6 +264,11 @@
 
             // Contractor type filter
             if (contractorType && rowContractorType !== contractorType) {
+                show = false;
+            }
+
+            // Company filter
+            if (companyId && rowCompanyId !== companyId) {
                 show = false;
             }
 
@@ -307,6 +320,7 @@
         const dateTo = document.getElementById("dateTo");
         const verdictFilter = document.getElementById("verdictFilter");
         const contractorTypeFilter = document.getElementById("contractorTypeFilter");
+        const companyFilter = document.getElementById("companyFilter");
 
         if (searchInput) searchInput.value = "";
         if (dateFrom) {
@@ -319,10 +333,10 @@
         }
         if (verdictFilter) verdictFilter.value = "";
         if (contractorTypeFilter) contractorTypeFilter.value = "";
+        if (companyFilter) companyFilter.value = "";
 
         clearDateError();
         applyFilters();
-        toast("Filters reset", "info");
     }
 
     // ─────────────────────────────────────────────────────────────

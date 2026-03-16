@@ -51,7 +51,7 @@
               </div>
               <input type="date" id="globalDateFrom" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <span class="text-gray-300 font-bold text-base">?</span>
+            <span class="text-gray-300 font-bold text-lg">→</span>
             <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
               <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2 self-stretch">
                 <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
@@ -59,9 +59,9 @@
               </div>
               <input type="date" id="globalDateTo" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <button id="resetGlobalDateFilter" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5">
-              <i class="fi fi-rr-rotate-left text-[10px]"></i>
-              Reset
+            <button id="resetGlobalDateFilter" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+              <i class="fi fi-rr-rotate-left"></i>
+              <span>Reset Filter</span>
             </button>
           </div>
           <div id="filterLoading" class="hidden flex items-center gap-1 ml-1">

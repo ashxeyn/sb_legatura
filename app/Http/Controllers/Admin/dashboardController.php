@@ -14,10 +14,9 @@ class dashboardController extends authController
      */
     public function index()
     {
-        // Default period matches the "This Year" pill that is active on page load
-        $defaultRange = $this->getRangeStartEnd('thisyear');
-        $defaultStart = $defaultRange['start'];
-        $defaultEnd   = $defaultRange['end'];
+        // No default date filter - show all-time data
+        $defaultStart = null;
+        $defaultEnd = null;
 
         $topContractors = $this->getTopContractors();
         $topPropertyOwners = $this->getTopPropertyOwners();
@@ -207,7 +206,10 @@ class dashboardController extends authController
     {
         [$start, $end] = $this->resolveRange($start, $end);
 
-        $totalProjects = DB::table('projects')->count();
+        // Count projects created in the period
+        $totalProjects = DB::table('project_relationships')
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
+            ->count();
 
         $buckets = $this->buildMonthBuckets($start, $end);
 
@@ -251,7 +253,12 @@ class dashboardController extends authController
         [$start, $end] = $this->resolveRange($start, $end);
 
         $activeStatuses  = ['submitted', 'under_review'];
-        $totalActiveBids = DB::table('bids')->whereIn('bid_status', $activeStatuses)->count();
+        
+        // Count active bids submitted in the period
+        $totalActiveBids = DB::table('bids')
+            ->whereIn('bid_status', $activeStatuses)
+            ->whereBetween('submitted_at', [$start, $end . ' 23:59:59'])
+            ->count();
 
         $buckets = $this->buildMonthBuckets($start, $end);
 
@@ -288,59 +295,52 @@ class dashboardController extends authController
     }
 
     /**
-     * Get revenue metrics and monthly series (milestone + platform payments, approved)
+     * Get active projects metrics (in_progress projects)
      */
     private function getRevenueMetrics(?string $start = null, ?string $end = null)
     {
         [$start, $end] = $this->resolveRange($start, $end);
-        $endWithTime   = $end . ' 23:59:59';
+        $endWithTime = $end . ' 23:59:59';
 
         $buckets = $this->buildMonthBuckets($start, $end);
 
-        // milestone payments approved (payment_status = 'approved')
-        $milestoneMonthly = DB::table('milestone_payments')
+        // Count in_progress projects per month
+        $monthlyProjects = DB::table('project_relationships as pr')
+            ->join('projects as p', 'p.relationship_id', '=', 'pr.rel_id')
             ->select(
-                DB::raw("DATE_FORMAT(transaction_date, '%Y-%m') as ym"),
-                DB::raw('IFNULL(SUM(amount),0) as sum')
+                DB::raw("DATE_FORMAT(pr.created_at, '%Y-%m') as ym"),
+                DB::raw('COUNT(*) as count')
             )
-            ->where('payment_status', 'approved')
-            ->whereBetween('transaction_date', [$start, $endWithTime])
-            ->groupBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
-            ->orderBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
+            ->where('p.project_status', 'in_progress')
+            ->whereBetween('pr.created_at', [$start, $endWithTime])
+            ->groupBy(DB::raw("DATE_FORMAT(pr.created_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(pr.created_at, '%Y-%m')"))
             ->get()
-            ->pluck('sum', 'ym');
-
-        // platform payments approved (is_approved = 1)
-        $platformMonthly = DB::table('platform_payments')
-            ->select(
-                DB::raw("DATE_FORMAT(transaction_date, '%Y-%m') as ym"),
-                DB::raw('IFNULL(SUM(amount),0) as sum')
-            )
-            ->where('is_approved', 1)
-            ->whereBetween('transaction_date', [$start, $endWithTime])
-            ->groupBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
-            ->orderBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
-            ->get()
-            ->pluck('sum', 'ym');
+            ->pluck('count', 'ym');
 
         $months = array_values($buckets);
-        $data   = [];
+        $data = [];
         foreach (array_keys($buckets) as $ym) {
-            $data[] = floatval($milestoneMonthly[$ym] ?? 0) + floatval($platformMonthly[$ym] ?? 0);
+            $data[] = intval($monthlyProjects[$ym] ?? 0);
         }
 
-        $totalRevenue = array_sum($data);
+        // Total in_progress projects created in the period
+        $totalActive = DB::table('project_relationships as pr')
+            ->join('projects as p', 'p.relationship_id', '=', 'pr.rel_id')
+            ->where('p.project_status', 'in_progress')
+            ->whereBetween('pr.created_at', [$start, $endWithTime])
+            ->count();
 
-        $n         = count($data);
-        $cur       = $n > 0 ? $data[$n - 1] : 0;
-        $prev      = $n > 1 ? $data[$n - 2] : 0;
+        $n = count($data);
+        $cur = $n > 0 ? $data[$n - 1] : 0;
+        $prev = $n > 1 ? $data[$n - 2] : 0;
         $pctChange = $prev == 0 ? ($cur > 0 ? 100.0 : 0.0) : round((($cur - $prev) / $prev) * 100, 2);
 
         return [
-            'total'     => $totalRevenue,
-            'months'    => $months,
-            'data'      => $data,
-            'label'     => 'Revenue',
+            'total' => $totalActive,
+            'months' => $months,
+            'data' => $data,
+            'label' => 'Active Projects',
             'pctChange' => $pctChange,
         ];
     }
@@ -886,9 +886,9 @@ class dashboardController extends authController
      */
     private function getEarningsMetrics()
     {
-        // Default: show current month
-        $startDate = date('Y-m-01'); // First day of current month
-        $endDate = date('Y-m-t');    // Last day of current month
+        // Default: show last 30 days
+        $endDate = date('Y-m-d'); // Today
+        $startDate = date('Y-m-d', strtotime('-29 days')); // 30 days ago
 
         return $this->getEarningsMetricsForRange($startDate, $endDate);
     }
@@ -1068,6 +1068,12 @@ class dashboardController extends authController
      */
     private function getEarningsForGlobalRange(string $start, string $end): array
     {
+        // Calculate total earnings for the selected period
+        $totalEarnings = DB::table('platform_payments')
+            ->where('is_approved', 1)
+            ->whereBetween('transaction_date', [$start, $end . ' 23:59:59'])
+            ->sum('amount');
+
         $dayCount = (new \DateTime($start))->diff(new \DateTime($end))->days + 1;
 
         if ($dayCount <= 31) {
@@ -1087,11 +1093,6 @@ class dashboardController extends authController
             ->orderBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
             ->get()
             ->pluck('total_amount', 'ym');
-
-        $totalEarnings = DB::table('platform_payments')
-            ->where('is_approved', 1)
-            ->whereBetween('transaction_date', [$start, $end . ' 23:59:59'])
-            ->sum('amount');
 
         $labels = [];
         $data   = [];

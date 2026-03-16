@@ -31,6 +31,7 @@
                 data-project="{{ strtolower($log->project_title) }}"
                 data-verdict="{{ $log->prediction }}"
                 data-contractor-type="{{ $log->type_id ?? '' }}"
+                data-company-id="{{ $log->contractor_id ?? '' }}"
                 data-date="{{ $log->created_at }}">
                 <td class="px-4 py-3 whitespace-nowrap text-xs flex-1">
                     <span class="text-gray-600 font-medium">{{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}</span>

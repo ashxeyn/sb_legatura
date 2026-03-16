@@ -118,7 +118,8 @@ class globalManagementController extends Controller
                 'projects.project_title',
                 'projects.project_location',
                 'projects.type_id',
-                'contractors.company_name'
+                'contractors.company_name',
+                'contractors.contractor_id'
             )
             ->orderBy('ai_prediction_logs.created_at', 'desc')
             ->paginate(10);
@@ -134,10 +135,24 @@ class globalManagementController extends Controller
             ->orderBy('projects.project_title', 'asc')
             ->get();
 
+        // 4. Get Active Companies (contractors with analyzed projects)
+        $activeCompanies = DB::table('contractors')
+            ->join('bids', function($join) {
+                $join->on('contractors.contractor_id', '=', 'bids.contractor_id')
+                     ->where('bids.bid_status', '=', 'accepted');
+            })
+            ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+            ->join('ai_prediction_logs', 'projects.project_id', '=', 'ai_prediction_logs.project_id')
+            ->select('contractors.contractor_id', 'contractors.company_name')
+            ->distinct()
+            ->orderBy('contractors.company_name', 'asc')
+            ->get();
+
         return view('admin.globalManagement.aiManagement', [
             'aiUsage' => $aiUsage,
             'predictionLogs' => $predictionLogs,
             'projects' => $projects,
+            'activeCompanies' => $activeCompanies,
         ]);
     }
 

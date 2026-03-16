@@ -41,7 +41,7 @@
 
             {{-- Preset range pills ── --}}
             <div class="flex flex-wrap items-center gap-1.5" id="globalFilterOptions">
-              <button type="button" class="global-filter-btn active px-3 py-1.5 rounded-lg text-xs font-semibold border-2 border-indigo-500 bg-indigo-50 text-indigo-700 transition hover:bg-indigo-100" data-range="thisyear">This Year</button>
+              <button type="button" class="global-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="thisyear">This Year</button>
               <button type="button" class="global-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="lastyear">Last Year</button>
               <button type="button" class="global-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="last6months">Last 6 Months</button>
               <button type="button" class="global-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="last3months">Last 3 Months</button>
@@ -80,8 +80,8 @@
 
         {{-- ── Mini Stats (Projects, Bids, Revenue) — same design as proofOfpayments stat cards ── --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="stat-card mini-stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer" data-months='{{ json_encode($projectsMetrics["months"]) }}' data-data='{{ json_encode($projectsMetrics["data"]) }}' data-label="{{ $projectsMetrics['label'] }}" data-total='{{ $projectsMetrics['total'] }}' data-pct='{{ $projectsMetrics['pctChange'] }}'>
-            <div class="flex justify-between items-start gap-3 mb-3">
+          <div class="stat-card mini-stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200" data-months='{{ json_encode($projectsMetrics["months"]) }}' data-data='{{ json_encode($projectsMetrics["data"]) }}' data-label="{{ $projectsMetrics['label'] }}" data-total='{{ $projectsMetrics['total'] }}' data-pct='{{ $projectsMetrics['pctChange'] }}'>
+            <div class="flex justify-between items-start gap-3">
               <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Total Projects</p>
                 <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number mini-number tabular-nums">{{ $projectsMetrics['total'] }}</h2>
@@ -94,14 +94,10 @@
               </div>
               <div class="stat-icon-wrap bg-indigo-100 p-2.5 rounded-lg"><i class="fi fi-ss-folder text-lg text-indigo-600"></i></div>
             </div>
-            <div class="mini-stat-left w-full h-9 flex items-center">
-              <canvas class="mini-chart w-full h-9 block" width="120" height="36"></canvas>
-            </div>
-            <p class="text-[11px] text-gray-400 mt-1.5">Trend in selected period</p>
           </div>
 
-          <div class="stat-card mini-stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer" data-months='{{ json_encode($activeBidsMetrics["months"]) }}' data-data='{{ json_encode($activeBidsMetrics["data"]) }}' data-label="{{ $activeBidsMetrics['label'] }}" data-total='{{ $activeBidsMetrics['total'] }}' data-pct='{{ $activeBidsMetrics['pctChange'] }}'>
-            <div class="flex justify-between items-start gap-3 mb-3">
+          <div class="stat-card mini-stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200" data-months='{{ json_encode($activeBidsMetrics["months"]) }}' data-data='{{ json_encode($activeBidsMetrics["data"]) }}' data-label="{{ $activeBidsMetrics['label'] }}" data-total='{{ $activeBidsMetrics['total'] }}' data-pct='{{ $activeBidsMetrics['pctChange'] }}'>
+            <div class="flex justify-between items-start gap-3">
               <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Active Bids</p>
                 <h2 class="text-3xl font-bold leading-none text-orange-500 stat-number mini-number tabular-nums">{{ $activeBidsMetrics['total'] }}</h2>
@@ -114,30 +110,23 @@
               </div>
               <div class="stat-icon-wrap bg-blue-100 p-2.5 rounded-lg"><i class="fi fi-ss-handshake text-lg text-blue-600"></i></div>
             </div>
-            <div class="mini-stat-left w-full h-9 flex items-center">
-              <canvas class="mini-chart w-full h-9 block" width="120" height="36"></canvas>
-            </div>
-            <p class="text-[11px] text-gray-400 mt-1.5">Trend in selected period</p>
           </div>
 
-          <div class="stat-card mini-stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer" data-months='{{ json_encode($revenueMetrics["months"]) }}' data-data='{{ json_encode($revenueMetrics["data"]) }}' data-label="{{ $revenueMetrics['label'] }}" data-total='{{ number_format($revenueMetrics['total'],2) }}' data-pct='{{ $revenueMetrics['pctChange'] }}'>
-            <div class="flex justify-between items-start gap-3 mb-3">
+          <div class="stat-card mini-stat-card bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200" data-months='{{ json_encode($revenueMetrics["months"]) }}' data-data='{{ json_encode($revenueMetrics["data"]) }}' data-label="{{ $revenueMetrics['label'] }}" data-total='{{ $revenueMetrics['total'] }}' data-pct='{{ $revenueMetrics['pctChange'] }}'>
+            <div class="flex justify-between items-start gap-3">
               <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Revenue</p>
-                <h2 class="text-2xl font-bold leading-none text-orange-500 stat-number mini-number tabular-nums">₱{{ number_format($revenueMetrics['total'],2) }}</h2>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-1.5">Active Projects</p>
+                <h2 class="text-2xl font-bold leading-none text-green-500 stat-number mini-number tabular-nums">{{ number_format($revenueMetrics['total'], 0) }}</h2>
                 <div class="flex items-center gap-2 mt-2 flex-wrap">
-                  <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 w-fit">
-                    <i class="fi fi-ss-badge-dollar text-[10px] text-amber-600"></i>
-                    <span class="text-[11px] font-semibold text-amber-600 mini-label">Revenue</span>
+                  <div class="stat-badge flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 w-fit">
+                    <i class="fi fi-rr-briefcase text-[10px] text-green-600"></i>
+                    <span class="text-[11px] font-semibold text-green-600 mini-label">Active Projects</span>
                   </div>
+                  <span class="mini-change inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold {{ $revenueMetrics['pctChange'] >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}" style="display: none;">{{ $revenueMetrics['pctChange'] >= 0 ? '+' : '' }}{{ $revenueMetrics['pctChange'] }}%</span>
                 </div>
               </div>
-              <div class="stat-icon-wrap bg-amber-100 p-2.5 rounded-lg"><i class="fi fi-ss-badge-dollar text-lg text-amber-600"></i></div>
+              <div class="stat-icon-wrap bg-green-100 p-2.5 rounded-lg"><i class="fi fi-rr-briefcase text-lg text-green-600"></i></div>
             </div>
-            <div class="mini-stat-left w-full h-9 flex items-center">
-              <canvas class="mini-chart w-full h-9 block" width="120" height="36"></canvas>
-            </div>
-            <p class="text-[11px] text-gray-400 mt-1.5">Trend in selected period</p>
           </div>
         </div>
 
@@ -384,20 +373,8 @@
           <div class="earnings-header flex flex-wrap items-center justify-between gap-3 mb-3">
             <h2 class="earnings-title text-sm font-semibold text-white m-0">Earnings</h2>
             <div class="earnings-date-picker-wrapper relative">
-              <div class="earnings-date-picker inline-flex items-center gap-2 bg-white/20 px-3 py-2 rounded-lg cursor-pointer hover:bg-white/30 transition">
-                <span class="earnings-date-range text-[12px] font-semibold text-white" id="earningsDateRangeSpan">{{ $earningsMetrics['dateRange'] }}</span>
-                <button class="earnings-dropdown-btn p-0.5 text-white hover:bg-white/20 rounded transition" id="earningsDropdownBtn" type="button">
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" class="transition transform"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-              </div>
-              <div class="earnings-dropdown-menu absolute top-full right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 py-1 min-w-[160px] z-50 opacity-0 invisible transition-all" id="earningsDropdownMenu">
-                <button class="earnings-dropdown-item block w-full text-left px-3 py-2 text-[12px] text-gray-700 hover:bg-indigo-50 transition" data-range="today">Today</button>
-                <button class="earnings-dropdown-item block w-full text-left px-3 py-2 text-[12px] text-gray-700 hover:bg-indigo-50 transition" data-range="yesterday">Yesterday</button>
-                <button class="earnings-dropdown-item block w-full text-left px-3 py-2 text-[12px] text-gray-700 hover:bg-indigo-50 transition" data-range="last7days">Last 7 Days</button>
-                <button class="earnings-dropdown-item active block w-full text-left px-3 py-2 text-[12px] font-semibold bg-indigo-100 text-indigo-700" data-range="thismonth">This Month</button>
-                <button class="earnings-dropdown-item block w-full text-left px-3 py-2 text-[12px] text-gray-700 hover:bg-indigo-50 transition" data-range="lastmonth">Last Month</button>
-                <button class="earnings-dropdown-item block w-full text-left px-3 py-2 text-[12px] text-gray-700 hover:bg-indigo-50 transition" data-range="last3months">Last 3 Months</button>
-                <button class="earnings-dropdown-item block w-full text-left px-3 py-2 text-[12px] text-gray-700 hover:bg-indigo-50 transition" data-range="thisyear">This Year</button>
+              <div class="earnings-date-picker inline-flex items-center gap-2 bg-white/20 px-3 py-2 rounded-lg">
+                <span class="earnings-date-range text-[12px] font-semibold text-white" id="earningsDateRangeSpan">{{ $earningsMetrics['dateRange'] }} (Last 30 Days)</span>
               </div>
             </div>
           </div>

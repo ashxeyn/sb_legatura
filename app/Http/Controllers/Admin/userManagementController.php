@@ -1509,7 +1509,7 @@ class userManagementController extends authController
                 if ($displayName === '') $displayName = 'there';
             }
 
-            // In-app welcome notification
+            // In-app welcome notification (NotificationService also sends email automatically)
             NotificationService::create(
                 (int) $id,
                 'general',
@@ -1521,19 +1521,6 @@ class userManagementController extends authController
                 ['screen' => 'Home', 'params' => []]
             );
 
-            // Email notification
-            if (!empty($user->email)) {
-                $emailMessage = "Dear {$firstName},\n\n";
-                $emailMessage .= "Great news! Your {$roleLabel} account on Legatura has been verified and approved.\n\n";
-                $emailMessage .= "You can now log in and start using all platform features.\n\n";
-                $emailMessage .= "Thank you for choosing Legatura!\n\n";
-                $emailMessage .= "Best regards,\nThe Legatura Team";
-
-                Mail::raw($emailMessage, function ($mailMsg) use ($user) {
-                    $mailMsg->to($user->email)
-                        ->subject('Legatura - Account Approved');
-                });
-            }
         } catch (\Throwable $e) {
             \Log::warning('approveVerification: failed to send notification/email', ['user_id' => $id, 'error' => $e->getMessage()]);
         }

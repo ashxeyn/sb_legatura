@@ -96,7 +96,11 @@ class verificationResubmitController extends Controller
 
         DB::table('property_owners')->where('user_id', $userId)->update($updates);
 
-        $this->notifyResubmitted($userId, 'property owner', $owner->first_name ?? '');
+        // Fetch user's first name from users table
+        $user = DB::table('users')->where('user_id', $userId)->first();
+        $firstName = $user->first_name ?? '';
+
+        $this->notifyResubmitted($userId, 'property owner', $firstName);
 
         Log::info('Owner verification resubmitted', ['user_id' => $userId]);
 

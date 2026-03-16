@@ -61,9 +61,9 @@
               </div>
               <input type="date" id="globalDateTo" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <button id="resetGlobalDateFilter" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5">
-              <i class="fi fi-rr-rotate-left text-[10px]"></i>
-              Reset
+            <button id="resetGlobalDateFilter" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+              <i class="fi fi-rr-rotate-left"></i>
+              <span>Reset Filter</span>
             </button>
           </div>
           <div id="filterLoading" class="hidden flex items-center gap-1 ml-1">
@@ -292,9 +292,9 @@
                 <input type="date" id="activityDateTo" class="bg-white text-xs text-gray-700 font-medium px-2.5 py-1.5 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
               </div>
               <button id="activityResetBtn"
-                class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5">
-                <i class="fi fi-rr-rotate-left text-[10px]"></i>
-                Reset
+                class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                <i class="fi fi-rr-rotate-left"></i>
+                <span>Reset Filter</span>
               </button>
             </div>
           </div>

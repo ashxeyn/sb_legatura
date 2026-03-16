@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const customRangeStart   = document.getElementById('customRangeStart');
   const customRangeEnd     = document.getElementById('customRangeEnd');
   const resetFilterBtn     = document.getElementById('dashboardResetFilterBtn');
-  let currentRange = 'thisyear';
+  let currentRange = null; // No default filter
 
   const pad = n => String(n).padStart(2, '0');
   function getTodayStr() {
@@ -201,13 +201,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Seed default values (current year) and From/To constraints
-  setDateInputsForRange('thisyear');
+  // Initialize with empty date inputs (no default filter)
+  if (customRangeStart && customRangeEnd) {
+    customRangeStart.value = '';
+    customRangeEnd.value = '';
+    customRangeEnd.max = getTodayStr();
+  }
   
   // Auto-apply custom date filter when dates change
   if (customRangeStart && customRangeEnd) {
-    // Set initial max constraint on end date
-    customRangeEnd.max = getTodayStr();
     
     customRangeStart.addEventListener('change', function () {
       // Set minimum for end date to match start date
@@ -279,10 +281,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Reset filter: Clear custom dates and reset to This Year
+  // Reset filter: Clear everything and reload with no filter
   if (resetFilterBtn) {
     resetFilterBtn.addEventListener('click', function () {
-      // Clear custom dates and keep them empty
+      // Clear custom dates
       if (customRangeStart && customRangeEnd) {
         customRangeStart.value = '';
         customRangeEnd.value = '';
@@ -291,13 +293,12 @@ document.addEventListener('DOMContentLoaded', function() {
         customRangeEnd.max = getTodayStr();
       }
       
-      // Reset to This Year preset but don't populate the date inputs
-      currentRange = 'thisyear';
+      // Clear all preset selections
+      currentRange = null;
       globalFilterBtns.forEach(b => b.classList.remove('active'));
-      const firstPreset = document.querySelector('#globalFilterOptions .global-filter-btn[data-range="thisyear"]');
-      if (firstPreset) firstPreset.classList.add('active');
-      if (globalFilterLoading) globalFilterLoading.classList.add('visible');
-      fetchDashboardData('thisyear');
+      
+      // Reload page to show all-time data
+      window.location.reload();
     });
   }
 
@@ -333,11 +334,11 @@ document.addEventListener('DOMContentLoaded', function() {
    * Apply fresh server payload to every chart and stat on the page.
    */
   function updateAllCharts(payload) {
-    // ── 1. Mini stat cards (Projects / Bids / Revenue) ──────────────────────
+    // ── 1. Mini stat cards (Projects / Bids / Active Projects) ──────────────────────
     const miniCardDefs = [
-      { key: 'projectsMetrics',   isCurrency: false },
-      { key: 'activeBidsMetrics', isCurrency: false },
-      { key: 'revenueMetrics',    isCurrency: true  },
+      { key: 'projectsMetrics',   isCurrency: false, showPct: true },
+      { key: 'activeBidsMetrics', isCurrency: false, showPct: true },
+      { key: 'revenueMetrics',    isCurrency: false, showPct: false },  // Active Projects - not currency!
     ];
 
     const miniCardEls = document.querySelectorAll('.mini-stat-card');
@@ -359,14 +360,19 @@ document.addEventListener('DOMContentLoaded', function() {
       if (numEl) {
         numEl.textContent = def.isCurrency
           ? '₱' + parseFloat(metrics.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-          : metrics.total;
+          : parseInt(metrics.total).toLocaleString('en-US');
       }
 
-      // Update pct change text
+      // Update pct change text (hide for Active Projects)
       const pctEl = card.querySelector('.mini-change');
       if (pctEl) {
-        pctEl.textContent = (pct >= 0 ? '+' : '') + pct + '%';
-        pctEl.style.color = pct >= 0 ? '#059669' : '#dc2626';
+        if (def.showPct) {
+          pctEl.textContent = (pct >= 0 ? '+' : '') + pct + '%';
+          pctEl.style.color = pct >= 0 ? '#059669' : '#dc2626';
+          pctEl.style.display = '';
+        } else {
+          pctEl.style.display = 'none';
+        }
       }
 
       // Update mini sparkline chart
@@ -539,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    // ── 7. Earnings chart & totals ─────────────────────────────────────────
+    // ── 7. Earnings chart & total (both filter by date) ─────────────────────
     var earningsMx = payload.earningsMetrics;
     if (earningsMx && window.earningsChartInstance) {
       window.earningsChartInstance.data.labels           = earningsMx.days || [];
@@ -553,12 +559,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
       window.earningsChartInstance.update('none');
 
+      // Update total earnings for the filtered period
       var earningsTotalEl = document.querySelector('.earnings-total-amount');
       if (earningsTotalEl) {
         earningsTotalEl.textContent = '₱' + parseFloat(earningsMx.total || 0)
           .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
-
+      
       var earningsDateRangeEl = document.querySelector('.earnings-date-range');
       if (earningsDateRangeEl && earningsMx.dateRange) {
         earningsDateRangeEl.textContent = earningsMx.dateRange;
