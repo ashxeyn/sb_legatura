@@ -196,77 +196,92 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6" id="predictionTableWrap">
                 {{-- Filter Bar --}}
                 <div class="p-4 border-b border-gray-200">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div class="flex flex-wrap items-center gap-2.5">
-                            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
-                                <i class="fi fi-rr-filter text-gray-500"></i>
-                                <span>Filter By</span>
-                            </div>
-
-                            {{-- Search Input --}}
-                            <div class="relative">
-                                <input id="searchInput" type="text"
-                                    placeholder="Search project name…"
-                                    class="w-64 px-3.5 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 focus:outline-none">
-                                <i class="fi fi-rr-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm"></i>
-                            </div>
-
-                            {{-- Date Range --}}
-                            <div class="flex flex-wrap items-center gap-2">
-                                {{-- From --}}
-                                <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                    <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                                        <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                                        <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
-                                    </div>
-                                    <input type="date" id="dateFrom"
-                                        class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
-                                </div>
-
-                                <span class="text-gray-300 font-bold text-lg">→</span>
-
-                                {{-- To --}}
-                                <div>
-                                    <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition" id="dateToWrapper">
-                                        <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                                            <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                                            <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
-                                        </div>
-                                        <input type="date" id="dateTo"
-                                            class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
-                                    </div>
-                                    <p id="dateToError" class="hidden text-xs text-red-600 mt-1 flex items-center gap-1">
-                                        <i class="fi fi-rr-exclamation text-xs"></i>
-                                        <span>End date cannot be earlier than start date</span>
-                                    </p>
-                                </div>
-                            </div>
-
-                            {{-- Verdict Filter --}}
-                            <div class="flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                                    <i class="fi fi-rr-chart-line-up text-white text-sm leading-none"></i>
-                                    <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Verdict</span>
-                                </div>
-                                <div class="relative">
-                                    <select id="verdictFilter"
-                                        class="appearance-none bg-white text-sm text-gray-700 font-medium px-3 py-2.5 pr-8 focus:outline-none cursor-pointer border-0 min-w-[120px]">
-                                        <option value="">All</option>
-                                        <option value="DELAYED">Delayed</option>
-                                        <option value="ON_TIME">On Time</option>
-                                    </select>
-                                    <i class="fi fi-rr-angle-small-down absolute right-2 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none"></i>
-                                </div>
-                            </div>
-
-                            {{-- Reset Filter --}}
-                            <button id="resetFilters" type="button"
-                                class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition border border-transparent hover:border-red-200">
-                                <i class="fi fi-rr-rotate-left text-sm"></i>
-                                <span>Reset Filter</span>
-                            </button>
+                    <div class="flex items-center gap-2 flex-nowrap">
+                        <div class="flex items-center gap-2 px-2.5 py-2 border border-gray-300 rounded-lg text-xs text-gray-700 flex-shrink-0">
+                            <i class="fi fi-rr-filter text-gray-500"></i>
+                            <span>Filter</span>
                         </div>
+
+                        {{-- Search Input --}}
+                        <div class="relative flex-shrink-0">
+                            <input id="searchInput" type="text"
+                                placeholder="Search…"
+                                class="w-40 px-3 py-2 pr-8 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 focus:outline-none">
+                            <i class="fi fi-rr-search absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                        </div>
+
+                        {{-- Date From --}}
+                        <div class="date-pill flex items-center gap-0 rounded-lg border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition flex-shrink-0">
+                            <div class="flex items-center gap-1 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2 py-2 self-stretch">
+                                <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
+                                <span class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                            </div>
+                            <input type="date" id="dateFrom"
+                                class="bg-white text-xs text-gray-700 font-medium px-2 py-2 focus:outline-none cursor-pointer border-0 w-32">
+                        </div>
+
+                        {{-- Date To --}}
+                        <div class="date-pill flex items-center gap-0 rounded-lg border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition flex-shrink-0">
+                            <div class="flex items-center gap-1 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2 py-2 self-stretch">
+                                <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
+                                <span class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                            </div>
+                            <input type="date" id="dateTo"
+                                class="bg-white text-xs text-gray-700 font-medium px-2 py-2 focus:outline-none cursor-pointer border-0 w-32">
+                        </div>
+
+                        {{-- Verdict Filter --}}
+                        <div class="flex items-center gap-0 rounded-lg border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition flex-shrink-0">
+                            <div class="flex items-center gap-1 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2 py-2 self-stretch">
+                                <i class="fi fi-rr-chart-line-up text-white text-xs leading-none"></i>
+                                <span class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider select-none">Verdict</span>
+                            </div>
+                            <div class="relative">
+                                <select id="verdictFilter"
+                                    class="appearance-none bg-white text-xs text-gray-700 font-medium px-2 py-2 pr-6 focus:outline-none cursor-pointer border-0 w-24">
+                                    <option value="">All</option>
+                                    <option value="DELAYED">Delayed</option>
+                                    <option value="ON_TIME">On Time</option>
+                                </select>
+                                <i class="fi fi-rr-angle-small-down absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        {{-- Contractor Type Filter --}}
+                        <div class="flex items-center gap-0 rounded-lg border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition flex-shrink-0">
+                            <div class="flex items-center gap-1 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2 py-2 self-stretch">
+                                <i class="fi fi-rr-briefcase text-white text-xs leading-none"></i>
+                                <span class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider select-none">Type</span>
+                            </div>
+                            <div class="relative">
+                                <select id="contractorTypeFilter"
+                                    class="appearance-none bg-white text-xs text-gray-700 font-medium px-2 py-2 pr-6 focus:outline-none cursor-pointer border-0 w-28">
+                                    <option value="">All</option>
+                                    <option value="1">General</option>
+                                    <option value="2">Electrical</option>
+                                    <option value="3">Pool</option>
+                                    <option value="4">Mechanical</option>
+                                    <option value="5">Civil Works</option>
+                                    <option value="6">Architectural</option>
+                                    <option value="7">Interior</option>
+                                    <option value="8">Landscaping</option>
+                                    <option value="9">Others</option>
+                                </select>
+                                <i class="fi fi-rr-angle-small-down absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        {{-- Reset Filter --}}
+                        <button id="resetFilters" type="button"
+                            class="flex items-center gap-1 text-red-600 hover:text-red-700 text-xs font-semibold px-2.5 py-2 rounded-lg hover:bg-red-50 transition border border-transparent hover:border-red-200 flex-shrink-0">
+                            <i class="fi fi-rr-rotate-left text-xs"></i>
+                            <span>Reset</span>
+                        </button>
                     </div>
+                    <p id="dateToError" class="hidden text-xs text-red-600 mt-2 flex items-center gap-1">
+                        <i class="fi fi-rr-exclamation text-xs"></i>
+                        <span>End date cannot be earlier than start date</span>
+                    </p>
                 </div>
 
                 {{-- Prediction History Logs table --}}
@@ -341,7 +356,7 @@
                     <option value=""></option>
                     @foreach($projects as $project)
                         <option value="{{ $project->project_id }}">
-                            {{ $project->project_id }} - {{ $project->project_title }}
+                            {{ $project->project_title }}{{ $project->company_name ? ' (' . $project->company_name . ')' : '' }}
                         </option>
                     @endforeach
                 </select>

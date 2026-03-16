@@ -103,21 +103,33 @@ class globalManagementController extends Controller
         // 1. Get System Health (Python connection)
         $aiUsage = $this->getAIUsageStats();
 
-        // 2. Get Prediction History (Joined with Projects to get names)
+        // 2. Get Prediction History (Joined with Projects and Contractors through accepted bids)
         $predictionLogs = DB::table('ai_prediction_logs')
             ->join('projects', 'ai_prediction_logs.project_id', '=', 'projects.project_id')
+            ->leftJoin('bids', function($join) {
+                $join->on('projects.project_id', '=', 'bids.project_id')
+                     ->where('bids.bid_status', '=', 'accepted');
+            })
+            ->leftJoin('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'ai_prediction_logs.*',
                 'projects.project_title',
-                'projects.project_location'
+                'projects.project_location',
+                'projects.type_id',
+                'contractors.company_name'
             )
             ->orderBy('ai_prediction_logs.created_at', 'desc')
             ->paginate(10);
 
-        // 3. Get All Projects (For the "Run Analysis" dropdown/list)
+        // 3. Get All Projects (For the "Run Analysis" dropdown/list) with contractor company names
         $projects = DB::table('projects')
-            ->select('project_id', 'project_title', 'project_status')
-            ->orderBy('project_title', 'asc')
+            ->leftJoin('bids', function($join) {
+                $join->on('projects.project_id', '=', 'bids.project_id')
+                     ->where('bids.bid_status', '=', 'accepted');
+            })
+            ->leftJoin('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+            ->select('projects.project_id', 'projects.project_title', 'projects.project_status', 'contractors.company_name')
+            ->orderBy('projects.project_title', 'asc')
             ->get();
 
         return view('admin.globalManagement.aiManagement', [

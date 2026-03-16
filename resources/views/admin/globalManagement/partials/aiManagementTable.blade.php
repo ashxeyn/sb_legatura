@@ -17,12 +17,12 @@
     <table class="w-full table-fixed">
         <thead>
             <tr class="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-gray-200">
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[15%]">Analyzed</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[30%]">Project</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[12%]">Verdict</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Probability</th>
-                <th class="px-4 py-3 text-center text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[12%]">Confidence</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider w-[13%]">Action</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider flex-1">Analyzed</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider flex-1">Project</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider flex-1">Contractor</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider flex-1">Verdict</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider flex-1">Confidence</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-gray-700 uppercase tracking-wider flex-shrink-0">Action</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200" id="predictionTableBody">
@@ -30,15 +30,20 @@
             <tr class="hover:bg-orange-50/60 transition-colors duration-200 ease-in-out"
                 data-project="{{ strtolower($log->project_title) }}"
                 data-verdict="{{ $log->prediction }}"
+                data-contractor-type="{{ $log->type_id ?? '' }}"
                 data-date="{{ $log->created_at }}">
-                <td class="px-4 py-3 whitespace-nowrap text-xs">
+                <td class="px-4 py-3 whitespace-nowrap text-xs flex-1">
                     <span class="text-gray-600 font-medium">{{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}</span>
                 </td>
-                <td class="px-4 py-3 text-xs">
-                    <div class="font-semibold text-gray-900 truncate max-w-[280px]" title="{{ $log->project_title }}">{{ $log->project_title }}</div>
+                <td class="px-4 py-3 text-xs flex-1">
+                    <div class="font-semibold text-gray-900 truncate" title="{{ $log->project_title }}">{{ $log->project_title }}</div>
                     <div class="text-[11px] text-gray-500">ID: {{ $log->project_id }}</div>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-4 py-3 text-xs flex-1">
+                    <div class="font-semibold text-gray-900 truncate" title="{{ $log->company_name ?? 'N/A' }}">{{ $log->company_name ?? 'N/A' }}</div>
+                    <div class="text-[11px] text-gray-500">Contractor</div>
+                </td>
+                <td class="px-4 py-3 flex-1">
                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border
                         {{ $log->prediction === 'DELAYED'
                             ? 'bg-red-100 text-red-700 border-red-200'
@@ -46,7 +51,7 @@
                         {{ $log->prediction }}
                     </span>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-4 py-3 flex-1">
                     <div class="flex items-center gap-2">
                         <svg class="w-16 h-1.5" viewBox="0 0 100 6" preserveAspectRatio="none">
                             <rect x="0" y="0" width="100" height="6" rx="3" fill="#e5e7eb"/>
@@ -55,14 +60,7 @@
                         <span class="font-mono font-bold text-gray-700 text-xs min-w-[45px]">{{ number_format($log->delay_probability * 100, 1) }}%</span>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-center">
-                    <div class="flex items-center justify-center gap-0.5">
-                        @for($i = 1; $i <= 5; $i++)
-                            <div class="w-1.5 h-1.5 rounded-full {{ $i <= round($log->delay_probability * 5) ? ($log->prediction === 'DELAYED' ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-300' }}"></div>
-                        @endfor
-                    </div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
+                <td class="px-4 py-3 whitespace-nowrap flex-shrink-0">
                     <div class="flex items-center gap-1">
                         <button
                             data-ai-snapshot="{{ htmlspecialchars(json_encode(json_decode($log->ai_response_snapshot), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') }}"

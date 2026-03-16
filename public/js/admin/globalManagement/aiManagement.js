@@ -78,6 +78,7 @@
         const dateFrom = document.getElementById("dateFrom");
         const dateTo = document.getElementById("dateTo");
         const verdictFilter = document.getElementById("verdictFilter");
+        const contractorTypeFilter = document.getElementById("contractorTypeFilter");
         const resetBtn = document.getElementById("resetFilters");
 
         if (searchInput) {
@@ -136,6 +137,10 @@
         
         if (verdictFilter) {
             verdictFilter.addEventListener("change", applyFilters);
+        }
+
+        if (contractorTypeFilter) {
+            contractorTypeFilter.addEventListener("change", applyFilters);
         }
         
         if (resetBtn) {
@@ -217,6 +222,7 @@
         const dateFrom = document.getElementById("dateFrom");
         const dateTo = document.getElementById("dateTo");
         const verdictFilter = document.getElementById("verdictFilter");
+        const contractorTypeFilter = document.getElementById("contractorTypeFilter");
         const tbody = document.getElementById("predictionTableBody");
 
         if (!tbody) return;
@@ -225,6 +231,7 @@
         const fromDate = dateFrom ? dateFrom.value : "";
         const toDate = dateTo ? dateTo.value : "";
         const verdict = verdictFilter ? verdictFilter.value : "";
+        const contractorType = contractorTypeFilter ? contractorTypeFilter.value : "";
 
         const rows = tbody.querySelectorAll("tr[data-project]");
         let visibleCount = 0;
@@ -232,6 +239,7 @@
         rows.forEach(row => {
             const projectName = row.getAttribute("data-project") || "";
             const rowVerdict = row.getAttribute("data-verdict") || "";
+            const rowContractorType = row.getAttribute("data-contractor-type") || "";
             const rowDate = row.getAttribute("data-date") || "";
 
             let show = true;
@@ -243,6 +251,11 @@
 
             // Verdict filter
             if (verdict && rowVerdict !== verdict) {
+                show = false;
+            }
+
+            // Contractor type filter
+            if (contractorType && rowContractorType !== contractorType) {
                 show = false;
             }
 
@@ -293,6 +306,7 @@
         const dateFrom = document.getElementById("dateFrom");
         const dateTo = document.getElementById("dateTo");
         const verdictFilter = document.getElementById("verdictFilter");
+        const contractorTypeFilter = document.getElementById("contractorTypeFilter");
 
         if (searchInput) searchInput.value = "";
         if (dateFrom) {
@@ -304,6 +318,7 @@
             dateTo.removeAttribute('min');
         }
         if (verdictFilter) verdictFilter.value = "";
+        if (contractorTypeFilter) contractorTypeFilter.value = "";
 
         clearDateError();
         applyFilters();
