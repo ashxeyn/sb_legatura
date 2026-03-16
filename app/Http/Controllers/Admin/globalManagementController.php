@@ -125,13 +125,13 @@ class globalManagementController extends Controller
             ->paginate(10);
 
         // 3. Get All Projects (For the "Run Analysis" dropdown/list) with contractor company names
+        // Only show projects that have a selected contractor (selected_contractor_id in project_relationships)
         $projects = DB::table('projects')
-            ->leftJoin('bids', function($join) {
-                $join->on('projects.project_id', '=', 'bids.project_id')
-                     ->where('bids.bid_status', '=', 'accepted');
-            })
-            ->leftJoin('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+            ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->join('contractors', 'project_relationships.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->whereNotNull('project_relationships.selected_contractor_id')
             ->select('projects.project_id', 'projects.project_title', 'projects.project_status', 'contractors.company_name')
+            ->distinct()
             ->orderBy('projects.project_title', 'asc')
             ->get();
 
