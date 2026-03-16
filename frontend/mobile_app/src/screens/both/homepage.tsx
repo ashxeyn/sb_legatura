@@ -62,6 +62,8 @@ import ContractorDashboard from '../contractor/dashboard';
 
 // Import messages screen
 import MessagesScreen from './messages';
+import { messages_service } from '../../services/messages_service';
+import { initPusher, subscribeToChatChannel, disconnectPusher } from '../../config/pusher';
 
 // Import create project screen
 import CreateProjectScreen from '../owner/createProject';
@@ -207,6 +209,55 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Notifications screen state
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Unread message count for tab bar badge (updated in real-time by MessagesScreen)
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  // Pusher instance for real-time unread badge — lives here so it works on any tab
+  const homePusherRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const setup = async () => {
+      try {
+        const authToken = await storage_service.get_auth_token();
+        const storedUser = await storage_service.get_user_data();
+        const uid = storedUser?.user_id ?? storedUser?.id;
+        if (!authToken || !uid) return;
+
+        // Fetch initial unread count from inbox
+        const res = await messages_service.get_inbox(null);
+        if (!cancelled && res.success && res.data) {
+          const total = res.data.reduce((s: number, c: any) => s + (c.unread_count || 0), 0);
+          setUnreadMessageCount(total);
+        }
+
+        // Subscribe to Pusher for real-time increments
+        const pusher = await initPusher(authToken);
+        if (!pusher || cancelled) return;
+        homePusherRef.current = pusher;
+
+        subscribeToChatChannel(pusher, uid, (event: any) => {
+          if (cancelled) return;
+          // Only increment when the message is from someone else (not sent by us)
+          const senderId = event?.sender?.id;
+          if (senderId && senderId !== uid) {
+            setUnreadMessageCount((prev) => prev + 1);
+          }
+        });
+      } catch (e) {
+        console.warn('HomepageScreen Pusher init error:', e);
+      }
+    };
+    setup();
+    return () => {
+      cancelled = true;
+      if (homePusherRef.current) {
+        disconnectPusher(homePusherRef.current);
+        homePusherRef.current = null;
+      }
+    };
+  }, []);
 
   // Unified feed state (projects + showcase posts merged)
   const [feedItems, setFeedItems] = useState<any[]>([]);
@@ -2078,6 +2129,7 @@ const renderProfileContent = () => {
           ? (myContractorProfile?.contractor_id ?? null)
           : null,
       }}
+      onUnreadCountChange={setUnreadMessageCount}
     />
   );
 
@@ -2417,11 +2469,31 @@ const renderProfileContent = () => {
             style={styles.navItem}
             onPress={() => setActiveTab('messages')}
           >
-            <Ionicons
-              name={activeTab === 'messages' ? 'chatbubble' : 'chatbubble-outline'}
-              size={24}
-              color={activeTab === 'messages' ? '#EC7E00' : '#8E8E93'}
-            />
+            <View style={{ position: 'relative' }}>
+              <Ionicons
+                name={activeTab === 'messages' ? 'chatbubble' : 'chatbubble-outline'}
+                size={24}
+                color={activeTab === 'messages' ? '#EC7E00' : '#8E8E93'}
+              />
+              {unreadMessageCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -6,
+                  backgroundColor: '#EF4444',
+                  borderRadius: 8,
+                  minWidth: 16,
+                  height: 16,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 3,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
+                    {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.navText, activeTab === 'messages' && styles.navTextActive]}>
               Messages
             </Text>

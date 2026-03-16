@@ -84,6 +84,7 @@ interface MessagesScreenProps {
     user_type?: string;
     contractor_id?: number | null; // set when viewing as contractor role
   };
+  onUnreadCountChange?: (count: number) => void;
 }
 
 /* =====================================================================
@@ -226,7 +227,7 @@ const Avatar = React.memo(({
  * Main Component
  * ===================================================================== */
 
-export default function MessagesScreen({ userData }: MessagesScreenProps) {
+export default function MessagesScreen({ userData, onUnreadCountChange }: MessagesScreenProps) {
   const insets = useSafeAreaInsets();
   const userId = userData?.user_id;
   const contractorId = userData?.contractor_id ?? null;
@@ -300,6 +301,11 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     () => inbox.reduce((s: number, c: InboxItem) => s + c.unread_count, 0),
     [inbox],
   );
+
+  // Notify parent (tab bar) whenever unread count changes so the badge stays in sync
+  useEffect(() => {
+    onUnreadCountChange?.(totalUnread);
+  }, [totalUnread]);
 
   const filteredInbox = useMemo(() => {
     let items = [...inbox];
@@ -415,11 +421,11 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
       const eventConvId = Number(event.conversation_id);
       const eventContractorId = event.contractor_id ? Number(event.contractor_id) : null;
 
-      // Filter by role context: skip events that belong to a different inbox
-      // Only filter if BOTH sides have a contractor_id set (i.e. it's a contractor-scoped conv)
-      // Regular user-to-user messages (eventContractorId=null) should always pass through
-      if (eventContractorId !== null && eventContractorId !== contractorId) {
-        // This is a contractor-conv event for a different contractor — ignore
+      // Filter by role context: skip events that belong to a different contractor inbox
+      // ONLY filter if the current user IS in contractor role (contractorId is set).
+      // If user is an owner (contractorId=null), they receive all contractor messages where they're a participant.
+      if (contractorId !== null && eventContractorId !== null && eventContractorId !== contractorId) {
+        // Current user is a contractor, and this event is for a different contractor — ignore
         return;
       }
 
@@ -461,7 +467,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                     sent_at_timestamp: event.sent_at,
                   },
                   // Only increment unread if this message is NOT from the current user
-                  unread_count: event.sender?.id === c.other_user?.id
+                  unread_count: event.sender?.id !== userId
                     ? c.unread_count + 1
                     : c.unread_count,
                 }
@@ -475,8 +481,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
         return prev;
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [contractorId],
+    [contractorId, userId],
   );
 
   const handlePusherReadReceipt = useCallback(
@@ -501,6 +506,9 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   );
 
   const handlePusherTyping = useCallback((event: any) => {
+    // Only show typing indicator if it's NOT from the current user
+    if (event.user_id && event.user_id === userId) return;
+    
     // Check if the typing is for the active conversation
     if (activeConvRef.current && String(event.conversation_id) === String(activeConvRef.current.conversation_id)) {
       setIsTyping(true);
@@ -510,7 +518,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
       // Auto scroll to bottom to show indicator
       setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, []);
+  }, [userId]);
 
   // Keep refs in sync with the latest handler versions so the Pusher channel
   // (subscribed once on mount) always calls the current closure.
