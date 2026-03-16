@@ -265,10 +265,10 @@ export default function paymentReceiptForm({
       newErrors.transactionDate = 'Please select a valid transaction date';
     }
 
-    // Receipt photo is optional but recommended
-    // if (!receiptPhoto) {
-    //   newErrors.receiptPhoto = 'Please upload a receipt photo';
-    // }
+    // Receipt photo is REQUIRED
+    if (!receiptPhoto) {
+      newErrors.receiptPhoto = 'Receipt photo is required. Please upload a photo or document of your payment receipt.';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -529,9 +529,11 @@ export default function paymentReceiptForm({
 
         {/* Receipt Photo Upload */}
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Receipt Photo</Text>
+          <Text style={styles.inputLabel}>
+            Receipt Photo <Text style={styles.required}>*</Text>
+          </Text>
           <Text style={styles.inputDescription}>
-            Upload a photo or PDF of your payment receipt (optional but recommended)
+            Upload a photo or PDF of your payment receipt
           </Text>
 
           {receiptPhoto ? (
