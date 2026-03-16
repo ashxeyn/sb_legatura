@@ -1,9 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscription Analytics — Legatura Admin</title>
+  <title>Subscription Analytics - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -50,7 +51,7 @@
               </div>
               <input type="date" id="globalDateFrom" class="bg-white text-xs text-gray-700 font-medium px-3 py-2 focus:outline-none cursor-pointer min-w-0 border-0 outline-none">
             </div>
-            <span class="text-gray-300 font-bold text-base">→</span>
+            <span class="text-gray-300 font-bold text-base">?</span>
             <div class="date-pill flex items-center rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
               <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2 self-stretch">
                 <i class="fi fi-rr-calendar text-white text-xs leading-none"></i>
@@ -80,14 +81,6 @@
             <div class="bg-indigo-50 p-2 rounded-lg">
               <i class="fi fi-sr-users-alt text-indigo-500" style="font-size:1rem; line-height:1;"></i>
             </div>
-            @if($subscriptionMetrics['mom_growth'] >= 0)
-              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-                +{{ $subscriptionMetrics['mom_growth'] }}%
-              </span>
-            @else
-              <span class="text-[11px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{{ $subscriptionMetrics['mom_growth'] }}%</span>
-            @endif
           </div>
           <div class="text-2xl font-bold text-gray-900 stat-counter" data-target="{{ $subscriptionMetrics['total'] }}">0</div>
           <div class="text-xs font-medium text-gray-500 mt-0.5">Total Subscriptions</div>
@@ -100,9 +93,6 @@
             <div class="bg-emerald-50 p-2 rounded-lg">
               <i class="fi fi-sr-badge-check text-emerald-500" style="font-size:1rem; line-height:1;"></i>
             </div>
-            <span class="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-              {{ $subscriptionMetrics['total'] > 0 ? round(($subscriptionMetrics['active'] / $subscriptionMetrics['total']) * 100, 1) : 0 }}% of total
-            </span>
           </div>
           <div class="text-2xl font-bold text-gray-900 stat-counter" data-target="{{ $subscriptionMetrics['active'] }}">0</div>
           <div class="text-xs font-medium text-gray-500 mt-0.5">Active</div>
@@ -144,7 +134,7 @@
             <div>
               <h3 class="text-sm font-semibold text-gray-800">Subscription Revenue</h3>
               <p class="text-[11px] text-gray-400 mt-0.5" id="revenueSubtitle">
-                {{ $subscriptionRevenue['dateRange'] }} &nbsp;·&nbsp; Current vs Previous Year
+                {{ $subscriptionRevenue['dateRange'] }} &nbsp;-&nbsp; Current vs Previous Year
               </p>
             </div>
             <div class="flex gap-1.5 flex-wrap">
@@ -219,8 +209,8 @@
             <div>
               <h3 class="text-sm font-semibold text-gray-800">Subscribers</h3>
               <p class="text-[11px] text-gray-400" id="subscriberMeta">
-                {{ $subscribers->total() }} total &nbsp;·&nbsp;
-                Showing {{ $subscribers->firstItem() ?? 0 }}–{{ $subscribers->lastItem() ?? 0 }}
+                {{ $subscribers->total() }} total &nbsp;-&nbsp;
+                Showing {{ $subscribers->firstItem() ?? 0 }}-{{ $subscribers->lastItem() ?? 0 }}
               </p>
             </div>
             <button id="exportCsvBtn" class="flex items-center gap-1.5 bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors">
@@ -242,7 +232,7 @@
                 </svg>
                 <input id="searchInput" type="text"
                   value="{{ $filters['search'] }}"
-                  placeholder="Name, email, plan, transaction…"
+                  placeholder="Name, email, plan, transaction..."
                   class="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all">
               </div>
             </div>
@@ -274,9 +264,9 @@
               <select id="sortFilter" class="w-full px-2.5 py-2 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all">
                 <option value="newest"      {{ $filters['sort'] === 'newest'      ? 'selected' : '' }}>Newest First</option>
                 <option value="oldest"      {{ $filters['sort'] === 'oldest'      ? 'selected' : '' }}>Oldest First</option>
-                <option value="amount_desc" {{ $filters['sort'] === 'amount_desc' ? 'selected' : '' }}>Amount ↓</option>
-                <option value="amount_asc"  {{ $filters['sort'] === 'amount_asc'  ? 'selected' : '' }}>Amount ↑</option>
-                <option value="name_asc"    {{ $filters['sort'] === 'name_asc'    ? 'selected' : '' }}>Name A–Z</option>
+                <option value="amount_desc" {{ $filters['sort'] === 'amount_desc' ? 'selected' : '' }}>Amount ?</option>
+                <option value="amount_asc"  {{ $filters['sort'] === 'amount_asc'  ? 'selected' : '' }}>Amount ?</option>
+                <option value="name_asc"    {{ $filters['sort'] === 'name_asc'    ? 'selected' : '' }}>Name A-Z</option>
               </select>
             </div>
 

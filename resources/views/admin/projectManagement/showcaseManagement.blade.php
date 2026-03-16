@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Admin Dashboard - Legatura</title>
+    <title>Showcase Management - Legatura Admin</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -129,11 +130,11 @@
 
                 <!-- Filter Bar -->
                 <div
-                    class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex flex-wrap items-center gap-2.5">
+                    class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-3.5 flex flex-wrap items-center gap-2.5">
+                    <div class="flex flex-wrap items-center gap-2.5 flex-1">
                         <div
-                            class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
-                            <i class="fi fi-rr-filter text-gray-500"></i>
+                            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                            <i class="fi fi-rr-filter text-[12px]"></i>
                             <span>Filter By</span>
                         </div>
 
@@ -148,7 +149,7 @@
                                         class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Status</span>
                                 </div>
                                 <select id="statusFilter"
-                                    class="appearance-none bg-white text-sm text-gray-700 font-medium pl-3 pr-8 py-2.5 focus:outline-none cursor-pointer min-w-[140px] border-0">
+                                    class="appearance-none bg-white text-sm text-gray-700 font-medium pl-3 pr-8 py-2.5 focus:outline-none cursor-pointer min-w-[150px] border-0">
                                     <option value="">All Status</option>
                                     <option value="approved">Approved</option>
                                     <option value="pending">Pending Review</option>

@@ -9,6 +9,20 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentShowcaseTitle = '';
     const tableBody = document.getElementById('showcaseTableBody');
 
+    function animateShowcaseRows() {
+        const rows = document.querySelectorAll('#showcaseTableBody tr');
+        rows.forEach(function (row, index) {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(20px)';
+
+            setTimeout(function () {
+                row.style.transition = 'all 0.4s ease';
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 50);
+        });
+    }
+
     // Non-animated loading state for the modal body
     const loadingHTML = '<div class="flex items-center justify-center py-12">' +
         '<span class="text-gray-500 font-medium">Loading showcase details...</span>' +
@@ -38,6 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (data) {
                 if (data.showcases_html) {
                     tableBody.innerHTML = data.showcases_html;
+                    animateShowcaseRows();
                     var paginationContainer = document.getElementById('paginationLinks');
                     if (paginationContainer && data.pagination_html !== undefined) {
                         paginationContainer.innerHTML = data.pagination_html;
@@ -173,6 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Initial bind ──
     rebindActionButtons();
+    animateShowcaseRows();
 
     // ── Approve flow ──
     document.getElementById('viewModalApproveBtn').addEventListener('click', function () {

@@ -1,10 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>Bid Completion Analytics – Legatura Admin</title>
+  <title>Bid Completion Analytics - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -84,14 +85,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
               </svg>
             </div>
-            @if($projectsMoM >= 0)
-              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-                +{{ $projectsMoM }}%
-              </span>
-            @else
-              <span class="text-[11px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{{ $projectsMoM }}%</span>
-            @endif
           </div>
           <div class="text-2xl font-bold text-gray-900 stat-number" data-target="{{ $totalProjects }}">0</div>
           <div class="text-xs font-medium text-gray-500 mt-0.5">Total Projects</div>
@@ -121,7 +114,7 @@
               </svg>
             </div>
           </div>
-          <div class="text-2xl font-bold text-gray-900">₱<span class="stat-number" data-target="{{ $totalValueM }}">0</span>M</div>
+          <div class="text-2xl font-bold text-gray-900">&#8369;<span class="stat-number" data-target="{{ $totalValueM }}">0</span>M</div>
           <div class="text-xs font-medium text-gray-500 mt-0.5">Total Contracted Value</div>
           <div class="text-[11px] text-gray-400 mt-0.5">{{ $totalBids }} bids submitted</div>
         </div>
@@ -134,11 +127,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
               </svg>
             </div>
-            @if($completionRateMoM >= 0)
-              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">+{{ $completionRateMoM }}%</span>
-            @else
-              <span class="text-[11px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{{ $completionRateMoM }}%</span>
-            @endif
           </div>
           <div class="text-2xl font-bold text-gray-900"><span class="stat-number" data-target="{{ $completionRate }}">0</span>%</div>
           <div class="text-xs font-medium text-gray-500 mt-0.5">Bid Acceptance Rate</div>
@@ -194,9 +182,9 @@
           </div>
           <div class="text-xl font-bold text-gray-900 mb-1">
             @if($avgBidValueK >= 1000)
-              ₱<span class="stat-number" data-target="{{ round($avgBidValueK / 1000, 1) }}">0</span>M
+              ?<span class="stat-number" data-target="{{ round($avgBidValueK / 1000, 1) }}">0</span>M
             @else
-              ₱<span class="stat-number" data-target="{{ $avgBidValueK }}">0</span>K
+              ?<span class="stat-number" data-target="{{ $avgBidValueK }}">0</span>K
             @endif
           </div>
           <div class="text-xs font-medium text-gray-500 mb-2">Average Bid Value</div>
@@ -214,7 +202,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <span class="text-[11px] text-gray-400 font-medium">Submit → Decision</span>
+            <span class="text-[11px] text-gray-400 font-medium">Submit ? Decision</span>
           </div>
           <div class="text-xl font-bold text-gray-900 mb-1">
             <span class="stat-number" data-target="{{ $avgResponseHours }}">0</span> hrs
@@ -251,7 +239,7 @@
       {{-- GEOGRAPHIC DISTRIBUTION --}}
       <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
         <div class="mb-3">
-          <div class="text-sm font-semibold text-gray-800">Geographic Distribution — Zamboanga City Districts</div>
+          <div class="text-sm font-semibold text-gray-800">Geographic Distribution - Zamboanga City Districts</div>
           <div class="text-[11px] text-gray-400">Project distribution across city districts</div>
         </div>
 
@@ -279,7 +267,7 @@
               <div class="text-[11px] text-gray-400 mt-0.5">Active Projects</div>
               <div class="text-[11px] text-gray-500 mt-0.5">
                 @if($info['value'] > 0)
-                  ₱{{ $info['value'] }}M contracted
+                  ?{{ $info['value'] }}M contracted
                 @else
                   No accepted bids yet
                 @endif
@@ -344,14 +332,14 @@
                     </div>
                   </td>
                   <td class="px-4 py-2.5">
-                    <div class="text-xs font-semibold text-gray-800">₱{{ number_format($bid->proposed_cost) }}</div>
+                    <div class="text-xs font-semibold text-gray-800">?{{ number_format($bid->proposed_cost) }}</div>
                     <div class="text-[11px] text-gray-400">
                       @php
                         $diff = $bid->proposed_cost - ($avgBidValueK * 1000);
                         $sign = $diff >= 0 ? '+' : '';
                         $diffK = round(abs($diff) / 1000, 1);
                       @endphp
-                      {{ $sign }}{{ $diff >= 0 ? '' : '-' }}₱{{ $diffK }}K vs avg
+                      {{ $sign }}{{ $diff >= 0 ? '' : '-' }}?{{ $diffK }}K vs avg
                     </div>
                   </td>
                   <td class="px-4 py-2.5">
@@ -428,9 +416,9 @@
                     <td class="px-4 py-2.5">
                       <div class="text-xs font-semibold text-gray-800">
                         @if($activity->proposed_cost >= 1_000_000)
-                          ₱{{ round($activity->proposed_cost / 1_000_000, 1) }}M
+                          ?{{ round($activity->proposed_cost / 1_000_000, 1) }}M
                         @else
-                          ₱{{ number_format($activity->proposed_cost / 1000, 0) }}K
+                          ?{{ number_format($activity->proposed_cost / 1000, 0) }}K
                         @endif
                       </div>
                     </td>
@@ -461,7 +449,7 @@
                 <div class="text-xs font-medium text-gray-600">Total Payments Released</div>
                 <div class="text-[11px] text-gray-400">This month (approved)</div>
               </div>
-              <div class="text-xl font-bold text-teal-600">₱<span class="stat-number" data-target="{{ $paymentsReleasedM }}">0</span>M</div>
+              <div class="text-xl font-bold text-teal-600">&#8369;<span class="stat-number" data-target="{{ $paymentsReleasedM }}">0</span>M</div>
             </div>
 
             <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
@@ -469,13 +457,13 @@
                 <div class="text-xs font-medium text-gray-600">Pending Payments</div>
                 <div class="text-[11px] text-gray-400">Awaiting approval</div>
               </div>
-              <div class="text-xl font-bold text-orange-500">₱<span class="stat-number" data-target="{{ $pendingPaymentsM }}">0</span>M</div>
+              <div class="text-xl font-bold text-orange-500">&#8369;<span class="stat-number" data-target="{{ $pendingPaymentsM }}">0</span>M</div>
             </div>
 
             <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
               <div>
                 <div class="text-xs font-medium text-gray-600">Avg Processing Time</div>
-                <div class="text-[11px] text-gray-400">Transaction date → Approval</div>
+                <div class="text-[11px] text-gray-400">Transaction date &rarr; Approval</div>
               </div>
               <div class="text-xl font-bold text-blue-500"><span class="stat-number" data-target="{{ $avgPaymentDays }}">0</span> days</div>
             </div>
@@ -698,3 +686,7 @@
 </script>
 </body>
 </html>
+
+
+
+

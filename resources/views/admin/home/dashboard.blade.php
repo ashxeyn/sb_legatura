@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -40,28 +41,26 @@
 
             {{-- Preset range pills ── --}}
             <div class="flex flex-wrap items-center gap-1.5" id="globalFilterOptions">
-              <button type="button" class="global-filter-btn active px-3 py-2 rounded-xl text-[11px] font-semibold border-2 border-indigo-500 bg-indigo-50 text-indigo-700 transition hover:bg-indigo-100" data-range="thisyear">This Year</button>
-              <button type="button" class="global-filter-btn px-3 py-2 rounded-xl text-[11px] font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="lastyear">Last Year</button>
-              <button type="button" class="global-filter-btn px-3 py-2 rounded-xl text-[11px] font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="last6months">Last 6 Months</button>
-              <button type="button" class="global-filter-btn px-3 py-2 rounded-xl text-[11px] font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="last3months">Last 3 Months</button>
+              <button type="button" class="global-filter-btn active px-3 py-1.5 rounded-lg text-xs font-semibold border-2 border-indigo-500 bg-indigo-50 text-indigo-700 transition hover:bg-indigo-100" data-range="thisyear">This Year</button>
+              <button type="button" class="global-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="lastyear">Last Year</button>
+              <button type="button" class="global-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="last6months">Last 6 Months</button>
+              <button type="button" class="global-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 transition" data-range="last3months">Last 3 Months</button>
             </div>
 
             {{-- Custom date range (date-pill style like Verification Request) ── --}}
             <div class="flex flex-wrap items-center gap-2" id="dashboardCustomRangeWrap">
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
-                <input type="date" id="customRangeStart" class="dashboard-date-input bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                <input type="date" id="customRangeStart" class="dashboard-date-input bg-white text-xs px-2.5 py-1.5 focus:outline-none cursor-pointer min-w-0 border-0">
               </div>
               <span class="text-gray-300 font-bold text-lg">→</span>
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
-                <input type="date" id="customRangeEnd" class="dashboard-date-input bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                <input type="date" id="customRangeEnd" class="dashboard-date-input bg-white text-xs px-2.5 py-1.5 focus:outline-none cursor-pointer min-w-0 border-0">
               </div>
             </div>
           </div>
@@ -91,7 +90,6 @@
                     <i class="fi fi-ss-folder text-[10px] text-indigo-600"></i>
                     <span class="text-[11px] font-semibold text-indigo-600 mini-label">Total Projects</span>
                   </div>
-                  <span class="mini-change inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold {{ $projectsMetrics['pctChange'] >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ $projectsMetrics['pctChange'] >= 0 ? '+' : '' }}{{ $projectsMetrics['pctChange'] }}%</span>
                 </div>
               </div>
               <div class="stat-icon-wrap bg-indigo-100 p-2.5 rounded-lg"><i class="fi fi-ss-folder text-lg text-indigo-600"></i></div>
@@ -112,7 +110,6 @@
                     <i class="fi fi-ss-handshake text-[10px] text-blue-600"></i>
                     <span class="text-[11px] font-semibold text-blue-600 mini-label">Active Bids</span>
                   </div>
-                  <span class="mini-change inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold {{ $activeBidsMetrics['pctChange'] >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ $activeBidsMetrics['pctChange'] >= 0 ? '+' : '' }}{{ $activeBidsMetrics['pctChange'] }}%</span>
                 </div>
               </div>
               <div class="stat-icon-wrap bg-blue-100 p-2.5 rounded-lg"><i class="fi fi-ss-handshake text-lg text-blue-600"></i></div>
@@ -133,7 +130,6 @@
                     <i class="fi fi-ss-badge-dollar text-[10px] text-amber-600"></i>
                     <span class="text-[11px] font-semibold text-amber-600 mini-label">Revenue</span>
                   </div>
-                  <span class="mini-change inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold {{ $revenueMetrics['pctChange'] >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ $revenueMetrics['pctChange'] >= 0 ? '+' : '' }}{{ $revenueMetrics['pctChange'] }}%</span>
                 </div>
               </div>
               <div class="stat-icon-wrap bg-amber-100 p-2.5 rounded-lg"><i class="fi fi-ss-badge-dollar text-lg text-amber-600"></i></div>

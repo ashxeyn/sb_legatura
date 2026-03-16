@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Admin Dashboard - Legatura</title>
+    <title>Review & Rating Management - Legatura Admin</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
@@ -88,31 +89,29 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <!-- From -->
                             <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                                    <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                                    <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                                    <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                                 </div>
                                 <input type="date" id="dateFrom"
-                                    class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                                    class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
                             </div>
 
                             <span class="text-gray-300 font-bold text-lg">→</span>
 
                             <!-- To -->
                             <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                                    <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                                    <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                                    <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                                 </div>
                                 <input type="date" id="dateTo"
-                                    class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                                    class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
                             </div>
                         </div>
 
                         <!-- Rating Filter -->
                         <div class="relative">
                             <select id="ratingFilter"
-                                class="appearance-none rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 pr-9 text-sm text-gray-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none">
+                                class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm">
                                 <option value="">Rating</option>
                                 <option value="5">5 Stars</option>
                                 <option value="4">4 Stars</option>
@@ -120,15 +119,17 @@
                                 <option value="2">2 Stars</option>
                                 <option value="1">1 Star</option>
                             </select>
-                            <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none"></i>
+                            <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
                         </div>
                     </div>
 
-                    <button id="resetFilters"
-                        class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
-                        <i class="fi fi-rr-rotate-left"></i>
-                        <span>Reset Filter</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button id="resetFilters"
+                            class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                            <i class="fi fi-rr-rotate-left"></i>
+                            <span>Reset Filter</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Table Section -->
@@ -327,19 +328,7 @@
                             <textarea id="deletionReason" rows="2"
                                 class="w-full px-2 py-1.5 text-[11px] border border-gray-300 rounded-md focus:ring-2 focus:ring-red-300 focus:border-red-300 focus:outline-none transition resize-none"
                                 placeholder="Please provide a reason for deletion..."></textarea>
-
-                            <!-- Validation Error Section -->
-                            <div id="deleteReviewErrorAlert" class="hidden bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg mt-2 text-left">
-                              <div class="flex items-start gap-2">
-                                <i class="fi fi-rr-exclamation text-red-600 text-sm flex-shrink-0 mt-0.5"></i>
-                                <div class="flex-1">
-                                  <p class="text-xs font-semibold text-red-800 mb-1">Validation Error</p>
-                                  <ul id="deleteReviewErrorList" class="text-xs text-red-700 space-y-0.5 list-disc list-inside">
-                                    <!-- Error messages will be populated here -->
-                                  </ul>
-                                </div>
-                              </div>
-                            </div>
+                            <p id="deletionReasonError" class="text-red-500 text-[11px] mt-1 hidden">Reason is required.</p>
                         </div>
                     </div>
 

@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>Notifications – Legatura Admin</title>
+  <title>Notifications - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
@@ -18,7 +19,7 @@
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
   <style>
-    /* ── Shared card & row helpers ────────────────────────────────── */
+    /* -- Shared card & row helpers ---------------------------------- */
     .setting-card {
       transition: box-shadow .32s cubic-bezier(0.22, 1, 0.36, 1),
                   transform .32s cubic-bezier(0.22, 1, 0.36, 1),
@@ -147,6 +148,36 @@
       outline: none;
       border-color: #93c5fd;
       box-shadow: 0 0 0 3px rgba(191, 219, 254, .78);
+    }
+
+    .notification-validation-field.error {
+      border-color: rgb(239, 68, 68) !important;
+      background-color: rgb(254, 242, 242);
+    }
+
+    .notification-validation-field.error:focus {
+      box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.35) !important;
+      border-color: rgb(239, 68, 68) !important;
+    }
+
+    .compose-recipient-panel.error {
+      border-color: rgb(239, 68, 68) !important;
+      background-color: rgb(254, 242, 242) !important;
+    }
+
+    .compose-validation-alert {
+      animation: notificationSlideDown 0.3s ease-out;
+    }
+
+    @keyframes notificationSlideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .compose-recipient-panel {
@@ -1168,7 +1199,7 @@
     .user-option:hover { background:#EFF6FF; }
     .user-option .meta  { font-size:.7rem; color:#94a3b8; }
 
-    /* ── User Activity table ── */
+    /* -- User Activity table -- */
     .act-dot { width:8px; height:8px; border-radius:50%; background:#2563EB; display:inline-block; flex-shrink:0; }
     .act-row-unread td { background:#f8fbff; }
     .act-row-unread td:first-child { border-left:3px solid #2563EB; }
@@ -1249,7 +1280,7 @@
 
     <section class="px-6 py-6 space-y-6 max-w-screen-xl mx-auto">
 
-      {{-- ── Section Tabs ──────────────────────────────────────────── --}}
+      {{-- -- Section Tabs -------------------------------------------- --}}
       <div class="section-tabs-wrap">
         <button class="section-tab active" data-section="send">
           <span class="tab-icon"><i class="fi fi-rr-paper-plane"></i></span>
@@ -1270,13 +1301,13 @@
         </button>
       </div>
 
-      {{-- ════════════════════════════════════════════════════════════
-           SECTION 1 – SEND NOTIFICATIONS
-      ════════════════════════════════════════════════════════════ --}}
+       {{-- ------------------------------------------------------------
+         SECTION 1 - SEND NOTIFICATIONS
+       ------------------------------------------------------------ --}}
       <div id="section-send" class="section-content">
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
-          {{-- ── Mass Announcement ──────────────────────────────── --}}
+          {{-- -- Mass Announcement -------------------------------- --}}
           <div class="compose-card compose-card-mass h-full flex flex-col">
             <div class="compose-head">
               <div class="flex items-center gap-2.5 min-w-0">
@@ -1310,7 +1341,8 @@
                 <div class="sm:col-span-2 compose-field">
                   <label>Title <span class="text-red-500">*</span></label>
                   <input id="ann-title" type="text" maxlength="255" placeholder="Announcement title..."
-                    class="compose-input">
+                    class="compose-input notification-validation-field">
+                  <p id="annTitleError" class="text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
                 <div class="compose-field">
                   <label>Delivery <span class="text-red-500">*</span></label>
@@ -1326,7 +1358,8 @@
               <div class="compose-field">
                 <label>Message <span class="text-red-500">*</span></label>
                 <textarea id="ann-message" rows="3" placeholder="Write your announcement here..."
-                  class="compose-input resize-none"></textarea>
+                  class="compose-input resize-none notification-validation-field"></textarea>
+                <p id="annMessageError" class="text-red-500 text-[11px] mt-1 hidden"></p>
               </div>
 
               <div class="compose-actions flex items-center justify-between gap-2.5 flex-wrap">
@@ -1344,7 +1377,7 @@
             </div>
           </div>
 
-          {{-- ── Targeted Notification ──────────────────────────── --}}
+          {{-- -- Targeted Notification ---------------------------- --}}
           <div class="compose-card compose-card-target h-full flex flex-col">
             <div class="compose-head is-target rounded-t-xl">
               <div class="flex items-center gap-2.5 min-w-0">
@@ -1375,7 +1408,7 @@
               </p>
 
               {{-- User search + tags --}}
-              <div class="compose-recipient-panel">
+              <div id="targetRecipientsPanel" class="compose-recipient-panel">
                 <div class="flex items-center justify-between gap-2 mb-1.5">
                   <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Select Recipients <span class="text-red-500">*</span></label>
                   <span id="selectedUsersCount" class="recipient-count">0 selected</span>
@@ -1384,20 +1417,22 @@
                 <div class="relative">
                   <input id="userSearchInput" type="text" autocomplete="off"
                     placeholder="Search by username or email..."
-                    class="compose-input">
+                    class="compose-input notification-validation-field">
                   <div id="userSearchDropdown"
                     class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg hidden mt-1"></div>
                 </div>
 
                 <div id="selectedUsersContainer" class="flex flex-wrap gap-1.5 mt-2 min-h-[24px]"></div>
                 <input type="hidden" id="target-user-ids" value="">
+                <p id="targetRecipientsError" class="text-red-500 text-[11px] mt-1 hidden"></p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="sm:col-span-2 compose-field">
                   <label>Title <span class="text-red-500">*</span></label>
                   <input id="tgt-title" type="text" maxlength="255" placeholder="Notification title..."
-                    class="compose-input">
+                    class="compose-input notification-validation-field">
+                  <p id="tgtTitleError" class="text-red-500 text-[11px] mt-1 hidden"></p>
                 </div>
                 <div class="compose-field">
                   <label>Delivery <span class="text-red-500">*</span></label>
@@ -1413,7 +1448,8 @@
               <div class="compose-field">
                 <label>Message <span class="text-red-500">*</span></label>
                 <textarea id="tgt-message" rows="3" placeholder="Write your message here..."
-                  class="compose-input resize-none"></textarea>
+                  class="compose-input resize-none notification-validation-field"></textarea>
+                <p id="tgtMessageError" class="text-red-500 text-[11px] mt-1 hidden"></p>
               </div>
 
               <div class="compose-actions flex items-center gap-2.5 flex-wrap">
@@ -1436,9 +1472,9 @@
         </div>
       </div>
 
-      {{-- ════════════════════════════════════════════════════════════
-           SECTION 2 – USER ACTIVITY FEED
-      ════════════════════════════════════════════════════════════ --}}
+       {{-- ------------------------------------------------------------
+         SECTION 2 - USER ACTIVITY FEED
+       ------------------------------------------------------------ --}}
       <div id="section-activity" class="section-content hidden">
         <div class="activity-feed-card">
 
@@ -1471,41 +1507,45 @@
           </div>
 
           {{-- Filters --}}
-          <div class="activity-filter-shell px-5 py-4 border-b border-blue-100">
-            <div class="activity-filter-grid">
-              <div class="activity-filter-field activity-filter-type">
-                <label for="actFilterType">Activity Type</label>
-                <select id="actFilterType" class="activity-filter-input">
-                  <option value="">All activity types</option>
-                  <option value="user_registered">New User Registration</option>
-                  <option value="failed_login_attempt">Failed Login Attempt</option>
-                  <option value="project_reported">Project Reported</option>
-                  <option value="profile_updated">Profile Updated</option>
-                  <option value="password_reset">Password Reset Requested</option>
-                  <option value="email_verified">Email Verified</option>
-                  <option value="account_status_changed">Account Suspended/Unsuspended</option>
-                </select>
-              </div>
+          <div class="px-5 py-4 border-b border-blue-100">
+            <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                  <i class="fi fi-rr-filter text-gray-500"></i>
+                  <span>Filter By</span>
+                </div>
 
-              <div class="activity-filter-field activity-filter-read">
-                <label for="actFilterRead">Read Status</label>
-                <select id="actFilterRead" class="activity-filter-input">
-                  <option value="">All</option>
-                  <option value="0">Unread</option>
-                  <option value="1">Read</option>
-                </select>
-              </div>
-
-              <div class="activity-filter-field activity-filter-search">
-                <label for="actSearch">Search User</label>
                 <div class="relative">
-                  <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                  <input id="actSearch" type="text" placeholder="Search username or email…" class="activity-filter-input pl-8">
+                  <select id="actFilterType" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[190px]">
+                    <option value="">All activity types</option>
+                    <option value="user_registered">New User Registration</option>
+                    <option value="failed_login_attempt">Failed Login Attempt</option>
+                    <option value="project_reported">Project Reported</option>
+                    <option value="profile_updated">Profile Updated</option>
+                    <option value="password_reset">Password Reset Requested</option>
+                    <option value="email_verified">Email Verified</option>
+                    <option value="account_status_changed">Account Suspended/Unsuspended</option>
+                  </select>
+                  <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                </div>
+
+                <div class="relative">
+                  <select id="actFilterRead" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[130px]">
+                    <option value="">All</option>
+                    <option value="0">Unread</option>
+                    <option value="1">Read</option>
+                  </select>
+                  <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                </div>
+
+                <div class="relative min-w-[240px]">
+                  <i class="fi fi-rr-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                  <input id="actSearch" type="text" placeholder="Search username or email..." class="w-full appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pl-8 text-xs font-medium text-gray-700 placeholder-gray-400 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition">
                 </div>
               </div>
 
-              <div class="activity-filter-total-wrap">
-                <span id="actTotalBadge" class="activity-total-badge">Loading...</span>
+              <div class="flex items-center gap-2">
+                <span id="actTotalBadge" class="inline-flex items-center justify-center min-h-[1.75rem] px-3 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-semibold">Loading...</span>
               </div>
             </div>
           </div>
@@ -1525,24 +1565,24 @@
                   </tr>
                 </thead>
                 <tbody id="activityTableBody">
-                  <tr><td colspan="5" class="text-center py-10 text-gray-400 text-sm">Loading…</td></tr>
+                  <tr><td colspan="5" class="text-center py-10 text-gray-400 text-sm">Loading...</td></tr>
                 </tbody>
               </table>
             </div>
 
             {{-- Pagination --}}
             <div class="activity-pagination">
-              <button id="actPrevBtn" class="activity-nav-btn" disabled>← Prev</button>
+              <button id="actPrevBtn" class="activity-nav-btn" disabled>? Prev</button>
               <span id="actPageInfo" class="activity-page-meta"></span>
-              <button id="actNextBtn" class="activity-nav-btn" disabled>Next →</button>
+              <button id="actNextBtn" class="activity-nav-btn" disabled>Next ?</button>
             </div>
           </div>
         </div>
       </div>
 
-      {{-- ════════════════════════════════════════════════════════════
-           SECTION 3 – PREFERENCES
-      ════════════════════════════════════════════════════════════ --}}
+       {{-- ------------------------------------------------------------
+         SECTION 3 - PREFERENCES
+       ------------------------------------------------------------ --}}
       <div id="section-preferences" class="section-content hidden space-y-6">
         <div class="pref-suite-card">
           <div class="pref-suite-head">
@@ -1662,9 +1702,9 @@
         </div>
       </div>
 
-      {{-- ════════════════════════════════════════════════════════════
-           SECTION 4 – SENT LOG
-      ════════════════════════════════════════════════════════════ --}}
+       {{-- ------------------------------------------------------------
+         SECTION 4 - SENT LOG
+       ------------------------------------------------------------ --}}
       <div id="section-log" class="section-content hidden">
         <div class="sent-log-card">
           <div class="sent-log-head px-5 py-4 border-b border-blue-100 flex items-start justify-between flex-wrap gap-3">
@@ -1690,29 +1730,36 @@
           </div>
 
           {{-- Filters --}}
-          <div class="sent-log-filter-shell px-5 py-4 border-b border-blue-100">
-            <div class="sent-log-filter-grid">
-              <div class="sent-log-filter-field sent-log-filter-type">
-                <label for="logFilterType">Notification Type</label>
-                <select id="logFilterType" class="sent-log-filter-input">
-                  <option value="">All types</option>
-                  <option value="all">Mass Announcement</option>
-                  <option value="targeted">Targeted</option>
-                </select>
+          <div class="px-5 py-4 border-b border-blue-100">
+            <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                  <i class="fi fi-rr-filter text-gray-500"></i>
+                  <span>Filter By</span>
+                </div>
+
+                <div class="relative">
+                  <select id="logFilterType" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[180px]">
+                    <option value="">All types</option>
+                    <option value="all">Mass Announcement</option>
+                    <option value="targeted">Targeted</option>
+                  </select>
+                  <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                </div>
+
+                <div class="relative">
+                  <select id="logFilterDelivery" class="appearance-none bg-white border border-indigo-200 rounded-lg px-3 py-2 pr-8 text-xs font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition cursor-pointer shadow-sm min-w-[170px]">
+                    <option value="">All delivery</option>
+                    <option value="in-app">In-App</option>
+                    <option value="email">Email</option>
+                    <option value="both">Both</option>
+                  </select>
+                  <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
+                </div>
               </div>
 
-              <div class="sent-log-filter-field sent-log-filter-delivery">
-                <label for="logFilterDelivery">Delivery Channel</label>
-                <select id="logFilterDelivery" class="sent-log-filter-input">
-                  <option value="">All delivery</option>
-                  <option value="in-app">In-App</option>
-                  <option value="email">Email</option>
-                  <option value="both">Both</option>
-                </select>
-              </div>
-
-              <div class="sent-log-filter-total-wrap">
-                <span id="logTotalBadge" class="sent-log-total-badge">Loading...</span>
+              <div class="flex items-center gap-2">
+                <span id="logTotalBadge" class="inline-flex items-center justify-center min-h-[1.75rem] px-3 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-semibold">Loading...</span>
               </div>
             </div>
           </div>
@@ -1731,16 +1778,16 @@
                   </tr>
                 </thead>
                 <tbody id="sentLogBody">
-                  <tr><td colspan="5" class="text-center py-8 text-gray-400 text-sm">Loading…</td></tr>
+                  <tr><td colspan="5" class="text-center py-8 text-gray-400 text-sm">Loading...</td></tr>
                 </tbody>
               </table>
             </div>
 
             {{-- Pagination --}}
             <div class="sent-log-pagination">
-              <button id="logPrevBtn" class="sent-log-nav-btn" disabled>← Prev</button>
+              <button id="logPrevBtn" class="sent-log-nav-btn" disabled>? Prev</button>
               <span id="logPageInfo" class="sent-log-page-meta"></span>
-              <button id="logNextBtn" class="sent-log-nav-btn" disabled>Next →</button>
+              <button id="logNextBtn" class="sent-log-nav-btn" disabled>Next ?</button>
             </div>
           </div>
         </div>
@@ -1750,16 +1797,16 @@
   </main>
 </div>
 
-{{-- ── Toast container ────────────────────────────────────────────────── --}}
+{{-- -- Toast container -------------------------------------------------- --}}
 <div id="toastBar"></div>
 
 <script>
-// ─────────────────────────────────────────────────────────────────────────────
-//  Legatura Admin – Notifications JS
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+//  Legatura Admin - Notifications JS
+// -----------------------------------------------------------------------------
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
-// ── Toast helper ──────────────────────────────────────────────────────────────
+// -- Toast helper --------------------------------------------------------------
 function toast(msg, type = 'success') {
     const bar  = document.getElementById('toastBar');
     const el   = document.createElement('div');
@@ -1769,7 +1816,7 @@ function toast(msg, type = 'success') {
     setTimeout(() => el.remove(), 3500);
 }
 
-// ── API helper ─────────────────────────────────────────────────────────────
+// -- API helper -------------------------------------------------------------
 async function api(url, method = 'GET', body = null) {
     const opts = {
         method,
@@ -1782,9 +1829,9 @@ async function api(url, method = 'GET', body = null) {
     return { ok: res.ok, data };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 //  SECTION TABS
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 document.querySelectorAll('.section-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
@@ -1799,15 +1846,116 @@ document.querySelectorAll('.section-tab').forEach(tab => {
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+    const announcementValidation = {
+      title: document.getElementById('ann-title'),
+      message: document.getElementById('ann-message'),
+      titleError: document.getElementById('annTitleError'),
+      messageError: document.getElementById('annMessageError')
+    };
+
+    const targetedValidation = {
+      title: document.getElementById('tgt-title'),
+      message: document.getElementById('tgt-message'),
+      titleError: document.getElementById('tgtTitleError'),
+      messageError: document.getElementById('tgtMessageError'),
+      recipientPanel: document.getElementById('targetRecipientsPanel'),
+      recipientSearch: document.getElementById('userSearchInput'),
+      recipientError: document.getElementById('targetRecipientsError')
+    };
+
+    function clearValidationField(fieldEl, errorEl) {
+      if (fieldEl) fieldEl.classList.remove('error');
+      if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
+      }
+    }
+
+    function showValidationField(fieldEl, errorEl, message) {
+      if (fieldEl) fieldEl.classList.add('error');
+      if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    function setRecipientPanelError(hasError) {
+      if (!targetedValidation.recipientPanel) return;
+      targetedValidation.recipientPanel.classList.toggle('error', hasError);
+    }
+
+    function clearRecipientError() {
+      setRecipientPanelError(false);
+      if (targetedValidation.recipientError) {
+        targetedValidation.recipientError.textContent = '';
+        targetedValidation.recipientError.classList.add('hidden');
+      }
+    }
+
+    function showRecipientError(message) {
+      setRecipientPanelError(true);
+      if (targetedValidation.recipientError) {
+        targetedValidation.recipientError.textContent = message;
+        targetedValidation.recipientError.classList.remove('hidden');
+      }
+    }
+
+    function clearAnnouncementValidation() {
+      clearValidationField(announcementValidation.title, announcementValidation.titleError);
+      clearValidationField(announcementValidation.message, announcementValidation.messageError);
+    }
+
+    function clearTargetedValidation() {
+      clearValidationField(targetedValidation.title, targetedValidation.titleError);
+      clearValidationField(targetedValidation.message, targetedValidation.messageError);
+      clearRecipientError();
+    }
+
+    announcementValidation.title?.addEventListener('input', () => {
+      clearValidationField(announcementValidation.title, announcementValidation.titleError);
+    });
+
+    announcementValidation.message?.addEventListener('input', () => {
+      clearValidationField(announcementValidation.message, announcementValidation.messageError);
+    });
+
+    targetedValidation.title?.addEventListener('input', () => {
+      clearValidationField(targetedValidation.title, targetedValidation.titleError);
+    });
+
+    targetedValidation.message?.addEventListener('input', () => {
+      clearValidationField(targetedValidation.message, targetedValidation.messageError);
+    });
+
+    targetedValidation.recipientSearch?.addEventListener('input', () => {
+      clearRecipientError();
+    });
+
+// -----------------------------------------------------------------------------
 //  SEND ANNOUNCEMENT
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 document.getElementById('btnSendAnnouncement').addEventListener('click', async () => {
-    const title    = document.getElementById('ann-title').value.trim();
-    const message  = document.getElementById('ann-message').value.trim();
+      const title    = announcementValidation.title?.value.trim() ?? '';
+      const message  = announcementValidation.message?.value.trim() ?? '';
     const delivery = document.getElementById('ann-delivery').value;
 
-    if (!title || !message) { toast('Title and message are required.', 'error'); return; }
+      let hasErrors = false;
+
+      if (!title) {
+        showValidationField(announcementValidation.title, announcementValidation.titleError, 'Announcement title is required.');
+        hasErrors = true;
+      } else {
+        clearValidationField(announcementValidation.title, announcementValidation.titleError);
+      }
+
+      if (!message) {
+        showValidationField(announcementValidation.message, announcementValidation.messageError, 'Announcement message is required.');
+        hasErrors = true;
+      } else {
+        clearValidationField(announcementValidation.message, announcementValidation.messageError);
+      }
+
+      if (hasErrors) return;
 
     const btn     = document.getElementById('btnSendAnnouncement');
     const spinner = document.getElementById('ann-sending');
@@ -1816,9 +1964,10 @@ document.getElementById('btnSendAnnouncement').addEventListener('click', async (
     try {
         const { ok, data } = await api('/admin/notifications/send-announcement', 'POST', { title, message, delivery_method: delivery });
         if (ok && data.success) {
-            toast(`✓ ${data.message}`, 'success');
-            document.getElementById('ann-title').value   = '';
-            document.getElementById('ann-message').value = '';
+            toast(`? ${data.message}`, 'success');
+          if (announcementValidation.title) announcementValidation.title.value = '';
+          if (announcementValidation.message) announcementValidation.message.value = '';
+          clearAnnouncementValidation();
         } else {
             toast(data.message ?? 'Failed to send announcement.', 'error');
         }
@@ -1829,9 +1978,9 @@ document.getElementById('btnSendAnnouncement').addEventListener('click', async (
     }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  TARGETED – user search & tags
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+//  TARGETED - user search & tags
+// -----------------------------------------------------------------------------
 let selectedUsers = {}; // { user_id: { username, email } }
 let searchTimeout = null;
 
@@ -1848,11 +1997,14 @@ function renderTags() {
     countEl.textContent = `${ids.length} selected`;
     countEl.classList.toggle('has-users', ids.length > 0);
   }
+    if (ids.length > 0) {
+        clearRecipientError();
+    }
     ids.forEach(id => {
         const u   = selectedUsers[id];
         const tag = document.createElement('div');
         tag.className = 'user-tag';
-        tag.innerHTML = `<span>${escHtml(u.username)}</span><button data-id="${id}" title="Remove">×</button>`;
+        tag.innerHTML = `<span>${escHtml(u.username)}</span><button data-id="${id}" title="Remove">x</button>`;
         tag.querySelector('button').addEventListener('click', () => {
             delete selectedUsers[id];
             renderTags();
@@ -1933,16 +2085,37 @@ function renderDropdown(users) {
     dropdown.classList.remove('hidden');
 }
 
-// ── Send targeted ─────────────────────────────────────────────────────────
+// -- Send targeted ---------------------------------------------------------
 document.getElementById('btnSendTargeted').addEventListener('click', async () => {
     const userIds = Object.keys(selectedUsers).map(Number);
-    if (!userIds.length) { toast('Please select at least one recipient.', 'error'); return; }
-
-    const title    = document.getElementById('tgt-title').value.trim();
-    const message  = document.getElementById('tgt-message').value.trim();
+  const title    = targetedValidation.title?.value.trim() ?? '';
+  const message  = targetedValidation.message?.value.trim() ?? '';
     const delivery = document.getElementById('tgt-delivery').value;
 
-    if (!title || !message) { toast('Title and message are required.', 'error'); return; }
+  let hasErrors = false;
+
+  if (!userIds.length) {
+    showRecipientError('Please select at least one recipient.');
+    hasErrors = true;
+  } else {
+    clearRecipientError();
+  }
+
+  if (!title) {
+    showValidationField(targetedValidation.title, targetedValidation.titleError, 'Notification title is required.');
+    hasErrors = true;
+  } else {
+    clearValidationField(targetedValidation.title, targetedValidation.titleError);
+  }
+
+  if (!message) {
+    showValidationField(targetedValidation.message, targetedValidation.messageError, 'Notification message is required.');
+    hasErrors = true;
+  } else {
+    clearValidationField(targetedValidation.message, targetedValidation.messageError);
+  }
+
+  if (hasErrors) return;
 
     const btn     = document.getElementById('btnSendTargeted');
     const spinner = document.getElementById('tgt-sending');
@@ -1953,11 +2126,12 @@ document.getElementById('btnSendTargeted').addEventListener('click', async () =>
             user_ids: userIds, title, message, delivery_method: delivery
         });
         if (ok && data.success) {
-            toast(`✓ ${data.message}`, 'success');
+            toast(`? ${data.message}`, 'success');
             selectedUsers = {};
             renderTags();
-            document.getElementById('tgt-title').value   = '';
-            document.getElementById('tgt-message').value = '';
+          if (targetedValidation.title) targetedValidation.title.value = '';
+          if (targetedValidation.message) targetedValidation.message.value = '';
+          clearTargetedValidation();
         } else {
             toast(data.message ?? 'Failed to send notification.', 'error');
         }
@@ -1968,9 +2142,9 @@ document.getElementById('btnSendTargeted').addEventListener('click', async () =>
     }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 //  PREFERENCES
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 let prefsDirty = false;
 
 async function loadPreferences() {
@@ -2025,9 +2199,9 @@ document.getElementById('resetDefaultsBtn').addEventListener('click', () => {
     updateSaveBar();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 //  SENT LOG
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 let logPage = 1;
 let logLastPage = 1;
 
@@ -2037,7 +2211,7 @@ async function loadLog(page = 1) {
     const deliveryFilter = document.getElementById('logFilterDelivery').value;
 
     document.getElementById('sentLogBody').innerHTML =
-        '<tr><td colspan="5" class="text-center py-8 text-gray-400 text-sm"><i class="fi fi-rr-spinner animate-spin mr-1"></i>Loading…</td></tr>';
+        '<tr><td colspan="5" class="text-center py-8 text-gray-400 text-sm"><i class="fi fi-rr-spinner animate-spin mr-1"></i>Loading...</td></tr>';
 
     try {
         let url = `/admin/notifications/sent-log?page=${page}&per_page=20`;
@@ -2047,7 +2221,7 @@ async function loadLog(page = 1) {
         const { notifications, total, current_page, last_page } = data.data;
         logLastPage = last_page;
 
-        // Client-side filter (server returns all for this admin — lightweight)
+        // Client-side filter (server returns all for this admin - lightweight)
         const filtered = notifications.filter(n => {
             if (typeFilter     && n.target_type     !== typeFilter)     return false;
             if (deliveryFilter && n.delivery_method !== deliveryFilter) return false;
@@ -2070,7 +2244,7 @@ async function loadLog(page = 1) {
             const typeBadge  = n.target_type === 'all' ? 'badge-all' : 'badge-target';
             const typeLabel  = n.target_type === 'all' ? 'Mass' : 'Targeted';
             const date       = new Date(n.sent_at.replace(' ','T')).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
-            const shortMsg   = n.message.length > 80 ? n.message.slice(0,80)+'…' : n.message;
+            const shortMsg   = n.message.length > 80 ? n.message.slice(0,80)+'...' : n.message;
             return `<tr>
               <td>
                 <div class="font-semibold text-gray-900 text-sm">${escHtml(n.title)}</div>
@@ -2095,9 +2269,9 @@ document.getElementById('logNextBtn').addEventListener('click', () => { if (logP
 document.getElementById('logFilterType').addEventListener('change', () => loadLog(1));
 document.getElementById('logFilterDelivery').addEventListener('change', () => loadLog(1));
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 //  USER ACTIVITY FEED
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 let actPage     = 1;
 let actLastPage = 1;
 let actSearchTO = null;
@@ -2120,7 +2294,7 @@ async function loadActivity(page = 1) {
     const search = document.getElementById('actSearch').value.trim();
 
     const tbody = document.getElementById('activityTableBody');
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-gray-400 text-sm"><i class="fi fi-rr-spinner animate-spin mr-1"></i>Loading…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-gray-400 text-sm"><i class="fi fi-rr-spinner animate-spin mr-1"></i>Loading...</td></tr>';
 
     try {
         let url = `/admin/notifications/activity?page=${page}&per_page=20`;
@@ -2143,7 +2317,7 @@ async function loadActivity(page = 1) {
             badge.classList.add('hidden');
         }
 
-        document.getElementById('actTotalBadge').textContent   = `${total} total · ${unread_count} unread`;
+        document.getElementById('actTotalBadge').textContent   = `${total} total - ${unread_count} unread`;
         document.getElementById('actPageInfo').textContent      = `Page ${current_page} of ${last_page}`;
         document.getElementById('actPrevBtn').disabled          = current_page <= 1;
         document.getElementById('actNextBtn').disabled          = current_page >= last_page;
@@ -2167,7 +2341,7 @@ async function loadActivity(page = 1) {
             } else if (row.activity_type === 'account_status_changed') {
                 const ns = meta.new_status ?? meta.status ?? '';
                 const isSuspended = ['suspended','inactive'].includes(ns.toLowerCase());
-                details = ns ? `Status set to <span class="font-semibold ${isSuspended ? 'text-red-600' : 'text-green-600'}">${escHtml(ns)}</span>` + (meta.reason ? ` — ${escHtml(meta.reason)}` : '') : '';
+                details = ns ? `Status set to <span class="font-semibold ${isSuspended ? 'text-red-600' : 'text-green-600'}">${escHtml(ns)}</span>` + (meta.reason ? ` - ${escHtml(meta.reason)}` : '') : '';
             } else if (row.activity_type === 'project_reported' && row.subject_id) {
                 details = `Dispute / Project ID: <strong>#${escHtml(String(row.subject_id))}</strong>`;
             } else if (row.activity_type === 'password_reset' && meta.stage) {
@@ -2196,7 +2370,7 @@ async function loadActivity(page = 1) {
                 <div class="font-semibold text-gray-800 text-sm">${username}${userType}</div>
                 ${email}
               </td>
-              <td class="text-sm text-gray-600">${details || '<span class="text-gray-300">—</span>'}</td>
+              <td class="text-sm text-gray-600">${details || '<span class="text-gray-300">-</span>'}</td>
               <td class="text-gray-500 text-xs whitespace-nowrap">${escHtml(dateStr)}</td>
             </tr>`;
         }).join('');

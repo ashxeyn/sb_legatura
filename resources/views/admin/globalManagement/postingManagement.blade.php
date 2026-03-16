@@ -5,7 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>Admin Dashboard - Legatura</title>
+  <title>Posting Management - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -56,10 +57,10 @@
 
       <div class="p-8 space-y-6">
         <!-- Filters Section -->
-        <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div class="flex flex-wrap items-center gap-2.5">
-            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
-              <i class="fi fi-rr-filter text-gray-500"></i>
+        <div class="controls-wrapper bg-white rounded-xl shadow-sm border border-gray-200 p-3.5 mb-5 flex flex-wrap items-center gap-2.5">
+          <div class="flex flex-wrap items-center gap-2.5 flex-1">
+            <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              <i class="fi fi-rr-filter text-[12px]"></i>
               <span>Filter By</span>
             </div>
 
@@ -92,7 +93,7 @@
                 <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">Status</span>
               </div>
               <select id="statusFilter"
-                class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none min-w-[170px] border-0">
+                class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none min-w-[150px] border-0">
                 <option value="">All Statuses</option>
                 <option value="under_review">Under Review</option>
                 <option value="approved">Approved</option>
@@ -103,7 +104,7 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="ml-auto flex items-center gap-2">
             <button id="resetFilters" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
                 <i class="fi fi-rr-rotate-left"></i>
                 <span>Reset Filter</span>

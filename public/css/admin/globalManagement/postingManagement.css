@@ -62,12 +62,11 @@
 
 /* Table Row Animations */
 tbody tr {
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 tbody tr:hover {
-  transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 /* Filter Select Focus */

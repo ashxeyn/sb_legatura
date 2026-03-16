@@ -5,7 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>Admin Dashboard - Legatura</title>
+  <title>Contractors - Legatura Admin</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -144,24 +145,22 @@
             <div class="flex flex-wrap items-center gap-2">
               <!-- From -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">From</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateFrom"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
 
               <span class="text-gray-300 font-bold text-lg">→</span>
 
               <!-- To -->
               <div class="date-pill flex items-center gap-0 rounded-xl border border-indigo-200 bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-indigo-400 transition">
-                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-3 py-2.5 self-stretch">
-                  <i class="fi fi-rr-calendar text-white text-sm leading-none"></i>
-                  <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider select-none">To</span>
+                <div class="flex items-center gap-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 px-2.5 py-2 self-stretch">
+                  <i class="fi fi-rr-calendar text-white text-[11px]"></i>
                 </div>
                 <input type="date" id="dateTo"
-                  class="bg-white text-sm text-gray-700 font-medium px-3 py-2.5 focus:outline-none cursor-pointer min-w-0 border-0">
+                  class="px-2.5 py-1.5 text-xs border-none focus:outline-none focus:ring-0 bg-white">
               </div>
             </div>
           </div>
@@ -800,6 +799,8 @@
               </div>
             </div>
           </div>
+        </form>
+      </div>
           <!-- <div class="mb-3">
             <div class="flex items-center gap-2.5 mb-2.5">
               <h3 class="text-xs font-semibold text-orange-700 flex items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded-full bg-orange-50 border border-orange-200 shadow-sm">
@@ -1002,7 +1003,7 @@
       </div> -->
 
       <!-- Modal Footer -->
-      <div class="bg-white border-t border-gray-200 px-3 sm:px-4 py-2.5 rounded-b-xl w-full flex items-center justify-end gap-1.5 sticky bottom-0 z-20 shadow-[0_-6px_14px_rgba(17,24,39,0.08)]">
+      <div class="shrink-0 bg-white border-t border-gray-200 px-3 sm:px-4 py-2.5 rounded-b-xl w-full flex items-center justify-end gap-1.5 shadow-[0_-6px_14px_rgba(17,24,39,0.08)]">
         <button type="button" id="cancelEditBtn"
           class="px-3 py-1.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 hover:shadow-sm hover:-translate-y-0.5 transition-all text-[11px] font-semibold active:scale-95">
           Cancel

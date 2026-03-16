@@ -204,31 +204,6 @@ thead tr {
   }
 }
 
-/* Row animation on load */
-#paymentsTable tr {
-  animation: fadeInRow 0.5s ease-out backwards;
-}
-
-#paymentsTable tr:nth-child(1) { animation-delay: 0.1s; }
-#paymentsTable tr:nth-child(2) { animation-delay: 0.15s; }
-#paymentsTable tr:nth-child(3) { animation-delay: 0.2s; }
-#paymentsTable tr:nth-child(4) { animation-delay: 0.25s; }
-#paymentsTable tr:nth-child(5) { animation-delay: 0.3s; }
-#paymentsTable tr:nth-child(6) { animation-delay: 0.35s; }
-#paymentsTable tr:nth-child(7) { animation-delay: 0.4s; }
-#paymentsTable tr:nth-child(8) { animation-delay: 0.45s; }
-
-@keyframes fadeInRow {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
 /* Amount font emphasis */
 td.font-semibold {
   color: #1f2937;

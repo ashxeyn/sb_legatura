@@ -1,4 +1,31 @@
 @isset($project)
+<style>
+  #editProjectValidationError {
+    animation: editProjectAlertSlideDown 0.3s ease-out;
+  }
+
+  .edit-project-field.error {
+    border-color: rgb(239, 68, 68) !important;
+    background-color: rgb(254, 242, 242);
+  }
+
+  .edit-project-field.error:focus {
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.35) !important;
+    border-color: rgb(239, 68, 68) !important;
+  }
+
+  @keyframes editProjectAlertSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
 <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl relative transform transition-all duration-300 scale-100 max-h-[90vh] overflow-hidden flex flex-col" data-location="{{ $project->project_location ?? '' }}" data-project-id="{{ $project->project_id }}">
 
   <!-- Header -->
@@ -22,16 +49,21 @@
   </div>
 
   <!-- Content -->
-  <div class="p-3 space-y-3 overflow-y-auto flex-1" style="scrollbar-width:none;-ms-overflow-style:none;">
+  <div class="p-3 space-y-3 overflow-y-auto flex-1 edit-project-scroll" style="scrollbar-width:none;-ms-overflow-style:none;">
     <style>.edit-project-scroll::-webkit-scrollbar{display:none}</style>
 
     <!-- Validation Error Message -->
-    <div id="editProjectValidationError" class="hidden p-2.5 rounded-lg border border-red-300 bg-red-50">
-      <div class="flex items-center gap-2">
-        <svg class="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-        </svg>
-        <p class="text-xs font-semibold text-red-700">Please make at least one change to save the project.</p>
+    <div id="editProjectValidationError" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <h3 class="text-xs font-semibold text-red-800">Validation Errors</h3>
+          <ul id="editProjectValidationErrorList" class="text-xs text-red-700 mt-2 space-y-1 list-disc list-inside"></ul>
+        </div>
+        <button type="button" id="closeEditProjectValidationError" class="text-red-500 hover:text-red-700 transition p-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -65,38 +97,38 @@
       <div class="grid grid-cols-1 gap-2.5">
         <div>
           <label class="block text-xs font-semibold text-gray-900 mb-1.5">Project Title</label>
-          <input type="text" id="editProjectTitle" value="{{ $project->project_title ?? '' }}" data-original-value="{{ $project->project_title ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector">
-          <p class="text-[9px] text-red-600 mt-0.5 hidden" id="error-project_title"></p>
+          <input type="text" id="editProjectTitle" value="{{ $project->project_title ?? '' }}" data-original-value="{{ $project->project_title ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field">
+          <p class="edit-project-error text-[11px] text-red-600 mt-1 hidden" id="error-project_title"></p>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-gray-900 mb-1.5">Project Description</label>
-          <textarea id="editProjectDescription" rows="2" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none change-detector" data-original-value="{{ $project->project_description ?? '' }}">{{ $project->project_description ?? '' }}</textarea>
-          <p class="text-[9px] text-red-600 mt-0.5 hidden" id="error-project_description"></p>
+          <textarea id="editProjectDescription" rows="2" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none change-detector edit-project-field" data-original-value="{{ $project->project_description ?? '' }}">{{ $project->project_description ?? '' }}</textarea>
+          <p class="edit-project-error text-[11px] text-red-600 mt-1 hidden" id="error-project_description"></p>
         </div>
 
         <div class="grid grid-cols-3 gap-2.5">
           <div>
             <label class="block text-xs font-semibold text-gray-900 mb-1.5">Property Type</label>
-            <select id="editPropertyType" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector" data-original-value="{{ $project->property_type ?? '' }}">
+            <select id="editPropertyType" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field" data-original-value="{{ $project->property_type ?? '' }}">
               <option value="Residential" {{ ($project->property_type ?? '') == 'Residential' ? 'selected' : '' }}>Residential</option>
               <option value="Commercial" {{ ($project->property_type ?? '') == 'Commercial' ? 'selected' : '' }}>Commercial</option>
               <option value="Industrial" {{ ($project->property_type ?? '') == 'Industrial' ? 'selected' : '' }}>Industrial</option>
               <option value="Agricultural" {{ ($project->property_type ?? '') == 'Agricultural' ? 'selected' : '' }}>Agricultural</option>
             </select>
-            <p class="text-[9px] text-red-600 mt-0.5 hidden" id="error-property_type"></p>
+            <p class="edit-project-error text-[11px] text-red-600 mt-1 hidden" id="error-property_type"></p>
           </div>
 
           <div>
             <label class="block text-xs font-semibold text-gray-900 mb-1.5">Lot Size (m²)</label>
-            <input type="number" id="editLotSize" value="{{ $project->lot_size ?? '' }}" data-original-value="{{ $project->lot_size ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector">
-            <p class="text-[9px] text-red-600 mt-0.5 hidden" id="error-lot_size"></p>
+            <input type="number" id="editLotSize" value="{{ $project->lot_size ?? '' }}" data-original-value="{{ $project->lot_size ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field">
+            <p class="edit-project-error text-[11px] text-red-600 mt-1 hidden" id="error-lot_size"></p>
           </div>
 
           <div>
             <label class="block text-xs font-semibold text-gray-900 mb-1.5">Floor Area (m²)</label>
-            <input type="number" id="editFloorArea" value="{{ $project->floor_area ?? '' }}" data-original-value="{{ $project->floor_area ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector">
-            <p class="text-[9px] text-red-600 mt-0.5 hidden" id="error-floor_area"></p>
+            <input type="number" id="editFloorArea" value="{{ $project->floor_area ?? '' }}" data-original-value="{{ $project->floor_area ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field">
+            <p class="edit-project-error text-[11px] text-red-600 mt-1 hidden" id="error-floor_area"></p>
           </div>
         </div>
 
@@ -114,21 +146,21 @@
           <div class="grid grid-cols-2 gap-2.5">
             <div>
               <label class="block text-[9px] text-gray-600 mb-1">Province</label>
-              <select id="editProvince" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector" data-original-value="">
+              <select id="editProvince" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field" data-original-value="">
                 <option value="">Select Province</option>
               </select>
             </div>
 
             <div>
               <label class="block text-[9px] text-gray-600 mb-1">City/Municipality</label>
-              <select id="editCity" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector" data-original-value="" disabled>
+              <select id="editCity" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field" data-original-value="" disabled>
                 <option value="">Select City</option>
               </select>
             </div>
 
             <div class="col-span-2">
               <label class="block text-[9px] text-gray-600 mb-1">Barangay</label>
-              <select id="editBarangay" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector" data-original-value="" disabled>
+              <select id="editBarangay" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field" data-original-value="" disabled>
                 <option value="">Select Barangay</option>
               </select>
             </div>
@@ -136,9 +168,9 @@
 
           <div>
             <label class="block text-[9px] text-gray-600 mb-1">Street Address</label>
-            <input type="text" id="editStreet" placeholder="e.g., 123 Main Street, Subdivision Name" data-original-value="{{ $project->street_address ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector">
+            <input type="text" id="editStreet" placeholder="e.g., 123 Main Street, Subdivision Name" data-original-value="{{ $project->street_address ?? '' }}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field">
           </div>
-          <p class="text-[9px] text-red-600 mt-0.5 hidden" id="error-project_location"></p>
+          <p class="edit-project-error text-[11px] text-red-600 mt-1 hidden" id="error-project_location"></p>
         </div>
       </div>
     </div>
@@ -255,7 +287,7 @@
       @if($project->alternative_contractors && count($project->alternative_contractors) > 0)
         <div>
           <label class="block text-xs font-semibold text-gray-900 mb-1.5">Select New Contractor <span class="text-gray-500 font-normal text-[9px]">(Optional)</span></label>
-          <select id="editContractorSelect" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+          <select id="editContractorSelect" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent change-detector edit-project-field" data-original-value="{{ $project->selected_contractor_id ?? '' }}">
             <option value="">— Keep Current Contractor —</option>
             @foreach($project->alternative_contractors as $contractor)
               <option value="{{ $contractor->contractor_id }}"
@@ -279,6 +311,7 @@
               </option>
             @endforeach
           </select>
+          <p class="edit-project-error text-[11px] text-red-600 mt-1 hidden" id="error-selected_contractor_id"></p>
         </div>
 
         <!-- Preview Selected Contractor -->

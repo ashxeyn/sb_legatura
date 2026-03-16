@@ -2,6 +2,21 @@
  * Review & Rating Management — Admin
  * Handles view modal, delete modal, star rendering, and filter reset.
  */
+function animateReviewRows() {
+    var tbody = document.querySelector('tbody');
+    if (!tbody) return;
+    var rows = tbody.querySelectorAll('tr');
+    rows.forEach(function(row, index) {
+        row.style.opacity = '0';
+        row.style.transform = 'translateY(20px)';
+        setTimeout(function() {
+            row.style.transition = 'all 0.4s ease';
+            row.style.opacity = '1';
+            row.style.transform = 'translateY(0)';
+        }, index * 50);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
 
     // ── View Modal ──────────────────────────────────────────────────────
@@ -68,7 +83,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Delete Modal ────────────────────────────────────────────────────
     const deleteModal = document.getElementById('deleteReviewModal');
+    const deletionReasonInput = document.getElementById('deletionReason');
+    const deletionReasonError = document.getElementById('deletionReasonError');
     var currentDeleteId = null;
+
+    function clearDeleteReviewErrors() {
+        if (deletionReasonInput) {
+            deletionReasonInput.classList.remove('border-red-500');
+        }
+        if (deletionReasonError) {
+            deletionReasonError.classList.add('hidden');
+        }
+    }
+
+    function showDeleteReviewError(message) {
+        if (deletionReasonInput) {
+            deletionReasonInput.classList.add('border-red-500');
+        }
+        if (deletionReasonError) {
+            deletionReasonError.textContent = message;
+            deletionReasonError.classList.remove('hidden');
+        }
+    }
 
     // Open delete modal when delete button is clicked
     document.querySelectorAll('.delete-review-btn').forEach(function (btn) {
@@ -80,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('deleteModalReviewerName').textContent = reviewerName;
 
             // Clear previous reason and errors
-            document.getElementById('deletionReason').value = '';
+            if (deletionReasonInput) deletionReasonInput.value = '';
             clearDeleteReviewErrors();
 
             // Show modal
@@ -103,41 +139,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Show delete review errors
-    function showDeleteReviewErrors(errors) {
-        const errorAlert = document.getElementById('deleteReviewErrorAlert');
-        const errorList = document.getElementById('deleteReviewErrorList');
-        
-        errorList.innerHTML = '';
-        errors.forEach(error => {
-            const li = document.createElement('li');
-            li.textContent = error;
-            errorList.appendChild(li);
-        });
-        
-        errorAlert.classList.remove('hidden');
-    }
-
-    // Clear delete review errors
-    function clearDeleteReviewErrors() {
-        const errorAlert = document.getElementById('deleteReviewErrorAlert');
-        errorAlert.classList.add('hidden');
-    }
+    deletionReasonInput?.addEventListener('input', clearDeleteReviewErrors);
+    deletionReasonInput?.addEventListener('change', clearDeleteReviewErrors);
 
     // Confirm delete
     document.getElementById('confirmDelete').addEventListener('click', function () {
-        var reason = document.getElementById('deletionReason').value.trim();
+        var reason = deletionReasonInput ? deletionReasonInput.value.trim() : '';
 
         // Clear previous errors
         clearDeleteReviewErrors();
 
         if (!reason) {
-            showDeleteReviewErrors(['Please provide a reason for deletion']);
-            document.getElementById('deletionReason').focus();
+            showDeleteReviewError('Reason is required.');
+            if (deletionReasonInput) deletionReasonInput.focus();
             return;
         }
 
         const btn = this;
+           const originalContent = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
 
@@ -168,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .finally(() => {
                 btn.disabled = false;
-                btn.textContent = 'Confirm Deletion';
+                btn.innerHTML = originalContent;
             });
     });
 
@@ -207,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.reviews_html) {
                     tableBody.innerHTML = data.reviews_html;
+                    animateReviewRows();
                     // Re-initialize View/Delete button listeners for new rows
                     rebindActionButtons();
                     // Attach pagination listeners for page navigation
@@ -268,7 +288,8 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.addEventListener('click', function () {
                 currentDeleteId = btn.dataset.id;
                 document.getElementById('deleteModalReviewerName').textContent = btn.dataset.reviewerName;
-                document.getElementById('deletionReason').value = '';
+                if (deletionReasonInput) deletionReasonInput.value = '';
+                clearDeleteReviewErrors();
                 deleteModal.classList.remove('hidden');
                 deleteModal.classList.add('show');
             });
@@ -290,6 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(data => {
                         if (data.reviews_html) {
                             tableBody.innerHTML = data.reviews_html;
+                            animateReviewRows();
                             rebindActionButtons();
                             attachPaginationListeners(); // Re-attach for new pagination links
                             
@@ -439,6 +461,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Initialize pagination listeners on page load
+    animateReviewRows();
     attachPaginationListeners();
 
 });

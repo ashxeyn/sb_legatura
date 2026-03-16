@@ -1,10 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - Legatura</title>
+  <link rel="icon" type="image/svg+xml" href="{{ asset('img/logo2.0-favicon.svg') }}">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -33,7 +34,7 @@
         <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-2">
           <div>
             <h2 class="text-sm font-semibold text-gray-800 leading-tight">Performance Overview</h2>
-            <p class="text-[11px] text-gray-400 mt-0.5">Analytics summary — projects, trends, and contractor outcomes.</p>
+            <p class="text-[11px] text-gray-400 mt-0.5">Analytics summary � projects, trends, and contractor outcomes.</p>
           </div>
           <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">Analytics</span>
         </div>
