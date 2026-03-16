@@ -1024,28 +1024,6 @@ export default function SearchScreen({
               </TouchableOpacity>
             );
           })}
-
-          {/* Filter button (only for single-type tabs, not "All") */}
-          {activeTab !== 'all' && (
-            <TouchableOpacity
-              style={[styles.filterTab, activeFilterCount > 0 && styles.filterTabActive]}
-              onPress={() => setShowFilters(true)}
-            >
-              <MaterialIcons
-                name="tune"
-                size={18}
-                color={activeFilterCount > 0 ? '#EC7E00' : '#65676B'}
-              />
-              <Text style={[styles.tabLabel, activeFilterCount > 0 && styles.tabLabelActive]}>
-                Filters
-              </Text>
-              {activeFilterCount > 0 && (
-                <View style={styles.filterBadge}>
-                  <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
         </ScrollView>
       </View>
 

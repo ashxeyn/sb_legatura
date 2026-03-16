@@ -1966,11 +1966,20 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             <Text style={styles.sectionTitle}>Feed</Text>
             <View style={styles.filterContainer}>
               <TouchableOpacity
-                style={styles.filterButton}
+                style={[styles.filterButton, Object.keys(feedFilters).length > 0 && styles.filterButtonActive]}
                 onPress={() => setShowFeedFilter(true)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="filter" size={20} color="#EC7E00" />
+                <Ionicons 
+                  name="filter" 
+                  size={20} 
+                  color={Object.keys(feedFilters).length > 0 ? '#FFFFFF' : '#EC7E00'} 
+                />
+                {Object.keys(feedFilters).length > 0 && (
+                  <View style={styles.filterBadge}>
+                    <Text style={styles.filterBadgeText}>{Object.keys(feedFilters).length}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
               {Object.keys(feedFilters).length > 0 && (
                 <TouchableOpacity
@@ -1978,7 +1987,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                   onPress={handleFeedFilterReset}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <MaterialIcons name="close" size={18} color="#666" />
+                  <Feather name="rotate-ccw" size={14} color="#EF4444" />
                   <Text style={styles.resetButtonText}>Reset</Text>
                 </TouchableOpacity>
               )}
@@ -2901,22 +2910,48 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterButton: {
-    padding: 8,
-    borderRadius: 6,
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: '#FFF3E6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EC7E00' + '30',
+    position: 'relative',
+  },
+  filterButtonActive: {
+    backgroundColor: '#EC7E00',
+    borderColor: '#EC7E00',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   resetButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 6,
-    gap: 4,
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   resetButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#EF4444',
   },
   // Contractor Card styles
   contractorCard: {

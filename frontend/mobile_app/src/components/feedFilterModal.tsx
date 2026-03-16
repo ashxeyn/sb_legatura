@@ -13,11 +13,32 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { search_service } from '../services/search_service';
 import { auth_service } from '../services/auth_service';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Color palette (matching myProjects)
+const COLORS = {
+  primary: '#EC7E00',
+  primaryLight: '#FFF3E6',
+  primaryDark: '#C96A00',
+  success: '#10B981',
+  successLight: '#D1FAE5',
+  warning: '#F59E0B',
+  warningLight: '#FEF3C7',
+  error: '#EF4444',
+  info: '#3B82F6',
+  infoLight: '#DBEAFE',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
+};
 
 interface FeedFilterModalProps {
   visible: boolean;
@@ -220,7 +241,6 @@ export default function FeedFilterModal({
 
   const renderDropdown = (label: string, value: string, placeholder: string, onPress: () => void, onClear?: () => void, disabled: boolean = false) => (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.dropdownContainer}>
         <TouchableOpacity
           style={[styles.dropdown, disabled && styles.dropdownDisabled]}
@@ -230,17 +250,16 @@ export default function FeedFilterModal({
           <Text style={[styles.dropdownText, !value && styles.dropdownPlaceholder]}>
             {value || placeholder}
           </Text>
-          <MaterialIcons name="keyboard-arrow-down" size={22} color="#666" />
+          {!value && <MaterialIcons name="keyboard-arrow-down" size={22} color={COLORS.textMuted} />}
+          {value && onClear && (
+            <TouchableOpacity
+              onPress={onClear}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="close" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
         </TouchableOpacity>
-        {value && onClear && (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={onClear}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="close" size={18} color="#999" />
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -253,7 +272,7 @@ export default function FeedFilterModal({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#999"
+        placeholderTextColor={COLORS.textMuted}
         keyboardType="numeric"
       />
     </View>
@@ -266,30 +285,38 @@ export default function FeedFilterModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={onClose}
-        />
-        
-        <View style={[styles.container, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={styles.header}>
-            <Text style={styles.title}>
-              Filter {userType === 'contractor' ? 'Projects' : 'Contractors'}
-            </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.sortModalOverlay} 
+        activeOpacity={1} 
+        onPress={onClose}
+      >
+        <View style={[styles.sortModalContent, { paddingBottom: insets.bottom + 16 }]} onStartShouldSetResponder={() => true}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <View style={styles.modalDragHandle} />
+            <View style={styles.modalTitleRow}>
+              <Text style={styles.sortModalTitle}>
+                Filter {userType === 'contractor' ? 'Projects' : 'Contractors'}
+              </Text>
+              {activeFilterCount > 0 && (
+                <TouchableOpacity style={styles.resetButton} onPress={handleReset} activeOpacity={0.7}>
+                  <Feather name="rotate-ccw" size={14} color={COLORS.error} />
+                  <Text style={styles.resetButtonText}>Reset All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#EC7E00" />
+              <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           ) : (
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} bounces={false}>
               {/* Type */}
+              <Text style={styles.sectionLabel}>
+                {userType === 'contractor' ? 'Project Type' : 'Contractor Type'}
+              </Text>
               {renderDropdown(
                 userType === 'contractor' ? 'Project Type' : 'Contractor Type',
                 selectedTypeName,
@@ -299,15 +326,21 @@ export default function FeedFilterModal({
               )}
 
               {/* Property Type (for contractors viewing projects) */}
-              {userType === 'contractor' && renderDropdown(
-                'Property Type',
-                selectedPropertyType,
-                'All property types',
-                () => setShowPropertyTypePicker(true),
-                () => setSelectedPropertyType('')
+              {userType === 'contractor' && (
+                <>
+                  <Text style={styles.sectionLabel}>Property Type</Text>
+                  {renderDropdown(
+                    'Property Type',
+                    selectedPropertyType,
+                    'All property types',
+                    () => setShowPropertyTypePicker(true),
+                    () => setSelectedPropertyType('')
+                  )}
+                </>
               )}
 
-              {/* Province */}
+              {/* Location Section */}
+              <Text style={styles.sectionLabel}>Location</Text>
               {renderDropdown(
                 'Province',
                 selectedProvince,
@@ -320,7 +353,6 @@ export default function FeedFilterModal({
                 }
               )}
 
-              {/* City */}
               {renderDropdown(
                 'City / Municipality',
                 selectedCity,
@@ -333,8 +365,9 @@ export default function FeedFilterModal({
               {/* Contractor-specific filters */}
               {userType === 'property_owner' && (
                 <>
+                  <Text style={styles.sectionLabel}>Experience</Text>
                   <View style={styles.rangeContainer}>
-                    <Text style={styles.sectionLabel}>Years of Experience</Text>
+                    <Text style={styles.rangeLabel}>Years of Experience</Text>
                     <View style={styles.rangeRow}>
                       <View style={{ flex: 1 }}>
                         {renderTextField('Min', minExperience, setMinExperience, '0')}
@@ -346,6 +379,7 @@ export default function FeedFilterModal({
                     </View>
                   </View>
 
+                  <Text style={styles.sectionLabel}>Qualifications</Text>
                   {renderDropdown(
                     'PICAB Category',
                     picabCategory,
@@ -360,34 +394,32 @@ export default function FeedFilterModal({
 
               {/* Project-specific filters */}
               {userType === 'contractor' && (
-                <View style={styles.rangeContainer}>
-                  <Text style={styles.sectionLabel}>Budget Range (₱)</Text>
-                  <View style={styles.rangeRow}>
-                    <View style={{ flex: 1 }}>
-                      {renderTextField('Min', budgetMin, setBudgetMin, '0')}
-                    </View>
-                    <Text style={styles.rangeDash}>–</Text>
-                    <View style={{ flex: 1 }}>
-                      {renderTextField('Max', budgetMax, setBudgetMax, 'Any')}
+                <>
+                  <Text style={styles.sectionLabel}>Budget Range</Text>
+                  <View style={styles.rangeContainer}>
+                    <View style={styles.rangeRow}>
+                      <View style={{ flex: 1 }}>
+                        {renderTextField('Min (₱)', budgetMin, setBudgetMin, '0')}
+                      </View>
+                      <Text style={styles.rangeDash}>–</Text>
+                      <View style={{ flex: 1 }}>
+                        {renderTextField('Max (₱)', budgetMax, setBudgetMax, 'Any')}
+                      </View>
                     </View>
                   </View>
-                </View>
+                </>
               )}
             </ScrollView>
           )}
 
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-              <Text style={styles.resetButtonText}>Reset</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
-              <Text style={styles.applyButtonText}>
-                Apply{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* Apply Button - pinned at bottom */}
+          <TouchableOpacity style={styles.applyButton} onPress={handleApply} activeOpacity={0.7}>
+            <Text style={styles.applyButtonText}>
+              Apply{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Pickers */}
       {renderPicker(
@@ -439,147 +471,167 @@ export default function FeedFilterModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  sortModalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  container: {
-    backgroundColor: '#FFFFFF',
+  sortModalContent: {
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: SCREEN_HEIGHT * 0.8,
+    paddingTop: 12,
+    paddingBottom: 36,
+    maxHeight: '85%',
+    width: '100%',
   },
-  header: {
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 20,
+  },
+  modalTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    width: '100%',
   },
-  title: {
-    fontSize: 18,
+  modalDragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+    marginBottom: 16,
+  },
+  sortModalTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: COLORS.text,
+    marginBottom: 4,
   },
-  closeButton: {
-    padding: 4,
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  resetButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.error,
   },
   loadingContainer: {
     padding: 40,
     alignItems: 'center',
   },
   content: {
+    paddingHorizontal: 0,
+    paddingVertical: 8,
+    width: '100%',
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginTop: 16,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    width: '100%',
   },
   field: {
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    width: '100%',
   },
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COLORS.text,
     marginBottom: 8,
   },
   dropdownContainer: {
     position: 'relative',
+    width: '100%',
   },
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: COLORS.border,
+    width: '100%',
   },
   dropdownDisabled: {
     opacity: 0.5,
   },
   dropdownText: {
     fontSize: 15,
-    color: '#1A1A1A',
+    color: COLORS.text,
     flex: 1,
   },
   dropdownPlaceholder: {
-    color: '#999',
+    color: COLORS.textMuted,
   },
   clearButton: {
     position: 'absolute',
     right: 40,
     top: 12,
     padding: 4,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
   },
   textInput: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1A1A1A',
+    color: COLORS.text,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    borderColor: COLORS.border,
+    width: '100%',
   },
   rangeContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  rangeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
   },
   rangeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    width: '100%',
   },
   rangeDash: {
     fontSize: 18,
-    color: '#666',
+    color: COLORS.textMuted,
     paddingTop: 20,
   },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  resetButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-  },
-  resetButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#666',
-  },
   applyButton: {
-    flex: 2,
+    backgroundColor: COLORS.primary,
     paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: '#EC7E00',
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 16,
+    marginHorizontal: 20,
   },
   applyButtonText: {
-    fontSize: 15,
+    color: COLORS.surface,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   pickerOverlay: {
     flex: 1,
@@ -590,7 +642,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   pickerContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 16,
@@ -602,21 +654,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: COLORS.border,
   },
   pickerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: COLORS.text,
   },
   pickerItem: {
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    borderBottomColor: COLORS.borderLight,
   },
   pickerItemText: {
     fontSize: 15,
-    color: '#333',
+    color: COLORS.text,
   },
 });
