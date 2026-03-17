@@ -32,6 +32,10 @@ const DELETION_REASONS = [
   { key: 'other', label: 'Something else' },
 ];
 
+const COLORS = {
+  primary: '#EC7E00',
+};
+
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
 const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');
 
