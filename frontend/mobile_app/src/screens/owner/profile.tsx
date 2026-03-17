@@ -10,6 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +21,16 @@ import { role_service } from '../../services/role_service';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
 import ImageFallback from '../../components/imageFallback';
+
+const DELETION_REASONS = [
+  { key: 'taking_a_break', label: 'Taking a break' },
+  { key: 'too_many_notifications', label: 'Too many notifications' },
+  { key: 'privacy_concerns', label: 'Privacy concerns' },
+  { key: 'created_second_account', label: 'Created a second account' },
+  { key: 'not_useful', label: "Don't find it useful" },
+  { key: 'safety_concern', label: 'Safety concern' },
+  { key: 'other', label: 'Something else' },
+];
 
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
 const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');
@@ -61,6 +73,12 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
   // Company name when user is a staff/representative member of a contractor company via invitation
   const [staffCompanyName, setStaffCompanyName] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Account management
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<string>('');
+  const [otherReasonText, setOtherReasonText] = useState('');
+  const [confirmationText, setConfirmationText] = useState('');
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -80,6 +98,7 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
   // Local image state — seeded from prop, then refreshed from API (mirrors contractor pattern)
   const [ownerProfilePicPath, setOwnerProfilePicPath] = useState<string | null>(userData?.profile_pic || null);
   const [ownerCoverPhotoPath, setOwnerCoverPhotoPath] = useState<string | null>(userData?.cover_photo || null);
+  const [ownerFullName, setOwnerFullName] = useState<string>('');
 
   const loadProfile = async () => {
     try {
@@ -94,6 +113,8 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         if (cover) setOwnerCoverPhotoPath(cover);
         if (contractorStatus === 'approved') setContractorVerified(true);
         else if (contractorVerifiedProp) setContractorVerified(true);
+        const fullName = `${user?.first_name || ''} ${user?.middle_name || ''} ${user?.last_name || ''}`.replace(/\s+/g, ' ').trim();
+        if (fullName) setOwnerFullName(fullName);
       }
     } catch (e) {}
   };
@@ -148,6 +169,42 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         },
       ]
     );
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!selectedReason) {
+      Alert.alert('Required', 'Please select a reason.');
+      return;
+    }
+    if (confirmationText !== 'ACCOUNT DELETE') {
+      Alert.alert('Confirmation Required', 'Please type "ACCOUNT DELETE" to confirm.');
+      return;
+    }
+    setIsSubmittingAction(true);
+    try {
+      const res = await api_request('/api/account/delete', {
+        method: 'POST',
+        body: JSON.stringify({
+          role: 'owner',
+          reason_key: selectedReason,
+          reason_text: selectedReason === 'other' ? otherReasonText : '',
+          confirmation_text: confirmationText,
+        }),
+      });
+      if (res?.success) {
+        setShowDeleteModal(false);
+        setSelectedReason('');
+        setOtherReasonText('');
+        setConfirmationText('');
+        onLogout();
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to delete account.');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to connect to server.');
+    } finally {
+      setIsSubmittingAction(false);
+    }
   };
 
   // Refresh current role on mount and focus to update badge
@@ -303,6 +360,25 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         },
       ],
     },
+    {
+      title: 'Account & Data',
+      items: [
+        {
+          id: 'delete_account',
+          icon: 'trash-outline',
+          label: 'Delete Account',
+          subtitle: 'Permanently delete your account',
+          showArrow: true,
+          danger: true,
+          onPress: () => {
+            setSelectedReason('');
+            setOtherReasonText('');
+            setConfirmationText('');
+            setShowDeleteModal(true);
+          },
+        },
+      ],
+    },
 
   ];
 
@@ -375,7 +451,10 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
               <ImageFallback uri={getStorageUrl(ownerProfilePicPath || userData?.profile_pic || undefined)} defaultImage={defaultOwnerAvatar} style={styles.avatar} resizeMode="cover" />
             </View>
 
-            <Text style={styles.userName}>{userData?.username || 'Property Owner'}</Text>
+            <Text style={styles.userName}>{ownerFullName || userData?.username || 'Property Owner'}</Text>
+            {ownerFullName ? (
+              <Text style={styles.userHandle}>@{userData?.username || 'user'}</Text>
+            ) : null}
             <Text style={styles.userEmail}>{userData?.email || 'user@example.com'}</Text>
 
             <View style={styles.userTypeBadge}>
@@ -425,6 +504,77 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           <Text style={styles.footerSubtext}>All rights reserved</Text>
         </View>
       </ScrollView>
+
+      {/* Delete Account Modal */}
+      <Modal visible={showDeleteModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.accountModalContainer}>
+            <View style={styles.accountModalHeader}>
+              <Text style={[styles.accountModalTitle, { color: '#E74C3C' }]}>Delete Account</Text>
+              <TouchableOpacity onPress={() => setShowDeleteModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.warningBox}>
+              <Ionicons name="warning-outline" size={20} color="#E74C3C" />
+              <Text style={styles.warningText}>This action will permanently delete your account, including any contractor companies you own and all associated team members. This cannot be undone.</Text>
+            </View>
+
+            <Text style={styles.reasonSectionTitle}>Why are you leaving?</Text>
+
+            <ScrollView style={styles.reasonList} showsVerticalScrollIndicator={false}>
+              {DELETION_REASONS.map((reason) => (
+                <TouchableOpacity
+                  key={reason.key}
+                  style={[styles.reasonItem, selectedReason === reason.key && styles.reasonItemSelected]}
+                  onPress={() => setSelectedReason(reason.key)}
+                >
+                  <Ionicons
+                    name={selectedReason === reason.key ? 'radio-button-on' : 'radio-button-off'}
+                    size={22}
+                    color={selectedReason === reason.key ? '#E74C3C' : '#999'}
+                  />
+                  <Text style={[styles.reasonLabel, selectedReason === reason.key && styles.reasonLabelSelected]}>{reason.label}</Text>
+                </TouchableOpacity>
+              ))}
+              {selectedReason === 'other' && (
+                <TextInput
+                  style={styles.otherReasonInput}
+                  placeholder="Tell us more..."
+                  placeholderTextColor="#999"
+                  value={otherReasonText}
+                  onChangeText={setOtherReasonText}
+                  multiline
+                  maxLength={500}
+                />
+              )}
+            </ScrollView>
+
+            <Text style={styles.reasonSectionTitle}>Type "ACCOUNT DELETE" to confirm</Text>
+            <TextInput
+              style={[styles.otherReasonInput, { minHeight: 44, marginTop: 0, marginBottom: 16 }]}
+              placeholder="ACCOUNT DELETE"
+              placeholderTextColor="#CCC"
+              value={confirmationText}
+              onChangeText={setConfirmationText}
+              autoCapitalize="characters"
+            />
+
+            <TouchableOpacity
+              style={[styles.accountActionButton, styles.deleteButton, (!selectedReason || confirmationText !== 'ACCOUNT DELETE') && styles.accountActionButtonDisabled]}
+              onPress={handleDeleteAccount}
+              disabled={!selectedReason || confirmationText !== 'ACCOUNT DELETE' || isSubmittingAction}
+            >
+              {isSubmittingAction ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <Text style={styles.accountActionButtonText}>Delete My Account</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -514,6 +664,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333333',
     marginTop: 12,
+  },
+  userHandle: {
+    fontSize: 14,
+    color: '#999999',
+    marginTop: 2,
   },
   userEmail: {
     fontSize: 14,
@@ -631,6 +786,113 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#CCCCCC',
     marginTop: 4,
+  },
+  // Account Management Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  accountModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    maxHeight: '85%',
+  },
+  accountModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  accountModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  accountModalDescription: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF5F5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 10,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#E74C3C',
+    lineHeight: 18,
+  },
+  reasonSectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 12,
+  },
+  reasonList: {
+    maxHeight: 280,
+    marginBottom: 16,
+  },
+  reasonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 4,
+    gap: 12,
+  },
+  reasonItemSelected: {
+    backgroundColor: '#FFF5EB',
+  },
+  reasonLabel: {
+    fontSize: 15,
+    color: '#333333',
+  },
+  reasonLabelSelected: {
+    fontWeight: '600',
+    color: '#EC7E00',
+  },
+  otherReasonInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#333333',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  accountActionButton: {
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountActionButtonDisabled: {
+    opacity: 0.5,
+  },
+  deactivateButton: {
+    backgroundColor: '#EC7E00',
+  },
+  deleteButton: {
+    backgroundColor: '#E74C3C',
+  },
+  accountActionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 

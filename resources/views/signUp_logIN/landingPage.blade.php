@@ -868,7 +868,7 @@
 
                     <!-- Download Button -->
                     <div class="download-btn-section">
-                        <a href="https://expo.dev/accounts/jeffslazir/projects/legatura-app/builds/40b38fd2-82e3-4537-9737-ceef50418d02" class="download-android-btn" id="downloadAndroidBtn" target="_blank" rel="noopener noreferrer">
+                        <a href="{{ asset('downloads/legatura_v0.1.apk') }}" class="download-android-btn" id="downloadAndroidBtn" download>
                             <i class="ri-android-line"></i>
                             <span>Download for Android</span>
                         </a>

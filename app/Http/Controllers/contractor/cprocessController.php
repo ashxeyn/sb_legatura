@@ -493,6 +493,7 @@ class cprocessController extends Controller
         }
 
         $canSwitch = false;
+        $ownerId = null; // declared here so auto-reactivation can reuse it
         if ($userType === 'both') {
             $canSwitch = true;
         } else {
@@ -544,6 +545,69 @@ class cprocessController extends Controller
                 } catch (\Throwable $e) {
                     Log::warning('switchRole staff-check failed: ' . $e->getMessage());
                 }
+            }
+        }
+
+        // ── Auto-reactivation on switch to contractor ──────────────────────
+        // When switching to contractor, check if the profile is deactivated or
+        // has a pending deletion. If so, reactivate / cancel deletion automatically.
+        // This fulfills the requirement: "switching to the inactive profile reactivates it"
+        // and "deleted profiles can be recovered within 30 days through profile switching".
+        $reactivationResult = null;
+        if ($targetRole === 'contractor' && $userId) {
+            try {
+                $ownerId = $ownerId ?? DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+                if ($ownerId) {
+                    $accountModel = new \App\Models\accounts\accountClass();
+
+                    // Check company-level deactivation/deletion first
+                    $contractorRecord = DB::table('contractors')->where('owner_id', $ownerId)->first();
+                    if ($contractorRecord) {
+                        if ($contractorRecord->deletion_scheduled_at) {
+                            // Cancel pending company deletion (within 30-day grace period)
+                            $reactivationResult = $accountModel->cancelContractorDeletion($userId);
+                            if ($reactivationResult['success']) {
+                                $canSwitch = true;
+                            }
+                        } elseif (!$contractorRecord->is_active && $contractorRecord->deactivation_reason) {
+                            // Reactivate deactivated company
+                            $reactivationResult = $accountModel->reactivateContractor($userId);
+                            if ($reactivationResult['success']) {
+                                $canSwitch = true;
+                            }
+                        }
+                    } else {
+                        // No company — check staff-level deactivation/deletion
+                        $staffRecord = DB::table('contractor_staff')
+                            ->where('owner_id', $ownerId)
+                            ->where(function ($q) {
+                                $q->where(function ($q2) {
+                                    // Deactivated staff
+                                    $q2->where('is_active', 0)
+                                       ->whereNotNull('deactivation_reason')
+                                       ->whereNull('deletion_reason');
+                                })->orWhere(function ($q2) {
+                                    // Deletion-pending staff
+                                    $q2->whereNotNull('deletion_reason')
+                                       ->whereNotNull('deletion_scheduled_at');
+                                });
+                            })
+                            ->first();
+
+                        if ($staffRecord) {
+                            if ($staffRecord->deletion_scheduled_at) {
+                                $reactivationResult = $accountModel->cancelStaffDeletion($userId, $ownerId);
+                            } else {
+                                $reactivationResult = $accountModel->reactivateStaffMember($userId, $ownerId);
+                            }
+                            if ($reactivationResult && $reactivationResult['success']) {
+                                $canSwitch = true;
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('switchRole auto-reactivation failed: ' . $e->getMessage());
             }
         }
 
@@ -640,13 +704,18 @@ class cprocessController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return response()->json([
+            $responseData = [
                 'success' => true,
                 'message' => "Successfully switched to {$targetRole} dashboard",
                 'current_role' => $targetRole,
                 'active_role' => $targetRole,
-                'redirect_url' => $redirectUrl
-            ]);
+                'redirect_url' => $redirectUrl,
+            ];
+            if ($reactivationResult && $reactivationResult['success']) {
+                $responseData['reactivated'] = true;
+                $responseData['reactivation_message'] = $reactivationResult['message'];
+            }
+            return response()->json($responseData);
         } else {
             return redirect($redirectUrl)->with('success', "Successfully switched to {$targetRole} dashboard");
         }
@@ -772,37 +841,93 @@ class cprocessController extends Controller
                     }
 
                     if ($cpOwnerIdForStatus) {
+                        // Order by is_active DESC so that an active membership is
+                        // found first when the user has multiple staff records
+                        // (e.g. an old pending invite + a newer accepted one).
+                        // Include deactivated and deletion-pending records so the
+                        // frontend can show them as recoverable profiles.
                         $staffRecord = DB::table('contractor_staff')
                             ->leftJoin('contractors', 'contractor_staff.contractor_id', '=', 'contractors.contractor_id')
                             ->where('contractor_staff.owner_id', $cpOwnerIdForStatus)
-                            ->whereNull('contractor_staff.deletion_reason')
                             ->select(
                                 'contractor_staff.*',
                                 'contractors.company_name as contractor_name'
                             )
+                            ->orderByDesc('contractor_staff.is_active')
+                            ->orderByDesc('contractor_staff.staff_id')
                             ->first();
 
                         $hasActiveStaffMembership = $staffRecord
                             && (int) ($staffRecord->is_active ?? 0) === 1
-                            && (int) ($staffRecord->is_suspended ?? 0) === 0;
+                            && (int) ($staffRecord->is_suspended ?? 0) === 0
+                            && empty($staffRecord->deletion_reason);
                     }
                 }
             } catch (\Throwable $e) {
                 Log::warning('getCurrentRole: failed to load contractor/owner records: ' . $e->getMessage());
             }
 
+            $hasAvailableContractorRole = $contractor_approved || $hasActiveStaffMembership;
+            $hasAvailableOwnerRole = $owner_approved;
+
+            // Check if there's a recoverable contractor profile (deactivated or deletion-pending)
+            $hasRecoverableContractorProfile = false;
+            if (!$hasAvailableContractorRole && $userId) {
+                try {
+                    $cpOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+                    if ($cpOwnerId) {
+                        // Check contractor company
+                        $cRecord = DB::table('contractors')->where('owner_id', $cpOwnerId)->first();
+                        if ($cRecord && strtolower($cRecord->verification_status ?? '') === 'approved') {
+                            if (!$cRecord->is_active || $cRecord->deletion_scheduled_at) {
+                                $hasRecoverableContractorProfile = true;
+                            }
+                        }
+                        // Check staff record
+                        if (!$hasRecoverableContractorProfile && $staffRecord) {
+                            $staffDeactivated = !$staffRecord->is_active && !empty($staffRecord->deactivation_reason);
+                            $staffDeletionPending = !empty($staffRecord->deletion_reason) && !empty($staffRecord->deletion_scheduled_at);
+                            if ($staffDeactivated || $staffDeletionPending) {
+                                $hasRecoverableContractorProfile = true;
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('getCurrentRole: recoverable check failed: ' . $e->getMessage());
+                }
+            }
+
+            if ($normalizedRole === 'contractor' && !$hasAvailableContractorRole && $hasAvailableOwnerRole) {
+                $normalizedRole = 'owner';
+
+                try {
+                    Session::put('current_role', 'owner');
+                    Session::put('preferred_role', 'owner');
+
+                    if ($userId) {
+                        DB::table('users')
+                            ->where('user_id', $userId)
+                            ->update(['preferred_role' => 'owner']);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('getCurrentRole: failed to normalize preferred_role to owner: ' . $e->getMessage());
+                }
+            }
+
             $pending_role_request = ($contractor_pending || $owner_pending);
+            $canSwitchRoles = ($hasAvailableContractorRole || $hasRecoverableContractorProfile) && $hasAvailableOwnerRole;
 
             return response()->json([
                 'success' => true,
                 'user_type' => $userType,
                 'current_role' => $normalizedRole,
-                'can_switch_roles' => ($userType === 'both') || $hasActiveStaffMembership,
+                'can_switch_roles' => $canSwitchRoles,
                 'pending_role_request' => $pending_role_request,
                 'contractor' => $contractor,
                 'owner' => $owner,
                 'staff_record' => $staffRecord,
                 'has_active_staff_membership' => $hasActiveStaffMembership,
+                'has_recoverable_contractor_profile' => $hasRecoverableContractorProfile,
                 'contractor_role_approved' => $contractor_approved,
                 'owner_role_approved' => $owner_approved,
             ]);

@@ -121,33 +121,9 @@ export class contractor_authorization_service {
         return normalized;
       }
 
-      // Fallback for legacy contractor owner accounts that may not have
-      // contractor_member in stored payload yet.
-      // IMPORTANT: do NOT use determinedRole here, because staff users also
-      // resolve to contractor context but must keep role-based restrictions.
-      if (userData.user_type === 'contractor') {
-        console.log('Using fallback contractor owner context');
-        return {
-          contractor_member_id: null,
-          contractor_id: userData.contractor_id || 0,
-          contractor_name: userData.company_name || null,
-          role: 'owner',
-          is_active: true,
-          is_contractor_owner: true,
-          has_full_access: true,
-          permissions: {
-            can_manage_members: true,
-            can_view_members: true,
-            can_bid: true,
-            can_manage_milestones: true,
-            can_view_financials: true,
-            can_manage_company_profile: true,
-            can_upload_progress: true,
-            can_approve_payments: true,
-            can_view_property_owners: true,
-          },
-        };
-      }
+      // Legacy fallback removed — it incorrectly assumed every user with
+      // user_type === 'contractor' was a company owner.  Fall through to
+      // the API-based path below which checks the actual DB records.
 
       const roleResponse: any = await role_service.get_current_role();
       const currentRole = String(roleResponse?.current_role || roleResponse?.data?.current_role || '').toLowerCase();

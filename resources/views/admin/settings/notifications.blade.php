@@ -1214,6 +1214,19 @@
     .act-password     { background:#F3E8FF; color:#7C3AED; }
     .act-email-ver    { background:#CCFBF1; color:#0D9488; }
     .act-suspended    { background:#FFE4E6; color:#BE123C; }
+    .act-login        { background:#DCFCE7; color:#16A34A; }
+    .act-logout       { background:#F3F4F6; color:#6B7280; }
+    .act-project      { background:#DBEAFE; color:#2563EB; }
+    .act-bid          { background:#FEF3C7; color:#D97706; }
+    .act-milestone    { background:#E0E7FF; color:#4338CA; }
+    .act-progress     { background:#CCFBF1; color:#0D9488; }
+    .act-payment      { background:#D1FAE5; color:#059669; }
+    .act-dispute      { background:#FEE2E2; color:#DC2626; }
+    .act-update       { background:#FFF7ED; color:#EA580C; }
+    .act-post         { background:#EDE9FE; color:#7C3AED; }
+    .act-resubmit     { background:#E0F2FE; color:#0284C7; }
+    .act-user-report  { background:#FEF3C7; color:#B45309; }
+    .act-msg-report   { background:#FFE4E6; color:#BE123C; }
     .act-view-btn {
       display:inline-flex; align-items:center; gap:4px;
       padding:4px 10px; border-radius:8px; font-size:.72rem; font-weight:700;
@@ -1520,11 +1533,39 @@
                     <option value="">All activity types</option>
                     <option value="user_registered">New User Registration</option>
                     <option value="failed_login_attempt">Failed Login Attempt</option>
+                    <option value="user_login">User Login</option>
+                    <option value="user_logout">User Logout</option>
                     <option value="project_reported">Project Reported</option>
                     <option value="profile_updated">Profile Updated</option>
                     <option value="password_reset">Password Reset Requested</option>
                     <option value="email_verified">Email Verified</option>
                     <option value="account_status_changed">Account Suspended/Unsuspended</option>
+                    <option value="project_created">Project Created</option>
+                    <option value="project_updated">Project Updated</option>
+                    <option value="bid_submitted">Bid Submitted</option>
+                    <option value="bid_updated">Bid Updated</option>
+                    <option value="bid_cancelled">Bid Cancelled</option>
+                    <option value="bid_accepted">Bid Accepted</option>
+                    <option value="bid_rejected">Bid Rejected</option>
+                    <option value="milestone_submitted">Milestone Submitted</option>
+                    <option value="milestone_updated">Milestone Updated</option>
+                    <option value="milestone_deleted">Milestone Deleted</option>
+                    <option value="milestone_approved">Milestone Approved</option>
+                    <option value="milestone_rejected">Milestone Rejected</option>
+                    <option value="milestone_completed">Milestone Completed</option>
+                    <option value="progress_uploaded">Progress Uploaded</option>
+                    <option value="payment_uploaded">Payment Uploaded</option>
+                    <option value="downpayment_uploaded">Downpayment Uploaded</option>
+                    <option value="dispute_filed">Dispute Filed</option>
+                    <option value="project_update_submitted">Project Update Submitted</option>
+                    <option value="project_update_approved">Project Update Approved</option>
+                    <option value="project_update_rejected">Project Update Rejected</option>
+                    <option value="project_update_withdrawn">Project Update Withdrawn</option>
+                    <option value="post_created">Post Created</option>
+                    <option value="project_completed">Project Completed</option>
+                    <option value="role_resubmitted">Role Resubmitted</option>
+                    <option value="user_reported">User Reported</option>
+                    <option value="message_reported">Message Reported</option>
                   </select>
                   <i class="fi fi-rr-angle-small-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-[11px]"></i>
                 </div>
@@ -1603,7 +1644,7 @@
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="pref-head-chip">
                   <i class="fi fi-rr-shield-check text-[10px]"></i>
-                  8 Active Controls
+                  35 Event Rules
                 </span>
                 <button id="resetDefaultsBtn" class="pref-reset-btn" type="button">
                   <i class="fi fi-rr-rotate-right text-[12px]"></i>
@@ -1626,7 +1667,7 @@
                       <p class="text-[11px] text-gray-500 mt-0.5">Account and security related updates.</p>
                     </div>
                   </div>
-                  <span class="pref-panel-chip">7 Event Rules</span>
+                  <span class="pref-panel-chip">35 Event Rules</span>
                 </div>
 
                 <div class="pref-panel-body">
@@ -1634,11 +1675,39 @@
                     $prefRows = [
                       ['user_registered',       'New User Registration',           'Get notified when new users sign up.'],
                       ['failed_login_attempt',  'Failed Login Attempt',            'Security alert for repeated failed attempts.'],
+                      ['user_login',            'User Login',                      'Track when users log into the platform.'],
+                      ['user_logout',           'User Logout',                     'Track when users log out of the platform.'],
                       ['project_reported',      'Project Reported',                'Alert when a project is reported by users.'],
                       ['profile_updated',       'Profile Updated',                 'Notify when a user changes account details.'],
                       ['password_reset',        'Password Reset Requested',        'Alert for password reset requests and completions.'],
                       ['email_verified',        'Email Verified',                  'Notify when a user verifies their email address.'],
                       ['account_status_changed','Account Suspended/Unsuspended',   'Alert when moderation changes account status.'],
+                      ['project_created',       'Project Created',                 'Notify when a property owner posts a new project.'],
+                      ['project_updated',       'Project Updated',                 'Notify when a project\'s details are modified.'],
+                      ['bid_submitted',         'Bid Submitted',                   'Alert when a contractor submits a bid.'],
+                      ['bid_updated',           'Bid Updated',                     'Alert when a contractor updates their bid.'],
+                      ['bid_cancelled',         'Bid Cancelled',                   'Alert when a contractor cancels their bid.'],
+                      ['bid_accepted',          'Bid Accepted',                    'Alert when a property owner accepts a bid.'],
+                      ['bid_rejected',          'Bid Rejected',                    'Alert when a property owner rejects a bid.'],
+                      ['milestone_submitted',   'Milestone Submitted',             'Notify when milestones are submitted for a project.'],
+                      ['milestone_updated',     'Milestone Updated',               'Notify when milestones are updated.'],
+                      ['milestone_deleted',     'Milestone Deleted',               'Notify when a milestone is deleted.'],
+                      ['milestone_approved',    'Milestone Approved',              'Alert when a milestone is approved by the owner.'],
+                      ['milestone_rejected',    'Milestone Rejected',              'Alert when a milestone is rejected by the owner.'],
+                      ['milestone_completed',   'Milestone Completed',             'Alert when a milestone is marked as complete.'],
+                      ['progress_uploaded',     'Progress Uploaded',               'Notify when a contractor uploads a progress report.'],
+                      ['payment_uploaded',      'Payment Uploaded',                'Alert when a payment receipt is uploaded.'],
+                      ['downpayment_uploaded',  'Downpayment Uploaded',            'Alert when a downpayment receipt is uploaded.'],
+                      ['dispute_filed',         'Dispute Filed',                   'Alert when a dispute is filed against a project.'],
+                      ['project_update_submitted','Project Update Submitted',      'Notify when a project extension/update is requested.'],
+                      ['project_update_approved','Project Update Approved',        'Alert when a project update request is approved.'],
+                      ['project_update_rejected','Project Update Rejected',        'Alert when a project update request is rejected.'],
+                      ['project_update_withdrawn','Project Update Withdrawn',      'Alert when a project update request is withdrawn.'],
+                      ['post_created',          'Post Created',                    'Notify when a user creates a showcase post.'],
+                      ['project_completed',     'Project Completed',               'Alert when a project is marked as completed.'],
+                      ['role_resubmitted',      'Role Resubmitted',               'Alert when a user resubmits their role application.'],
+                      ['user_reported',         'User Reported',                   'Alert when a user reports another user.'],
+                      ['message_reported',      'Message Reported',                'Alert when a user reports a chat message.'],
                     ];
                   @endphp
                   @foreach($prefRows as [$key, $label, $desc])
@@ -2285,6 +2354,34 @@ const ACT_CONFIG = {
     password_reset:         { label:'Password Reset Requested',      icon:'fi-rr-lock',             css:'act-password',     url: (r) => `/admin/user-management/view/${r.user_id}` },
     email_verified:         { label:'Email Verified',                icon:'fi-rr-envelope-check',   css:'act-email-ver',    url: (r) => `/admin/user-management/view/${r.user_id}` },
     account_status_changed: { label:'Account Suspended/Unsuspended', icon:'fi-rr-user-slash',       css:'act-suspended',    url: (r) => `/admin/user-management/view/${r.user_id}` },
+    user_login:             { label:'User Login',                    icon:'fi-rr-sign-in-alt',      css:'act-login',        url: (r) => `/admin/user-management/view/${r.user_id}` },
+    user_logout:            { label:'User Logout',                   icon:'fi-rr-sign-out-alt',     css:'act-logout',       url: (r) => `/admin/user-management/view/${r.user_id}` },
+    project_created:        { label:'Project Created',               icon:'fi-rr-folder-add',       css:'act-project',      url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    project_updated:        { label:'Project Updated',               icon:'fi-rr-edit',             css:'act-project',      url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    bid_submitted:          { label:'Bid Submitted',                 icon:'fi-rr-document',         css:'act-bid',          url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    bid_updated:            { label:'Bid Updated',                   icon:'fi-rr-document-signed',  css:'act-bid',          url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    bid_cancelled:          { label:'Bid Cancelled',                 icon:'fi-rr-cross-circle',     css:'act-bid',          url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    bid_accepted:           { label:'Bid Accepted',                  icon:'fi-rr-check-circle',     css:'act-bid',          url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    bid_rejected:           { label:'Bid Rejected',                  icon:'fi-rr-ban',              css:'act-bid',          url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    milestone_submitted:    { label:'Milestone Submitted',           icon:'fi-rr-list-check',       css:'act-milestone',    url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    milestone_updated:      { label:'Milestone Updated',             icon:'fi-rr-pencil',           css:'act-milestone',    url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    milestone_deleted:      { label:'Milestone Deleted',             icon:'fi-rr-trash',            css:'act-milestone',    url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    milestone_approved:     { label:'Milestone Approved',            icon:'fi-rr-badge-check',      css:'act-milestone',    url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    milestone_rejected:     { label:'Milestone Rejected',            icon:'fi-rr-ban',              css:'act-milestone',    url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    milestone_completed:    { label:'Milestone Completed',           icon:'fi-rr-checkbox',         css:'act-milestone',    url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    progress_uploaded:      { label:'Progress Uploaded',             icon:'fi-rr-cloud-upload-alt', css:'act-progress',     url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    payment_uploaded:       { label:'Payment Uploaded',              icon:'fi-rr-receipt',           css:'act-payment',      url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    downpayment_uploaded:   { label:'Downpayment Uploaded',          icon:'fi-rr-money-check',      css:'act-payment',      url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    dispute_filed:          { label:'Dispute Filed',                 icon:'fi-rr-exclamation',      css:'act-dispute',      url: (r) => r.subject_id ? `/admin/disputes/view/${r.subject_id}` : `/admin/disputes` },
+    project_update_submitted:{ label:'Project Update Submitted',     icon:'fi-rr-time-forward',     css:'act-update',       url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    project_update_approved: { label:'Project Update Approved',      icon:'fi-rr-time-check',       css:'act-update',       url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    project_update_rejected: { label:'Project Update Rejected',      icon:'fi-rr-time-delete',      css:'act-update',       url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    project_update_withdrawn:{ label:'Project Update Withdrawn',     icon:'fi-rr-undo',             css:'act-update',       url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    post_created:           { label:'Post Created',                  icon:'fi-rr-picture',          css:'act-post',         url: (r) => `/admin/user-management/view/${r.user_id}` },
+    project_completed:      { label:'Project Completed',             icon:'fi-rr-badge-check',      css:'act-project',      url: (r) => r.subject_id ? `/admin/projects/view/${r.subject_id}` : `/admin/projects` },
+    role_resubmitted:       { label:'Role Resubmitted',              icon:'fi-rr-rotate-right',     css:'act-resubmit',     url: (r) => `/admin/user-management/view/${r.user_id}` },
+    user_reported:          { label:'User Reported',                 icon:'fi-rr-flag-alt',         css:'act-user-report',  url: (r) => `/admin/reports` },
+    message_reported:       { label:'Message Reported',              icon:'fi-rr-comment-exclamation',css:'act-msg-report', url: (r) => `/admin/reports` },
 };
 
 async function loadActivity(page = 1) {
@@ -2346,6 +2443,50 @@ async function loadActivity(page = 1) {
                 details = `Dispute / Project ID: <strong>#${escHtml(String(row.subject_id))}</strong>`;
             } else if (row.activity_type === 'password_reset' && meta.stage) {
                 details = `Stage: <span class="font-semibold">${escHtml(meta.stage)}</span>`;
+            } else if (['user_login','user_logout'].includes(row.activity_type) && meta.ip) {
+                details = `IP: <code class="text-xs bg-gray-100 px-1 rounded">${escHtml(meta.ip)}</code>`;
+            } else if (['project_created','project_updated'].includes(row.activity_type) && meta.project_id) {
+                details = `Project <strong>#${escHtml(String(meta.project_id))}</strong>`;
+            } else if (['bid_submitted','bid_updated','bid_cancelled','bid_accepted','bid_rejected'].includes(row.activity_type)) {
+                const parts = [];
+                if (meta.bid_id) parts.push(`Bid <strong>#${escHtml(String(meta.bid_id))}</strong>`);
+                if (meta.project_id) parts.push(`Project <strong>#${escHtml(String(meta.project_id))}</strong>`);
+                details = parts.join(' on ');
+            } else if (row.activity_type.startsWith('milestone_') && meta.milestone_id) {
+                const parts = [`Milestone <strong>#${escHtml(String(meta.milestone_id))}</strong>`];
+                if (meta.project_id) parts.push(`Project <strong>#${escHtml(String(meta.project_id))}</strong>`);
+                details = parts.join(' · ');
+            } else if (row.activity_type === 'progress_uploaded' && meta.project_id) {
+                details = `Project <strong>#${escHtml(String(meta.project_id))}</strong>`;
+            } else if (['payment_uploaded','downpayment_uploaded'].includes(row.activity_type)) {
+                const parts = [];
+                if (meta.milestone_id) parts.push(`Milestone <strong>#${escHtml(String(meta.milestone_id))}</strong>`);
+                if (meta.project_id) parts.push(`Project <strong>#${escHtml(String(meta.project_id))}</strong>`);
+                details = parts.join(' · ');
+            } else if (row.activity_type === 'dispute_filed') {
+                const parts = [];
+                if (meta.dispute_type) parts.push(`Type: <span class="font-semibold">${escHtml(meta.dispute_type)}</span>`);
+                if (meta.project_id) parts.push(`Project <strong>#${escHtml(String(meta.project_id))}</strong>`);
+                details = parts.join(' · ');
+            } else if (row.activity_type.startsWith('project_update_')) {
+                const parts = [];
+                if (meta.extension_id) parts.push(`Update <strong>#${escHtml(String(meta.extension_id))}</strong>`);
+                if (meta.project_id) parts.push(`Project <strong>#${escHtml(String(meta.project_id))}</strong>`);
+                details = parts.join(' · ');
+            } else if (row.activity_type === 'post_created' && meta.post_id) {
+                details = `Post <strong>#${escHtml(String(meta.post_id))}</strong>`;
+            } else if (row.activity_type === 'project_completed') {
+                const parts = [];
+                if (row.subject_id) parts.push(`Project <strong>#${escHtml(String(row.subject_id))}</strong>`);
+                if (meta.title) parts.push(escHtml(meta.title));
+                details = parts.join(' · ');
+            } else if (row.activity_type === 'user_reported') {
+                const parts = [];
+                if (meta.reported_user_id) parts.push(`Reported User <strong>#${escHtml(String(meta.reported_user_id))}</strong>`);
+                if (row.subject_id) parts.push(`Report <strong>#${escHtml(String(row.subject_id))}</strong>`);
+                details = parts.join(' · ');
+            } else if (row.activity_type === 'message_reported' && row.subject_id) {
+                details = `Message <strong>#${escHtml(String(row.subject_id))}</strong>`;
             } else if (meta.field) {
                 details = `Field: <span class="font-semibold">${escHtml(meta.field)}</span>`;
             }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\contractor;
 use App\Http\Controllers\Controller;
 use App\Services\ContractorAuthorizationService;
 use App\Services\NotificationService;
+use App\Services\UserActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,47 @@ class membersController extends Controller
         return $request->query('user_id')
             ?? $request->header('X-User-Id')
             ?? null;
+    }
+
+    private function normalizeRemovedMemberPreferredRole(int $userId): void
+    {
+        $ownerId = DB::table('property_owners')
+            ->where('user_id', $userId)
+            ->value('owner_id');
+
+        if (!$ownerId) {
+            return;
+        }
+
+        $hasApprovedOwnerRole = DB::table('property_owners')
+            ->where('owner_id', $ownerId)
+            ->where('verification_status', 'approved')
+            ->exists();
+
+        if (!$hasApprovedOwnerRole) {
+            return;
+        }
+
+        $hasApprovedContractorRole = DB::table('contractors')
+            ->where('owner_id', $ownerId)
+            ->where('verification_status', 'approved')
+            ->exists();
+
+        $hasActiveStaffMembership = DB::table('contractor_staff')
+            ->where('owner_id', $ownerId)
+            ->whereNull('deletion_reason')
+            ->where('is_active', 1)
+            ->where(function ($query) {
+                $query->whereNull('is_suspended')
+                    ->orWhere('is_suspended', 0);
+            })
+            ->exists();
+
+        if (!$hasApprovedContractorRole && !$hasActiveStaffMembership) {
+            DB::table('users')
+                ->where('user_id', $userId)
+                ->update(['preferred_role' => 'owner']);
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -126,14 +168,26 @@ class membersController extends Controller
                 return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
             }
 
+            $isCompanyOwner = ($memberContext->company_role ?? null) === 'owner';
+
             $query = DB::table('contractor_staff')
                 ->join('property_owners', 'contractor_staff.owner_id', '=', 'property_owners.owner_id')
                 ->join('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->where('contractor_staff.contractor_id', $contractor->contractor_id)
                 ->whereNull('contractor_staff.deletion_reason')
+                ->where('property_owners.is_active', 1)
                 // The company owner is never a staff row — this guard prevents them
                 // from appearing even if stale data exists.
                 ->where('contractor_staff.owner_id', '!=', $contractor->owner_id);
+
+            // Non-owner members can view the team list, but only the company
+            // owner can see pending invitation rows.
+            if (!$isCompanyOwner) {
+                $query->where(function ($q) {
+                    $q->where('contractor_staff.is_active', 1)
+                      ->orWhereNotNull('contractor_staff.company_role_before');
+                });
+            }
 
             // Search by name/email/username
             if ($request->filled('search')) {
@@ -153,11 +207,14 @@ class membersController extends Controller
             }
 
             // Status filter: active | suspended | pending | all
+            // Pending means invitation pending acceptance only.
             if ($request->filled('status') && $request->status !== 'all') {
                 match ($request->status) {
                     'active'    => $query->where('contractor_staff.is_active', 1)->where('contractor_staff.is_suspended', 0),
                     'suspended' => $query->where('contractor_staff.is_suspended', 1),
-                    'pending'   => $query->where('contractor_staff.is_active', 0),
+                    'pending'   => $isCompanyOwner
+                        ? $query->where('contractor_staff.is_active', 0)->whereNull('contractor_staff.company_role_before')
+                        : $query->whereRaw('1 = 0'),
                     default     => null,
                 };
             }
@@ -173,10 +230,14 @@ class membersController extends Controller
                     'users.username',
                     'property_owners.profile_pic',
                     'contractor_staff.company_role as role',
+                    'contractor_staff.company_role_before',
                     'contractor_staff.role_if_others as role_other',
                     'contractor_staff.is_active',
                     'contractor_staff.is_suspended',
                     'contractor_staff.suspension_reason',
+                    'contractor_staff.deletion_reason',
+                    'contractor_staff.deletion_scheduled_at',
+                    'contractor_staff.deactivation_reason',
                     'contractor_staff.created_at'
                 )
                 ->orderByRaw("FIELD(contractor_staff.company_role, 'representative', 'manager', 'engineer', 'architect', 'others')")
@@ -212,6 +273,58 @@ class membersController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error fetching contractor members: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // SHOW SINGLE STAFF RECORD STATUS (used by invitee to check actionability)
+    // -----------------------------------------------------------------------
+
+    public function show(Request $request, $id)
+    {
+        try {
+            $userId = $this->getUserId($request);
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'user_id parameter is required'], 400);
+            }
+
+            // Look up the staff record by the invitee's owner_id so only the
+            // invited person can query their own invitation status.
+            $ownerRecord = DB::table('property_owners')->where('user_id', $userId)->first();
+            if (!$ownerRecord) {
+                return response()->json(['success' => false, 'message' => 'Owner record not found'], 404);
+            }
+
+            $staff = DB::table('contractor_staff')
+                ->where('staff_id', $id)
+                ->where('owner_id', $ownerRecord->owner_id)
+                ->first();
+
+            if (!$staff) {
+                return response()->json(['success' => false, 'message' => 'Staff record not found'], 404);
+            }
+
+            // A record with deletion_reason set means the invitation was cancelled.
+            $cancelled = !is_null($staff->deletion_reason);
+            $isPendingRoleChange = !$cancelled
+                && (int) $staff->is_active === 0
+                && !empty($staff->company_role_before)
+                && $staff->company_role_before !== $staff->company_role;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'staff_id'            => (int) $staff->staff_id,
+                    'is_active'           => (bool) $staff->is_active,
+                    'is_cancelled'        => $cancelled,
+                    'deletion_reason'     => $staff->deletion_reason,
+                    'is_pending_invite'   => !$cancelled && (int) $staff->is_active === 0 && empty($staff->company_role_before),
+                    'is_pending_role_change' => $isPendingRoleChange,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching staff record status: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
@@ -259,8 +372,11 @@ class membersController extends Controller
                 return response()->json(['success' => false, 'message' => 'You cannot invite yourself as a staff member.'], 422);
             }
 
-            // Invitee must not already own their own contractor company
-            $targetContractor = DB::table('contractors')->where('owner_id', $validated['owner_id'])->first();
+            // Invitee must not already own their own active/pending contractor company
+            $targetContractor = DB::table('contractors')
+                ->where('owner_id', $validated['owner_id'])
+                ->whereNotIn('verification_status', ['rejected', 'deleted'])
+                ->first();
             if ($targetContractor) {
                 return response()->json(['success' => false, 'message' => 'This user already owns a contractor company and cannot be added as staff.'], 422);
             }
@@ -303,7 +419,7 @@ class membersController extends Controller
             // Notify the invited owner
             NotificationService::create(
                 (int) $targetOwner->user_id,
-                'staff_invitation',
+                'team_invite',
                 'Company Staff Invitation',
                 "You have been invited to join {$contractor->company_name} as {$validated['role']}. Please accept or decline the invitation.",
                 'normal',
@@ -322,6 +438,138 @@ class membersController extends Controller
             return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
             Log::error('Error inviting contractor staff: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // MASS INVITE (owner only)
+    // -----------------------------------------------------------------------
+
+    public function storeBatch(Request $request)
+    {
+        try {
+            $userId = $this->getUserId($request);
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'user_id parameter is required'], 400);
+            }
+
+            $authError = $this->authService->validateMemberManagementAccess($userId);
+            if ($authError) {
+                return response()->json(['success' => false, 'message' => $authError, 'error_code' => 'INSUFFICIENT_PERMISSIONS'], 403);
+            }
+
+            $contractor = $this->authService->getContractorForUser($userId);
+            if (!$contractor) {
+                return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+            }
+
+            $invitations = $request->input('invitations', []);
+            if (!is_array($invitations) || count($invitations) === 0) {
+                return response()->json(['success' => false, 'message' => 'At least one invitation is required.'], 422);
+            }
+            if (count($invitations) > 20) {
+                return response()->json(['success' => false, 'message' => 'Maximum 20 invitations per batch.'], 422);
+            }
+
+            $results = [];
+            $successCount = 0;
+
+            foreach ($invitations as $i => $inv) {
+                $ownerIdRaw = $inv['owner_id'] ?? null;
+                $role = $inv['role'] ?? null;
+                $roleOther = $inv['role_other'] ?? null;
+
+                if (!$ownerIdRaw || !$role || !in_array($role, ['representative', 'manager', 'engineer', 'architect', 'others'])) {
+                    $results[] = ['owner_id' => $ownerIdRaw, 'success' => false, 'message' => 'Invalid owner_id or role.'];
+                    continue;
+                }
+                if ($role === 'others' && !trim($roleOther ?? '')) {
+                    $results[] = ['owner_id' => $ownerIdRaw, 'success' => false, 'message' => 'Custom role name required for "Others".'];
+                    continue;
+                }
+
+                $ownerId = (int) $ownerIdRaw;
+
+                $targetOwner = DB::table('property_owners')
+                    ->where('owner_id', $ownerId)
+                    ->where('verification_status', 'approved')
+                    ->where('is_active', 1)
+                    ->first();
+
+                if (!$targetOwner) {
+                    $results[] = ['owner_id' => $ownerId, 'success' => false, 'message' => 'Not a verified property owner.'];
+                    continue;
+                }
+                if ((int) $targetOwner->user_id === (int) $userId) {
+                    $results[] = ['owner_id' => $ownerId, 'success' => false, 'message' => 'Cannot invite yourself.'];
+                    continue;
+                }
+
+                $targetContractor = DB::table('contractors')
+                    ->where('owner_id', $ownerId)
+                    ->whereNotIn('verification_status', ['rejected', 'deleted'])
+                    ->first();
+                if ($targetContractor) {
+                    $results[] = ['owner_id' => $ownerId, 'success' => false, 'message' => 'Already owns a contractor company.'];
+                    continue;
+                }
+
+                $existing = DB::table('contractor_staff')
+                    ->where('contractor_id', $contractor->contractor_id)
+                    ->where('owner_id', $ownerId)
+                    ->whereNull('deletion_reason')
+                    ->first();
+                if ($existing) {
+                    $results[] = ['owner_id' => $ownerId, 'success' => false, 'message' => 'Already a member of your company.'];
+                    continue;
+                }
+
+                if ($role === 'representative') {
+                    $existingRep = DB::table('contractor_staff')
+                        ->where('contractor_id', $contractor->contractor_id)
+                        ->where('company_role', 'representative')
+                        ->whereNull('deletion_reason')
+                        ->exists();
+                    if ($existingRep) {
+                        $results[] = ['owner_id' => $ownerId, 'success' => false, 'message' => 'A representative already exists.'];
+                        continue;
+                    }
+                }
+
+                $staffId = DB::table('contractor_staff')->insertGetId([
+                    'contractor_id'  => $contractor->contractor_id,
+                    'owner_id'       => $ownerId,
+                    'company_role'   => $role,
+                    'role_if_others' => $role === 'others' ? ($roleOther ?? null) : null,
+                    'is_active'      => 0,
+                    'is_suspended'   => 0,
+                    'created_at'     => now(),
+                ]);
+
+                NotificationService::create(
+                    (int) $targetOwner->user_id,
+                    'team_invite',
+                    'Company Staff Invitation',
+                    "You have been invited to join {$contractor->company_name} as {$role}. Please accept or decline the invitation.",
+                    'normal',
+                    'contractor_staff',
+                    $staffId,
+                    ['screen' => 'StaffInvitations', 'staff_id' => $staffId]
+                );
+
+                $results[] = ['owner_id' => $ownerId, 'success' => true, 'staff_id' => $staffId];
+                $successCount++;
+            }
+
+            return response()->json([
+                'success' => $successCount > 0,
+                'message' => "{$successCount} of " . count($invitations) . " invitation(s) sent successfully.",
+                'data' => $results,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error batch inviting contractor staff: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
@@ -363,14 +611,57 @@ class membersController extends Controller
                 'role_other' => 'nullable|string|max:255|required_if:role,others',
             ]);
 
+            $requestedRole = $validated['role'];
+            $requestedRoleOther = $requestedRole === 'others' ? ($validated['role_other'] ?? null) : null;
+            $isPendingRoleChange = ((int) $staffRecord->is_active === 0)
+                && !empty($staffRecord->company_role_before)
+                && $staffRecord->company_role_before !== $staffRecord->company_role;
+
+            // If there is a pending role change and owner reverts to the prior role,
+            // apply immediately (no accept/reject needed from the member).
+            if ($isPendingRoleChange && $requestedRole === $staffRecord->company_role_before) {
+                DB::table('contractor_staff')
+                    ->where('staff_id', $id)
+                    ->update([
+                        'company_role'        => $requestedRole,
+                        'role_if_others'      => $requestedRoleOther,
+                        'company_role_before' => null,
+                        'is_active'           => 1,
+                    ]);
+
+                $targetOwner = DB::table('property_owners')->where('owner_id', $staffRecord->owner_id)->first();
+                if ($targetOwner) {
+                    NotificationService::create(
+                        (int) $targetOwner->user_id,
+                        'team_role_changed',
+                        'Role Change Reverted',
+                        "Your role update in {$contractor->company_name} was reverted by the owner. No action is needed.",
+                        'normal',
+                        'contractor_staff',
+                        (int) $id,
+                        ['screen' => 'CompanyMembers']
+                    );
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Role reverted to previous value and applied immediately.',
+                    'data'    => [
+                        'staff_id' => (int) $id,
+                        'role'     => $requestedRole,
+                        'requires_acceptance' => false,
+                    ],
+                ]);
+            }
+
             // Track the old role in company_role_before whenever the role actually changes
             $updates = [
-                'company_role'   => $validated['role'],
-                'role_if_others' => $validated['role'] === 'others' ? ($validated['role_other'] ?? null) : null,
+                'company_role'   => $requestedRole,
+                'role_if_others' => $requestedRoleOther,
             ];
 
             // Enforce single representative — role update bypasses changeRepresentative
-            if ($validated['role'] === 'representative' && $staffRecord->company_role !== 'representative') {
+            if ($requestedRole === 'representative' && $staffRecord->company_role !== 'representative') {
                 $existingRep = DB::table('contractor_staff')
                     ->where('contractor_id', $contractor->contractor_id)
                     ->where('company_role', 'representative')
@@ -383,19 +674,58 @@ class membersController extends Controller
                 }
             }
 
-            if ($staffRecord->company_role !== $validated['role']) {
+            $roleActuallyChanged = $staffRecord->company_role !== $requestedRole
+                || (($staffRecord->role_if_others ?? null) !== $requestedRoleOther);
+
+            if ($roleActuallyChanged && (int) $staffRecord->is_active === 1) {
+                // Active members must accept role changes.
                 $updates['company_role_before'] = $staffRecord->company_role;
+                $updates['is_active'] = 0;
+            } elseif ($roleActuallyChanged && (int) $staffRecord->is_active === 0 && $isPendingRoleChange) {
+                // Keep the original accepted role in company_role_before while pending.
+                $updates['company_role_before'] = $staffRecord->company_role_before;
             }
 
             DB::table('contractor_staff')->where('staff_id', $id)->update($updates);
 
+            $requiresAcceptance = $roleActuallyChanged && (int) $staffRecord->is_active === 1;
+            $targetOwner = DB::table('property_owners')->where('owner_id', $staffRecord->owner_id)->first();
+            if ($targetOwner && $roleActuallyChanged) {
+                if ($requiresAcceptance) {
+                    NotificationService::create(
+                        (int) $targetOwner->user_id,
+                        'team_role_changed',
+                        'Role Change Request',
+                        "Your role in {$contractor->company_name} was changed from {$staffRecord->company_role} to {$requestedRole}. Please accept or decline this change.",
+                        'high',
+                        'contractor_staff',
+                        (int) $id,
+                        ['screen' => 'CompanyMembers']
+                    );
+                } else {
+                    NotificationService::create(
+                        (int) $targetOwner->user_id,
+                        'team_role_changed',
+                        'Role Updated',
+                        "Your role in {$contractor->company_name} is now {$requestedRole}.",
+                        'normal',
+                        'contractor_staff',
+                        (int) $id,
+                        ['screen' => 'CompanyMembers']
+                    );
+                }
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Staff role updated successfully',
+                'message' => $requiresAcceptance
+                    ? 'Role change sent. The member must accept or decline the new role.'
+                    : 'Staff role updated successfully',
                 'data'    => [
                     'staff_id'            => (int) $id,
-                    'role'                => $validated['role'],
-                    'company_role_before' => $staffRecord->company_role !== $validated['role'] ? $staffRecord->company_role : ($staffRecord->company_role_before ?? null),
+                    'role'                => $requestedRole,
+                    'company_role_before' => $roleActuallyChanged ? ($staffRecord->company_role_before ?? $staffRecord->company_role) : ($staffRecord->company_role_before ?? null),
+                    'requires_acceptance' => $requiresAcceptance,
                 ],
             ]);
 
@@ -461,6 +791,10 @@ class membersController extends Controller
                     (int) $id,
                     ['screen' => 'Dashboard']
                 );
+
+                $this->normalizeRemovedMemberPreferredRole((int) $targetOwner->user_id);
+
+                UserActivityLogger::accountStatusChanged((int) $targetOwner->user_id, 'deleted', (string) $reason);
             }
 
             return response()->json(['success' => true, 'message' => 'Staff member removed successfully']);
@@ -532,6 +866,8 @@ class membersController extends Controller
                     (int) $id,
                     ['screen' => 'Dashboard']
                 );
+
+                UserActivityLogger::accountStatusChanged((int) $targetOwner->user_id, 'suspended', (string) $validated['reason']);
             }
 
             return response()->json([
@@ -604,6 +940,8 @@ class membersController extends Controller
                     (int) $id,
                     ['screen' => 'Dashboard']
                 );
+
+                UserActivityLogger::accountStatusChanged((int) $targetOwner->user_id, 'unsuspended');
             }
 
             return response()->json([
@@ -646,7 +984,13 @@ class membersController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invitation not found or already processed'], 404);
             }
 
-            DB::table('contractor_staff')->where('staff_id', $id)->update(['is_active' => 1]);
+            $isPendingRoleChange = !empty($staffRecord->company_role_before)
+                && $staffRecord->company_role_before !== $staffRecord->company_role;
+
+            DB::table('contractor_staff')->where('staff_id', $id)->update([
+                'is_active' => 1,
+                'company_role_before' => null,
+            ]);
 
             // Notify the contractor owner
             $contractor = DB::table('contractors')->where('contractor_id', $staffRecord->contractor_id)->first();
@@ -663,8 +1007,10 @@ class membersController extends Controller
                     NotificationService::create(
                         (int) $contractorOwnerUser->user_id,
                         'staff_invitation_accepted',
-                        'Invitation Accepted',
-                        "{$name} has accepted your invitation to join {$contractor->company_name}.",
+                        $isPendingRoleChange ? 'Role Change Accepted' : 'Invitation Accepted',
+                        $isPendingRoleChange
+                            ? "{$name} accepted the new role assignment in {$contractor->company_name}."
+                            : "{$name} has accepted your invitation to join {$contractor->company_name}.",
                         'normal',
                         'contractor_staff',
                         (int) $id,
@@ -673,7 +1019,12 @@ class membersController extends Controller
                 }
             }
 
-            return response()->json(['success' => true, 'message' => 'Invitation accepted. You are now an active member of the company.']);
+            return response()->json([
+                'success' => true,
+                'message' => $isPendingRoleChange
+                    ? 'Role change accepted successfully.'
+                    : 'Invitation accepted. You are now an active member of the company.'
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Error accepting staff invitation: ' . $e->getMessage());
@@ -709,15 +1060,31 @@ class membersController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invitation not found or already processed'], 404);
             }
 
+            $isPendingRoleChange = !empty($staffRecord->company_role_before)
+                && $staffRecord->company_role_before !== $staffRecord->company_role;
+
             $validated = $request->validate([
                 'reason' => 'required|string|min:3|max:500',
             ]);
 
             $declineReason = trim((string) ($validated['reason'] ?? 'Invitation declined by user'));
 
-            DB::table('contractor_staff')
-                ->where('staff_id', $id)
-                ->update(['deletion_reason' => $declineReason]);
+            if ($isPendingRoleChange) {
+                DB::table('contractor_staff')
+                    ->where('staff_id', $id)
+                    ->update([
+                        'company_role' => $staffRecord->company_role_before,
+                        'company_role_before' => null,
+                        'is_active' => 1,
+                        'role_if_others' => $staffRecord->company_role_before === 'others'
+                            ? ($staffRecord->role_if_others ?? null)
+                            : null,
+                    ]);
+            } else {
+                DB::table('contractor_staff')
+                    ->where('staff_id', $id)
+                    ->update(['deletion_reason' => $declineReason]);
+            }
 
             // Notify the contractor owner that the invitation was declined
             $contractor = DB::table('contractors')->where('contractor_id', $staffRecord->contractor_id)->first();
@@ -733,8 +1100,10 @@ class membersController extends Controller
                     NotificationService::create(
                         (int) $contractorOwnerUser,
                         'staff_invitation_cancelled',
-                        'Invitation Declined',
-                        "{$name} declined your staff invitation. Reason: {$declineReason}",
+                        $isPendingRoleChange ? 'Role Change Declined' : 'Invitation Declined',
+                        $isPendingRoleChange
+                            ? "{$name} declined the role change in {$contractor->company_name}. Reason: {$declineReason}"
+                            : "{$name} declined your staff invitation. Reason: {$declineReason}",
                         'normal',
                         'contractor_staff',
                         (int) $id,
@@ -743,7 +1112,10 @@ class membersController extends Controller
                 }
             }
 
-            return response()->json(['success' => true, 'message' => 'Invitation declined.']);
+            return response()->json([
+                'success' => true,
+                'message' => $isPendingRoleChange ? 'Role change declined and previous role restored.' : 'Invitation declined.'
+            ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);

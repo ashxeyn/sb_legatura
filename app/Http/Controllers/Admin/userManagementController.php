@@ -21,6 +21,7 @@ use App\Http\Requests\admin\changeContractorRepresentativeRequest;
 use App\Http\Requests\admin\deactivateContractorTeamMemberRequest;
 use App\Http\Requests\admin\reactivateContractorTeamMemberRequest;
 use App\Services\PsgcApiService;
+use App\Services\UserActivityLogger;
 use Illuminate\Support\Facades\Mail;
 use App\Traits\WithAtomicLock;
 
@@ -679,7 +680,7 @@ class userManagementController extends authController
             $owner = DB::table('property_owners')
                 ->join('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->where('property_owners.owner_id', $id)
-                ->select('users.email', 'users.first_name', 'users.last_name')
+                ->select('users.user_id', 'users.email', 'users.first_name', 'users.last_name')
                 ->first();
 
             $model = new propertyOwnerClass();
@@ -704,6 +705,10 @@ class userManagementController extends authController
                 }
             }
 
+            if ($owner) {
+                UserActivityLogger::accountStatusChanged((int) $owner->user_id, 'deleted', $request->input('deletion_reason'));
+            }
+
             return response()->json(['success' => true, 'message' => 'Property Owner deleted successfully']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
@@ -723,7 +728,7 @@ class userManagementController extends authController
                 ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
                 ->join('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->where('contractors.contractor_id', $id)
-                ->select('contractors.company_name', 'users.email')
+                ->select('contractors.company_name', 'users.email', 'users.user_id')
                 ->first();
 
             $model = new contractorClass();
@@ -746,6 +751,10 @@ class userManagementController extends authController
                 } catch (\Exception $e) {
                     \Log::error('Failed to send contractor deletion email: ' . $e->getMessage());
                 }
+            }
+
+            if ($contractor) {
+                UserActivityLogger::accountStatusChanged((int) $contractor->user_id, 'deleted', $request->input('deletion_reason'));
             }
 
             return response()->json(['success' => true, 'message' => 'Contractor deleted successfully']);
@@ -1250,6 +1259,13 @@ class userManagementController extends authController
                     \Log::error('Failed to send staff suspension email: ' . $e->getMessage());
                 }
 
+                $staffUserId = DB::table('property_owners')->where('owner_id',
+                    DB::table('contractor_staff')->where('staff_id', $staffId)->value('owner_id')
+                )->value('user_id');
+                if ($staffUserId) {
+                    UserActivityLogger::accountStatusChanged((int) $staffUserId, 'suspended', $validated['suspension_reason']);
+                }
+
                 return response()->json(['success' => true, 'message' => 'Team member suspended successfully']);
 
             } catch (\Illuminate\Validation\ValidationException $e) {
@@ -1272,6 +1288,14 @@ class userManagementController extends authController
                     'is_active' => 0,
                     'deletion_reason' => $validated['deletion_reason']
                 ]);
+
+                $staffUserId = DB::table('property_owners')->where('owner_id',
+                    DB::table('contractor_staff')->where('staff_id', $validated['staff_id'])->value('owner_id')
+                )->value('user_id');
+                if ($staffUserId) {
+                    UserActivityLogger::accountStatusChanged((int) $staffUserId, 'suspended', $validated['deletion_reason']);
+                }
+
                 return response()->json(['success' => true, 'message' => 'Team member deactivated successfully']);
             } catch (\Exception $e) {
                 return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
@@ -1311,6 +1335,13 @@ class userManagementController extends authController
                     'suspension_reason' => null,
                     'suspension_until' => null
                 ]);
+
+                $staffUserId = DB::table('property_owners')->where('owner_id',
+                    DB::table('contractor_staff')->where('staff_id', $validated['staff_id'])->value('owner_id')
+                )->value('user_id');
+                if ($staffUserId) {
+                    UserActivityLogger::accountStatusChanged((int) $staffUserId, 'unsuspended');
+                }
 
                 return response()->json(['success' => true, 'message' => 'Team member reactivated successfully']);
 
@@ -1934,6 +1965,7 @@ class userManagementController extends authController
             $owner = $propertyOwnerModel->suspendOwner($id, $reason, $duration, $suspensionUntil);
 
             if ($owner) {
+                UserActivityLogger::accountStatusChanged((int) $owner->user_id, 'suspended', (string) $reason);
                 $user = User::where('user_id', $owner->user_id)->first();
                 if ($user) {
                     try {
@@ -1984,6 +2016,10 @@ class userManagementController extends authController
                         \Illuminate\Support\Facades\Log::error('Failed to send suspension email: ' . $e->getMessage());
                     }
                 }
+            }
+
+            if ($owner && !empty($owner->user_id)) {
+                UserActivityLogger::accountStatusChanged((int) $owner->user_id, 'suspended', (string) $reason);
             }
 
             return response()->json(['success' => true, 'message' => 'Contractor suspended successfully']);

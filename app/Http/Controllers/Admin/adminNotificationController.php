@@ -207,6 +207,34 @@ class adminNotificationController extends Controller
             'password_reset',
             'email_verified',
             'account_status_changed',
+            'user_login',
+            'user_logout',
+            'project_created',
+            'project_updated',
+            'bid_submitted',
+            'bid_updated',
+            'bid_cancelled',
+            'bid_accepted',
+            'bid_rejected',
+            'milestone_submitted',
+            'milestone_updated',
+            'milestone_deleted',
+            'milestone_approved',
+            'milestone_rejected',
+            'milestone_completed',
+            'progress_uploaded',
+            'payment_uploaded',
+            'downpayment_uploaded',
+            'dispute_filed',
+            'project_update_submitted',
+            'project_update_approved',
+            'project_update_rejected',
+            'project_update_withdrawn',
+            'post_created',
+            'project_completed',
+            'role_resubmitted',
+            'user_reported',
+            'message_reported',
         ];
     }
 
@@ -257,6 +285,118 @@ class adminNotificationController extends Controller
             'account_status_changed' => [
                 'Account Status Changed',
                 $userName . ' account status was updated from the ' . $sourceLabel . '.',
+            ],
+            'user_login' => [
+                'User Logged In',
+                $userName . ' logged in from the ' . $sourceLabel . '.',
+            ],
+            'user_logout' => [
+                'User Logged Out',
+                $userName . ' logged out from the ' . $sourceLabel . '.',
+            ],
+            'project_created' => [
+                'New Project Created',
+                $userName . ' created a new project from the ' . $sourceLabel . '.',
+            ],
+            'project_updated' => [
+                'Project Updated',
+                $userName . ' updated a project from the ' . $sourceLabel . '.',
+            ],
+            'bid_submitted' => [
+                'Bid Submitted',
+                $userName . ' submitted a bid from the ' . $sourceLabel . '.',
+            ],
+            'bid_updated' => [
+                'Bid Updated',
+                $userName . ' updated a bid from the ' . $sourceLabel . '.',
+            ],
+            'bid_cancelled' => [
+                'Bid Cancelled',
+                $userName . ' cancelled a bid from the ' . $sourceLabel . '.',
+            ],
+            'bid_accepted' => [
+                'Bid Accepted',
+                $userName . ' accepted a bid from the ' . $sourceLabel . '.',
+            ],
+            'milestone_submitted' => [
+                'Milestone Plan Submitted',
+                $userName . ' submitted a milestone plan from the ' . $sourceLabel . '.',
+            ],
+            'milestone_updated' => [
+                'Milestone Plan Updated',
+                $userName . ' updated a milestone plan from the ' . $sourceLabel . '.',
+            ],
+            'milestone_deleted' => [
+                'Milestone Deleted',
+                $userName . ' deleted a milestone from the ' . $sourceLabel . '.',
+            ],
+            'milestone_approved' => [
+                'Milestone Approved',
+                $userName . ' approved a milestone from the ' . $sourceLabel . '.',
+            ],
+            'milestone_rejected' => [
+                'Milestone Rejected',
+                $userName . ' rejected a milestone from the ' . $sourceLabel . '.',
+            ],
+            'milestone_completed' => [
+                'Milestone Completed',
+                $userName . ' completed a milestone from the ' . $sourceLabel . '.',
+            ],
+            'progress_uploaded' => [
+                'Progress Report Uploaded',
+                $userName . ' uploaded a progress report from the ' . $sourceLabel . '.',
+            ],
+            'payment_uploaded' => [
+                'Payment Uploaded',
+                $userName . ' uploaded a payment receipt from the ' . $sourceLabel . '.',
+            ],
+            'downpayment_uploaded' => [
+                'Downpayment Uploaded',
+                $userName . ' uploaded a downpayment receipt from the ' . $sourceLabel . '.',
+            ],
+            'dispute_filed' => [
+                'Dispute Filed',
+                $userName . ' filed a dispute from the ' . $sourceLabel . '.',
+            ],
+            'project_update_submitted' => [
+                'Project Update Submitted',
+                $userName . ' submitted a project update request from the ' . $sourceLabel . '.',
+            ],
+            'project_update_approved' => [
+                'Project Update Approved',
+                $userName . ' approved a project update from the ' . $sourceLabel . '.',
+            ],
+            'project_update_rejected' => [
+                'Project Update Rejected',
+                $userName . ' rejected a project update from the ' . $sourceLabel . '.',
+            ],
+            'project_update_withdrawn' => [
+                'Project Update Withdrawn',
+                $userName . ' withdrew a project update from the ' . $sourceLabel . '.',
+            ],
+            'post_created' => [
+                'Showcase Post Created',
+                $userName . ' created a showcase post from the ' . $sourceLabel . '.',
+            ],
+            'role_resubmitted' => [
+                'Role Application Resubmitted',
+                $userName . ' resubmitted a role application from the ' . $sourceLabel . '.',
+            ],
+            'user_reported' => [
+                'User Reported',
+                $userName . ' reported another user from the ' . $sourceLabel . '.',
+            ],
+            'message_reported' => [
+                'Message Reported',
+                $userName . ' reported a message from the ' . $sourceLabel . '.',
+            ],
+            'bid_rejected' => [
+                'Bid Rejected',
+                $userName . ' rejected a bid from the ' . $sourceLabel . '.',
+            ],
+            'project_completed' => [
+                'Project Completed',
+                $userName . ' marked a project as completed from the ' . $sourceLabel . '.',
             ],
             default => [
                 'User Activity',

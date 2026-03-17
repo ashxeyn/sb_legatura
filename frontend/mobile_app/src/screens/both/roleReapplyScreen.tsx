@@ -36,21 +36,31 @@ By accessing or using the Legatura platform, you agree to be bound by these Term
 
 4.2. Tax Obligations: Users are solely responsible for compliance with the National Internal Revenue Code (R.A. 8424). Legatura is not a Withholding Agent. The issuance of Official Receipts (OR) and the deduction of applicable withholding taxes and Value-Added Tax (VAT) remain the direct responsibility of the transacting Property Owner and Contractor.
 
-5. Dispute Resolution and Arbitration
+5. Subscription Plans and Bidding Allocation
 
-5.1. System Audit Trails: In the event of a dispute, Legatura will provide an immutable export of the user activity logs and milestone items to serve as electronic evidence under the Electronic Commerce Act of 2000 (R.A. 8792).
+5.1. Plan-Based Bid Allocation: Contractors may subscribe to a subscription plan (e.g., Bronze, Silver, Gold) to receive a designated number of project bids. Each plan grants a fixed starting number of bids as defined at the time of subscription.
 
-5.2. Escalation: If a project is placed on "Halt" and parties cannot reach a settlement through the platform, the deadlock must be escalated to the Construction Industry Arbitration Commission (CIAC) pursuant to Executive Order No. 1008. Legatura administrators will not act as technical judges or arbitrators for structural disputes.
+5.2. Non-Cumulative Bid Balance on Plan Change: When a Contractor upgrades or changes from one subscription plan to another (e.g., from Bronze to Silver), the bid count resets to the starting allocation of the newly subscribed plan. Remaining unused bids from the previous plan do not carry over or accumulate with the new plan's allocation.
 
-6. Intellectual Property (Blueprints and Designs)
+5.3. Plan Cancellation and No-Refund Policy: A Contractor may cancel their active subscription plan at any time during the plan's duration. However, all subscription payments are final and non-refundable. Upon cancellation, the Contractor will retain access to the benefits of the current plan, including any remaining bids, until the plan's original expiration date. No pro-rated refunds or credits will be issued for the unused portion of the subscription period.
+
+5.4. Plan Continuation Until Expiry: A cancelled plan remains active and fully functional until its scheduled end date. The Contractor may continue to use their remaining bids and plan features during this period. Once the plan expires, the account will revert to its default non-subscribed state unless a new plan is purchased.
+
+6. Dispute Resolution and Arbitration
+
+6.1. System Audit Trails: In the event of a dispute, Legatura will provide an immutable export of the user activity logs and milestone items to serve as electronic evidence under the Electronic Commerce Act of 2000 (R.A. 8792).
+
+6.2. Escalation: If a project is placed on "Halt" and parties cannot reach a settlement through the platform, the deadlock must be escalated to the Construction Industry Arbitration Commission (CIAC) pursuant to Executive Order No. 1008. Legatura administrators will not act as technical judges or arbitrators for structural disputes.
+
+7. Intellectual Property (Blueprints and Designs)
 
 As per the Intellectual Property Code of the Philippines (R.A. 8293), all architectural designs, blueprints, and proprietary documents uploaded to the platform's project files module remain the exclusive intellectual property of the original creator.
 
-7. Artificial Intelligence (AI) Decision Support Disclaimer
+8. Artificial Intelligence (AI) Decision Support Disclaimer
 
 The Legatura platform utilizes an AI-driven delay prediction module. This feature is architected strictly as a Decision Support System (DSS) utilizing historical analytics and weather patterns. It generates a probability, not a deterministic guarantee. Legatura assumes no legal liability for project delays or financial losses incurred if a user relies solely on the system's delay probability metrics.
 
-8. Data Retention and Privacy
+9. Data Retention and Privacy
 
 In compliance with the Data Privacy Act of 2012 (R.A. 10173), user data is processed to establish contractual necessities. In the event of account deletion, Legatura reserves the right to retain specific contractual audit trails, system logs, and verified IDs for a legally mandated period to protect users against post-project liabilities and to establish legal claims.`;
 

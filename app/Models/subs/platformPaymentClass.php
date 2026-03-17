@@ -322,6 +322,37 @@ class platformPaymentClass
     }
 
     /**
+     * Get the transaction_date of the contractor's current active subscription.
+     * Used to only count bids placed after the current plan started (not old plan bids).
+     *
+     * @param int $contractorId
+     * @return string|null  The transaction_date or null if none found
+     */
+    public static function getCurrentSubscriptionStartDate(int $contractorId): ?string
+    {
+        try {
+            $row = DB::table('platform_payments')
+                ->join('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+                ->where('platform_payments.contractor_id', $contractorId)
+                ->where('subscription_plans.plan_key', '!=', 'boost')
+                ->where('platform_payments.is_approved', 1)
+                ->where('platform_payments.is_cancelled', 0)
+                ->where(function ($q) {
+                    $q->whereNull('platform_payments.expiration_date')
+                      ->orWhere('platform_payments.expiration_date', '>', now());
+                })
+                ->orderByDesc('platform_payments.expiration_date')
+                ->orderByDesc('platform_payments.platform_payment_id')
+                ->value('platform_payments.transaction_date');
+
+            return $row ?: null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('getCurrentSubscriptionStartDate Error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Check if a contractor used the free tier before subscribing.
      * Returns true if they placed any bids before their first subscription started.
      * Direct subscribers (no bids before subscribing) don't get the free tier bonus.
@@ -368,8 +399,7 @@ class platformPaymentClass
     }
 
     /**
-     * Count how many bids a contractor has made in the current billing period.
-     * For simplicity, we count bids submitted in the current calendar month.
+     * Count how many bids a contractor has made in the current calendar month.
      *
      * @param int $contractorId The contractor ID
      * @return int Number of bids made this month
@@ -383,10 +413,39 @@ class platformPaymentClass
             return DB::table('bids')
                 ->where('contractor_id', $contractorId)
                 ->whereBetween('submitted_at', [$startOfMonth, $endOfMonth])
-                ->whereNotIn('bid_status', ['cancelled']) // Don't count cancelled bids
+                ->whereNotIn('bid_status', ['cancelled'])
                 ->count();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('getMonthlyBidCount Error: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Count bids since the current subscription started (within the current month).
+     * On plan upgrade the old subscription is cancelled and a new one is created,
+     * so bids from the previous plan are not counted against the new limit.
+     *
+     * @param int $contractorId
+     * @param string $subscriptionStartDate  transaction_date of the active subscription
+     * @return int
+     */
+    public static function getBidCountSinceSubscription(int $contractorId, string $subscriptionStartDate): int
+    {
+        try {
+            $start = Carbon::parse($subscriptionStartDate);
+            $startOfMonth = Carbon::now()->startOfMonth();
+            // Use the later of subscription start or month start
+            $countFrom = $start->greaterThan($startOfMonth) ? $start : $startOfMonth;
+
+            return DB::table('bids')
+                ->where('contractor_id', $contractorId)
+                ->where('submitted_at', '>=', $countFrom)
+                ->where('submitted_at', '<=', Carbon::now()->endOfMonth())
+                ->whereNotIn('bid_status', ['cancelled'])
+                ->count();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('getBidCountSinceSubscription Error: ' . $e->getMessage());
             return 0;
         }
     }
@@ -436,12 +495,11 @@ class platformPaymentClass
             $planKey = $subscription['plan_key'] ?? null;
             $planName = $subscription['name'] ?? ($planKey ? ucfirst($planKey) : 'Free');
 
-            // Get total bids made this month
-            $totalBidsUsed = self::getMonthlyBidCount($contractor->contractor_id);
             $freeAllowance = self::getFreeTierAllowance();
 
             // For free users (no subscription)
             if (!$planKey) {
+                $totalBidsUsed = self::getMonthlyBidCount($contractor->contractor_id);
                 $bidsRemaining = max(0, $freeAllowance - $totalBidsUsed);
                 $canBid = $bidsRemaining > 0;
 
@@ -461,49 +519,36 @@ class platformPaymentClass
             // Get subscription bid limit
             $subscriptionLimit = self::getBidLimitForTier($planKey);
 
+            // Get the current subscription's start date so bids from a previous
+            // plan (before an upgrade) are not counted against the new limit.
+            $currentSubStart = self::getCurrentSubscriptionStartDate($contractor->contractor_id);
+            $bidsOnCurrentPlan = $currentSubStart
+                ? self::getBidCountSinceSubscription($contractor->contractor_id, $currentSubStart)
+                : self::getMonthlyBidCount($contractor->contractor_id);
+
             // Unlimited bids for Gold
             if ($subscriptionLimit === null) {
                 return [
                     'can_bid' => true,
-                    'bids_used' => $totalBidsUsed,
-                    'bids_limit' => null, // null means unlimited
-                    'bids_remaining' => null, // null means unlimited
+                    'bids_used' => $bidsOnCurrentPlan,
+                    'bids_limit' => null,
+                    'bids_remaining' => null,
                     'plan_key' => $planKey,
                     'plan_name' => $planName,
                     'message' => 'You have unlimited bids with your Gold subscription'
                 ];
             }
 
-            // Check if user used free tier before subscribing
-            $usedFreeTierFirst = self::usedFreeTierBeforeSubscription($contractor->contractor_id);
-
-            // For paid subscriptions (Bronze/Silver):
-            // - If they used free tier first: free bids don't count against subscription (3 + limit)
-            // - If they subscribed directly: they only get the subscription limit
-            if ($usedFreeTierFirst) {
-                // User used free tier before subscribing - they get free allowance + subscription limit
-                $bidsUsedAgainstSubscription = max(0, $totalBidsUsed - $freeAllowance);
-                $bidsRemaining = max(0, $subscriptionLimit - $bidsUsedAgainstSubscription);
-                $totalCapacity = $freeAllowance + $subscriptionLimit;
-            } else {
-                // Direct subscriber - they only get subscription limit
-                $bidsUsedAgainstSubscription = $totalBidsUsed;
-                $bidsRemaining = max(0, $subscriptionLimit - $totalBidsUsed);
-                $totalCapacity = $subscriptionLimit;
-            }
-
-            $canBid = $totalBidsUsed < $totalCapacity;
+            $bidsRemaining = max(0, $subscriptionLimit - $bidsOnCurrentPlan);
+            $canBid = $bidsOnCurrentPlan < $subscriptionLimit;
 
             return [
                 'can_bid' => $canBid,
-                'bids_used' => $bidsUsedAgainstSubscription, // Show usage against subscription only
+                'bids_used' => $bidsOnCurrentPlan,
                 'bids_limit' => $subscriptionLimit,
                 'bids_remaining' => $bidsRemaining,
                 'plan_key' => $planKey,
                 'plan_name' => $planName,
-                'total_bids_this_month' => $totalBidsUsed, // Include total for reference
-                'has_free_bonus' => $usedFreeTierFirst, // True if user gets +3 free bids bonus
-                'total_capacity' => $totalCapacity, // Actual total bids allowed this month
                 'message' => $canBid
                     ? "You have {$bidsRemaining} bid(s) remaining this month"
                     : "You have reached your monthly bid limit of {$subscriptionLimit}. Upgrade your subscription for more bids."

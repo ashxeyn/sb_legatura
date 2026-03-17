@@ -308,6 +308,14 @@ class NotificationRedirectService
             case 'team_removed':
             case 'team_role_changed':
             case 'team_access_changed':
+            case 'staff_invitation':
+            case 'staff_invitation_accepted':
+            case 'staff_invitation_cancelled':
+            case 'representative_assigned':
+            case 'representative_demoted':
+            case 'staff_removed':
+            case 'staff_suspended':
+            case 'staff_reactivated':
                 return [
                     'screen' => 'dashboard',
                     'params' => [
@@ -472,7 +480,15 @@ class NotificationRedirectService
             case 'team_removed':
             case 'team_role_changed':
             case 'team_access_changed':
-                return self::resolveProjectRedirect($refId, $userRole);
+            case 'staff_invitation':
+            case 'staff_invitation_accepted':
+            case 'staff_invitation_cancelled':
+            case 'representative_assigned':
+            case 'representative_demoted':
+            case 'staff_removed':
+            case 'staff_suspended':
+            case 'staff_reactivated':
+                return self::resolveMembersRedirect();
 
             default:
                 return null; // fall through to reference_type routing
@@ -520,6 +536,9 @@ class NotificationRedirectService
 
             case 'user':
                 return self::resolveProfileRedirect($referenceId, $userRole);
+
+            case 'contractor_staff':
+                return self::resolveMembersRedirect();
 
             default:
                 Log::warning('NotificationRedirectService: unknown reference_type', [
@@ -860,6 +879,17 @@ class NotificationRedirectService
         $prefix = self::rolePrefix($userRole);
         return [
             'url'   => "/{$prefix}/profile",
+            'flash' => null,
+        ];
+    }
+
+    /**
+     * Contractor members page.
+     */
+    private static function resolveMembersRedirect(): array
+    {
+        return [
+            'url'   => '/contractor/members',
             'flash' => null,
         ];
     }

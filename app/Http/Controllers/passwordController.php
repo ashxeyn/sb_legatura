@@ -277,6 +277,8 @@ class passwordController extends Controller
                 'user_id' => $userId,
             ]);
 
+            UserActivityLogger::passwordReset((int) $userId, 'completed');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Password changed successfully',

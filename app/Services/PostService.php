@@ -395,6 +395,8 @@ class PostService
                 ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->where('p.project_status', 'open')
                 ->where('pr.project_post_status', 'approved')
+                // In contractor/member view, hide the viewer's own owner posts.
+                ->where('u.user_id', '!=', $userId)
                 ->where(function ($q) {
                     $q->whereNull('pr.bidding_due')
                       ->orWhere('pr.bidding_due', '>=', now());
@@ -553,6 +555,9 @@ class PostService
                      ->where('ms.setup_status', '=', 'approved');
             })
             ->where('pp.status', 'approved')
+            ->when($isContractor, function ($q) use ($userId) {
+                $q->where('pp.user_id', '!=', $userId);
+            })
             // Only show showcases from verified users (approved contractor OR approved property owner)
             ->where(function ($q) {
                 $q->where('c.verification_status', 'approved')
@@ -936,6 +941,8 @@ class PostService
                     ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                     ->where('p.project_status', 'open')
                     ->where('pr.project_post_status', 'approved')
+                    // In contractor/member search, hide the viewer's own owner posts.
+                    ->where('u.user_id', '!=', $userId)
                     ->where(function ($q) {
                         $q->whereNull('pr.bidding_due')
                           ->orWhere('pr.bidding_due', '>=', now());
@@ -991,6 +998,9 @@ class PostService
                         ->where('ms.setup_status', '=', 'approved');
                 })
                 ->where('pp.status', 'approved')
+                ->when($isContractor, function ($q) use ($userId) {
+                    $q->where('pp.user_id', '!=', $userId);
+                })
                 // Only show showcases from verified users
                 ->where(function ($q) {
                     $q->where('c.verification_status', 'approved')

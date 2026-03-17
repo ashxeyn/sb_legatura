@@ -5,6 +5,7 @@ namespace App\Http\Controllers\both;
 use App\Http\Controllers\Controller;
 use App\Services\MilestoneService;
 use App\Services\ContractorAuthorizationService;
+use App\Services\UserActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -56,6 +57,9 @@ class milestoneController extends Controller
         }
 
         $result = $this->milestoneService->approve($milestoneId, $owner->owner_id);
+        if (!empty($result['success'])) {
+            UserActivityLogger::milestoneApproved((int) $userId, $milestoneId);
+        }
         $status = $result['status'] ?? 200;
         unset($result['status']);
         return response()->json($result, $status);
@@ -78,6 +82,7 @@ class milestoneController extends Controller
         if (!$result['success']) {
             return back()->with('error', $result['message']);
         }
+        UserActivityLogger::milestoneApproved((int) $user->user_id, $milestoneId);
         return back()->with('success', $result['message']);
     }
 
@@ -101,6 +106,9 @@ class milestoneController extends Controller
         $reason = $request->input('rejection_reason', $request->input('reason', ''));
 
         $result = $this->milestoneService->reject($milestoneId, $owner->owner_id, (string) $reason);
+        if (!empty($result['success'])) {
+            UserActivityLogger::milestoneRejected((int) $userId, $milestoneId);
+        }
         $status = $result['status'] ?? 200;
         unset($result['status']);
         return response()->json($result, $status);
@@ -124,6 +132,7 @@ class milestoneController extends Controller
         if (!$result['success']) {
             return back()->with('error', $result['message']);
         }
+        UserActivityLogger::milestoneRejected((int) $user->user_id, $milestoneId);
         return back()->with('success', $result['message']);
     }
 
@@ -135,6 +144,12 @@ class milestoneController extends Controller
     public function apiSetMilestoneComplete(Request $request, int $milestoneId)
     {
         $result = $this->milestoneService->completeMilestone($milestoneId);
+        if (!empty($result['success'])) {
+            $userId = $request->input('user_id');
+            if ($userId) {
+                UserActivityLogger::milestoneCompleted((int) $userId, $milestoneId);
+            }
+        }
         $status = $result['status'] ?? 200;
         unset($result['status']);
         return response()->json($result, $status);
@@ -205,6 +220,9 @@ class milestoneController extends Controller
         unset($item);
 
         $result = $this->milestoneService->submit($validated, $contractor, $projectId);
+        if (!empty($result['success'])) {
+            UserActivityLogger::milestoneSubmitted((int) $userId, (int) ($result['milestone_id'] ?? 0), $projectId);
+        }
         $status = $result['status'] ?? 200;
         unset($result['status']);
         return response()->json($result, $status);
@@ -261,6 +279,9 @@ class milestoneController extends Controller
         unset($item);
 
         $result = $this->milestoneService->update($milestoneId, $projectId, $validated, $contractor);
+        if (!empty($result['success'])) {
+            UserActivityLogger::milestoneUpdated((int) $userId, $milestoneId, $projectId);
+        }
         $status = $result['status'] ?? 200;
         unset($result['status']);
         return response()->json($result, $status);
@@ -291,6 +312,9 @@ class milestoneController extends Controller
         $reason = (string) $request->input('reason', '');
 
         $result = $this->milestoneService->delete($milestoneId, (int) $contractor->contractor_id, $reason);
+        if (!empty($result['success'])) {
+            UserActivityLogger::milestoneDeleted((int) $userId, $milestoneId);
+        }
         $status = $result['status'] ?? 200;
         unset($result['status']);
         return response()->json($result, $status);

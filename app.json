@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "c86f62e0-6cf5-42f8-a8b2-e29130c8f121"
+      }
+    },
+    "android": {
+      "package": "com.legatura.sb_legatura"
+    }
+  }
+}

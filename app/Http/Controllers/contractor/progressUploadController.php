@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Services\NotificationService;
 use App\Services\ContractorAuthorizationService;
+use App\Services\UserActivityLogger;
 
 class progressUploadController extends Controller
 {
@@ -360,6 +361,8 @@ class progressUploadController extends Controller
             }
 
             if ($request->expectsJson()) {
+                UserActivityLogger::progressUploaded((int) $user->user_id, (int) $progressId, (int) $milestoneItem->project_id);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Progress files uploaded successfully',
@@ -375,6 +378,8 @@ class progressUploadController extends Controller
                     ]
                 ], 201);
             } else {
+                UserActivityLogger::progressUploaded((int) $user->user_id, (int) $progressId, (int) $milestoneItem->project_id);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Progress files uploaded successfully',

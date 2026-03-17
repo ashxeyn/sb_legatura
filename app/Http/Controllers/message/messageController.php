@@ -924,11 +924,7 @@ class messageController extends Controller
                     'updated_at' => now()
                 ]);
 
-            // \Log::info('Message reported by user', [
-            //     'message_id' => $messageId,
-            //     'reported_by' => $userId,
-            //     'reason' => $reason
-            // ]);
+            \App\Services\UserActivityLogger::messageReported((int) $userId, (int) $messageId);
 
             return response()->json([
                 'success' => true,

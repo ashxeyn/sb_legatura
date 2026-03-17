@@ -192,6 +192,7 @@ class AuthService
         }
 
         if ($user && $this->verifyPassword($password, $user->password_hash)) {
+
             // Check verification status based on user type
             $isVerified = false;
             $rejectionReason = null;

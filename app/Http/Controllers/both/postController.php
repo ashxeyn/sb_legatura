@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use App\Services\PostService;
+use App\Services\UserActivityLogger;
 
 /**
  * postController — CRUD + Feed for Facebook-style project posts.
@@ -53,6 +54,10 @@ class postController extends Controller
 
         $images = $request->file('images', []);
         $result = $this->postService->createPost($userId, $request->all(), $images);
+
+        if (!empty($result['success'])) {
+            UserActivityLogger::postCreated($userId, (int) ($result['data']['id'] ?? 0));
+        }
 
         return response()->json($result, $result['success'] ? 201 : 422);
     }

@@ -53,6 +53,13 @@ class NotificationService
         'team_removed'        => 'Team Update',
         'team_role_changed'   => 'Team Update',
         'team_access_changed' => 'Team Update',
+        'staff_invitation_accepted' => 'Team Update',
+        'staff_invitation_cancelled' => 'Team Update',
+        'staff_removed' => 'Team Update',
+        'staff_suspended' => 'Team Update',
+        'staff_reactivated' => 'Team Update',
+        'representative_assigned' => 'Team Update',
+        'representative_demoted' => 'Team Update',
         'review_prompt'       => 'Project Alert',
         'review_submitted'    => 'Project Alert',
 
@@ -66,6 +73,12 @@ class NotificationService
         'bid_deadline'           => 'Bid Status',
         'milestone_item_due'     => 'Milestone Update',
         'milestone_item_overdue' => 'Milestone Update',
+
+        // Company deletion cascading notifications
+        'company_deleted_staff'       => 'Team Update',
+        'company_deleted_bid_withdrawn' => 'Bid Status',
+        'company_deleted_project'     => 'Project Alert',
+        'company_deleted_invitation'  => 'Team Update',
     ];
 
     /**
@@ -131,6 +144,13 @@ class NotificationService
         'team_removed'        => 'contractor',
         'team_role_changed'   => 'contractor',
         'team_access_changed' => 'contractor',
+        'staff_invitation_accepted' => 'contractor',
+        'staff_invitation_cancelled' => 'contractor',
+        'staff_removed' => 'contractor',
+        'staff_suspended' => 'contractor',
+        'staff_reactivated' => 'contractor',
+        'representative_assigned' => 'contractor',
+        'representative_demoted' => 'contractor',
 
         // Subscription & boost expiry
         'subscription_expiring' => 'contractor',

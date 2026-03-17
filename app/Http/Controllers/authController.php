@@ -53,6 +53,7 @@ class authController extends Controller
                     'rejection_reason' => null,
                     'updated_at' => now(),
                 ]);
+            UserActivityLogger::roleResubmitted((int) $user->user_id, 'contractor');
             return response()->json(['success' => true, 'message' => 'Contractor application resubmitted.']);
         } elseif ($role === 'owner') {
             $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
@@ -68,6 +69,7 @@ class authController extends Controller
                     'rejection_reason' => null,
                     'updated_at' => now(),
                 ]);
+            UserActivityLogger::roleResubmitted((int) $user->user_id, 'owner');
             return response()->json(['success' => true, 'message' => 'Owner application resubmitted.']);
         }
         return response()->json(['success' => false, 'message' => 'Unknown error.'], 500);
@@ -220,6 +222,12 @@ class authController extends Controller
                     if ($adminId) {
                         AdminActivityLog::log('admin_login', null, (string) $adminId);
                     }
+                }
+
+                // Log user login activity
+                $loginUserId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+                if ($loginUserId && (empty($result['userType']) || $result['userType'] !== 'admin')) {
+                    UserActivityLogger::userLogin((int) $loginUserId);
                 }
 
                 // Default current role to user_type if present, else fall back to userType
@@ -1301,6 +1309,8 @@ class authController extends Controller
         // Clear session
         Session::forget(['signup_user_type', 'signup_step', 'contractor_step1', 'contractor_step2', 'contractor_step4']);
 
+        UserActivityLogger::userRegistered((int) $userId);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -2251,6 +2261,8 @@ class authController extends Controller
             \Log::warning("Failed to send account pending email for property owner registration: " . $e->getMessage());
         }
 
+        UserActivityLogger::userRegistered((int) $userId);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -2326,6 +2338,16 @@ class authController extends Controller
     // Logout
     public function logout()
     {
+        $user = Session::get('user');
+        $logoutUserId = null;
+        if ($user) {
+            $logoutUserId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+        }
+
+        if ($logoutUserId) {
+            UserActivityLogger::userLogout((int) $logoutUserId);
+        }
+
         Session::flush();
 
         if (request()->expectsJson()) {
@@ -3837,16 +3859,17 @@ class authController extends Controller
                     if ($memberContext) {
                         $responseData['contractor_member'] = $memberContext;
 
-                        // Block login if member is inactive
+                        // If member is inactive (deactivated / deletion-pending), don't
+                        // block login — instead route them to the property owner dashboard
+                        // so they can still use the app as an owner.
                         if (!$memberContext['is_active']) {
-                            // Delete the just-created token since they can't use it
-                            $eloquentUser->tokens()->where('name', 'mobile-app')->delete();
+                            $responseData['determinedRole'] = 'owner';
+                            unset($responseData['contractor_member']);
 
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Your contractor member account is inactive. Please contact the contractor owner.',
-                                'error_code' => 'MEMBER_INACTIVE'
-                            ], 403);
+                            // Persist preference so getCurrentRole also returns owner
+                            DB::table('users')
+                                ->where('user_id', $userId)
+                                ->update(['preferred_role' => 'owner']);
                         }
                     } else {
                         // Staff user without contractor_staff record - log warning but allow login
@@ -3855,6 +3878,12 @@ class authController extends Controller
                             'username' => $userData->username ?? null
                         ]);
                     }
+                }
+
+                // Log user login activity for mobile
+                $apiLoginUserId = $userData->user_id ?? $userData->id ?? null;
+                if ($apiLoginUserId) {
+                    UserActivityLogger::userLogin((int) $apiLoginUserId);
                 }
 
                 return response()->json($responseData, 200);
@@ -4018,6 +4047,8 @@ class authController extends Controller
             \Illuminate\Support\Facades\Log::info('Force password change completed', [
                 'user_id' => $userId,
             ]);
+
+            UserActivityLogger::passwordReset((int) $userId, 'completed');
 
             return response()->json([
                 'success' => true,
