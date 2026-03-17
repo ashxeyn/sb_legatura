@@ -1,11 +1,15 @@
 # holidays.py
 import requests
 from datetime import datetime, timedelta
+import os
 
-HOLIDAY_API_KEY = "318133ac-d655-484d-a758-e4a94ab43461"
+HOLIDAY_API_KEY = os.getenv("HOLIDAY_API_KEY", "")
 
 def fetch_ph_holidays(year: int):
-    url = url = f"https://holidayapi.com/v1/holidays?key={HOLIDAY_API_KEY}&country=PH&year={year}"
+    if not HOLIDAY_API_KEY:
+        return []
+
+    url = f"https://holidayapi.com/v1/holidays?key={HOLIDAY_API_KEY}&country=PH&year={year}"
 
     try:
         r = requests.get(url, timeout=10)

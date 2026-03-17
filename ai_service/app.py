@@ -26,6 +26,7 @@ from weather_severity import compute_weather_severity
 from predictor import predict_delay, model_is_trained, scaler_is_trained
 from recommender import generate_dds_recommendation
 from enso import fetch_latest_enso_state
+from risk_policy import apply_risk_adjustments
 
 # Startup event
 @app.on_event("startup")
@@ -39,13 +40,18 @@ def root():
 
 @app.get("/predict/{project_id}")
 def predict(project_id: int):
+    _logger.info(f"Prediction request received for project_id={project_id}")
+    
     try:
         # 1. Fetch Data
+        _logger.info(f"Fetching project data for project_id={project_id}")
         data = get_project_and_contractor(project_id)
         if not data:
+            _logger.warning(f"Project not found: project_id={project_id}")
             raise HTTPException(status_code=404, detail="Project not found")
 
         # 2. Fetch Weather
+        _logger.info(f"Fetching weather for location: {data['project_location']}")
         weather = get_weather(data["project_location"])
         rain_mm = float(weather.get("total_rain", 0) or 0)
         avg_wind = float(weather.get("avg_wind", 0) or 0)
@@ -64,8 +70,10 @@ def predict(project_id: int):
             low_visibility=low_visibility,
             storm_warning=storm_warning,
         )
+        _logger.info(f"Weather severity computed: {weather_severity}")
 
         enso_state, oni_value = fetch_latest_enso_state()
+        _logger.info(f"ENSO state: {enso_state}, ONI: {oni_value}")
 
         # 4. Prepare AI Input
         input_data = {
@@ -76,60 +84,63 @@ def predict(project_id: int):
             "avg_temp": weather["avg_temp"],
             "avg_rain": weather["total_rain"],
             "low_visibility_days": low_visibility,
+            "avg_humidity": weather.get("avg_humidity", 70),
+            "avg_wind_speed": weather.get("avg_wind", 10),
+            "oni_value": oni_value,
+            "project_location": data.get("project_location", ""),
+            "to_finish": data.get("to_finish", 30),
+            "contractor_exp_years": data.get("contractor_experience_years", 0),
+            "contractor_success_rate": data.get("contractor_history", {}).get("success_rate", 0.75),
+            "contractor_n_prior": data.get("contractor_history", {}).get("total_projects", 0),
+            "ContractorCount": 1,
         }
+        _logger.info(f"AI input prepared: {input_data}")
 
         # 5. Run Base Prediction
         prediction = predict_delay(input_data)
         final_prob = prediction["delay_probability"]
         final_verdict = prediction["prediction"]
+        confidence = prediction.get("confidence", "medium")
         logic_reason = "Standard AI analysis based on current metrics."
 
         # -----------------------------------------------------------
-        # 6. LOGIC OVERRIDE: The "Experience Trap" & "Rework" Logic
+        # 6. RULE POLICY: Bounded, configurable risk adjustments
         # -----------------------------------------------------------
 
         c_exp = data["contractor_experience_years"]
         c_success = data["contractor_history"]["success_rate"]
         rejected = data["pacing_data"]["rejected_count"]
 
-        # A. Experience Trap (Veteran but Failing)
-        if c_exp >= 10 and c_success < 0.5:
-            if final_prob < 0.70:
-                final_prob = 0.85 # Force High Risk
-                final_verdict = "DELAYED"
-                logic_reason = f"OVERRIDE: Contractor has {c_exp} years experience but low success rate ({c_success*100}%). Statistical risk boost applied."
+        final_prob, rule_adjustment, adjustment_notes = apply_risk_adjustments(
+            base_prob=float(final_prob),
+            contractor_exp=int(c_exp or 0),
+            contractor_success=float(c_success or 0.0),
+            rejected_count=int(rejected or 0),
+            dispute_count=int(data["dispute_count"] or 0),
+        )
 
-        # B. Rework Penalty
-        if rejected >= 1:
-            final_prob = max(final_prob, 0.90)
-            final_verdict = "DELAYED"
-            logic_reason = f"CRITICAL: {rejected} milestone items rejected. Rework is causing significant delays."
+        final_verdict = "DELAYED" if final_prob >= 0.5 else "ON-TIME"
 
-        # C. Dispute Risk Override
-        if data["dispute_count"] >= 1:
-            final_prob = max(final_prob, 0.75)
-            final_verdict = "DELAYED"
+        if adjustment_notes:
             logic_reason = (
-                f"CRITICAL: {data['dispute_count']} active dispute(s) detected. "
-                "Construction disputes typically slow or halt work progress."
+                f"Model-driven risk with bounded policy adjustment (+{rule_adjustment:.2f}) "
+                f"from: {', '.join(adjustment_notes)}."
             )
-
-        # If disputes are multiple, escalate risk
-        if data["dispute_count"] >= 3:
-            final_prob = max(final_prob, 0.90)
-            final_verdict = "DELAYED"
-            logic_reason = (
-                f"SEVERE: {data['dispute_count']} disputes detected. "
-                "High probability of schedule disruption."
+            _logger.warning(
+                f"Risk policy adjustments applied for project_id={project_id}: "
+                f"adj={rule_adjustment}, notes={adjustment_notes}"
             )
+        else:
+            logic_reason = "Model-driven risk with no policy adjustment."
 
-    # D. Enso Risk Override
         # Update Prediction Object
         prediction["delay_probability"] = round(final_prob, 4)
         prediction["prediction"] = final_verdict
         prediction["reason"] = logic_reason
+        prediction["confidence"] = confidence
 
         # 7. Generate Recommendations
+        _logger.info("Generating recommendations")
         dds_recommendations, enso_state, oni_value = generate_dds_recommendation(
             delay_probability=final_prob,
             weather_severity=weather_severity,
@@ -152,6 +163,8 @@ def predict(project_id: int):
             f"{logic_reason}"
         )
 
+        _logger.info(f"Prediction completed successfully for project_id={project_id}: {final_verdict} ({final_prob*100:.1f}%)")
+
         return {
             "prediction": prediction,
             "analysis_report": {
@@ -160,7 +173,8 @@ def predict(project_id: int):
                 "contractor_audit": {
                     "experience": f"{c_exp} Years",
                     "historical_success": f"{c_success*100:.0f}%",
-                    "flagged": (c_exp > 10 and c_success < 0.5)
+                    "flagged": (c_exp > 10 and c_success < 0.5),
+                    "status": "High Risk" if (c_exp > 10 and c_success < 0.5) else "Good Standing"
                 }
             },
             "weather": weather,
@@ -169,9 +183,11 @@ def predict(project_id: int):
             "enso_state": enso_state,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        _logger.error(f"Error in predict: {str(e)}\n{traceback.format_exc()}")
-        return {"error": str(e)}
+        _logger.error(f"Error in predict for project_id={project_id}: {str(e)}\n{traceback.format_exc()}")
+        return {"error": str(e), "project_id": project_id}
 
 @app.get("/health")
 def health():
@@ -181,5 +197,5 @@ def health():
 def system_status():
     return {
         "service_status": "Online",
-        "active_features": ["Heuristic Logic Override", "Real-Time Pacing", "Weather Context"]
+        "active_features": ["Bounded Risk Policy", "Real-Time Pacing", "Weather Context"]
     }
