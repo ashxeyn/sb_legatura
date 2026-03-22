@@ -73,29 +73,38 @@ class summaryController extends Controller
             return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
         }
 
-        $result = $this->summaryService->getProjectSummary($projectId);
-        if (!($result['success'] ?? false)) {
-            return response()->json($result, 404);
+        try {
+            $result = $this->summaryService->getProjectSummary($projectId);
+            if (!($result['success'] ?? false)) {
+                return response()->json($result, 404);
+            }
+
+            $html = view('reports.project-report', $result)->render();
+
+            $options = new Options();
+            $options->set('isRemoteEnabled', false);
+            $options->set('isHtml5ParserEnabled', true);
+            $options->set('defaultFont', 'Helvetica');
+
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            $filename = 'Project_Report_' . $projectId . '.pdf';
+
+            return response($dompdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('PDF generation failed', [
+                'project_id' => $projectId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'PDF generation failed: ' . $e->getMessage()], 500);
         }
-
-        $html = view('reports.project-report', $result)->render();
-
-        $options = new Options();
-        $options->set('isRemoteEnabled', false);
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('defaultFont', 'Helvetica');
-
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        $filename = 'Project_Report_' . $projectId . '.pdf';
-
-        return response($dompdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
     }
 
     /**

@@ -117,6 +117,7 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState('');
 
   // Collapsible section state
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -223,7 +224,8 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
               onPress={async () => {
                 if (!data || generatingPdf) return;
                 setGeneratingPdf(true);
-                try { await generateProjectReportPdf(data); } finally { setGeneratingPdf(false); }
+                setPdfProgress('');
+                try { await generateProjectReportPdf(data, setPdfProgress); } finally { setGeneratingPdf(false); setPdfProgress(''); }
               }}
               style={styles.backBtn}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -604,7 +606,8 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
             onPress={async () => {
               if (generatingPdf) return;
               setGeneratingPdf(true);
-              try { await generateProjectReportPdf(data); } finally { setGeneratingPdf(false); }
+              setPdfProgress('');
+              try { await generateProjectReportPdf(data, setPdfProgress); } finally { setGeneratingPdf(false); setPdfProgress(''); }
             }}
             disabled={generatingPdf}
             activeOpacity={0.7}
@@ -615,7 +618,7 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
               <Feather name="download" size={16} color="#fff" />
             )}
             <Text style={styles.downloadPdfBtnText}>
-              {generatingPdf ? 'Generating Report…' : 'Download Project Report (PDF)'}
+              {generatingPdf ? (pdfProgress || 'Generating Report…') : 'Download Project Report (PDF)'}
             </Text>
           </TouchableOpacity>
         )}
