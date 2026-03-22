@@ -1441,27 +1441,29 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           <View style={styles.finGrid}>
             <View style={styles.finGridItem}>
               <Text style={styles.finGridLabel}>REQUIRED</Text>
-              {adjustedCost !== null && carryForwardAmount !== 0 ? (
-                <>
-                  <Text style={[styles.finGridValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                    {carryForwardAmount < 0 && adjustedCost <= 0
-                      ? 'Pre-paid'
-                      : `₱${adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Text style={{ fontSize: 10, color: COLORS.textMuted, textDecorationLine: 'line-through' }}>
-                      ₱{originalCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+              <View style={{ alignItems: 'flex-end' }}>
+                {adjustedCost !== null && carryForwardAmount !== 0 ? (
+                  <>
+                    <Text style={[styles.finGridValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                      {carryForwardAmount < 0 && adjustedCost <= 0
+                        ? 'Pre-paid'
+                        : `₱${adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
                     </Text>
-                    <View style={styles.carryForwardBadge}>
-                      <Text style={styles.carryForwardBadgeText}>{carryForwardAmount < 0 ? '−CF' : '+CF'}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted, textDecorationLine: 'line-through' }}>
+                        ₱{originalCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                      </Text>
+                      <View style={styles.carryForwardBadge}>
+                        <Text style={styles.carryForwardBadgeText}>{carryForwardAmount < 0 ? '−CF' : '+CF'}</Text>
+                      </View>
                     </View>
-                  </View>
-                </>
-              ) : (
-                <Text style={styles.finGridValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                  ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                </Text>
-              )}
+                  </>
+                ) : (
+                  <Text style={styles.finGridValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                    ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                  </Text>
+                )}
+              </View>
             </View>
             <View style={styles.finGridDivider} />
             <View style={styles.finGridItem}>
@@ -1473,10 +1475,12 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             <View style={styles.finGridDivider} />
             <View style={styles.finGridItem}>
               <Text style={styles.finGridLabel}>REMAINING</Text>
-              <Text style={[styles.finGridValue, { color: overAmount > 0 ? '#dc2626' : remainingBalance > 0 ? COLORS.accent : COLORS.success }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {overAmount > 0 ? `+₱${overAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : `₱${remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
-              </Text>
-              {overAmount > 0 && <Text style={{ fontSize: 9, color: '#dc2626', fontWeight: '700', marginTop: 1 }}>OVER BUDGET</Text>}
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.finGridValue, { color: overAmount > 0 ? '#dc2626' : remainingBalance > 0 ? COLORS.accent : COLORS.success }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                  {overAmount > 0 ? `+₱${overAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : `₱${remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
+                </Text>
+                {overAmount > 0 && <Text style={{ fontSize: 9, color: '#dc2626', fontWeight: '700', marginTop: 1 }}>OVER BUDGET</Text>}
+              </View>
             </View>
           </View>
 
@@ -2933,21 +2937,22 @@ const styles = StyleSheet.create({
 
   // Financial Grid
   finGrid: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     backgroundColor: COLORS.borderLight,
     borderRadius: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     marginBottom: 10,
   },
   finGridItem: {
-    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 5,
   },
   finGridDivider: {
-    width: 1,
+    height: 1,
     backgroundColor: COLORS.border,
-    marginVertical: -2,
   },
   finGridLabel: {
     fontSize: 9,
@@ -2955,13 +2960,12 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 4,
   },
   finGridValue: {
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: 'right',
   },
   titleCardProgressBg: {
     height: 4,

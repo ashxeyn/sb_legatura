@@ -389,25 +389,27 @@ export default function ContractorDashboard({
         <View style={styles.msFinGrid}>
           <View style={styles.msFinItem}>
             <Text style={styles.msFinLabel}>REQUIRED</Text>
-            {adjustedCost !== null && carryForward !== 0 ? (
-              <>
-                <Text style={[styles.msFinValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                  {carryForward < 0 && adjustedCost <= 0
-                    ? 'Pre-paid'
-                    : `₱${adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                  <Text style={{ fontSize: 10, color: '#94a3b8', textDecorationLine: 'line-through' }}>
-                    ₱{(parseFloat(item.original_allocation) || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+            <View style={{ alignItems: 'flex-end' }}>
+              {adjustedCost !== null && carryForward !== 0 ? (
+                <>
+                  <Text style={[styles.msFinValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                    {carryForward < 0 && adjustedCost <= 0
+                      ? 'Pre-paid'
+                      : `₱${adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
                   </Text>
-                  <View style={styles.msCfBadge}><Text style={styles.msCfBadgeText}>{carryForward < 0 ? '−CF' : '+CF'}</Text></View>
-                </View>
-              </>
-            ) : (
-              <Text style={styles.msFinValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                ₱{expected.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-              </Text>
-            )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                    <Text style={{ fontSize: 10, color: '#94a3b8', textDecorationLine: 'line-through' }}>
+                      ₱{(parseFloat(item.original_allocation) || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                    </Text>
+                    <View style={styles.msCfBadge}><Text style={styles.msCfBadgeText}>{carryForward < 0 ? '−CF' : '+CF'}</Text></View>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.msFinValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                  ₱{expected.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                </Text>
+              )}
+            </View>
           </View>
           <View style={styles.msFinDivider} />
           <View style={styles.msFinItem}>
@@ -424,6 +426,8 @@ export default function ContractorDashboard({
             </Text>
           </View>
         </View>
+
+        {/* Progress bar */}
         <View style={styles.msProgressBg}>
           <View style={[styles.msProgressFill, { width: `${progressPct}%` as any }]} />
         </View>
@@ -1158,21 +1162,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   msFinGrid: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     backgroundColor: '#F1F5F9',
     borderRadius: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     marginBottom: 10,
   },
   msFinItem: {
-    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 5,
   },
   msFinDivider: {
-    width: 1,
+    height: 1,
     backgroundColor: '#E2E8F0',
-    marginVertical: -2,
   },
   msFinLabel: {
     fontSize: 9,
@@ -1180,13 +1185,12 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 4,
   },
   msFinValue: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
-    textAlign: 'center',
+    textAlign: 'right',
   },
   msProgressBg: {
     height: 4,
