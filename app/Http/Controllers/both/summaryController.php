@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\SummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 /**
  * summaryController — Read-only project & milestone summary reports.
@@ -55,6 +57,45 @@ class summaryController extends Controller
         $result = $this->summaryService->getMilestoneSummary($projectId, $itemId);
 
         return response()->json($result, $result['success'] ? 200 : 404);
+    }
+
+    /**
+     * Download project summary as PDF (server-side generation via DomPDF).
+     */
+    public function projectSummaryPdf(Request $request, int $projectId)
+    {
+        $userId = $request->query('user_id') ?? $request->header('X-User-Id');
+        if (!$userId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        if (!$this->userCanAccessProject($userId, $projectId)) {
+            return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+        }
+
+        $result = $this->summaryService->getProjectSummary($projectId);
+        if (!($result['success'] ?? false)) {
+            return response()->json($result, 404);
+        }
+
+        $html = view('reports.project-report', $result)->render();
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', false);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('defaultFont', 'Helvetica');
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'Project_Report_' . $projectId . '.pdf';
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     /**

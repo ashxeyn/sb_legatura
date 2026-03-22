@@ -21,6 +21,7 @@ import {
   BudgetHistoryRecord,
   ProgressReport,
 } from '../../services/summary_service';
+import { generateProjectReportPdf } from '../../utils/projectReportPdf';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Colors (matches project palette)
@@ -115,6 +116,7 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Collapsible section state
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -215,9 +217,27 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
         <View style={styles.topBarTitleWrap}>
           <Text style={styles.topBarTitle} numberOfLines={1}>Project Summary</Text>
         </View>
-        <TouchableOpacity onPress={onRefresh} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Feather name="refresh-cw" size={18} color={COLORS.textSecondary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {['completed', 'terminated'].includes(header?.status?.toLowerCase()) && (
+            <TouchableOpacity
+              onPress={async () => {
+                if (!data || generatingPdf) return;
+                setGeneratingPdf(true);
+                try { await generateProjectReportPdf(data); } finally { setGeneratingPdf(false); }
+              }}
+              style={styles.backBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              disabled={generatingPdf}
+            >
+              {generatingPdf
+                ? <ActivityIndicator size={16} color={COLORS.accent} />
+                : <Feather name="download" size={18} color={COLORS.accent} />}
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={onRefresh} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Feather name="refresh-cw" size={18} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -367,7 +387,23 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
                 <View style={styles.milestoneFinRow}>
                   <View style={styles.milestoneFinItem}>
                     <Text style={styles.milestoneFinLabel}>Budget</Text>
-                    <Text style={styles.milestoneFinValue}>{formatCurrency(m.current_allocation)}</Text>
+                    {(m.carry_forward_amount ?? 0) !== 0 ? (
+                      <>
+                        <Text style={[styles.milestoneFinValue, { color: '#e74c3c' }]}>{formatCurrency(m.current_allocation)}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
+                          <Text style={{ fontSize: 9, color: COLORS.textMuted, textDecorationLine: 'line-through' }}>
+                            {formatCurrency(m.original_allocation)}
+                          </Text>
+                          <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
+                            <Text style={{ fontSize: 8, fontWeight: '700', color: '#e74c3c' }}>
+                              {(m.carry_forward_amount ?? 0) < 0 ? '−CF' : '+CF'}
+                            </Text>
+                          </View>
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={styles.milestoneFinValue}>{formatCurrency(m.current_allocation)}</Text>
+                    )}
                   </View>
                   <View style={styles.milestoneFinItem}>
                     <Text style={styles.milestoneFinLabel}>Paid</Text>
@@ -560,6 +596,29 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
         <Text style={styles.generatedAt}>
           Report generated {formatDateTime(data.generated_at)}
         </Text>
+
+        {/* Download PDF button — only for completed/terminated projects */}
+        {['completed', 'terminated'].includes(header.status?.toLowerCase()) && (
+          <TouchableOpacity
+            style={styles.downloadPdfBtn}
+            onPress={async () => {
+              if (generatingPdf) return;
+              setGeneratingPdf(true);
+              try { await generateProjectReportPdf(data); } finally { setGeneratingPdf(false); }
+            }}
+            disabled={generatingPdf}
+            activeOpacity={0.7}
+          >
+            {generatingPdf ? (
+              <ActivityIndicator size={16} color="#fff" />
+            ) : (
+              <Feather name="download" size={16} color="#fff" />
+            )}
+            <Text style={styles.downloadPdfBtnText}>
+              {generatingPdf ? 'Generating Report…' : 'Download Project Report (PDF)'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -724,4 +783,8 @@ const styles = StyleSheet.create({
 
   // Footer
   generatedAt: { textAlign: 'center', fontSize: 10, color: COLORS.textMuted, marginTop: 20, marginBottom: 8 },
+
+  // Download PDF
+  downloadPdfBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 8, marginTop: 12, marginBottom: 8 },
+  downloadPdfBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

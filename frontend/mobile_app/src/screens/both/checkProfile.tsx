@@ -102,7 +102,7 @@ type TabType = 'portfolio' | 'highlights' | 'reviews' | 'about';
 const resolveImageUrl = (path: string | null | undefined): string | undefined => {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
-  return `${api_config.base_url}/storage/${path}`;
+  return `${api_config.base_url}/api/files/${path}`;
 };
 
 const formatDate = (dateString?: string | null): string => {
@@ -777,6 +777,15 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
           <Text style={styles.detailLabel}>Member Since</Text>
           <Text style={styles.detailValue}>{formatDate(header?.member_since || contractor.created_at)}</Text>
         </View>
+
+        {(contractorAbout?.business_address || contractor.location) ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Address</Text>
+            <Text style={[styles.detailValue, { flex: 1, textAlign: 'right', flexShrink: 1 }]}>
+              {contractorAbout?.business_address || contractor.location}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );

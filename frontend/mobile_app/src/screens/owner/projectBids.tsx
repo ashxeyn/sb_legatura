@@ -17,10 +17,11 @@ import {
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
 import { api_config } from '../../config/api';
+import CheckProfile from '../both/checkProfile';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
@@ -45,6 +46,7 @@ const COLORS = {
   textMuted: '#94A3B8',
   border: '#E2E8F0',
   borderLight: '#F1F5F9',
+  star: '#EEA24B',
 };
 
 interface BidFile {
@@ -78,6 +80,11 @@ interface Bid {
   username: string;
   company_logo?: string;
   profile_pic?: string;
+  user_id?: number;
+  avg_rating?: number;
+  reviews_count?: number;
+  location?: string;
+  services_offered?: string;
   file_count?: number;
   files?: BidFile[];
   // ✨ Ranking system properties
@@ -112,6 +119,8 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
   const [processingBidId, setProcessingBidId] = useState<number | null>(null);
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [showBidDetails, setShowBidDetails] = useState(false);
+  const [viewingContractor, setViewingContractor] = useState<Bid | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBids();
@@ -308,25 +317,24 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
     }
   };
 
-  const getCompanyLogoUrl = (bid: Bid | null | undefined) => {
-    const imagePath = bid?.company_logo || bid?.profile_pic;
-    if (!imagePath) return null;
-    // If already a full URL, return as is
-    if (imagePath.startsWith('http')) return imagePath;
-    // Use the API files endpoint for proper file serving on mobile
-    return `${api_config.base_url}/api/files/${imagePath}`;
+  const resolveImageUrl = (path: string | null | undefined): string | undefined => {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+    return `${api_config.base_url}/api/files/${path}`;
   };
 
   const getContractorAvatarSource = (bid: Bid | null | undefined) => {
-    const logoUrl = getCompanyLogoUrl(bid);
+    const logoUrl = resolveImageUrl(bid?.company_logo) || resolveImageUrl(bid?.profile_pic);
     return logoUrl ? { uri: logoUrl } : defaultContractorAvatar;
   };
 
   const getFileUrl = (filePath: string) => {
     if (filePath.startsWith('http')) return filePath;
-    // Use the API files endpoint for proper file serving on mobile
     return `${api_config.base_url}/api/files/${filePath}`;
   };
+
+  const isImageFile = (fileName: string) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
+  const isPdfFile = (fileName: string) => /\.pdf$/i.test(fileName);
 
   const openBidDetails = (bid: Bid) => {
     console.log('Opening bid details for bid:', bid.bid_id);
@@ -382,6 +390,26 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
     Linking.openURL(url);
   };
 
+  const handleViewProfile = (bid: Bid) => {
+    setViewingContractor(bid);
+  };
+
+  const renderStars = (rating: number, size: number = 14) => {
+    const rounded = Math.round(rating);
+    return (
+      <View style={{ flexDirection: 'row', gap: 1 }}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <MaterialIcons
+            key={i}
+            name={i <= rounded ? 'star' : 'star-border'}
+            size={size}
+            color={i <= rounded ? COLORS.star : '#d1d5db'}
+          />
+        ))}
+      </View>
+    );
+  };
+
   const getRankBadgeStyle = (index: number) => {
     if (index === 0) return { bg: '#FFD700', icon: '🥇', label: 'Best Match' }; // Gold
     if (index === 1) return { bg: '#C0C0C0', icon: '🥈', label: 'Great Match' }; // Silver
@@ -393,89 +421,118 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
     const statusConfig = getStatusConfig(bid.bid_status);
     const isProcessing = processingBidId === bid.bid_id;
     const rankBadge = getRankBadgeStyle(index);
-    const isTopThree = index < 3;
+    const isTopBid = index === 0;
+    const avgRating = bid.avg_rating || 0;
+    const reviewsCount = bid.reviews_count || 0;
 
     return (
       <TouchableOpacity
         key={bid.bid_id}
         style={[
           styles.bidCard,
-          isTopThree && index === 0 && styles.topBidCard, // Special style for #1
+          isTopBid && styles.topBidCard,
         ]}
-        activeOpacity={0.7}
+        activeOpacity={0.97}
         onPress={() => openBidDetails(bid)}
       >
+        {/* Top Bid Recommended Banner */}
+        {isTopBid && (
+          <View style={styles.recommendedBanner}>
+            <Feather name="award" size={13} color="#92400e" />
+            <Text style={styles.recommendedText}>RECOMMENDED</Text>
+          </View>
+        )}
+
         {/* Rank Badge - Top Right Corner */}
         <View style={[styles.rankBadge, { backgroundColor: rankBadge.bg }]}>
           <Text style={styles.rankBadgeText}>{rankBadge.icon}</Text>
         </View>
 
-        {/* Top Bid Recommended Label */}
-        {index === 0 && (
-          <View style={styles.recommendedBanner}>
-            <Feather name="award" size={14} color={COLORS.primary} />
-            <Text style={styles.recommendedText}>RECOMMENDED</Text>
-          </View>
-        )}
-
-        {/* Contractor Info */}
-        <View style={styles.contractorRow}>
-          <View style={styles.contractorAvatar}>
+        {/* Contractor Profile Row - Tappable to navigate */}
+        <TouchableOpacity
+          style={styles.contractorRow}
+          activeOpacity={0.7}
+          onPress={() => handleViewProfile(bid)}
+        >
+          <View style={styles.contractorAvatarWrap}>
             <Image source={getContractorAvatarSource(bid)} style={styles.avatarImage} />
           </View>
           <View style={styles.contractorInfo}>
             <Text style={styles.companyName} numberOfLines={1}>{bid.company_name}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Feather name="briefcase" size={12} color={COLORS.textMuted} />
-              <Text style={[styles.contractorMeta, { marginLeft: 4 }]}>
-                {bid.years_of_experience} years exp{bid.completed_projects ? ` • ${bid.completed_projects} projects` : ''}
+            {/* Star Rating */}
+            <View style={styles.ratingRow}>
+              {renderStars(avgRating, 14)}
+              <Text style={styles.ratingText}>
+                {avgRating > 0 ? avgRating.toFixed(1) : '—'}
+              </Text>
+              <Text style={styles.reviewsCountText}>
+                ({reviewsCount} {reviewsCount === 1 ? 'review' : 'reviews'})
               </Text>
             </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-            <Feather name={statusConfig.icon as any} size={12} color={statusConfig.color} />
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+          <Feather name="chevron-right" size={18} color={COLORS.textMuted} />
+        </TouchableOpacity>
+
+        {/* Stats Strip */}
+        <View style={styles.statsStrip}>
+          <View style={styles.statStripItem}>
+            <Text style={styles.statStripValue}>{bid.years_of_experience || 0}</Text>
+            <Text style={styles.statStripLabel}>Yrs Exp.</Text>
+          </View>
+          <View style={styles.statStripDivider} />
+          <View style={styles.statStripItem}>
+            <Text style={styles.statStripValue}>{avgRating > 0 ? avgRating.toFixed(1) : '—'}</Text>
+            <Text style={styles.statStripLabel}>Rating</Text>
+          </View>
+          <View style={styles.statStripDivider} />
+          <View style={styles.statStripItem}>
+            <Text style={styles.statStripValue}>{bid.estimated_timeline}</Text>
+            <Text style={styles.statStripLabel}>{bid.estimated_timeline === 1 ? 'Month' : 'Months'}</Text>
           </View>
         </View>
 
-        {/* Bid Details */}
-        <View style={styles.bidDetails}>
-          <View style={styles.bidDetailItem}>
-            <Text style={styles.bidDetailLabel}>Proposed Cost</Text>
-            <Text style={styles.bidDetailValue}>{formatCurrency(bid.proposed_cost)}</Text>
-          </View>
-          <View style={styles.bidDetailDivider} />
-          <View style={styles.bidDetailItem}>
-            <Text style={styles.bidDetailLabel}>Timeline</Text>
-            <Text style={styles.bidDetailValue}>{bid.estimated_timeline}</Text>
+        {/* Proposed Cost Block */}
+        <View style={styles.proposedCostRow}>
+          <View style={styles.proposedCostBlock}>
+            <Text style={styles.proposedCostLabel}>PROPOSED COST</Text>
+            <Text style={styles.proposedCostValue}>{formatCurrency(bid.proposed_cost)}</Text>
           </View>
         </View>
 
         {/* Contractor Notes */}
-        {bid.contractor_notes && (
+        {bid.contractor_notes ? (
           <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>Notes:</Text>
+            <View style={styles.notesHeaderRow}>
+              <Feather name="file-text" size={13} color={COLORS.textMuted} />
+              <Text style={styles.notesLabel}>Notes</Text>
+            </View>
             <Text style={styles.notesText} numberOfLines={2}>{bid.contractor_notes}</Text>
           </View>
-        )}
+        ) : null}
 
-        {/* Footer */}
+        {/* Footer Row */}
         <View style={styles.bidFooter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Feather name="clock" size={12} color={COLORS.textMuted} />
-            <Text style={[styles.submittedDate, { marginLeft: 4 }]}>{formatDate(bid.submitted_at)}</Text>
-          </View>
-          {bid.file_count != null && bid.file_count > 0 && (
-            <View style={styles.filesIndicator}>
-              <Feather name="paperclip" size={12} color={COLORS.textSecondary} />
-              <Text style={styles.filesText}>{bid.file_count} files</Text>
+          <View style={styles.footerLeft}>
+            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+              <Feather name={statusConfig.icon as any} size={11} color={statusConfig.color} />
+              <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
             </View>
-          )}
+            {bid.file_count != null && bid.file_count > 0 && (
+              <View style={styles.filesIndicator}>
+                <Feather name="paperclip" size={11} color={COLORS.textMuted} />
+                <Text style={styles.filesText}>{bid.file_count}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.footerRight}>
+            <Feather name="clock" size={11} color={COLORS.textMuted} />
+            <Text style={styles.submittedDate}>{formatDate(bid.submitted_at)}</Text>
+          </View>
         </View>
 
-        {/* Action buttons for submitted bids */}
+        {/* Action Buttons — only accept/reject for submitted bids */}
         {bid.bid_status === 'submitted' && (
-          <View style={styles.actionButtons}>
+          <View style={styles.cardActions}>
             <TouchableOpacity
               style={[styles.acceptButton, isProcessing && styles.buttonDisabled]}
               activeOpacity={0.8}
@@ -486,7 +543,7 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Feather name="check" size={16} color="#FFFFFF" />
+                  <Feather name="check" size={14} color="#FFFFFF" />
                   <Text style={styles.acceptButtonText}>Accept</Text>
                 </>
               )}
@@ -497,8 +554,7 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
               onPress={() => handleRejectBid(bid)}
               disabled={isProcessing}
             >
-              <Feather name="x" size={16} color={COLORS.error} />
-              <Text style={styles.rejectButtonText}>Reject</Text>
+              <Feather name="x" size={14} color={COLORS.error} />
             </TouchableOpacity>
           </View>
         )}
@@ -517,6 +573,31 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
       </Text>
     </View>
   );
+
+  // If viewing a contractor's profile, render CheckProfile full-screen
+  if (viewingContractor) {
+    return (
+      <CheckProfile
+        contractor={{
+          contractor_id: viewingContractor.contractor_id,
+          company_name: viewingContractor.company_name,
+          company_description: viewingContractor.company_description,
+          location: viewingContractor.location,
+          rating: viewingContractor.avg_rating,
+          reviews_count: viewingContractor.reviews_count,
+          contractor_type: viewingContractor.contractor_type,
+          logo_url: viewingContractor.company_logo,
+          years_of_experience: viewingContractor.years_of_experience,
+          services_offered: viewingContractor.services_offered,
+          completed_projects: viewingContractor.completed_projects,
+          user_id: viewingContractor.user_id,
+          company_email: viewingContractor.company_email,
+          company_website: viewingContractor.company_website,
+        }}
+        onClose={() => setViewingContractor(null)}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -598,50 +679,82 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
             <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Hero Section - Contractor & Price */}
               <View style={styles.heroSection}>
-                <View style={styles.heroContractor}>
+                <TouchableOpacity
+                  style={styles.heroContractor}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    closeBidDetails();
+                    handleViewProfile(selectedBid);
+                  }}
+                >
                   <View style={styles.heroAvatar}>
                     <Image source={getContractorAvatarSource(selectedBid)} style={styles.heroAvatarImage} />
                   </View>
                   <View style={styles.heroInfo}>
                     <Text style={styles.heroCompanyName}>{selectedBid.company_name}</Text>
+                    {selectedBid.contractor_type ? (
+                      <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 4 }}>{selectedBid.contractor_type}</Text>
+                    ) : null}
+                    {/* Rating in modal */}
+                    <View style={styles.modalRatingRow}>
+                      {renderStars(selectedBid.avg_rating || 0, 16)}
+                      <Text style={styles.modalRatingValue}>
+                        {(selectedBid.avg_rating || 0) > 0 ? (selectedBid.avg_rating || 0).toFixed(1) : 'No ratings'}
+                      </Text>
+                      {(selectedBid.reviews_count || 0) > 0 && (
+                        <Text style={styles.modalReviewCount}>
+                          ({selectedBid.reviews_count} {selectedBid.reviews_count === 1 ? 'review' : 'reviews'})
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 12, color: COLORS.primary, marginTop: 4, fontWeight: '500' }}>View Full Profile →</Text>
                   </View>
-                </View>
-                <View style={styles.heroPricing}>
-                  <Text style={styles.heroPriceLabel}>Proposed Cost</Text>
-                  <Text style={styles.heroPriceValue}>{formatCurrency(selectedBid.proposed_cost)}</Text>
-                  <Text style={styles.heroTimeline}>{selectedBid.estimated_timeline} {selectedBid.estimated_timeline === 1 ? 'month' : 'months'} timeline</Text>
+                </TouchableOpacity>
+
+                {/* Price Card */}
+                <View style={styles.priceCard}>
+                  <View style={styles.priceCardMain}>
+                    <Text style={styles.priceCardLabel}>PROPOSED COST</Text>
+                    <Text style={styles.priceCardValue}>{formatCurrency(selectedBid.proposed_cost)}</Text>
+                  </View>
+                  <View style={styles.priceCardDivider} />
+                  <View style={styles.priceCardSide}>
+                    <Text style={styles.priceCardLabel}>TIMELINE</Text>
+                    <Text style={styles.priceCardTimeline}>{selectedBid.estimated_timeline}</Text>
+                    <Text style={styles.priceCardTimelineUnit}>{selectedBid.estimated_timeline === 1 ? 'month' : 'months'}</Text>
+                  </View>
                 </View>
               </View>
 
               {/* Quick Stats Row */}
               <View style={styles.quickStats}>
                 <View style={styles.quickStatItem}>
+                  <Feather name="briefcase" size={16} color={COLORS.primary} style={{ marginBottom: 4 }} />
                   <Text style={styles.quickStatValue}>{selectedBid.years_of_experience}</Text>
                   <Text style={styles.quickStatLabel}>Years Exp.</Text>
                 </View>
                 <View style={styles.quickStatDivider} />
                 <View style={styles.quickStatItem}>
+                  <Feather name="check-circle" size={16} color={COLORS.success} style={{ marginBottom: 4 }} />
                   <Text style={styles.quickStatValue}>{selectedBid.completed_projects || 0}</Text>
-                  <Text style={styles.quickStatLabel}>Projects</Text>
+                  <Text style={styles.quickStatLabel}>Completed</Text>
                 </View>
-                {selectedBid.picab_category && (
+                <View style={styles.quickStatDivider} />
+                <View style={styles.quickStatItem}>
+                  <MaterialIcons name="star" size={16} color={COLORS.star} style={{ marginBottom: 4 }} />
+                  <Text style={styles.quickStatValue}>{(selectedBid.avg_rating || 0) > 0 ? (selectedBid.avg_rating || 0).toFixed(1) : '—'}</Text>
+                  <Text style={styles.quickStatLabel}>Rating</Text>
+                </View>
+                {selectedBid.picab_category ? (
                   <>
                     <View style={styles.quickStatDivider} />
                     <View style={styles.quickStatItem}>
+                      <Feather name="award" size={16} color={COLORS.warning} style={{ marginBottom: 4 }} />
                       <Text style={styles.quickStatValue}>{selectedBid.picab_category}</Text>
-                      <Text style={styles.quickStatLabel}>PICAB Cat.</Text>
+                      <Text style={styles.quickStatLabel}>PICAB</Text>
                     </View>
                   </>
-                )}
-                {selectedBid.contractor_type && (
-                  <>
-                    <View style={styles.quickStatDivider} />
-                    <View style={styles.quickStatItem}>
-                      <Text style={styles.quickStatValue} numberOfLines={1}>{selectedBid.contractor_type}</Text>
-                      <Text style={styles.quickStatLabel}>Type</Text>
-                    </View>
-                  </>
-                )}
+                ) : null}
               </View>
 
               {/* Bid Details Table */}
@@ -661,19 +774,24 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
                 </View>
                 <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
                   <Text style={styles.tableLabel}>Status</Text>
-                  <Text style={[styles.tableValue, { color: getStatusConfig(selectedBid.bid_status).color }]}>
-                    {getStatusConfig(selectedBid.bid_status).label}
-                  </Text>
+                  <View style={[styles.modalStatusPill, { backgroundColor: getStatusConfig(selectedBid.bid_status).bg }]}>
+                    <Text style={[styles.modalStatusText, { color: getStatusConfig(selectedBid.bid_status).color }]}>
+                      {getStatusConfig(selectedBid.bid_status).label}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
               {/* Contractor Notes */}
-              {selectedBid.contractor_notes && (
-                <View style={styles.notesSection}>
+              {selectedBid.contractor_notes ? (
+                <View style={styles.modalNotesSection}>
                   <Text style={styles.tableHeader}>Contractor's Notes</Text>
-                  <Text style={styles.notesText}>{selectedBid.contractor_notes}</Text>
+                  <View style={styles.modalNotesCard}>
+                    <Feather name="message-square" size={14} color={COLORS.textMuted} style={{ marginTop: 2 }} />
+                    <Text style={styles.modalNotesText}>{selectedBid.contractor_notes}</Text>
+                  </View>
                 </View>
-              )}
+              ) : null}
 
               {/* Contact Section */}
               <View style={styles.contactSection}>
@@ -700,7 +818,7 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
                 </View>
               </View>
 
-              {/* Attachments Section */}
+              {/* Attachments Section - with Previews */}
               <View style={styles.attachmentsSection}>
                 <View style={styles.attachmentsHeaderRow}>
                   <Text style={styles.tableHeader}>Attachments</Text>
@@ -710,22 +828,57 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
                 </View>
                 
                 {selectedBid.files && selectedBid.files.length > 0 ? (
-                  <View style={styles.filesList}>
-                    {selectedBid.files.map((file, idx) => (
-                      <TouchableOpacity
-                        key={file.file_id || idx}
-                        style={styles.fileRow}
-                        onPress={() => handleOpenFile(file.file_path)}
-                      >
-                        <Feather 
-                          name={file.file_name && (file.file_name.endsWith('.pdf') ? 'file-text' : file.file_name.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'file')} 
-                          size={18} 
-                          color={COLORS.textSecondary} 
-                        />
-                        <Text style={styles.fileName} numberOfLines={1}>{file.file_name || 'Untitled'}</Text>
-                        <Feather name="download" size={16} color={COLORS.textMuted} />
-                      </TouchableOpacity>
-                    ))}
+                  <View style={styles.filesGrid}>
+                    {selectedBid.files.map((file, idx) => {
+                      const fileUrl = getFileUrl(file.file_path);
+                      const isImage = isImageFile(file.file_name || '');
+                      const isPdf = isPdfFile(file.file_name || '');
+
+                      if (isImage) {
+                        return (
+                          <TouchableOpacity
+                            key={file.file_id || idx}
+                            style={styles.imageFileCard}
+                            activeOpacity={0.8}
+                            onPress={() => setPreviewImage(fileUrl)}
+                          >
+                            <Image
+                              source={{ uri: fileUrl }}
+                              style={styles.imagePreview}
+                              resizeMode="cover"
+                            />
+                            <View style={styles.imageOverlay}>
+                              <Feather name="maximize-2" size={14} color="#fff" />
+                            </View>
+                            <View style={styles.imageFileInfo}>
+                              <Text style={styles.imageFileName} numberOfLines={1}>{file.file_name || 'Image'}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      }
+
+                      return (
+                        <TouchableOpacity
+                          key={file.file_id || idx}
+                          style={styles.docFileCard}
+                          activeOpacity={0.7}
+                          onPress={() => handleOpenFile(file.file_path)}
+                        >
+                          <View style={[styles.docFileIcon, isPdf && { backgroundColor: '#FEE2E2' }]}>
+                            <Feather
+                              name={isPdf ? 'file-text' : 'file'}
+                              size={22}
+                              color={isPdf ? '#EF4444' : COLORS.textSecondary}
+                            />
+                          </View>
+                          <View style={styles.docFileInfo}>
+                            <Text style={styles.docFileName} numberOfLines={1}>{file.file_name || 'Document'}</Text>
+                            <Text style={styles.docFileType}>{isPdf ? 'PDF Document' : 'File'}</Text>
+                          </View>
+                          <Feather name="external-link" size={16} color={COLORS.textMuted} />
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 ) : (
                   <View style={styles.noFilesRow}>
@@ -812,6 +965,39 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Fullscreen Image Preview Modal */}
+      <Modal
+        visible={!!previewImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <TouchableOpacity
+            style={styles.imagePreviewClose}
+            onPress={() => setPreviewImage(null)}
+          >
+            <Feather name="x" size={24} color="#fff" />
+          </TouchableOpacity>
+          {previewImage && (
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.fullscreenImage}
+              resizeMode="contain"
+            />
+          )}
+          <TouchableOpacity
+            style={styles.imagePreviewOpenBtn}
+            onPress={() => {
+              if (previewImage) Linking.openURL(previewImage);
+            }}
+          >
+            <Feather name="external-link" size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '600', marginLeft: 6 }}>Open in Browser</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </View>
@@ -920,177 +1106,262 @@ const styles = StyleSheet.create({
   },
   bidCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 6,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
     position: 'relative',
   },
   topBidCard: {
     borderWidth: 2,
     borderColor: '#FFD700',
-    backgroundColor: '#FFFEF7',
   },
   rankBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
     zIndex: 10,
   },
   rankBadgeText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   recommendedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 10,
+    justifyContent: 'center',
+    backgroundColor: '#fef3c7',
     paddingVertical: 6,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginBottom: 12,
+    gap: 5,
   },
   recommendedText: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.primary,
-    marginLeft: 4,
+    color: '#92400e',
     letterSpacing: 0.5,
   },
 
   contractorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    padding: 14,
+    paddingRight: 50,
   },
-  contractorAvatar: {
+  contractorAvatarWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.primaryLight,
+    overflow: 'hidden',
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: COLORS.border,
   },
   avatarImage: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-  },
-  avatarPlaceholder: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.primary,
+    width: '100%',
+    height: '100%',
+    borderRadius: 26,
   },
   contractorInfo: {
     flex: 1,
   },
   companyName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 3,
+    marginBottom: 2,
   },
-  contractorMeta: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-  statusBadge: {
+  typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  bidDetails: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-  },
-  bidDetailItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  bidDetailLabel: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 3,
     marginBottom: 4,
   },
-  bidDetailValue: {
-    fontSize: 16,
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.text,
   },
-  bidDetailDivider: {
+  reviewsCountText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+
+  // Stats strip (borrowed from checkProfile pattern)
+  statsStrip: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.borderLight,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: COLORS.border,
+  },
+  statStripItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  statStripValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  statStripLabel: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    marginTop: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  statStripDivider: {
     width: 1,
     backgroundColor: COLORS.border,
-    marginHorizontal: 14,
+    marginVertical: 8,
   },
+
+  proposedCostRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.borderLight,
+  },
+  proposedCostBlock: {
+    alignItems: 'center',
+  },
+  proposedCostLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  proposedCostValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.success,
+  },
+
   notesSection: {
-    marginBottom: 12,
+    flexDirection: 'column',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  notesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   notesLabel: {
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.textSecondary,
-    marginBottom: 4,
   },
   notesText: {
     fontSize: 13,
-    color: COLORS.text,
+    color: COLORS.textSecondary,
     lineHeight: 18,
   },
+
   bidFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
   },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    gap: 3,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   submittedDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textMuted,
   },
   filesIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 3,
   },
   filesText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginLeft: 4,
+    fontSize: 11,
+    color: COLORS.textMuted,
   },
-  actionButtons: {
+
+  // Card action buttons
+  cardActions: {
     flexDirection: 'row',
-    marginTop: 14,
-    paddingTop: 14,
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
+  },
+  viewDetailsBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 6,
+  },
+  viewDetailsBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   acceptButton: {
     flex: 1,
@@ -1098,31 +1369,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.success,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginRight: 8,
+    paddingVertical: 10,
+    borderRadius: 6,
+    gap: 4,
   },
   acceptButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 14,
-    marginLeft: 6,
+    fontSize: 13,
   },
   rejectButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.errorLight,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginLeft: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
   rejectButtonText: {
     color: COLORS.error,
     fontWeight: '600',
-    fontSize: 14,
-    marginLeft: 6,
+    fontSize: 13,
+    marginLeft: 4,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -1182,18 +1451,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   heroAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 6,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.border,
   },
   heroAvatarImage: {
-    width: 56,
-    height: 56,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   heroAvatarText: {
     fontSize: 22,
@@ -1205,9 +1477,68 @@ const styles = StyleSheet.create({
   },
   heroCompanyName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.text,
     marginBottom: 2,
+  },
+  // Modal rating styles
+  modalRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  modalRatingValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  modalReviewCount: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  // Price card
+  priceCard: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  priceCardMain: {
+    flex: 2,
+    padding: 16,
+  },
+  priceCardLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  priceCardValue: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  priceCardDivider: {
+    width: 1,
+    backgroundColor: COLORS.border,
+  },
+  priceCardSide: {
+    flex: 1,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  priceCardTimeline: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  priceCardTimelineUnit: {
+    fontSize: 11,
+    color: COLORS.textMuted,
   },
   heroPricing: {
     backgroundColor: COLORS.background,
@@ -1230,6 +1561,27 @@ const styles = StyleSheet.create({
   heroTimeline: {
     fontSize: 14,
     color: COLORS.textSecondary,
+  },
+  // Modal notes (separate from card notes)
+  modalNotesSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  modalNotesCard: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: COLORS.background,
+    padding: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  modalNotesText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 22,
+    flex: 1,
   },
   // Quick Stats
   quickStats: {
@@ -1375,6 +1727,106 @@ const styles = StyleSheet.create({
   noFilesText: {
     fontSize: 14,
     color: COLORS.textMuted,
+  },
+  // File grid / attachment preview styles
+  filesGrid: {
+    gap: 10,
+  },
+  imageFileCard: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 180,
+    backgroundColor: COLORS.borderLight,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageFileInfo: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  imageFileName: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  docFileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  docFileIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: COLORS.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  docFileInfo: {
+    flex: 1,
+  },
+  docFileName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  docFileType: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  // Fullscreen image preview
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePreviewClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fullscreenImage: {
+    width: SCREEN_WIDTH - 20,
+    height: '70%',
+  },
+  imagePreviewOpenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 50,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
   },
   // Action Section
   actionSection: {

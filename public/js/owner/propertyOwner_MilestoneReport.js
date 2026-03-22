@@ -610,10 +610,14 @@ class PropertyOwnerMilestoneReport {
 
             // Cost display
             let costHtml = '';
-            if (item.adjusted_cost != null && (item.carry_forward_amount || 0) > 0) {
+            if (item.adjusted_cost != null && (item.carry_forward_amount || 0) !== 0) {
+                const cfLabel = (item.carry_forward_amount || 0) < 0 ? '−CF' : '+CF';
+                const adjustedDisplay = (item.carry_forward_amount || 0) < 0 && parseFloat(item.adjusted_cost) <= 0
+                    ? 'Pre-paid'
+                    : this.formatCurrency(parseFloat(item.adjusted_cost) || 0);
                 costHtml = `
                     <span class="milestone-cost strikethrough">${this.formatCurrency(item.milestone_item_cost || 0)}</span>
-                    <span class="milestone-cost adjusted">${this.formatCurrency(parseFloat(item.adjusted_cost) || 0)} <span class="cf-badge">+CF</span></span>`;
+                    <span class="milestone-cost adjusted">${adjustedDisplay} <span class="cf-badge">${cfLabel}</span></span>`;
             } else {
                 costHtml = `<span class="milestone-cost">${this.formatCurrency(item.milestone_item_cost || 0)}</span>`;
             }

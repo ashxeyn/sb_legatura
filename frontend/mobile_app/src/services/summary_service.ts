@@ -114,12 +114,90 @@ export interface ProgressReport {
 export interface ProjectSummaryData {
   header: ProjectSummaryHeader;
   overview: ExecutiveOverview;
+  project_post: ProjectPost;
+  bidding_history: BidRecord[];
+  milestone_setups: MilestoneSetup[];
   budget_history: BudgetHistoryRecord[];
   milestones: MilestoneBreakdownItem[];
   change_history: ChangeHistoryEvent[];
   payments: PaymentsHistory;
   progress_reports: ProgressReport[];
+  file_summary: FileSummary;
   generated_at: string;
+}
+
+// ── Project Post ──
+
+export interface ProjectPost {
+  title: string;
+  description: string | null;
+  location: string | null;
+  property_type: string | null;
+  budget_range_min: number;
+  budget_range_max: number;
+  lot_size: string | null;
+  floor_area: string | null;
+  to_finish: number | null;
+  posted_at: string | null;
+  bidding_due: string | null;
+  post_status: string | null;
+  files_by_type: Record<string, { count: number; files: string[] }>;
+  total_files: number;
+}
+
+// ── Bidding ──
+
+export interface BidRecord {
+  bid_id: number;
+  company_name: string;
+  proposed_cost: number;
+  estimated_timeline: number | null;
+  contractor_notes: string | null;
+  bid_status: string;
+  reason: string | null;
+  submitted_at: string | null;
+  decision_date: string | null;
+  years_of_experience: number | null;
+  completed_projects: number | null;
+  file_count: number;
+  file_names: string[];
+}
+
+// ── Milestone Setup ──
+
+export interface MilestoneSetupItem {
+  sequence: number;
+  title: string;
+  cost: number;
+  due_date: string | null;
+  status: string;
+}
+
+export interface MilestoneSetup {
+  milestone_id: number;
+  name: string;
+  description: string | null;
+  setup_status: string;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_deleted: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  item_count: number;
+  total_cost: number;
+  items: MilestoneSetupItem[];
+}
+
+// ── File Summary ──
+
+export interface FileSummary {
+  project_files: { total: number; by_type: Record<string, number> };
+  progress_files: number;
+  payment_receipts: number;
+  bid_files: number;
+  item_files: number;
+  grand_total: number;
 }
 
 // ── Milestone Summary types ──

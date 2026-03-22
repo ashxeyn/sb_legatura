@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   StatusBar,
   ActivityIndicator,
   Alert,
@@ -192,6 +193,13 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const [showProjectDateHistory, setShowProjectDateHistory] = useState(false);
   const [showProjectSummary, setShowProjectSummary] = useState(false);
   const [showMilestoneSummary, setShowMilestoneSummary] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchMilestones();
+    setRefreshing(false);
+  }, [fetchMilestones]);
 
   // ── Contractor: check if they can leave a review for the owner on a completed project ──
   useEffect(() => {
@@ -298,6 +306,9 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const downpaymentCleared = isDownpaymentMode
     ? (paymentPlan?.downpayment_cleared ?? false)
     : true;
+
+  // Downpayment is only accessible once the milestone setup has been approved by the owner
+  const isSetupApproved = milestones.some(m => m.setup_status === 'approved');
 
   // Sort by sequence order
   allMilestoneItems.sort((a, b) => a.sequence_order - b.sequence_order);
@@ -820,9 +831,13 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           },
         }}
         navigation={{
-          goBack: () => setSelectedMilestoneDetail(null),
+          goBack: () => {
+            setSelectedMilestoneDetail(null);
+            fetchMilestones();
+          },
           onShowSummary: (itemId: number) => {
             setSelectedMilestoneDetail(null);
+            fetchMilestones();
             setShowMilestoneSummary(itemId);
           },
         }}
@@ -859,7 +874,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         )}
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.accent]}
+            tintColor={COLORS.accent}
+          />
+        }
+      >
         {/* Loading indicator while milestones are being fetched */}
         {milestonesLoading && milestones.length === 0 && (
           <View style={{ alignItems: 'center', paddingVertical: 60 }}>
@@ -1037,7 +1064,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         )}
 
         {/* Downpayment Pending Banner */}
-        {isDownpaymentMode && !downpaymentCleared && (
+        {isDownpaymentMode && !downpaymentCleared && isSetupApproved && (
           <TouchableOpacity
             style={{
               marginHorizontal: 16,
@@ -1128,13 +1155,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                         )}
                       </View>
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
-                      {item.adjusted_cost != null && (item.carry_forward_amount ?? 0) > 0 ? (
+                      {item.adjusted_cost != null && (item.carry_forward_amount ?? 0) !== 0 ? (
                         <View>
                           <Text style={[styles.milestoneCost, { textDecorationLine: 'line-through', color: COLORS.textMuted, fontSize: 12 }]}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <Text style={[styles.milestoneCost, { color: '#e74c3c' }]}>{formatCurrency(parseFloat(String(item.adjusted_cost)) || 0)}</Text>
+                            <Text style={[styles.milestoneCost, { color: '#e74c3c' }]}>
+                              {(item.carry_forward_amount ?? 0) < 0 && parseFloat(String(item.adjusted_cost)) <= 0
+                                ? 'Pre-paid'
+                                : formatCurrency(parseFloat(String(item.adjusted_cost)) || 0)}
+                            </Text>
                             <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
-                              <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>+CF</Text>
+                              <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>
+                                {(item.carry_forward_amount ?? 0) < 0 ? '−CF' : '+CF'}
+                              </Text>
                             </View>
                           </View>
                         </View>
@@ -1230,13 +1263,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                         )}
                       </View>
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
-                      {item.adjusted_cost != null && (item.carry_forward_amount ?? 0) > 0 ? (
+                      {item.adjusted_cost != null && (item.carry_forward_amount ?? 0) !== 0 ? (
                         <View>
                           <Text style={[styles.milestoneCost, { textDecorationLine: 'line-through', color: COLORS.textMuted, fontSize: 12 }]}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <Text style={[styles.milestoneCost, { color: '#e74c3c' }]}>{formatCurrency(parseFloat(String(item.adjusted_cost)) || 0)}</Text>
+                            <Text style={[styles.milestoneCost, { color: '#e74c3c' }]}>
+                              {(item.carry_forward_amount ?? 0) < 0 && parseFloat(String(item.adjusted_cost)) <= 0
+                                ? 'Pre-paid'
+                                : formatCurrency(parseFloat(String(item.adjusted_cost)) || 0)}
+                            </Text>
                             <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
-                              <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>+CF</Text>
+                              <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>
+                                {(item.carry_forward_amount ?? 0) < 0 ? '−CF' : '+CF'}
+                              </Text>
                             </View>
                           </View>
                         </View>
@@ -1255,7 +1294,17 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           {/* Start Point — Downpayment */}
           <TouchableOpacity
             style={[styles.timelineItem, isDownpaymentMode && !downpaymentCleared && { opacity: 1 }]}
-            onPress={() => isDownpaymentMode && setShowDownpaymentDetail(true)}
+            onPress={() => {
+              if (!isDownpaymentMode) return;
+              if (!isSetupApproved) {
+                Alert.alert(
+                  'Setup Pending',
+                  'The milestone setup must be approved before the downpayment can be accessed.',
+                );
+                return;
+              }
+              setShowDownpaymentDetail(true);
+            }}
             activeOpacity={0.7}
             disabled={!isDownpaymentMode}
           >
@@ -1274,15 +1323,15 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                       paddingHorizontal: 8,
                       paddingVertical: 3,
                       borderRadius: 6,
-                      backgroundColor: downpaymentCleared ? '#D1FAE5' : '#FEF3C7',
+                      backgroundColor: downpaymentCleared ? '#D1FAE5' : !isSetupApproved ? '#F1F5F9' : '#FEF3C7',
                       alignSelf: 'flex-end',
                     }}>
                       <Text style={{
                         fontSize: 10,
                         fontWeight: '700',
-                        color: downpaymentCleared ? '#059669' : '#D97706',
+                        color: downpaymentCleared ? '#059669' : !isSetupApproved ? '#64748B' : '#D97706',
                       }}>
-                        {downpaymentCleared ? 'Verified' : 'Pending'}
+                        {downpaymentCleared ? 'Verified' : !isSetupApproved ? 'Locked' : 'Pending'}
                       </Text>
                     </View>
                   </>
@@ -1296,14 +1345,14 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                 styles.startCircle,
                 isDownpaymentMode && {
                   borderWidth: 3,
-                  borderColor: downpaymentCleared ? COLORS.success : COLORS.accent,
-                  backgroundColor: downpaymentCleared ? COLORS.success : COLORS.darkBlue,
+                  borderColor: downpaymentCleared ? COLORS.success : !isSetupApproved ? COLORS.textMuted : COLORS.accent,
+                  backgroundColor: downpaymentCleared ? COLORS.success : !isSetupApproved ? '#64748B' : COLORS.darkBlue,
                 },
               ]}>
                 {isDownpaymentMode && (
                   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <Feather
-                      name={downpaymentCleared ? 'check' : 'dollar-sign'}
+                      name={downpaymentCleared ? 'check' : !isSetupApproved ? 'lock' : 'dollar-sign'}
                       size={14}
                       color="#FFFFFF"
                     />
@@ -1314,9 +1363,13 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             <View style={[styles.timelineSide, styles.timelineRight]}>
               {isDownpaymentMode && !downpaymentCleared && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 8 }}>
-                  <Feather name="chevron-right" size={14} color={COLORS.accent} />
-                  <Text style={{ fontSize: 11, color: COLORS.accent, fontWeight: '600' }}>
-                    View Details
+                  <Feather
+                    name={!isSetupApproved ? 'lock' : 'chevron-right'}
+                    size={14}
+                    color={!isSetupApproved ? COLORS.textMuted : COLORS.accent}
+                  />
+                  <Text style={{ fontSize: 11, color: !isSetupApproved ? COLORS.textMuted : COLORS.accent, fontWeight: '600' }}>
+                    {!isSetupApproved ? 'Locked' : 'View Details'}
                   </Text>
                 </View>
               )}

@@ -554,14 +554,35 @@ class biddingController extends Controller
                     'c.years_of_experience',
                     'c.completed_projects',
                     'c.picab_category',
+                    'c.company_logo',
+                    'c.business_address as location',
+                    'c.services_offered',
+                    'c.company_description',
                     'u.username',
+                    'u.user_id',
                     'po.profile_pic as profile_pic',
-                    'ct.type_name'
+                    'ct.type_name as contractor_type'
                 )
                 ->where('b.project_id', $projectId)
                 ->whereNotIn('b.bid_status', ['cancelled'])
                 ->orderBy('b.submitted_at', 'desc')
                 ->get();
+
+            // Attach avg_rating and reviews_count for each contractor
+            foreach ($bids as $bid) {
+                if ($bid->user_id) {
+                    $ratingData = DB::table('reviews')
+                        ->where('reviewee_user_id', $bid->user_id)
+                        ->where('is_deleted', 0)
+                        ->selectRaw('ROUND(AVG(rating), 1) as avg_rating, COUNT(*) as reviews_count')
+                        ->first();
+                    $bid->avg_rating = ($ratingData && $ratingData->avg_rating) ? (float) $ratingData->avg_rating : 0;
+                    $bid->reviews_count = ($ratingData) ? (int) ($ratingData->reviews_count ?? 0) : 0;
+                } else {
+                    $bid->avg_rating = 0;
+                    $bid->reviews_count = 0;
+                }
+            }
 
             // Get bid files for each bid
             foreach ($bids as $bid) {

@@ -1368,7 +1368,27 @@ export default function ProjectUpdateModal({
                   </View>
                 ) : (
                   <>
-                    <Text style={styles.milestoneItemCost}>{fmtCurrency(displayCost)}</Text>
+                    {item.carry_forward_amount !== 0 && item.adjusted_cost != null ? (
+                      <View>
+                        <Text style={[styles.milestoneItemCost, { textDecorationLine: 'line-through', color: C.textMuted, fontSize: 12 }]}>
+                          {fmtCurrency(item.base_cost)}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Text style={[styles.milestoneItemCost, { color: '#e74c3c' }]}>
+                            {item.carry_forward_amount < 0 && (item.adjusted_cost ?? item.effective_cost) <= 0
+                              ? 'Pre-paid'
+                              : fmtCurrency(displayCost)}
+                          </Text>
+                          <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
+                            <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>
+                              {item.carry_forward_amount < 0 ? '−CF' : '+CF'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      <Text style={styles.milestoneItemCost}>{fmtCurrency(displayCost)}</Text>
+                    )}
                     {item.total_paid > 0 && (
                       <Text style={[styles.milestoneItemPaid, { color: C.success }]}>
                         {fmtCurrency(item.total_paid)} paid

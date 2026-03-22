@@ -415,6 +415,58 @@ class MilestoneService
                             'message'            => 'Last milestone item — shortfall recorded but no next item to carry to.',
                         ];
                     }
+                } elseif ($totalPaid > $expectedAmount) {
+                    // ── OVERPAYMENT — cascade credit to next item ──
+                    $overAmount = $totalPaid - $expectedAmount;
+
+                    $nextItem = DB::table('milestone_items')
+                        ->where('milestone_id', $updatedItem->milestone_id)
+                        ->where('sequence_order', '>', $updatedItem->sequence_order)
+                        ->orderBy('sequence_order', 'asc')
+                        ->first();
+
+                    if ($nextItem) {
+                        $nextOriginalCost = (float) $nextItem->milestone_item_cost;
+                        $credit = -$overAmount; // negative = credit
+                        $newAdjustedCost = $nextOriginalCost + $credit;
+
+                        DB::table('milestone_items')
+                            ->where('item_id', $nextItem->item_id)
+                            ->update([
+                                'adjusted_cost'        => $newAdjustedCost,
+                                'carry_forward_amount' => $credit,
+                                'updated_at'           => now(),
+                            ]);
+
+                        $this->logPaymentAdjustment([
+                            'project_id'           => $resolvedProjectId,
+                            'milestone_id'         => $updatedItem->milestone_id,
+                            'source_item_id'       => $updatedItem->item_id,
+                            'target_item_id'       => $nextItem->item_id,
+                            'payment_id'           => null,
+                            'adjustment_type'      => 'overpayment',
+                            'original_required'    => (float) $updatedItem->milestone_item_cost,
+                            'total_paid'           => $totalPaid,
+                            'adjustment_amount'    => $overAmount,
+                            'target_original_cost' => $nextOriginalCost,
+                            'target_adjusted_cost' => $newAdjustedCost,
+                            'notes'                => "Overpayment credit of " . number_format($overAmount, 2) . " applied to item #{$nextItem->sequence_order} ({$nextItem->milestone_item_title}) on completion.",
+                        ]);
+
+                        Log::info('completeMilestoneItem: overpayment credit carry-forward', [
+                            'source_item'  => $updatedItem->item_id,
+                            'target_item'  => $nextItem->item_id,
+                            'over_amount'  => $overAmount,
+                            'new_adjusted' => $newAdjustedCost,
+                        ]);
+
+                        $result['over_carry_forward'] = [
+                            'over_amount'          => $overAmount,
+                            'credit_applied_to_id' => $nextItem->item_id,
+                            'credit_applied_to'    => $nextItem->milestone_item_title,
+                            'new_adjusted_cost'    => $newAdjustedCost,
+                        ];
+                    }
                 }
             });
         } catch (\Throwable $e) {
@@ -979,10 +1031,8 @@ class MilestoneService
 
         // Determine status
         if (abs($difference) < 0.01) {
-            // Exact payment — if item was completed with prior carry-forward, clear it
-            if ($item->item_status === 'completed') {
-                $this->clearCarryForwardOnNextItem($item);
-            }
+            // Exact payment — clear any prior carry-forward on next item
+            $this->clearCarryForwardOnNextItem($item);
             return [
                 'status'     => 'exact',
                 'total_paid' => $totalPaid,
@@ -993,11 +1043,56 @@ class MilestoneService
 
         if ($difference > 0) {
             // ── OVERPAYMENT ──
-            // If item was completed with prior carry-forward, clear it (fully paid now)
-            if ($item->item_status === 'completed') {
-                $this->clearCarryForwardOnNextItem($item);
+            // Clear any prior carry-forward (positive or negative) before applying new credit
+            $this->clearCarryForwardOnNextItem($item);
+
+            // Cascade overpayment credit to next item immediately
+            $nextItem = DB::table('milestone_items')
+                    ->where('milestone_id', $item->milestone_id)
+                    ->where('sequence_order', '>', $item->sequence_order)
+                    ->orderBy('sequence_order', 'asc')
+                    ->first();
+
+                if ($nextItem) {
+                    $nextOriginalCost = (float) $nextItem->milestone_item_cost;
+                    $credit = -$difference; // negative = credit applied to next item
+                    $newAdjustedCost = $nextOriginalCost + $credit;
+
+                    DB::table('milestone_items')
+                        ->where('item_id', $nextItem->item_id)
+                        ->update([
+                            'adjusted_cost'        => $newAdjustedCost,
+                            'carry_forward_amount' => $credit,
+                            'updated_at'           => now(),
+                        ]);
+
+                    $this->logPaymentAdjustment([
+                        'project_id'           => $projectId,
+                        'milestone_id'         => $item->milestone_id,
+                        'source_item_id'       => $itemId,
+                        'target_item_id'       => $nextItem->item_id,
+                        'payment_id'           => $paymentId,
+                        'adjustment_type'      => 'overpayment',
+                        'original_required'    => $originalCost,
+                        'total_paid'           => $totalPaid,
+                        'adjustment_amount'    => $difference,
+                        'target_original_cost' => $nextOriginalCost,
+                        'target_adjusted_cost' => $newAdjustedCost,
+                        'notes'                => "Overpayment credit of " . number_format($difference, 2) . " applied to item #{$nextItem->sequence_order} ({$nextItem->milestone_item_title}).",
+                    ]);
+
+                    return [
+                        'status'               => 'overpaid',
+                        'total_paid'           => $totalPaid,
+                        'expected'             => $expectedAmount,
+                        'difference'           => $difference,
+                        'over_amount'          => $difference,
+                        'credit_applied_to_id' => $nextItem->item_id,
+                        'new_adjusted_cost'    => $newAdjustedCost,
+                    ];
             }
-            // Record excess, do NOT cascade to next milestone
+
+            // No next item (last item) — just log the excess
             $this->logPaymentAdjustment([
                 'project_id'          => $projectId,
                 'milestone_id'        => $item->milestone_id,
@@ -1010,7 +1105,7 @@ class MilestoneService
                 'adjustment_amount'   => $difference,
                 'target_original_cost'=> null,
                 'target_adjusted_cost'=> null,
-                'notes'               => "Overpayment of " . number_format($difference, 2) . " recorded. Excess stays on this item.",
+                'notes'               => "Overpayment of " . number_format($difference, 2) . " recorded. Last item — no next item to cascade to.",
             ]);
 
             return [
@@ -1144,7 +1239,8 @@ class MilestoneService
             ->orderBy('sequence_order', 'asc')
             ->first();
 
-        if ($nextItem && (float) ($nextItem->carry_forward_amount ?? 0) > 0) {
+        // Handle both positive (underpayment shortfall) and negative (overpayment credit)
+        if ($nextItem && abs((float) ($nextItem->carry_forward_amount ?? 0)) > 0.009) {
             $nextOriginalCost = (float) $nextItem->milestone_item_cost;
 
             DB::table('milestone_items')
@@ -1156,8 +1252,8 @@ class MilestoneService
                 ]);
 
             Log::info('clearCarryForwardOnNextItem: cleared carry-forward', [
-                'source_item' => $item->item_id,
-                'target_item' => $nextItem->item_id,
+                'source_item'    => $item->item_id,
+                'target_item'    => $nextItem->item_id,
                 'cleared_amount' => $nextItem->carry_forward_amount,
             ]);
         }
@@ -1301,16 +1397,19 @@ class MilestoneService
             ->where('payment_status', 'submitted')
             ->sum('amount');
 
-        $remaining = max(0, $effectiveRequired - $totalPaid);
-        $overAmount = $totalPaid > $effectiveRequired ? ($totalPaid - $effectiveRequired) : 0;
+        // A negative effectiveRequired means the item is fully pre-credited by a prior overpayment.
+        // Floor at 0 for payment amounts so the owner can never "owe" a negative sum.
+        $effectiveFloor = max(0.0, $effectiveRequired);
+        $remaining = max(0, $effectiveFloor - $totalPaid);
+        $overAmount = $totalPaid > $effectiveFloor ? ($totalPaid - $effectiveFloor) : 0;
 
-        // Derive status
+        // Derive status — pass raw effectiveRequired so negative triggers 'Fully Paid'
         $derivedStatus = $this->deriveItemPaymentStatus($item, $totalPaid, $effectiveRequired);
 
         return [
             'original_cost'       => $originalCost,
             'adjusted_cost'       => $adjustedCost,
-            'effective_required'   => $effectiveRequired,
+            'effective_required'  => $effectiveFloor,  // what owner still needs to pay (≥ 0)
             'carry_forward_amount' => $carryForward,
             'total_paid'          => $totalPaid,
             'total_submitted'     => $totalSubmitted,
@@ -1327,8 +1426,13 @@ class MilestoneService
      */
     public function deriveItemPaymentStatus(?object $item, float $totalPaid, float $expectedAmount): string
     {
-        if (!$item || $expectedAmount <= 0) {
+        if (!$item) {
             return 'Unpaid';
+        }
+
+        // Negative or zero expected amount means fully pre-credited by prior overpayment
+        if ($expectedAmount <= 0) {
+            return 'Fully Paid';
         }
 
         if ($totalPaid >= $expectedAmount) {

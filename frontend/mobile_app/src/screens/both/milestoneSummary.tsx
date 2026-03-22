@@ -256,6 +256,31 @@ export default function MilestoneSummary({ route, navigation }: MilestoneSummary
               <View style={[styles.progressBarFill, { width: `${header.percentage_progress}%`, backgroundColor: COLORS.success }]} />
             </View>
           </View>
+
+          {/* Allocation with CF indicator */}
+          <View style={styles.divider} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.dateLabel}>ALLOCATION</Text>
+            {header.carry_forward_amount !== 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted, textDecorationLine: 'line-through' }}>
+                  {formatCurrency(header.original_allocation)}
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#e74c3c' }}>
+                  {formatCurrency(header.current_allocation)}
+                </Text>
+                <View style={{ backgroundColor: '#fff3e0', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: '#e74c3c' }}>
+                    {header.carry_forward_amount < 0 ? '−CF' : '+CF'}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.text }}>
+                {formatCurrency(header.current_allocation)}
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* ═══════ FINANCIAL ═══════ */}
@@ -277,7 +302,26 @@ export default function MilestoneSummary({ route, navigation }: MilestoneSummary
             </View>
 
             <View style={styles.finGrid}>
-              <FinCell label="Allocated Budget" value={formatCurrency(financial.allocated_budget)} />
+              {header.carry_forward_amount !== 0 ? (
+                <View style={styles.finGridItem}>
+                  <Text style={styles.finGridLabel}>ALLOCATED BUDGET</Text>
+                  <Text style={[styles.finGridValue, { color: '#e74c3c' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                    {formatCurrency(financial.allocated_budget)}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Text style={{ fontSize: 10, color: COLORS.textMuted, textDecorationLine: 'line-through' }}>
+                      {formatCurrency(financial.original_budget)}
+                    </Text>
+                    <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
+                      <Text style={{ fontSize: 8, fontWeight: '700', color: '#e74c3c' }}>
+                        {header.carry_forward_amount < 0 ? '−CF' : '+CF'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <FinCell label="Allocated Budget" value={formatCurrency(financial.allocated_budget)} />
+              )}
               <FinCell label="Original Budget" value={formatCurrency(financial.original_budget)}
                 dimmed={financial.original_budget === financial.allocated_budget} />
               <FinCell label="Total Paid" value={formatCurrency(financial.paid_amount)} color={COLORS.success} />
@@ -288,11 +332,13 @@ export default function MilestoneSummary({ route, navigation }: MilestoneSummary
               ) : null}
             </View>
 
-            {header.carry_forward_amount > 0 ? (
+            {header.carry_forward_amount !== 0 ? (
               <View style={styles.carryForwardBanner}>
-                <Feather name="corner-down-right" size={13} color={COLORS.info} />
-                <Text style={styles.carryForwardText}>
-                  Carry Forward: {formatCurrency(header.carry_forward_amount)}
+                <Feather name="corner-down-right" size={13} color={'#e74c3c'} />
+                <Text style={[styles.carryForwardText, { color: '#e74c3c' }]}>
+                  {header.carry_forward_amount > 0
+                    ? `Carry Forward (shortfall): ${formatCurrency(header.carry_forward_amount)}`
+                    : `Credit from prev. item: -${formatCurrency(Math.abs(header.carry_forward_amount))}`}
                 </Text>
               </View>
             ) : null}
@@ -333,6 +379,17 @@ export default function MilestoneSummary({ route, navigation }: MilestoneSummary
         <SectionHeader title={`Payments (${payments.length})`} icon="credit-card" expanded={expandedSections.payments} onToggle={() => toggleSection('payments')} />
         {expandedSections.payments && (
           <View style={styles.sectionBody}>
+            {/* Payment summary with CF context */}
+            {header.carry_forward_amount !== 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#fef2f2', borderRadius: 4 }}>
+                <Feather name="corner-down-right" size={12} color="#e74c3c" />
+                <Text style={{ fontSize: 11, fontWeight: '600', color: '#e74c3c', flex: 1 }}>
+                  {header.carry_forward_amount > 0
+                    ? `+${formatCurrency(header.carry_forward_amount)} shortfall carried forward — Effective budget: ${formatCurrency(financial.allocated_budget)}`
+                    : `${formatCurrency(Math.abs(header.carry_forward_amount))} credit from previous item — Effective budget: ${formatCurrency(financial.allocated_budget)}`}
+                </Text>
+              </View>
+            )}
             {payments.length === 0 ? (
               <Text style={styles.emptyText}>No payment records yet.</Text>
             ) : (

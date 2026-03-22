@@ -8,6 +8,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  RefreshControl,
   ActivityIndicator,
   Alert,
   Platform,
@@ -273,6 +274,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [feedPage, setFeedPage] = useState(1);
   const [hasMoreFeed, setHasMoreFeed] = useState(true);
   const [loadingFeed, setLoadingFeed] = useState(true);
+  const [feedRefreshing, setFeedRefreshing] = useState(false);
   const [showCreateChooser, setShowCreateChooser] = useState(false);
   const [showCreateShowcase, setShowCreateShowcase] = useState(false);
   const [activeCardMenu, setActiveCardMenu] = useState<{ type: 'project' | 'showcase'; id: number } | null>(null);
@@ -781,15 +783,21 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   }, [feedFilters]);
 
   // Refresh feed function - resets to page 1 and scrolls to top
-  const refreshFeed = useCallback(() => {
+  const refreshFeed = useCallback(async () => {
     setFeedPage(1);
     setHasMoreFeed(true);
-    fetchUnifiedFeed(1, false);
+    await fetchUnifiedFeed(1, false);
     // Scroll to top
     if (homeScrollViewRef.current) {
       homeScrollViewRef.current.scrollTo({ y: 0, animated: true });
     }
   }, [fetchUnifiedFeed]);
+
+  const onPullToRefresh = useCallback(async () => {
+    setFeedRefreshing(true);
+    await refreshFeed();
+    setFeedRefreshing(false);
+  }, [refreshFeed]);
 
   useEffect(() => {
     fetchUnifiedFeed(1);
@@ -1994,6 +2002,14 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         contentContainerStyle={styles.scrollContent}
         onMomentumScrollEnd={(e) => handleScrollEnd(e, loadMoreFeed)}
         onScrollEndDrag={(e) => handleScrollEnd(e, loadMoreFeed)}
+        refreshControl={
+          <RefreshControl
+            refreshing={feedRefreshing}
+            onRefresh={onPullToRefresh}
+            colors={['#EEA24B']}
+            tintColor="#EEA24B"
+          />
+        }
       >
         {/* ── Create Post Section ── */}
         <View style={styles.profileSection}>

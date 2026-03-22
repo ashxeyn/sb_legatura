@@ -587,6 +587,7 @@ Route::get('/milestone-items/{itemId}/date-history', [milestoneController::class
 
 // Summary reports - controller handles auth manually
 Route::get('/projects/{projectId}/summary', [\App\Http\Controllers\both\summaryController::class, 'projectSummary']);
+Route::get('/projects/{projectId}/summary/pdf', [\App\Http\Controllers\both\summaryController::class, 'projectSummaryPdf']);
 Route::get('/projects/{projectId}/milestones/{itemId}/summary', [\App\Http\Controllers\both\summaryController::class, 'milestoneSummary']);
 
 // Disputes routes - controller handles auth manually

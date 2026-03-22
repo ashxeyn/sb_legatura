@@ -41,16 +41,32 @@ class SummaryService
         // ── G. Progress Reports ──
         $progressReports = $this->buildProgressReports($projectId);
 
+        // ── H. Project Posting Details ──
+        $projectPost = $this->buildProjectPost($projectId);
+
+        // ── I. Bidding History ──
+        $biddingHistory = $this->buildBiddingHistory($projectId);
+
+        // ── J. Milestone Setup History ──
+        $milestoneSetups = $this->buildMilestoneSetupHistory($projectId);
+
+        // ── K. File & Image Counts ──
+        $fileSummary = $this->buildFileSummary($projectId);
+
         return [
             'success' => true,
             'data'    => [
                 'header'          => $header,
                 'overview'        => $overview,
+                'project_post'    => $projectPost,
+                'bidding_history' => $biddingHistory,
+                'milestone_setups' => $milestoneSetups,
                 'budget_history'  => $budgetHistory,
                 'milestones'      => $milestones,
                 'change_history'  => $changeHistory,
                 'payments'        => $payments,
                 'progress_reports' => $progressReports,
+                'file_summary'    => $fileSummary,
                 'generated_at'    => now()->toIso8601String(),
             ],
         ];
@@ -117,13 +133,16 @@ class SummaryService
             ->where('payment_status', 'submitted')
             ->sum('amount');
 
+        // Floor effective cost at 0: a negative adjusted_cost means the item is fully
+        // pre-credited by a prior overpayment, so the owner owes nothing for it.
+        $effectiveFloor = max(0.0, $effectiveCost);
         $financial = [
             'allocated_budget'  => $effectiveCost,
             'original_budget'   => (float) $item->milestone_item_cost,
             'paid_amount'       => $totalPaid,
             'pending_amount'    => $totalSubmitted,
-            'remaining_balance' => max(0, $effectiveCost - $totalPaid),
-            'over_amount'       => max(0, $totalPaid - $effectiveCost),
+            'remaining_balance' => max(0, $effectiveFloor - $totalPaid),
+            'over_amount'       => max(0, $totalPaid - $effectiveFloor),
         ];
 
         // ── Date History ──
@@ -646,5 +665,242 @@ class SummaryService
             )
             ->get()
             ->toArray();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PRIVATE — Extended Report Sections
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Project posting details: original post info, property details, budget range.
+     */
+    private function buildProjectPost(int $projectId): array
+    {
+        $project = DB::table('projects as p')
+            ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->where('p.project_id', $projectId)
+            ->select(
+                'p.project_id',
+                'p.project_title',
+                'p.project_description',
+                'p.project_location',
+                'p.property_type',
+                'p.budget_range_min',
+                'p.budget_range_max',
+                'p.lot_size',
+                'p.floor_area',
+                'p.to_finish',
+                'p.project_status',
+                'pr.project_post_status',
+                'pr.bidding_due',
+                'pr.created_at as posted_at'
+            )
+            ->first();
+
+        if (!$project) return [];
+
+        // Project files (blueprints, permits, etc.)
+        $projectFiles = DB::table('project_files')
+            ->where('project_id', $projectId)
+            ->select('file_id', 'file_type', 'file_path')
+            ->get();
+
+        $filesByType = $projectFiles->groupBy('file_type')->map(function ($group) {
+            return [
+                'count' => $group->count(),
+                'files' => $group->map(fn($f) => basename($f->file_path))->values()->toArray(),
+            ];
+        })->toArray();
+
+        return [
+            'title'            => $project->project_title,
+            'description'      => $project->project_description,
+            'location'         => $project->project_location,
+            'property_type'    => $project->property_type,
+            'budget_range_min' => (float) ($project->budget_range_min ?? 0),
+            'budget_range_max' => (float) ($project->budget_range_max ?? 0),
+            'lot_size'         => $project->lot_size,
+            'floor_area'       => $project->floor_area,
+            'to_finish'        => $project->to_finish,
+            'posted_at'        => $project->posted_at,
+            'bidding_due'      => $project->bidding_due,
+            'post_status'      => $project->project_post_status,
+            'files_by_type'    => $filesByType,
+            'total_files'      => $projectFiles->count(),
+        ];
+    }
+
+    /**
+     * Bidding history: all bids with contractor info, amounts, notes, files.
+     */
+    private function buildBiddingHistory(int $projectId): array
+    {
+        $bids = DB::table('bids as b')
+            ->leftJoin('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
+            ->where('b.project_id', $projectId)
+            ->orderByRaw("CASE WHEN b.bid_status = 'accepted' THEN 0 ELSE 1 END")
+            ->orderBy('b.submitted_at', 'asc')
+            ->select(
+                'b.bid_id',
+                'b.contractor_id',
+                'b.proposed_cost',
+                'b.estimated_timeline',
+                'b.contractor_notes',
+                'b.bid_status',
+                'b.reason',
+                'b.submitted_at',
+                'b.decision_date',
+                'c.company_name',
+                'c.years_of_experience',
+                'c.completed_projects'
+            )
+            ->get();
+
+        return $bids->map(function ($bid) {
+            // Count bid files
+            $bidFiles = DB::table('bid_files')
+                ->where('bid_id', $bid->bid_id)
+                ->select('file_name', 'description')
+                ->get();
+
+            return [
+                'bid_id'             => $bid->bid_id,
+                'company_name'       => $bid->company_name,
+                'proposed_cost'      => (float) $bid->proposed_cost,
+                'estimated_timeline' => $bid->estimated_timeline,
+                'contractor_notes'   => $bid->contractor_notes,
+                'bid_status'         => $bid->bid_status,
+                'reason'             => $bid->reason,
+                'submitted_at'       => $bid->submitted_at,
+                'decision_date'      => $bid->decision_date,
+                'years_of_experience' => $bid->years_of_experience,
+                'completed_projects' => $bid->completed_projects,
+                'file_count'         => $bidFiles->count(),
+                'file_names'         => $bidFiles->pluck('file_name')->toArray(),
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Milestone setup history: all setup submissions/revisions with items.
+     */
+    private function buildMilestoneSetupHistory(int $projectId): array
+    {
+        $milestones = DB::table('milestones')
+            ->where('project_id', $projectId)
+            ->orderByRaw("CASE WHEN setup_status = 'approved' THEN 0 ELSE 1 END")
+            ->orderBy('created_at', 'asc')
+            ->select(
+                'milestone_id',
+                'milestone_name',
+                'milestone_description',
+                'setup_status',
+                'milestone_status',
+                'start_date',
+                'end_date',
+                'is_deleted',
+                'created_at',
+                'updated_at'
+            )
+            ->get();
+
+        return $milestones->map(function ($ms) {
+            $items = DB::table('milestone_items')
+                ->where('milestone_id', $ms->milestone_id)
+                ->whereNotIn('item_status', ['deleted'])
+                ->orderBy('sequence_order', 'asc')
+                ->select(
+                    'item_id',
+                    'sequence_order',
+                    'milestone_item_title',
+                    'milestone_item_cost',
+                    'date_to_finish',
+                    'item_status'
+                )
+                ->get();
+
+            return [
+                'milestone_id'   => $ms->milestone_id,
+                'name'           => $ms->milestone_name,
+                'description'    => $ms->milestone_description,
+                'setup_status'   => $ms->setup_status,
+                'status'         => $ms->milestone_status,
+                'start_date'     => $ms->start_date,
+                'end_date'       => $ms->end_date,
+                'is_deleted'     => (bool) $ms->is_deleted,
+                'created_at'     => $ms->created_at,
+                'updated_at'     => $ms->updated_at,
+                'item_count'     => $items->count(),
+                'total_cost'     => (float) $items->sum('milestone_item_cost'),
+                'items'          => $items->map(fn($i) => [
+                    'sequence'  => (int) $i->sequence_order,
+                    'title'     => $i->milestone_item_title,
+                    'cost'      => (float) $i->milestone_item_cost,
+                    'due_date'  => $i->date_to_finish,
+                    'status'    => $i->item_status,
+                ])->toArray(),
+            ];
+        })->toArray();
+    }
+
+    /**
+     * File/image summary: counts by category across the project.
+     */
+    private function buildFileSummary(int $projectId): array
+    {
+        // Project files
+        $projectFiles = DB::table('project_files')
+            ->where('project_id', $projectId)
+            ->select('file_type', 'file_path')
+            ->get();
+
+        // Progress report files
+        $progressFiles = DB::table('progress_files as pf')
+            ->join('progress as p', 'pf.progress_id', '=', 'p.progress_id')
+            ->join('milestone_items as mi', 'p.milestone_item_id', '=', 'mi.item_id')
+            ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+            ->where('m.project_id', $projectId)
+            ->select('pf.file_path', 'pf.original_name')
+            ->get();
+
+        // Payment receipt photos
+        $milestoneReceipts = DB::table('milestone_payments')
+            ->where('project_id', $projectId)
+            ->whereNotNull('receipt_photo')
+            ->where('receipt_photo', '!=', '')
+            ->count();
+
+        $downpaymentReceipts = DB::table('downpayment_payments')
+            ->where('project_id', $projectId)
+            ->whereNotNull('receipt_photo')
+            ->where('receipt_photo', '!=', '')
+            ->count();
+
+        // Bid files
+        $bidFileCount = DB::table('bid_files as bf')
+            ->join('bids as b', 'bf.bid_id', '=', 'b.bid_id')
+            ->where('b.project_id', $projectId)
+            ->count();
+
+        // Item files
+        $itemFileCount = DB::table('item_files as itf')
+            ->join('milestone_items as mi', 'itf.item_id', '=', 'mi.item_id')
+            ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+            ->where('m.project_id', $projectId)
+            ->count();
+
+        return [
+            'project_files'    => [
+                'total' => $projectFiles->count(),
+                'by_type' => $projectFiles->groupBy('file_type')->map->count()->toArray(),
+            ],
+            'progress_files'   => $progressFiles->count(),
+            'payment_receipts' => $milestoneReceipts + $downpaymentReceipts,
+            'bid_files'        => $bidFileCount,
+            'item_files'       => $itemFileCount,
+            'grand_total'      => $projectFiles->count() + $progressFiles->count()
+                + $milestoneReceipts + $downpaymentReceipts
+                + $bidFileCount + $itemFileCount,
+        ];
     }
 }

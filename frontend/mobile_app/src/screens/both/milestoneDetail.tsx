@@ -7,6 +7,7 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   StatusBar,
   Modal,
   ActivityIndicator,
@@ -126,6 +127,17 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     });
   };
 
+
+  // Pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setLoadingReports(true);
+    setLoadingPayments(true);
+    setRefreshKey(k => k + 1);
+  };
 
   // Real progress reports from backend
   const [progressReports, setProgressReports] = useState<any[]>([]);
@@ -272,7 +284,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         if (isMounted) setLoadingReports(false);
       });
     return () => { isMounted = false; };
-  }, [userId, milestoneItem.item_id]);
+  }, [userId, milestoneItem.item_id, refreshKey]);
 
   // Helper to refresh payments list
   const refreshPayments = () => {
@@ -427,7 +439,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
       });
 
     return () => { isMounted = false; };
-  }, [milestoneItem.item_id]);
+  }, [milestoneItem.item_id, refreshKey]);
 
   // Fetch date extension history when item was extended
   useEffect(() => {
@@ -440,6 +452,13 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
       })
       .catch(err => console.error('Date history fetch error:', err));
   }, [milestoneItem.item_id, wasExtended]);
+
+  // Clear the pull-to-refresh spinner once both data sets have finished loading
+  useEffect(() => {
+    if (refreshing && !loadingReports && !loadingPayments) {
+      setRefreshing(false);
+    }
+  }, [refreshing, loadingReports, loadingPayments]);
 
   const toggleReportExpand = (reportId: number) => {
     setExpandedReports(prev => ({
@@ -834,6 +853,14 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           style={styles.scrollView}
           contentContainerStyle={styles.fullDetailScrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[COLORS.accent]}
+              tintColor={COLORS.accent}
+            />
+          }
         >
           {/* ════════════ TAB: MILESTONE INFO ════════════ */}
           {fdActiveTab === 'info' && (
@@ -915,9 +942,29 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                 <View style={styles.fdQuickFinRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.fdQuickFinLabel}>Payment Progress</Text>
-                    <Text style={styles.fdQuickFinValue}>
-                      ₱{totalPaid.toLocaleString('en-US', { minimumFractionDigits: 0 })} of ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                    </Text>
+                    {adjustedCost !== null && carryForwardAmount !== 0 ? (
+                      <View>
+                        <Text style={[styles.fdQuickFinValue, { textDecorationLine: 'line-through', color: COLORS.textMuted, fontSize: 12 }]}>
+                          ₱{originalCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Text style={[styles.fdQuickFinValue, { color: '#e74c3c' }]}>
+                            {carryForwardAmount < 0 && adjustedCost <= 0
+                              ? 'Pre-paid'
+                              : `₱${expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
+                          </Text>
+                          <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
+                            <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>
+                              {carryForwardAmount < 0 ? '−CF' : '+CF'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      <Text style={styles.fdQuickFinValue}>
+                        ₱{totalPaid.toLocaleString('en-US', { minimumFractionDigits: 0 })} of ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                      </Text>
+                    )}
                   </View>
                   <View style={{ backgroundColor: getPaymentStatusColor(derivedPaymentStatus) + '18', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: getPaymentStatusColor(derivedPaymentStatus) }}>{derivedPaymentStatus}</Text>
@@ -970,7 +1017,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
                 {fdExpandedSections.financial && (
                   <View style={styles.fdAccordionBody}>
-                    {adjustedCost !== null && carryForwardAmount > 0 ? (
+                    {adjustedCost !== null && carryForwardAmount !== 0 ? (
                       <>
                         <View style={styles.fdFinRow}>
                           <Text style={styles.fdFinLabel}>Original Cost</Text>
@@ -978,16 +1025,27 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                             ₱{originalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </Text>
                         </View>
-                        <View style={styles.fdFinRow}>
-                          <Text style={[styles.fdFinLabel, { color: '#dc2626' }]}>Carry-forward</Text>
-                          <Text style={[styles.fdFinValue, { color: '#dc2626', fontWeight: '700' }]}>
-                            +₱{carryForwardAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                          </Text>
-                        </View>
+                        {carryForwardAmount > 0 ? (
+                          <View style={styles.fdFinRow}>
+                            <Text style={[styles.fdFinLabel, { color: '#dc2626' }]}>Carry-forward (shortfall)</Text>
+                            <Text style={[styles.fdFinValue, { color: '#dc2626', fontWeight: '700' }]}>
+                              +₱{carryForwardAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={styles.fdFinRow}>
+                            <Text style={[styles.fdFinLabel, { color: '#dc2626' }]}>Credit from prev. item</Text>
+                            <Text style={[styles.fdFinValue, { color: '#dc2626', fontWeight: '700' }]}>
+                              −₱{Math.abs(carryForwardAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </Text>
+                          </View>
+                        )}
                         <View style={[styles.fdFinRow, { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 6, paddingTop: 6 }]}>
                           <Text style={[styles.fdFinLabel, { fontWeight: '700' }]}>Adjusted Total</Text>
-                          <Text style={[styles.fdFinValue, { fontWeight: '700' }]}>
-                            ₱{adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          <Text style={[styles.fdFinValue, { fontWeight: '700', color: adjustedCost <= 0 ? COLORS.success : COLORS.text }]}>
+                            {adjustedCost <= 0
+                              ? 'Pre-paid by credit'
+                              : `₱${adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
                           </Text>
                         </View>
                       </>
@@ -1354,6 +1412,14 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.accent]}
+            tintColor={COLORS.accent}
+          />
+        }
       >
         {/* ─── Title Card ─── */}
         <View style={styles.titleCard}>
@@ -1375,17 +1441,19 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           <View style={styles.finGrid}>
             <View style={styles.finGridItem}>
               <Text style={styles.finGridLabel}>REQUIRED</Text>
-              {adjustedCost !== null && carryForwardAmount > 0 ? (
+              {adjustedCost !== null && carryForwardAmount !== 0 ? (
                 <>
                   <Text style={[styles.finGridValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                    ₱{adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                    {carryForwardAmount < 0 && adjustedCost <= 0
+                      ? 'Pre-paid'
+                      : `₱${adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                     <Text style={{ fontSize: 10, color: COLORS.textMuted, textDecorationLine: 'line-through' }}>
                       ₱{originalCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                     </Text>
                     <View style={styles.carryForwardBadge}>
-                      <Text style={styles.carryForwardBadgeText}>+CF</Text>
+                      <Text style={styles.carryForwardBadgeText}>{carryForwardAmount < 0 ? '−CF' : '+CF'}</Text>
                     </View>
                   </View>
                 </>
@@ -1680,15 +1748,19 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       // Build message with carry-forward info if applicable
                       let msg = res.message || 'Milestone item marked as complete.';
                       const cf = res.carry_forward || res.data?.carry_forward;
+                      const ocf = res.over_carry_forward || res.data?.over_carry_forward;
                       if (cf && cf.shortfall && cf.carried_to_item_id) {
                         const shortfallStr = parseFloat(cf.shortfall).toLocaleString('en-US', { minimumFractionDigits: 2 });
                         msg += `\n\nUnderpayment of ₱${shortfallStr} has been carried forward to the next milestone item${cf.carried_to_title ? ' ("' + cf.carried_to_title + '")' : ''}.`;
                       } else if (cf && cf.shortfall && !cf.carried_to_item_id) {
                         const shortfallStr = parseFloat(cf.shortfall).toLocaleString('en-US', { minimumFractionDigits: 2 });
                         msg += `\n\nNote: ₱${shortfallStr} shortfall recorded. This is the last item — no next item to carry to.`;
+                      } else if (ocf && ocf.over_amount && ocf.credit_applied_to_id) {
+                        const creditStr = parseFloat(ocf.over_amount).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                        msg += `\n\nOverpayment credit of ₱${creditStr} has been applied to the next milestone item${ocf.credit_applied_to ? ' ("' + ocf.credit_applied_to + '")' : ''}.`;
                       }
                       if (res.warning) {
-                        Alert.alert('Completed with warning', res.warning + (cf ? '\n' + msg : ''), [{ text: 'OK' }]);
+                        Alert.alert('Completed with warning', res.warning + ((cf || ocf) ? '\n' + msg : ''), [{ text: 'OK' }]);
                       } else {
                         Alert.alert('Success', msg);
                       }

@@ -429,16 +429,18 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
         <View style={styles.msFinGrid}>
           <View style={styles.msFinItem}>
             <Text style={styles.msFinLabel}>REQUIRED</Text>
-            {adjustedCost !== null && carryForward > 0 ? (
+            {adjustedCost !== null && carryForward !== 0 ? (
               <>
                 <Text style={[styles.msFinValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                  ₱{adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                  {carryForward < 0 && adjustedCost <= 0
+                    ? 'Pre-paid'
+                    : `₱${adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
                   <Text style={{ fontSize: 10, color: '#94a3b8', textDecorationLine: 'line-through' }}>
                     ₱{(parseFloat(item.original_allocation) || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                   </Text>
-                  <View style={styles.msCfBadge}><Text style={styles.msCfBadgeText}>+CF</Text></View>
+                  <View style={styles.msCfBadge}><Text style={styles.msCfBadgeText}>{carryForward < 0 ? '−CF' : '+CF'}</Text></View>
                 </View>
               </>
             ) : (
