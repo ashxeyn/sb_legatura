@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use App\Services\PostService;
+use App\Services\ProfileService;
 use App\Services\UserActivityLogger;
 
 /**
@@ -56,7 +57,14 @@ class postController extends Controller
         $result = $this->postService->createPost($userId, $request->all(), $images);
 
         if (!empty($result['success'])) {
-            UserActivityLogger::postCreated($userId, (int) ($result['data']['id'] ?? 0));
+            $createdPost = $result['data'] ?? null;
+            $createdPostId = is_object($createdPost)
+                ? (int) ($createdPost->post_id ?? $createdPost->id ?? 0)
+                : (int) ($createdPost['post_id'] ?? $createdPost['id'] ?? 0);
+
+            if ($createdPostId > 0) {
+                UserActivityLogger::postCreated($userId, $createdPostId);
+            }
         }
 
         return response()->json($result, $result['success'] ? 201 : 422);
@@ -311,8 +319,7 @@ class postController extends Controller
             ->toArray();
 
         // Build query based on whether user is contractor, owner, or both
-        $postOwnerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
-        $contractor = $postOwnerId ? DB::table('contractors')->where('owner_id', $postOwnerId)->first() : null;
+        $contractor = app(ProfileService::class)->getContractorByUserId($userId);
         $owner      = DB::table('property_owners')->where('user_id', $userId)->first();
 
         $projects = collect();
@@ -323,7 +330,8 @@ class postController extends Controller
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-                ->where('p.selected_contractor_id', $contractor->contractor_id)
+                ->join('users as po_u', 'po.user_id', '=', 'po_u.user_id')
+                ->where('pr.selected_contractor_id', $contractor->contractor_id)
                 ->where('p.project_status', 'completed')
                 ->select(
                     'p.project_id',

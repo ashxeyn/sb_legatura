@@ -269,7 +269,6 @@ class NotificationRedirectService
             case 'project_completed':
             case 'project_halted':
             case 'project_terminated':
-            case 'project_update':
                 $pid = $projectId ?? $notification->reference_id;
                 return [
                     'screen' => 'dashboard',
@@ -278,6 +277,43 @@ class NotificationRedirectService
                         'project_id'      => $pid,
                         'initial_action'  => 'project_timeline',
                         'initial_section' => 'milestones',
+                    ],
+                ];
+
+            case 'project_update':
+                if (($notification->reference_type ?? null) === 'showcase') {
+                    $showcasePostId = (int) ($actionData['params']['showcase_post_id'] ?? $notification->reference_id ?? 0);
+                    return [
+                        'screen' => 'profile',
+                        'params' => [
+                            'sub_screen' => 'view_profile',
+                            'tab' => 'Posts',
+                            'active_role' => 'contractor',
+                            'showcase_post_id' => $showcasePostId,
+                        ],
+                    ];
+                }
+
+                $pid = $projectId ?? $notification->reference_id;
+                return [
+                    'screen' => 'dashboard',
+                    'params' => [
+                        'sub_screen'      => 'project_detail',
+                        'project_id'      => $pid,
+                        'initial_action'  => 'project_timeline',
+                        'initial_section' => 'milestones',
+                    ],
+                ];
+
+            case 'showcase_update':
+                $showcasePostId = (int) ($actionData['params']['showcase_post_id'] ?? $notification->reference_id ?? 0);
+                return [
+                    'screen' => 'profile',
+                    'params' => [
+                        'sub_screen' => 'view_profile',
+                        'tab' => 'Posts',
+                        'active_role' => 'contractor',
+                        'showcase_post_id' => $showcasePostId,
                     ],
                 ];
 
@@ -472,8 +508,16 @@ class NotificationRedirectService
             case 'project_completed':
             case 'project_halted':
             case 'project_terminated':
-            case 'project_update':
                 return self::resolveProjectRedirect($refId, $userRole);
+
+            case 'project_update':
+                if ($refType === 'showcase') {
+                    return self::resolveShowcaseRedirect($refId, $userRole);
+                }
+                return self::resolveProjectRedirect($refId, $userRole);
+
+            case 'showcase_update':
+                return self::resolveShowcaseRedirect($refId, $userRole);
 
             // ── Team events → project page ──
             case 'team_invite':
@@ -539,6 +583,9 @@ class NotificationRedirectService
 
             case 'contractor_staff':
                 return self::resolveMembersRedirect();
+
+            case 'showcase':
+                return self::resolveShowcaseRedirect($referenceId, $userRole);
 
             default:
                 Log::warning('NotificationRedirectService: unknown reference_type', [
@@ -879,6 +926,33 @@ class NotificationRedirectService
         $prefix = self::rolePrefix($userRole);
         return [
             'url'   => "/{$prefix}/profile",
+            'flash' => null,
+        ];
+    }
+
+    /**
+     * Showcase → profile portfolio tab focused on the showcase post.
+     */
+    private static function resolveShowcaseRedirect(?int $postId, string $userRole): array
+    {
+        if (!$postId) {
+            return self::dashboardFallback($userRole, 'Showcase reference is missing.');
+        }
+
+        $showcase = DB::table('showcases')
+            ->where('post_id', $postId)
+            ->select('post_id', 'user_id', 'status')
+            ->first();
+
+        if (!$showcase || (($showcase->status ?? null) === 'deleted')) {
+            return self::dashboardFallback($userRole, 'The showcase post no longer exists.');
+        }
+
+        $prefix = self::rolePrefix($userRole);
+        $uid = (int) ($showcase->user_id ?? 0);
+
+        return [
+            'url'   => "/{$prefix}/profile?tab=portfolio&user_id={$uid}&showcase_post_id={$postId}",
             'flash' => null,
         ];
     }

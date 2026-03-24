@@ -162,13 +162,13 @@ class showcaseClass
             if ($updated) {
                 \App\Services\NotificationService::create(
                     (int) $post->user_id,
-                    'project_update',
+                    'showcase_update',
                     'Showcase Approved',
                     "Your showcase post \"{$post->title}\" has been approved and is now visible in the public feed.",
                     'high',
                     'showcase',
                     (int) $postId,
-                    ['screen' => 'ShowcasePostDetail', 'params' => ['postId' => (int) $postId]]
+                    ['screen' => 'profile', 'params' => ['sub_screen' => 'view_profile', 'tab' => 'Posts', 'active_role' => 'contractor', 'showcase_post_id' => (int) $postId]]
                 );
 
                 try {
@@ -216,13 +216,13 @@ class showcaseClass
             if ($updated) {
                 \App\Services\NotificationService::create(
                     (int) $post->user_id,
-                    'project_update',
+                    'showcase_update',
                     'Showcase Rejected',
                     "Your showcase post \"{$post->title}\" has been rejected. Reason: {$reason}",
                     'high',
                     'showcase',
                     (int) $postId,
-                    ['screen' => 'ShowcasePostDetail', 'params' => ['postId' => (int) $postId]]
+                    ['screen' => 'profile', 'params' => ['sub_screen' => 'view_profile', 'tab' => 'Posts', 'active_role' => 'contractor', 'showcase_post_id' => (int) $postId]]
                 );
 
                 try {
@@ -267,13 +267,13 @@ class showcaseClass
             if ($updated) {
                 \App\Services\NotificationService::create(
                     (int) $post->user_id,
-                    'project_update',
+                    'showcase_update',
                     'Showcase Deleted',
                     "Your showcase post \"{$post->title}\" has been deleted by an administrator. Reason: {$reason}",
                     'high',
                     'showcase',
                     (int) $postId,
-                    ['screen' => 'ShowcasePostDetail', 'params' => ['postId' => (int) $postId]]
+                    ['screen' => 'profile', 'params' => ['sub_screen' => 'view_profile', 'tab' => 'Posts', 'active_role' => 'contractor', 'showcase_post_id' => (int) $postId]]
                 );
                 return true;
             }
@@ -305,13 +305,13 @@ class showcaseClass
             if ($updated) {
                 \App\Services\NotificationService::create(
                     (int) $post->user_id,
-                    'project_update',
+                    'showcase_update',
                     'Showcase Restored',
                     "Your deleted showcase post \"{$post->title}\" has been restored and approved.",
                     'normal',
                     'showcase',
                     (int) $postId,
-                    ['screen' => 'ShowcasePostDetail', 'params' => ['postId' => (int) $postId]]
+                    ['screen' => 'profile', 'params' => ['sub_screen' => 'view_profile', 'tab' => 'Posts', 'active_role' => 'contractor', 'showcase_post_id' => (int) $postId]]
                 );
                 return true;
             }

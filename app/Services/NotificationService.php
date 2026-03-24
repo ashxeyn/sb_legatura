@@ -49,6 +49,7 @@ class NotificationService
         'project_halted'      => 'Project Alert',
         'project_terminated'  => 'Project Alert',
         'project_update'      => 'Project Alert',
+        'showcase_update'     => 'Project Alert',
         'team_invite'         => 'Team Update',
         'team_removed'        => 'Team Update',
         'team_role_changed'   => 'Team Update',
@@ -138,6 +139,7 @@ class NotificationService
         'project_halted'     => 'both',
         'project_terminated' => 'both',
         'project_update'     => 'owner',  // general project updates for owner
+        'showcase_update'    => 'both',
 
         // Team notifications — contractor's team
         'team_invite'         => 'contractor',

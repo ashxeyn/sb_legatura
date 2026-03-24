@@ -498,7 +498,7 @@ const ProjectCardSkeleton = () => (
 );
 
 // Main Component
-export default function ViewProfileScreen({ onBack, userData, userToken, initialTab, activeRole }) {
+export default function ViewProfileScreen({ onBack, userData, userToken, initialTab, activeRole, initialShowcasePostId = null }) {
   const insets = useSafeAreaInsets();
   const { hasFullAccess: hasFullContractorAccess } = useContractorAuth();
 
@@ -572,7 +572,9 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   // ── Fetch the user's ACTUAL current role from the server on mount ──────
   // This is the authoritative source; props may be stale (e.g. user_type is
   // 'property_owner' but current_role on the server is 'contractor').
+  // Skip if activeRole was explicitly passed (e.g. from a notification deep-link).
   useEffect(() => {
+    if (activeRole) return; // explicit prop — don't override
     let mounted = true;
     const syncRole = async () => {
       try {
@@ -730,7 +732,23 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     return filteredProjects;
   }, [filteredProjects, activeRoleState]);
 
+  const completedProjects = useMemo(() =>
+    filteredProjects.filter(p => (p.project_status || '').toLowerCase() === 'completed'),
+    [filteredProjects]
+  );
+
   const highlightedPosts = useMemo(() => showcasePosts.filter(p => !!p.is_highlighted), [showcasePosts]);
+
+  const initialShowcaseOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!initialShowcasePostId || initialShowcaseOpenedRef.current || !showcasePosts.length) return;
+
+    const targetPost = showcasePosts.find((p) => Number(p.post_id) === Number(initialShowcasePostId));
+    if (targetPost) {
+      initialShowcaseOpenedRef.current = true;
+      setSelectedShowcasePost(targetPost);
+    }
+  }, [initialShowcasePostId, showcasePosts]);
 
   const userCity = useMemo(() => {
     const addr = ownerInfo?.address_display || ownerInfo?.address || '';
@@ -931,19 +949,22 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
 
         // Update activeRoleState based on API response
         // Priority: current_role > data.role > user.preferred_role > resolved role
-        let finalRole = activeRoleState;
-        if (data.current_role) {
-          finalRole = String(data.current_role).toLowerCase();
-        } else if (data.role) {
-          finalRole = String(data.role).toLowerCase();
-        } else if (data.user?.preferred_role) {
-          const pr = String(data.user.preferred_role).toLowerCase();
-          if (pr.includes('contractor')) finalRole = 'contractor';
-          else if (pr.includes('owner') || pr.includes('property')) finalRole = 'owner';
-        }
+        // Skip if activeRole was explicitly passed (e.g. from a notification deep-link).
+        if (!activeRole) {
+          let finalRole = activeRoleState;
+          if (data.current_role) {
+            finalRole = String(data.current_role).toLowerCase();
+          } else if (data.role) {
+            finalRole = String(data.role).toLowerCase();
+          } else if (data.user?.preferred_role) {
+            const pr = String(data.user.preferred_role).toLowerCase();
+            if (pr.includes('contractor')) finalRole = 'contractor';
+            else if (pr.includes('owner') || pr.includes('property')) finalRole = 'owner';
+          }
 
-        if (finalRole && finalRole !== activeRoleState) {
-          setActiveRoleState(finalRole);
+          if (finalRole && finalRole !== activeRoleState) {
+            setActiveRoleState(finalRole);
+          }
         }
         if (data.occupation_name) {
           setOccupationName(data.occupation_name);
@@ -2366,7 +2387,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
       </TouchableOpacity>
     ) : null;
 
-    if (showcasePosts.length === 0) {
+    if (showcasePosts.length === 0 && completedProjects.length === 0) {
       return (
         <View style={styles.tabContent}>
           {postInputBar}
@@ -2375,6 +2396,35 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             <Text style={styles.emptyTitle}>No showcase posts yet</Text>
             <Text style={styles.emptySubtext}>Tap above to share your first project!</Text>
           </View>
+        </View>
+      );
+    }
+
+    if (showcasePosts.length === 0) {
+      return (
+        <View style={styles.tabContent}>
+          {postInputBar}
+          {/* ── Completed Projects Section ── */}
+          {completedProjects.length > 0 && (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 8, paddingHorizontal: 4 }}>
+                <MaterialIcons name="check-circle" size={18} color="#22C55E" />
+                <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text, marginLeft: 6 }}>Completed Projects</Text>
+                <Text style={{ fontSize: 13, color: COLORS.textSecondary, marginLeft: 6 }}>({completedProjects.length})</Text>
+              </View>
+              {completedProjects.map(project => (
+                <ProjectCard
+                  key={project.project_id}
+                  project={project}
+                  ownerUser={{ ...(ownerInfo || userState), profile_pic: ownerInfo?.profile_pic || userState?.profile_pic }}
+                  onPress={(index?: number) => {
+                    setSelectedProject(project);
+                    setInitialImageIndex(index || 0);
+                  }}
+                />
+              ))}
+            </>
+          )}
         </View>
       );
     }
@@ -2496,6 +2546,28 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             </View>
           );
         })}
+
+        {/* ── Completed Projects Section ── */}
+        {completedProjects.length > 0 && (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8, paddingHorizontal: 4 }}>
+              <MaterialIcons name="check-circle" size={18} color="#22C55E" />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text, marginLeft: 6 }}>Completed Projects</Text>
+              <Text style={{ fontSize: 13, color: COLORS.textSecondary, marginLeft: 6 }}>({completedProjects.length})</Text>
+            </View>
+            {completedProjects.map(project => (
+              <ProjectCard
+                key={project.project_id}
+                project={project}
+                ownerUser={{ ...(ownerInfo || userState), profile_pic: ownerInfo?.profile_pic || userState?.profile_pic }}
+                onPress={(index?: number) => {
+                  setSelectedProject(project);
+                  setInitialImageIndex(index || 0);
+                }}
+              />
+            ))}
+          </>
+        )}
       </View>
     );
   };

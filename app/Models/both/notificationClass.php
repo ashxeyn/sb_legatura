@@ -47,6 +47,7 @@ class notificationClass
             'project_completed',
             'project_halted',
             'project_terminated',
+            'showcase_update',
             'subscription_expiring',
             'subscription_expired',
             // Progress outcomes are sent to the contractor, not the owner
@@ -83,6 +84,7 @@ class notificationClass
             'project_halted',
             'project_terminated',
             'project_update',
+            'showcase_update',
             'dispute_opened',
             'dispute_updated',
             'dispute_cancelled',

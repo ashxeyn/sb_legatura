@@ -154,7 +154,7 @@ interface HomepageProps {
   userType?: 'property_owner' | 'contractor';
   userData?: UserData;
   onLogout?: () => void;
-  onViewProfile?: (initialTab?: string) => void;
+  onViewProfile?: (initialTab?: string, showcasePostId?: number, activeRole?: string) => void;
   onEditProfile?: () => void;
   onOpenHelp?: () => void;
   onOpenSwitchRole?: () => void;
@@ -173,6 +173,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [currentRole, setCurrentRole] = useState<'contractor' | 'owner' | null>(null);
   const [profileSubScreen, setProfileSubScreen] = useState<null | 'change_otp' | 'help' | 'edit_profile' | 'subscription' | 'view_profile'>(null);
   const [viewProfileRefreshKey, setViewProfileRefreshKey] = useState(0);
+  const [viewProfileInitialTab, setViewProfileInitialTab] = useState<string | undefined>(undefined);
+  const [viewProfileInitialShowcasePostId, setViewProfileInitialShowcasePostId] = useState<number | null>(null);
 
   // Pagination state
   const [contractorsPage, setContractorsPage] = useState(1);
@@ -886,9 +888,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         break;
 
       case 'profile':
-        if (params.tab === 'reviews') {
-          // Navigate to the full view-profile screen with Reviews tab focused
-          onViewProfile?.('Reviews');
+        if (params.sub_screen === 'view_profile' || params.showcase_post_id || params.tab) {
+          // Navigate to the full view-profile screen at the app level
+          onViewProfile?.(
+            params.tab || 'Posts',
+            params.showcase_post_id ? Number(params.showcase_post_id) : undefined,
+            params.active_role || undefined
+          );
         } else {
           setActiveTab('profile');
         }
@@ -920,7 +926,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         setActiveTab('home');
         break;
     }
-  }, []);
+  }, [onViewProfile]);
 
   /**
    * Load more contractors (infinite scroll)
@@ -2380,7 +2386,13 @@ const renderProfileContent = () => {
       return (
         <ViewProfileScreen
           key={viewProfileRefreshKey}
-          onBack={() => setProfileSubScreen(null)}
+          onBack={() => {
+            setProfileSubScreen(null);
+            setViewProfileInitialTab(undefined);
+            setViewProfileInitialShowcasePostId(null);
+          }}
+          initialTab={viewProfileInitialTab as any}
+          initialShowcasePostId={viewProfileInitialShowcasePostId}
           activeRole={effectiveUserType}
           userData={{
             ...userData,

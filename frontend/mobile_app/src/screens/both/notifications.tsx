@@ -81,6 +81,7 @@ type NotificationType =
   | 'project_halted'
   | 'project_terminated'
   | 'project_update'
+  | 'showcase_update'
   // Team
   | 'team_invite'
   | 'team_removed'
@@ -261,6 +262,7 @@ const getNotificationStyle = (type: NotificationType) => {
     case 'dispute_updated':
     case 'dispute_under_review':
     case 'project_update':
+    case 'showcase_update':
       return {
         icon: 'sync-outline' as const,
         iconComponent: 'ionicons',
@@ -427,6 +429,7 @@ const getNotificationCategory = (type: NotificationType): NotificationCategory =
   if (type.startsWith('payment_')) return 'payments';
   if (
     type.startsWith('project_') ||
+    type.startsWith('showcase_') ||
     type.startsWith('milestone_') ||
     type.startsWith('progress_')
   )
