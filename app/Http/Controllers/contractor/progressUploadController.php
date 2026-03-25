@@ -1187,6 +1187,7 @@ class progressUploadController extends Controller
 
             // Optional rejection reason
             $reason = $request->input('reason', null);
+            $reasonNote = $reason ? " Reason: {$reason}" : '';
 
             // Update status
             $this->progressUploadClass->updateProgressStatus($progressId, 'rejected', $reason);

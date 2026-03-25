@@ -954,6 +954,7 @@ export class projects_service {
   ): Promise<ApiResponse> {
     try {
       const formData = new FormData();
+      formData.append('_method', 'PUT');
       formData.append('user_id', userId.toString());
       formData.append('milestone_name', milestoneData.milestone_name);
       formData.append('payment_mode', milestoneData.payment_mode);
@@ -979,7 +980,7 @@ export class projects_service {
 
       const url = `${api_config.base_url}/api/contractor/projects/${projectId}/milestones/${milestoneId}`;
       const response = await fetch(url, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         body: formData,
       });
